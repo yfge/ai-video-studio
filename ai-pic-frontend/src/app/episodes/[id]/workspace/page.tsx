@@ -1,12 +1,11 @@
 "use client";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useMemo } from "react";
 import {
   EpisodeWorkspaceHeader,
   WorkspaceActiveTabContent,
   type WorkflowStatus,
 } from "@/components/features/episode";
-import { OperatorShell, OperatorState } from "@/components/shared";
+import { AuthGuard, OperatorShell, OperatorState } from "@/components/shared";
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 import { useEpisodeDetail } from "@/hooks/useEpisodeDetail";
 import { useEpisodeWorkspaceController } from "@/hooks/episode/useEpisodeWorkspaceController";
@@ -14,12 +13,19 @@ import { useEpisodeWorkspaceUrlState } from "@/hooks/episode/useEpisodeWorkspace
 import { useTimelineResolvedVideos } from "@/components/features/episode/useTimelineResolvedVideos";
 
 export default function EpisodeWorkspacePage() {
+  return (
+    <AuthGuard>
+      <EpisodeWorkspacePageContent />
+    </AuthGuard>
+  );
+}
+
+function EpisodeWorkspacePageContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
   const episodeKey = params?.id?.toString() || "";
   const { showAlert } = useAlertModal();
-
   const state = useEpisodeDetail({ episodeKey, showAlert });
   const {
     episode,
@@ -28,10 +34,9 @@ export default function EpisodeWorkspacePage() {
     selectedScriptId,
     setSelectedScriptId,
     normalizedScenes,
-    normalizedScenesLoading,
-    normalizedScenesError,
     selectedAudioTimeline,
     selectedTimelineSpec,
+    timelineSpecLoading,
     setSelectedTimelineSpec,
     selectedStoryboard,
     timingModel,
@@ -62,28 +67,17 @@ export default function EpisodeWorkspacePage() {
       ? `${selectedTimelineSpec.id}:${selectedTimelineSpec.version}`
       : null,
   });
-
   const mainScript = selectedScript;
   const mainScriptSceneCount = Array.isArray(mainScript?.scenes)
     ? mainScript?.scenes.length
     : undefined;
 
-  const workflowStatus: WorkflowStatus = useMemo(() => {
-    const hasScript = scripts.length > 0;
-    const hasTimeline = Boolean(selectedTimelineSpec || selectedAudioTimeline);
-    const hasStoryboard = Boolean(selectedStoryboard);
-
-    return {
-      script: hasScript ? "ready" : "pending",
-      timeline: hasTimeline ? "ready" : "pending",
-      storyboard: hasStoryboard ? "ready" : "pending",
-    };
-  }, [
-    scripts.length,
-    selectedAudioTimeline,
-    selectedTimelineSpec,
-    selectedStoryboard,
-  ]);
+  const workflowStatus: WorkflowStatus = {
+    script: scripts.length > 0 ? "ready" : "pending",
+    timeline:
+      selectedTimelineSpec || selectedAudioTimeline ? "ready" : "pending",
+    storyboard: selectedStoryboard ? "ready" : "pending",
+  };
 
   const {
     activeTab,
@@ -116,7 +110,7 @@ export default function EpisodeWorkspacePage() {
     regenerateScriptId: mainScript?.id ?? null,
   });
 
-  if (loading) {
+  if (loading || (timelineSpecLoading && initialTab === "timeline")) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f5f6f8]">
         <OperatorState title="加载剧集工作台..." />
@@ -134,11 +128,11 @@ export default function EpisodeWorkspacePage() {
 
   return (
     <OperatorShell
-      title="剧集工作台"
-      subtitle={`第${episode!.episode_number}集 · ${episode!.title}`}
       breadcrumb={["IP 中心", "故事生产", `第${episode!.episode_number}集`]}
+      compactNavigation
+      showGlobalSearch={false}
     >
-      <div className="space-y-4">
+      <div className="space-y-3">
         <EpisodeWorkspaceHeader
           episode={episode!}
           script={mainScript}
@@ -155,45 +149,41 @@ export default function EpisodeWorkspacePage() {
           storyboardActionLabel={storyboardActionLabel}
           onOpenStoryboard={handleOpenStoryboard}
         />
-        <div className="mt-6">
-          <WorkspaceActiveTabContent
-            activeTab={activeTab}
-            episode={episode!}
-            episodeKey={episodeKey}
-            orderedScripts={orderedScripts}
-            selectedScriptId={selectedScriptId}
-            selectedScript={selectedScript}
-            scriptSceneCount={mainScriptSceneCount}
-            selectedTimelineSpec={selectedTimelineSpec}
-            onTimelineUpdated={setSelectedTimelineSpec}
-            resolvedVideos={resolvedVideos}
-            resolvedVideosError={resolvedVideosError}
-            reloadResolvedVideos={reloadResolvedVideos}
-            initialSelectedClipId={initialSelectedClipId}
-            selectedAudioTimeline={selectedAudioTimeline}
-            selectedStoryboard={selectedStoryboard}
-            normalizedScenes={normalizedScenes}
-            normalizedScenesLoading={normalizedScenesLoading}
-            normalizedScenesError={normalizedScenesError}
-            timingModel={timingModel}
-            setTimingModel={setTimingModel}
-            generateForm={generateForm}
-            setGenerateForm={setGenerateForm}
-            formats={formats}
-            languages={languages}
-            useAsync={useAsync}
-            setUseAsync={setUseAsync}
-            promptPreview={promptPreview}
-            setPromptPreview={setPromptPreview}
-            generating={generating}
-            regenerating={regenerating}
-            scriptTask={scriptTask}
-            hasStoryboard={workflowStatus.storyboard === "ready"}
-            showAlert={showAlert}
-            onGenerateScript={handleGenerateScript}
-            onRegenerateScript={mainScript ? handleRegenerateScript : undefined}
-          />
-        </div>
+        <WorkspaceActiveTabContent
+          activeTab={activeTab}
+          episode={episode!}
+          episodeKey={episodeKey}
+          orderedScripts={orderedScripts}
+          selectedScriptId={selectedScriptId}
+          selectedScript={selectedScript}
+          scriptSceneCount={mainScriptSceneCount}
+          selectedTimelineSpec={selectedTimelineSpec}
+          onTimelineUpdated={setSelectedTimelineSpec}
+          resolvedVideos={resolvedVideos}
+          resolvedVideosError={resolvedVideosError}
+          reloadResolvedVideos={reloadResolvedVideos}
+          initialSelectedClipId={initialSelectedClipId}
+          selectedAudioTimeline={selectedAudioTimeline}
+          selectedStoryboard={selectedStoryboard}
+          normalizedScenes={normalizedScenes}
+          timingModel={timingModel}
+          setTimingModel={setTimingModel}
+          generateForm={generateForm}
+          setGenerateForm={setGenerateForm}
+          formats={formats}
+          languages={languages}
+          useAsync={useAsync}
+          setUseAsync={setUseAsync}
+          promptPreview={promptPreview}
+          setPromptPreview={setPromptPreview}
+          generating={generating}
+          regenerating={regenerating}
+          scriptTask={scriptTask}
+          hasStoryboard={workflowStatus.storyboard === "ready"}
+          showAlert={showAlert}
+          onGenerateScript={handleGenerateScript}
+          onRegenerateScript={mainScript ? handleRegenerateScript : undefined}
+        />
       </div>
     </OperatorShell>
   );

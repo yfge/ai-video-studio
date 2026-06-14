@@ -12,13 +12,16 @@ const toneClass: Record<StatusTone, string> = {
 
 export function StatusPill({
   children,
+  title,
   tone = "gray",
 }: {
   children: ReactNode;
+  title?: string;
   tone?: StatusTone;
 }) {
   return (
     <span
+      title={title}
       className={`inline-flex h-6 items-center whitespace-nowrap rounded-md border px-2 text-xs font-medium ${toneClass[tone]}`}
     >
       {children}

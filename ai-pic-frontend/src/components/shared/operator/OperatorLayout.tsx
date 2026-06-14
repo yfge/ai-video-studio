@@ -5,7 +5,11 @@ import {
   operatorClassNames,
 } from "./OperatorPrimitives";
 
-type WorkspaceVariant = "rail-main" | "main-inspector" | "rail-main-inspector";
+type WorkspaceVariant =
+  | "main"
+  | "rail-main"
+  | "main-inspector"
+  | "rail-main-inspector";
 
 export function OperatorWorkspace({
   rail,
@@ -21,7 +25,9 @@ export function OperatorWorkspace({
   className?: string;
 }) {
   const gridClass =
-    variant === "rail-main-inspector"
+    variant === "main"
+      ? "grid-cols-1"
+      : variant === "rail-main-inspector"
       ? "xl:grid-cols-[260px_minmax(0,1fr)_340px]"
       : variant === "main-inspector"
       ? "xl:grid-cols-[minmax(0,1fr)_360px]"
@@ -56,8 +62,14 @@ export function OperatorContextRail({
   className?: string;
 }) {
   return (
-    <OperatorPanel className={operatorClassNames("min-h-0 overflow-hidden", className)}>
-      <OperatorSectionHeader title={title} subtitle={subtitle} action={action} />
+    <OperatorPanel
+      className={operatorClassNames("min-h-0 overflow-hidden", className)}
+    >
+      <OperatorSectionHeader
+        title={title}
+        subtitle={subtitle}
+        action={action}
+      />
       <div className="min-h-0 overflow-y-auto p-3">{children}</div>
     </OperatorPanel>
   );
@@ -71,7 +83,9 @@ export function OperatorMainCanvas({
   className?: string;
 }) {
   return (
-    <div className={operatorClassNames("min-h-0 overflow-y-auto pr-1", className)}>
+    <div
+      className={operatorClassNames("min-h-0 overflow-y-auto pr-1", className)}
+    >
       {children}
     </div>
   );
@@ -98,7 +112,11 @@ export function OperatorInspector({
       )}
     >
       {title ? (
-        <OperatorSectionHeader title={title} subtitle={subtitle} action={action} />
+        <OperatorSectionHeader
+          title={title}
+          subtitle={subtitle}
+          action={action}
+        />
       ) : null}
       <div className="min-h-0 overflow-y-auto p-4">{children}</div>
     </OperatorPanel>
@@ -144,11 +162,17 @@ export function OperatorEntityHeader({
           {eyebrow ? (
             <div className="text-xs font-medium text-gray-500">{eyebrow}</div>
           ) : null}
-          <h1 className="mt-1 truncate text-lg font-semibold text-gray-950">{title}</h1>
+          <h1 className="mt-1 truncate text-lg font-semibold text-gray-950">
+            {title}
+          </h1>
           {subtitle ? (
-            <p className="mt-1 line-clamp-2 text-sm text-gray-600">{subtitle}</p>
+            <p className="mt-1 line-clamp-2 text-sm text-gray-600">
+              {subtitle}
+            </p>
           ) : null}
-          {meta ? <div className="mt-3 flex flex-wrap gap-2">{meta}</div> : null}
+          {meta ? (
+            <div className="mt-3 flex flex-wrap gap-2">{meta}</div>
+          ) : null}
         </div>
         {action ? <div className="shrink-0">{action}</div> : null}
       </div>

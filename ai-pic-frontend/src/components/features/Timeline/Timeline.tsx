@@ -1,40 +1,28 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import {
   BASE_PX_PER_MS,
   buildTimelineTicks,
-  clamp,
-  formatTimelineMs,
   resolveTimelineRange,
 } from "./timelineScale";
-
-export type TimelineItem = {
-  id: string;
-  startMs: number;
-  endMs: number;
-  label?: string;
-  color?: string;
-  type?: string;
-  meta?: Record<string, unknown>;
-};
-
-export type TimelineTrack = {
-  id: string;
-  label: string;
-  color?: string;
-  items: TimelineItem[];
-};
-
-export type TimelineProps = {
-  tracks: TimelineTrack[];
-  startMs?: number;
-  endMs?: number;
-  currentTimeMs?: number;
-  onSelect?: (item: TimelineItem) => void;
-  selectedItemId?: string | null;
-  initialZoom?: number;
-};
+import { TimelineCurrentTimeMarker } from "./TimelineCurrentTimeMarker";
+import { TimelineGrid, TimelineTrackRows } from "./TimelineGrid";
+import { TimelineOverview } from "./TimelineOverview";
+import {
+  findSelectedTimelineItem,
+  TimelineSelectedMarker,
+} from "./TimelineSelectedMarker";
+import { TimelineSelectedContext } from "./TimelineSelectedContext";
+import { TimelineToolbar } from "./TimelineToolbar";
+import { timelineLayoutForMeasuredWidth } from "./timelineLayout";
+import type { TimelineProps } from "./TimelineTypes";
+import { useTimelineFitZoom } from "./useTimelineFitZoom";
+export type {
+  TimelineItem,
+  TimelineProps,
+  TimelineTrack,
+} from "./TimelineTypes";
 
 export function Timeline({
   tracks,
@@ -44,8 +32,11 @@ export function Timeline({
   onSelect,
   selectedItemId,
   initialZoom = 1,
+  headerTitle,
+  headerAction,
+  fitToWidth = false,
 }: TimelineProps) {
-  const [zoom, setZoom] = useState(clamp(initialZoom, 0.25, 4));
+  const defaultLayout = timelineLayoutForMeasuredWidth(600);
 
   const { minStart, maxEnd } = useMemo(
     () => resolveTimelineRange(tracks, startMs, endMs),
@@ -53,150 +44,190 @@ export function Timeline({
   );
 
   const totalMs = Math.max(1, maxEnd - minStart);
+  const {
+    maxZoom,
+    measuredWidth,
+    minZoom,
+    resetZoom,
+    setManualZoom,
+    viewportRef,
+    fitMode,
+    zoom,
+  } = useTimelineFitZoom({
+    fitToWidth,
+    initialZoom,
+    totalMs,
+    trackLabelWidth: defaultLayout.trackLabelWidth,
+    trackRightPadding: defaultLayout.trackRightPadding,
+  });
+  const layout = timelineLayoutForMeasuredWidth(measuredWidth);
+  const {
+    compact,
+    secondaryTrackHeight,
+    tickLaneHeight,
+    trackGap,
+    trackHeight,
+    trackLabelWidth,
+    trackRightPadding,
+  } = layout;
   const pxPerMs = BASE_PX_PER_MS * zoom;
-  const contentWidth = Math.max(600, totalMs * pxPerMs);
+  const trackHeights = tracks.map((track) =>
+    track.id === "video" ? trackHeight : secondaryTrackHeight,
+  );
+  const trackStackHeight = trackHeights.reduce(
+    (sum, height) => sum + height + trackGap,
+    0,
+  );
+  const contentWidth = Math.max(
+    measuredWidth,
+    trackLabelWidth + totalMs * pxPerMs + trackRightPadding,
+  );
   const ticks = useMemo(
     () => buildTimelineTicks(minStart, maxEnd),
     [maxEnd, minStart],
   );
+  const selectedTimelineItem = useMemo(
+    () => findSelectedTimelineItem(tracks, selectedItemId),
+    [selectedItemId, tracks],
+  );
+  const selectedTrack = selectedTimelineItem
+    ? tracks[selectedTimelineItem.trackIndex] ?? null
+    : null;
+  const primaryTrack =
+    tracks.find((track) => track.id === "video") ??
+    tracks.find((track) => track.items.some((item) => item.type === "video")) ??
+    tracks[0] ??
+    null;
 
-  const colorForTrack = (track: TimelineTrack) => track.color || "#2563eb";
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    const selectedItem = selectedTimelineItem?.item;
+    if (!viewport || !selectedItem) return;
 
-  const renderItem = (item: TimelineItem, trackColor: string) => {
-    const startOffset = (item.startMs - minStart) * pxPerMs;
-    const duration = Math.max(item.endMs - item.startMs, 0);
-    const width = Math.max(duration * pxPerMs, 6);
-    const isMarker = duration <= 0;
-    const isSelected = selectedItemId === item.id;
-    const style = isMarker
-      ? {
-          left: startOffset,
-          width: 6,
-          backgroundColor: trackColor,
-        }
-      : {
-          left: startOffset,
-          width,
-          backgroundColor: `${trackColor}22`,
-          borderColor: trackColor,
-          borderWidth: 1,
-        };
-    return (
-      <button
-        key={item.id}
-        title={
-          item.label
-            ? `${item.label} (${formatTimelineMs(
-                item.startMs,
-              )}–${formatTimelineMs(item.endMs)})`
-            : `${formatTimelineMs(item.startMs)}–${formatTimelineMs(
-                item.endMs,
-              )}`
-        }
-        onClick={() => onSelect?.(item)}
-        className={`absolute bottom-1 top-1 rounded-sm ${
-          isMarker ? "" : "border"
-        } ${isSelected ? "ring-2 ring-blue-500 ring-offset-1" : ""} ${
-          onSelect ? "cursor-pointer" : "cursor-default"
-        } overflow-hidden`}
-        style={style}
-      >
-        {!isMarker ? (
-          <span className="px-1 text-[11px] text-gray-800 truncate">
-            {item.label}
-          </span>
-        ) : null}
-      </button>
-    );
-  };
+    const itemLeft =
+      trackLabelWidth + (selectedItem.startMs - minStart) * pxPerMs;
+    const itemRight =
+      trackLabelWidth + (selectedItem.endMs - minStart) * pxPerMs;
+    const viewportLeft = viewport.scrollLeft;
+    const viewportRight = viewportLeft + viewport.clientWidth;
+    const labelGuard = trackLabelWidth + 16;
+
+    if (
+      itemLeft < viewportLeft + labelGuard ||
+      itemRight > viewportRight - 48
+    ) {
+      const nextLeft = Math.max(0, itemLeft - labelGuard);
+      if (typeof viewport.scrollTo === "function") {
+        viewport.scrollTo({ left: nextLeft, behavior: "smooth" });
+      } else {
+        viewport.scrollLeft = nextLeft;
+      }
+    }
+  }, [minStart, pxPerMs, selectedTimelineItem, trackLabelWidth, viewportRef]);
 
   return (
-    <div className="w-full rounded-md border border-gray-200 bg-white">
-      <div className="flex items-center justify-between px-3 py-2 text-xs text-gray-700">
-        <div className="flex items-center gap-3">
-          <span className="text-[11px] text-gray-500">
-            时间轴窗口 {formatTimelineMs(minStart)} – {formatTimelineMs(maxEnd)}
-          </span>
-          <span className="text-[11px] text-gray-500">
-            时长 {(totalMs / 1000).toFixed(1)}s
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] text-gray-500">缩放</span>
-          <input
-            type="range"
-            min={0.25}
-            max={4}
-            step={0.05}
-            value={zoom}
-            onChange={(e) =>
-              setZoom(clamp(Number.parseFloat(e.target.value), 0.25, 4))
-            }
+    <div
+      data-timeline="workspace"
+      data-timeline-canvas="true"
+      data-timeline-density="primary"
+      data-timeline-presence="explicit-production-time-axis"
+      data-timeline-surface="dominant-workspace-axis"
+      data-timeline-visibility-contract="first-screen-primary"
+      data-timeline-visual-priority="main-time-axis"
+      data-timeline-responsive-density={compact ? "compact" : "regular"}
+      data-timeline-fit-to-width={fitToWidth ? "true" : "false"}
+      data-timeline-scale-mode={fitMode}
+      aria-label="时间轴导航：片段时间轴定位区"
+      className="relative w-full overflow-hidden rounded-lg border border-slate-300 border-l-8 border-l-blue-600 bg-white shadow-md shadow-blue-100/80 ring-1 ring-blue-100/80"
+    >
+      <TimelineToolbar
+        fitToWidth={fitToWidth}
+        fitMode={fitMode}
+        headerAction={headerAction}
+        headerTitle={headerTitle}
+        selectedContext={
+          <TimelineSelectedContext
+            item={selectedTimelineItem?.item ?? null}
+            track={selectedTrack}
           />
-          <button
-            type="button"
-            onClick={() => setZoom(1)}
-            className="rounded-md border border-gray-200 px-2 py-1 text-[11px] text-gray-700 hover:bg-gray-50"
-          >
-            1x
-          </button>
-        </div>
-      </div>
-      <div className="relative overflow-x-auto border-t border-gray-200">
+        }
+        maxEnd={maxEnd}
+        maxZoom={maxZoom}
+        minStart={minStart}
+        minZoom={minZoom}
+        onResetZoom={resetZoom}
+        onZoomChange={setManualZoom}
+        primaryClipCount={primaryTrack?.items.length ?? 0}
+        totalMs={totalMs}
+        zoom={zoom}
+      />
+      <TimelineOverview
+        compact={compact}
+        maxEnd={maxEnd}
+        minStart={minStart}
+        onSelect={onSelect}
+        selectedItemId={selectedItemId}
+        tracks={tracks}
+      />
+      <div
+        ref={viewportRef}
+        data-timeline-viewport="lanes"
+        data-timeline-scrollbar="subtle"
+        data-timeline-scroll-mode={
+          fitMode === "readable-window"
+            ? "scrollable-readable-lanes"
+            : "fit-to-viewport"
+        }
+        className="relative overflow-x-scroll border-t border-slate-200 bg-gradient-to-b from-white to-slate-50/80 pb-2"
+        style={{ scrollbarGutter: "stable" }}
+      >
         <div
+          data-timeline-content="lanes"
+          data-timeline-content-scale-mode={fitMode}
           className="relative"
           style={{
             width: `${contentWidth}px`,
-            minHeight: `${60 + tracks.length * 42}px`,
+            minHeight: `${tickLaneHeight + trackStackHeight + 6}px`,
           }}
         >
-          <div className="absolute left-0 right-0 top-0 h-8">
-            {ticks.map((tick) => {
-              const left = (tick.positionMs - minStart) * pxPerMs;
-              return (
-                <div
-                  key={tick.positionMs}
-                  className="absolute top-0 flex flex-col items-center text-[10px] text-gray-400"
-                  style={{ left }}
-                >
-                  <div className="h-2 w-px bg-gray-300" />
-                  <span>{tick.label}</span>
-                </div>
-              );
-            })}
-          </div>
-          <div className="absolute left-0 right-0 top-8">
-            {tracks.map((track) => {
-              const color = colorForTrack(track);
-              return (
-                <div
-                  key={track.id}
-                  className="relative mb-3 border-t border-gray-100 bg-white pt-1"
-                  style={{ minHeight: 40 }}
-                >
-                  <div className="absolute left-0 top-2 flex h-5 items-center gap-2 pl-1 text-[12px] text-gray-700">
-                    <span
-                      className="inline-block h-2 w-2 rounded-full"
-                      style={{ backgroundColor: color }}
-                    ></span>
-                    {track.label}
-                  </div>
-                  <div className="relative ml-24 mr-2 h-8 overflow-visible">
-                    {track.items.map((item) => renderItem(item, color))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <TimelineGrid
+            minStart={minStart}
+            pxPerMs={pxPerMs}
+            tickLaneHeight={tickLaneHeight}
+            ticks={ticks}
+            trackLabelWidth={trackLabelWidth}
+          />
+          {selectedTimelineItem ? (
+            <TimelineSelectedMarker
+              contentWidth={contentWidth}
+              item={selectedTimelineItem.item}
+              minStart={minStart}
+              pxPerMs={pxPerMs}
+              tickLaneHeight={tickLaneHeight}
+              trackLabelWidth={trackLabelWidth}
+            />
+          ) : null}
+          <TimelineTrackRows
+            minStart={minStart}
+            onSelect={onSelect}
+            pxPerMs={pxPerMs}
+            selectedItemId={selectedItemId}
+            trackGap={trackGap}
+            trackHeight={trackHeight}
+            trackHeights={trackHeights}
+            tickLaneHeight={tickLaneHeight}
+            trackLabelWidth={trackLabelWidth}
+            trackRightPadding={trackRightPadding}
+            tracks={tracks}
+            zoom={zoom}
+          />
           {currentTimeMs != null ? (
-            <div
-              className="pointer-events-none absolute top-0 bottom-0 border-l-2 border-blue-500/70"
-              style={{ left: (currentTimeMs - minStart) * pxPerMs }}
-            >
-              <div className="absolute -top-5 -translate-x-1/2 rounded bg-blue-500 px-1 py-0.5 text-[10px] text-white">
-                {formatTimelineMs(currentTimeMs)}
-              </div>
-            </div>
+            <TimelineCurrentTimeMarker
+              currentTimeMs={currentTimeMs}
+              minStart={minStart}
+              pxPerMs={pxPerMs}
+              trackLabelWidth={trackLabelWidth}
+            />
           ) : null}
         </div>
       </div>

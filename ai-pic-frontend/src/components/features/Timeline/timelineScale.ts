@@ -19,6 +19,9 @@ export const formatTimelineMs = (ms: number) => {
   )}.${String(millis).padStart(3, "0")}`;
 };
 
+export const formatTimelineLabel = (ms: number) =>
+  formatTimelineMs(ms).replace(/\.000$/, "");
+
 const niceStep = (rangeMs: number) => {
   const candidates = [
     100, 200, 250, 500, 1000, 2000, 5000, 10000, 20000, 30000, 60000,
@@ -36,7 +39,7 @@ export const buildTimelineTicks = (startMs: number, endMs: number): Tick[] => {
   const ticks: Tick[] = [];
   const first = Math.ceil(startMs / step) * step;
   for (let t = first; t <= endMs; t += step) {
-    ticks.push({ positionMs: t, label: formatTimelineMs(t) });
+    ticks.push({ positionMs: t, label: formatTimelineLabel(t) });
   }
   return ticks;
 };

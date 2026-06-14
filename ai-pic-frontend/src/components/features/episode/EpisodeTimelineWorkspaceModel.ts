@@ -2,11 +2,8 @@
 
 import type { TimelineItem, TimelineTrack } from "@/components/features";
 import { asRecord, getString, parseMs } from "@/hooks/useEpisodeDetail";
-import type {
-  NormalizedScene,
-  TimelineResponse,
-  TimelineTrackSpec,
-} from "@/utils/api/types";
+import type { TimelineResponse, TimelineTrackSpec } from "@/utils/api/types";
+export { sceneForTimelineMeta } from "./EpisodeTimelineSceneModel";
 
 export const formatTimelineMs = (ms: number) => {
   const seconds = Math.floor(ms / 1000);
@@ -17,36 +14,6 @@ export const formatTimelineMs = (ms: number) => {
 
 export const timelineItemMeta = (item: TimelineItem | null) =>
   asRecord(item?.meta) ?? {};
-
-function timelineSceneNumber(meta: Record<string, unknown>) {
-  const raw =
-    getString(meta.scene_number) ||
-    getString(meta.scene) ||
-    getString(meta.scene_id);
-  if (raw) return raw.replace(/^scene-/i, "");
-  const index = Number(meta.scene_index);
-  if (Number.isFinite(index)) return String(index + 1);
-  return null;
-}
-
-export function sceneForTimelineMeta(
-  scenes: NormalizedScene[],
-  meta: Record<string, unknown>,
-  overrides: Record<number, number | null> = {},
-) {
-  const sceneNumber = timelineSceneNumber(meta);
-  if (!sceneNumber) return null;
-  const matched = scenes.find(
-    (scene) => String(scene.scene_number) === String(sceneNumber),
-  );
-  if (!matched) return null;
-  return {
-    ...matched,
-    environment_id: Object.prototype.hasOwnProperty.call(overrides, matched.id)
-      ? overrides[matched.id]
-      : matched.environment_id,
-  };
-}
 
 const hasVideoAsset = (record: Record<string, unknown>) =>
   Boolean(
@@ -99,6 +66,7 @@ function legacyAudioTimelineToTimelineTracks(
         startMs: start,
         endMs: end,
         label,
+        displayLabel: timelineItemDisplayLabel("dialogue", idx),
         type: getString(record.beat_type) || "dialogue",
         color: "#2563eb",
         meta: record,
@@ -119,6 +87,7 @@ function legacyAudioTimelineToTimelineTracks(
         startMs: start,
         endMs: end,
         label: getString(record.description) || `分镜 ${idx + 1}`,
+        displayLabel: timelineItemDisplayLabel("storyboard", idx),
         type: "storyboard",
         color: "#7c3aed",
         meta: record,
@@ -128,10 +97,11 @@ function legacyAudioTimelineToTimelineTracks(
 
   const videoItems = frameItems
     .filter((item) => hasVideoAsset(timelineItemMeta(item)))
-    .map<TimelineItem>((item) => ({
+    .map<TimelineItem>((item, idx) => ({
       ...item,
       id: `video-${item.id}`,
       label: item.label ? `视频 ${item.label}` : "视频片段",
+      displayLabel: timelineItemDisplayLabel("video", idx),
       type: "video",
       color: "#0f766e",
     }));
@@ -147,7 +117,9 @@ function legacyAudioTimelineToTimelineTracks(
       ? { id: "video", label: "视频", color: "#0f766e", items: videoItems }
       : null,
   ];
-  return tracks.filter((track): track is TimelineTrack => Boolean(track));
+  return prioritizeTimelineTracks(
+    tracks.filter((track): track is TimelineTrack => Boolean(track)),
+  );
 }
 
 function timelineSpecToTimelineTracks(
@@ -162,9 +134,10 @@ function timelineSpecToTimelineTracks(
     .filter((track): track is TimelineTrack => Boolean(track));
 
   const storyboardTrack = storyboardSupportTrack(selectedStoryboard);
-  return storyboardTrack
+  const tracks = storyboardTrack
     ? [...timelineTracks, storyboardTrack]
     : timelineTracks;
+  return prioritizeTimelineTracks(tracks);
 }
 
 function timelineSpecTrackToTimelineTrack(
@@ -186,6 +159,7 @@ function timelineSpecTrackToTimelineTrack(
         startMs: start,
         endMs: end,
         label,
+        displayLabel: timelineItemDisplayLabel(trackType, idx),
         type: trackType || "clip",
         color: timelineTrackColor(trackType),
         meta: clip as unknown as Record<string, unknown>,
@@ -223,6 +197,7 @@ function storyboardSupportTrack(
         startMs: start,
         endMs: end,
         label: getString(record.description) || `分镜 ${idx + 1}`,
+        displayLabel: timelineItemDisplayLabel("storyboard", idx),
         type: "storyboard",
         color: "#7c3aed",
         meta: record,
@@ -241,9 +216,28 @@ function timelineTrackLabel(trackType: string) {
   return trackType || "时间轴";
 }
 
+function timelineItemDisplayLabel(trackType: string, index: number) {
+  if (trackType === "dialogue") return `对白 ${index + 1}`;
+  if (trackType === "video") return `视频 ${index + 1}`;
+  if (trackType === "subtitle") return `字幕 ${index + 1}`;
+  if (trackType === "storyboard") return `分镜 ${index + 1}`;
+  return undefined;
+}
+
 function timelineTrackColor(trackType: string) {
   if (trackType === "dialogue") return "#2563eb";
   if (trackType === "video") return "#0f766e";
   if (trackType === "subtitle") return "#d97706";
   return "#475569";
+}
+
+function prioritizeTimelineTracks(tracks: TimelineTrack[]) {
+  const priority = (track: TimelineTrack) => {
+    if (track.id === "video") return 0;
+    if (track.id === "dialogue") return 1;
+    if (track.id === "subtitle") return 2;
+    if (track.id === "storyboard") return 3;
+    return 4;
+  };
+  return [...tracks].sort((a, b) => priority(a) - priority(b));
 }

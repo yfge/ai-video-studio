@@ -5,6 +5,9 @@ import type {
   EpisodeCharacter,
   TimelineClipVideoReworkAction,
 } from "@/utils/api/types";
+import { ClipProductionActionIcon } from "./ClipProductionActionIcon";
+import { ClipProductionActionShell } from "./ClipProductionActionShell";
+import { CompactProductionDetails } from "./CompactProductionDetails";
 import { VideoReferenceSelect } from "./TimelineClipProviderReworkCardSections";
 import type { TimelineVideoReferenceChoice } from "./TimelineClipProviderReworkModel";
 import { TimelineClipVideoBindingSummary } from "./TimelineClipVideoBindingSummary";
@@ -20,10 +23,6 @@ import {
   VideoRatioSelect,
   VideoResolutionSelect,
 } from "./TimelineClipVideoReworkFields";
-
-const CARD_CLASS = "rounded-md border border-gray-200 bg-white p-3";
-const CARD_TITLE_CLASS = "text-xs font-semibold text-gray-900";
-const CARD_DESCRIPTION_CLASS = "text-[11px] leading-4 text-gray-500";
 
 export function TimelineClipVideoReworkCard({
   action,
@@ -85,89 +84,110 @@ export function TimelineClipVideoReworkCard({
   onVideoReferenceChoiceChange: (value: TimelineVideoReferenceChoice) => void;
 }) {
   return (
-    <section className={CARD_CLASS}>
-      <div className="mb-3">
-        <div className={CARD_TITLE_CLASS}>片段视频</div>
-        <div className={CARD_DESCRIPTION_CLASS}>
-          基于提示词、参数和可选分镜参考生成当前片段视频。
-        </div>
+    <ClipProductionActionShell
+      kind="video"
+      step="3"
+      title="片段视频"
+      tone="primary"
+    >
+      <div
+        data-clip-action-group="video"
+        className="inline-flex w-full min-w-0 items-center gap-0 min-[720px]:w-auto"
+      >
+        <button
+          type="submit"
+          aria-label="生成/重做此片段视频"
+          title="生成/重做此片段视频"
+          disabled={!canSubmit}
+          className={operatorButtonClass(
+            "primary",
+            "!h-8 min-w-0 flex-1 gap-1.5 whitespace-nowrap rounded-l-md rounded-r-none border border-blue-600 px-3 shadow-none min-[720px]:min-w-[15rem] min-[720px]:max-w-[17rem]",
+          )}
+        >
+          <ClipProductionActionIcon kind="video" />
+          <span>{submitting ? "提交中..." : "生成/重做此片段视频"}</span>
+        </button>
+        <CompactProductionDetails
+          label="..."
+          ariaLabel="展开视频绑定与参数"
+          tone="primary"
+          attached
+        >
+          <div className="grid gap-2">
+            <TimelineClipVideoBindingSummary
+              episodeCharacters={episodeCharacters}
+              selectedCharacterVirtualIpIds={selectedCharacterVirtualIpIds}
+              selectedCharacterReferenceUrls={selectedCharacterReferenceUrls}
+              selectedEnvironmentReferenceUrls={
+                selectedEnvironmentReferenceUrls
+              }
+            />
+            <VideoReferenceSelect
+              value={videoReferenceChoice}
+              storyboardPanelIndex={storyboardPanelIndex}
+              onChange={onVideoReferenceChoiceChange}
+            />
+            <VideoActionSelect value={action} onChange={onActionChange} />
+            <label className={VIDEO_LABEL_CLASS}>
+              <span>生成提示词</span>
+              <textarea
+                value={prompt}
+                onChange={(event) => onPromptChange(event.target.value)}
+                placeholder="留空则使用分镜规划的视频提示词"
+                rows={3}
+                className={`resize-none ${VIDEO_FIELD_CLASS}`}
+              />
+            </label>
+            <div className={VIDEO_FIELD_GRID_CLASS}>
+              <VideoModelSelect
+                value={model}
+                videoModels={videoModels}
+                videoModelsLoading={videoModelsLoading}
+                onChange={onModelChange}
+              />
+              <label className={VIDEO_LABEL_CLASS}>
+                <span>时长（秒）</span>
+                <input
+                  type="number"
+                  min={0.1}
+                  step={0.1}
+                  value={duration}
+                  onChange={(event) => onDurationChange(event.target.value)}
+                  placeholder="默认用片段时长"
+                  className={VIDEO_FIELD_CLASS}
+                />
+              </label>
+            </div>
+            <div className={VIDEO_FIELD_GRID_CLASS}>
+              <VideoResolutionSelect
+                value={resolution}
+                onChange={onResolutionChange}
+              />
+              <VideoRatioSelect value={ratio} onChange={onRatioChange} />
+            </div>
+            <label className={VIDEO_LABEL_CLASS}>
+              <span>重做原因</span>
+              <input
+                type="text"
+                value={reason}
+                onChange={(event) => onReasonChange(event.target.value)}
+                placeholder="可选，会记录到该片段的资产履历"
+                className={VIDEO_FIELD_CLASS}
+              />
+            </label>
+          </div>
+        </CompactProductionDetails>
       </div>
       <div className="grid gap-2">
-        <TimelineClipVideoBindingSummary
-          episodeCharacters={episodeCharacters}
-          selectedCharacterVirtualIpIds={selectedCharacterVirtualIpIds}
-          selectedCharacterReferenceUrls={selectedCharacterReferenceUrls}
-          selectedEnvironmentReferenceUrls={selectedEnvironmentReferenceUrls}
-        />
-        <VideoReferenceSelect
-          value={videoReferenceChoice}
-          storyboardPanelIndex={storyboardPanelIndex}
-          onChange={onVideoReferenceChoiceChange}
-        />
-        <VideoActionSelect value={action} onChange={onActionChange} />
-        <label className={VIDEO_LABEL_CLASS}>
-          <span>生成提示词</span>
-          <textarea
-            value={prompt}
-            onChange={(event) => onPromptChange(event.target.value)}
-            placeholder="留空则使用分镜规划的视频提示词"
-            rows={3}
-            className={`resize-none ${VIDEO_FIELD_CLASS}`}
-          />
-        </label>
-        <div className={VIDEO_FIELD_GRID_CLASS}>
-          <VideoModelSelect
-            value={model}
-            videoModels={videoModels}
-            videoModelsLoading={videoModelsLoading}
-            onChange={onModelChange}
-          />
-          <label className={VIDEO_LABEL_CLASS}>
-            <span>时长（秒）</span>
-            <input
-              type="number"
-              min={0.1}
-              step={0.1}
-              value={duration}
-              onChange={(event) => onDurationChange(event.target.value)}
-              placeholder="默认用片段时长"
-              className={VIDEO_FIELD_CLASS}
-            />
-          </label>
-        </div>
-        <div className={VIDEO_FIELD_GRID_CLASS}>
-          <VideoResolutionSelect
-            value={resolution}
-            onChange={onResolutionChange}
-          />
-          <VideoRatioSelect value={ratio} onChange={onRatioChange} />
-        </div>
-        <label className={VIDEO_LABEL_CLASS}>
-          <span>重做原因</span>
-          <input
-            type="text"
-            value={reason}
-            onChange={(event) => onReasonChange(event.target.value)}
-            placeholder="可选，会记录到该片段的资产履历"
-            className={VIDEO_FIELD_CLASS}
-          />
-        </label>
         {submitError ? (
           <div className="text-xs text-red-600">{submitError}</div>
         ) : null}
-        <button
-          type="submit"
-          disabled={!canSubmit}
-          className={operatorButtonClass("primary", "w-full")}
-        >
-          {submitting ? "提交中..." : "生成/重做此片段视频"}
-        </button>
         <TimelineClipTaskStatusLine
           kind="video"
           task={videoTask}
           currentClipId={currentClipId ?? null}
         />
       </div>
-    </section>
+    </ClipProductionActionShell>
   );
 }

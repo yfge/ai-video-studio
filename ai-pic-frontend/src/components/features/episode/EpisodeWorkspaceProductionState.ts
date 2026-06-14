@@ -48,19 +48,20 @@ export function buildEpisodeProductionState({
   resolvedVideos?: TimelineResolvedVideoListResponse | null;
 }): ProductionState {
   const scriptReady = Boolean(script) || workflowStatus.script === "ready";
-  const timelineReady = workflowStatus.timeline === "ready";
+  const hasTimelineClipEntry = storyboardActionLabel === "进入片段分镜";
+  const timelineReady =
+    workflowStatus.timeline === "ready" && hasTimelineClipEntry;
   const clipVideoStatus = clipVideoStepStatus(
     timelineReady,
     workflowStatus,
     resolvedVideos,
   );
-  const hasTimelineClipEntry = storyboardActionLabel === "进入片段分镜";
 
   const steps: ProductionStep[] = [
     { key: "script", label: "剧本", status: scriptReady ? "ready" : "pending" },
     {
       key: "timeline",
-      label: "Timeline",
+      label: "时间轴",
       status: timelineReady ? "ready" : "pending",
     },
     {
@@ -86,6 +87,18 @@ export function buildEpisodeProductionState({
   }
 
   if (hasTimelineClipEntry) {
+    if (resolvedVideos?.ready) {
+      return {
+        steps,
+        primaryAction: { kind: "open-timeline", label: "渲染/导出" },
+      };
+    }
+    if (resolvedVideos && resolvedVideos.missing_clip_count > 0) {
+      return {
+        steps,
+        primaryAction: { kind: "open-clip", label: "处理缺失片段" },
+      };
+    }
     return {
       steps,
       primaryAction: { kind: "open-clip", label: "处理片段视频" },
@@ -95,7 +108,7 @@ export function buildEpisodeProductionState({
   if (activeTab !== "timeline") {
     return {
       steps,
-      primaryAction: { kind: "open-timeline", label: "回到 Timeline" },
+      primaryAction: { kind: "open-timeline", label: "回到时间轴" },
     };
   }
 
@@ -137,5 +150,5 @@ export function scriptOptionLabel(script: Script) {
   const hasVersionInTitle = /\(v[\d.]+\)$/.test(script.title || "");
   const versionSuffix =
     script.version && !hasVersionInTitle ? ` (v${script.version})` : "";
-  return `${script.title}${versionSuffix} - ID: ${script.id}`;
+  return `${script.title}${versionSuffix}`;
 }

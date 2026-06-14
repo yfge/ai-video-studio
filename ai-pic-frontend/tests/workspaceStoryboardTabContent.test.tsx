@@ -108,25 +108,46 @@ describe("WorkspaceStoryboardTabContent", () => {
     assert.equal(utils.queryByRole("button", { name: "生成整集故事板" }), null);
     assert.equal(utils.queryByText("宫格故事板"), null);
     assert.equal(utils.queryByRole("button", { name: "同步分镜占位" }), null);
+    assert.ok(utils.getByRole("heading", { name: "全片时间轴" }));
+    const supportShell = utils.container.querySelector(
+      '[data-storyboard-support-shell="unframed"]',
+    );
+    assert.ok(supportShell);
+    assert.doesNotMatch(supportShell.className, /rounded/);
+    const supportTimeline = utils.container.querySelector(
+      '[data-storyboard-support-timeline="true"]',
+    );
+    assert.ok(supportTimeline);
+    assert.ok(supportTimeline.querySelector('[data-timeline="workspace"]'));
+    assert.ok(supportTimeline.querySelector("[data-timeline-overview]"));
+    assert.ok(utils.getByLabelText("在时间轴中选择 视频 1"));
     assert.ok(utils.getByText("片段分镜管理"));
     assert.ok(utils.getAllByText("视频 1").length >= 1);
     assert.ok(utils.getByText("环境/IP 待绑定"));
     assert.ok(utils.getByText("分镜待生成"));
+    const firstClipLink = utils.getByRole("link", {
+      name: "进入第一个片段分镜",
+    });
     assert.equal(
-      utils
-        .getByRole("link", { name: "进入第一个片段分镜" })
-        .getAttribute("href"),
+      firstClipLink.getAttribute("href"),
       "/episodes/episode_7/workspace?tab=timeline&scriptId=131&clipId=video_scene_1_beat_1_001",
     );
+    assert.match(firstClipLink.className, /border-gray-200/);
+    assert.doesNotMatch(firstClipLink.className, /bg-blue-600/);
     const link = utils.getByRole("link", { name: "进入片段分镜" });
     assert.equal(
       link.getAttribute("href"),
       "/episodes/episode_7/workspace?tab=timeline&scriptId=131&clipId=video_scene_1_beat_1_001",
     );
+    assert.match(link.className, /border-gray-200/);
+    assert.doesNotMatch(link.className, /bg-blue-600/);
     const video = await utils.findByLabelText(
       "播放片段 video_scene_1_beat_1_001",
     );
-    assert.equal(video.getAttribute("src"), "https://example.com/clip-ready.mp4");
+    assert.equal(
+      video.getAttribute("src"),
+      "https://example.com/clip-ready.mp4",
+    );
   });
 
   it("surfaces native Timeline context and audio playback on the storyboard tab", () => {
@@ -135,6 +156,7 @@ describe("WorkspaceStoryboardTabContent", () => {
         episodeKey="episode_7"
         selectedScriptId={131}
         hasStoryboard={false}
+        selectedAudioTimeline={{ version: 1, beats: [{ start_ms: 0 }] }}
         selectedTimelineSpec={timelineWithAudio}
         resolvedVideos={resolvedVideos(null)}
         selectedStoryboard={null}
@@ -144,8 +166,41 @@ describe("WorkspaceStoryboardTabContent", () => {
     );
 
     assert.equal(utils.getAllByText("Timeline 8 · v3").length, 2);
+    assert.ok(utils.getByRole("heading", { name: "全片时间轴" }));
+    assert.ok(
+      utils.container.querySelector(
+        '[data-storyboard-support-timeline="true"]',
+      ),
+    );
+    const timelineSummary = utils.container.querySelector(
+      '[data-storyboard-support-timeline-summary="true"]',
+    );
+    assert.equal(
+      timelineSummary?.getAttribute(
+        "data-storyboard-support-timeline-summary-layout",
+      ),
+      "compact-strip",
+    );
+    assert.match(timelineSummary?.className || "", /border-t/);
+    assert.doesNotMatch(timelineSummary?.className || "", /rounded-md/);
+    assert.doesNotMatch(timelineSummary?.className || "", /\bp-3\b/);
+    const contextStrip = utils.container.querySelector(
+      '[data-storyboard-support-context-strip="inline"]',
+    );
+    assert.ok(contextStrip);
+    assert.match(contextStrip.className || "", /border-t/);
+    assert.doesNotMatch(contextStrip.className || "", /rounded-md/);
+    assert.doesNotMatch(contextStrip.className || "", /\bgrid\b/);
+    assert.equal(utils.queryByText("时间轴来源"), null);
+    assert.equal(utils.queryByText("关键帧 / 视频"), null);
+    const audioDetails = utils.container.querySelector(
+      '[data-storyboard-support-audio="collapsed"]',
+    ) as HTMLDetailsElement | null;
+    assert.ok(audioDetails);
+    assert.equal(audioDetails.open, false);
     assert.ok(utils.getByText("2 轨 · 2 clips"));
     assert.ok(utils.getByText("时长 1.2s"));
+    assert.equal(utils.queryByRole("button", { name: "同步分镜占位" }), null);
     const audio = utils.container.querySelector("audio");
     assert.equal(
       audio?.getAttribute("src"),
@@ -209,6 +264,16 @@ describe("WorkspaceStoryboardTabContent", () => {
 
     const button = utils.getByRole("button", { name: "同步分镜占位" });
     assert.equal(button.hasAttribute("disabled"), false);
+    assert.ok(utils.getByRole("heading", { name: "全片时间轴" }));
+    assert.ok(utils.getByText("音频时间轴"));
+    const supportTimeline = utils.container.querySelector(
+      '[data-storyboard-support-timeline="true"]',
+    );
+    assert.ok(supportTimeline);
+    assert.ok(supportTimeline.querySelector('[data-timeline="workspace"]'));
+    assert.ok(
+      supportTimeline.querySelector('[data-timeline-track-row="video"]'),
+    );
   });
 });
 

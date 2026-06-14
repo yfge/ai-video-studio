@@ -13,6 +13,7 @@ export function useEpisodeMetadata(
   const [timelineSpec, setTimelineSpec] = useState<TimelineResponse | null>(
     null,
   );
+  const [timelineSpecLoading, setTimelineSpecLoading] = useState(false);
 
   const episodeMeta = useMemo(() => {
     const meta =
@@ -27,11 +28,13 @@ export function useEpisodeMetadata(
     const scriptId = selectedScript?.id;
     if (!episodeId || !scriptId) {
       setTimelineSpec(null);
+      setTimelineSpecLoading(false);
       return;
     }
 
     let cancelled = false;
     setTimelineSpec(null);
+    setTimelineSpecLoading(true);
 
     void timelineAPI
       .listEpisodeTimelines(episodeId)
@@ -48,6 +51,9 @@ export function useEpisodeMetadata(
       })
       .catch(() => {
         if (!cancelled) setTimelineSpec(null);
+      })
+      .finally(() => {
+        if (!cancelled) setTimelineSpecLoading(false);
       });
 
     return () => {
@@ -57,6 +63,7 @@ export function useEpisodeMetadata(
 
   const selectedAudioTimeline = useMemo(() => {
     if (!selectedScript) return null;
+    if (timelineSpecLoading) return null;
     const timelineView = timelineSpecToAudioTimeline(timelineSpec);
     const timelineScriptId = Number(timelineView?.script_id);
     if (
@@ -77,7 +84,7 @@ export function useEpisodeMetadata(
     return Number.isFinite(scriptId) && scriptId === selectedScript.id
       ? tl
       : null;
-  }, [episodeMeta, selectedScript, timelineSpec]);
+  }, [episodeMeta, selectedScript, timelineSpec, timelineSpecLoading]);
 
   const selectedStoryboard = useMemo(() => {
     if (!selectedScript) return null;
@@ -91,6 +98,7 @@ export function useEpisodeMetadata(
     episodeMeta,
     selectedAudioTimeline,
     selectedTimelineSpec: timelineSpec,
+    timelineSpecLoading,
     setSelectedTimelineSpec: setTimelineSpec,
     selectedStoryboard,
   };

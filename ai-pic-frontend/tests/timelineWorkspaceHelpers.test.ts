@@ -5,10 +5,16 @@ import {
   firstTimelineItemId,
   resolveTimelineSelection,
 } from "../src/components/features/Timeline/timelineViewModel";
+import { timelineLayoutForMeasuredWidth } from "../src/components/features/Timeline/timelineLayout";
 import {
   buildEpisodeTimelineTracks,
   sceneForTimelineMeta,
 } from "../src/components/features/episode/EpisodeTimelineWorkspaceModel";
+import {
+  preferredTimelineItemId,
+  preferredVideoTimelineItemId,
+  timelineItemIdForClipId,
+} from "../src/components/features/episode/EpisodeTimelineSelectionModel";
 import {
   buildTimelineRenderReadinessFromResolvedVideos,
   buildTimelineRenderReadiness,
@@ -18,8 +24,8 @@ import {
   buildStoryboardGridSupport,
   buildStoryboardSupportFrames,
   buildStoryboardSupportSummary,
-  buildStoryboardTimelineOverview,
 } from "../src/components/features/episode/WorkspaceStoryboardSupportModel";
+import { buildStoryboardTimelineOverview } from "../src/components/features/episode/WorkspaceStoryboardTimelineOverviewModel";
 import { buildShotPlanPromptLayerPatch } from "../src/components/features/episode/WorkspaceStoryboardPromptLayers";
 import { hasTimeline } from "../src/components/features/stories/StoryProductionModel";
 import type { TimelineTrack } from "../src/components/features/Timeline/Timeline";
@@ -54,6 +60,27 @@ const tracks: TimelineTrack[] = [
 ];
 
 describe("timeline workspace helpers", () => {
+  it("uses a compact Timeline layout on narrow workspaces", () => {
+    assert.deepEqual(timelineLayoutForMeasuredWidth(390), {
+      compact: true,
+      secondaryTrackHeight: 16,
+      tickLaneHeight: 44,
+      trackGap: 1,
+      trackHeight: 104,
+      trackLabelWidth: 88,
+      trackRightPadding: 8,
+    });
+    assert.deepEqual(timelineLayoutForMeasuredWidth(600), {
+      compact: false,
+      secondaryTrackHeight: 18,
+      tickLaneHeight: 44,
+      trackGap: 2,
+      trackHeight: 116,
+      trackLabelWidth: 112,
+      trackRightPadding: 8,
+    });
+  });
+
   it("defaults episode workspace links to the timeline tab", () => {
     assert.equal(
       episodeWorkspaceHref("episode_123"),
@@ -71,6 +98,59 @@ describe("timeline workspace helpers", () => {
       item: null,
       track: null,
     });
+  });
+
+  it("prefers the video track even when items use legacy clip types", () => {
+    const legacyVideoTracks = [
+      tracks[0],
+      {
+        id: "video",
+        label: "视频",
+        items: [
+          {
+            id: "legacy-video-item",
+            startMs: 0,
+            endMs: 1200,
+            label: "视频片段",
+            type: "clip",
+          },
+        ],
+      },
+    ];
+
+    assert.equal(
+      preferredVideoTimelineItemId(legacyVideoTracks),
+      "legacy-video-item",
+    );
+    assert.equal(
+      preferredTimelineItemId(legacyVideoTracks),
+      "legacy-video-item",
+    );
+  });
+
+  it("does not resolve URL clip ids to storyboard support items", () => {
+    assert.equal(
+      timelineItemIdForClipId(
+        [
+          {
+            id: "storyboard",
+            label: "分镜",
+            items: [
+              {
+                id: "storyboard-video_scene_1_beat_1_001",
+                startMs: 0,
+                endMs: 1200,
+                label: "support",
+                type: "storyboard",
+                meta: { timeline_clip_id: "video_scene_1_beat_1_001" },
+              },
+            ],
+          },
+        ],
+        "video_scene_1_beat_1_001",
+      ),
+      null,
+    );
   });
 
   it("maps a selected timeline item to the normalized scene environment", () => {

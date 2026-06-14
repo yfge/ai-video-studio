@@ -1,18 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
 import type { TimelineItem, TimelineTrack } from "@/components/features";
-import {
-  StatusPill,
-  operatorButtonClass,
-  operatorSelectClass,
-} from "@/components/shared";
 import { getString } from "@/hooks/useEpisodeDetail";
-import type {
-  Environment,
-  NormalizedScene,
-  TimelineResolvedVideoItem,
-} from "@/utils/api/types";
+import type { TimelineResolvedVideoItem } from "@/utils/api/types";
 import {
   formatTimelineMs,
   timelineItemMeta,
@@ -40,46 +30,133 @@ export function ClipProductionSummary({
   const videoStatus =
     timelineClipVideoStatusFromResolvedVideo(resolvedVideo ?? null) ??
     timelineClipVideoStatus(meta, selectedStoryboard);
+  const videoStatusLabel = videoStatus.ready
+    ? `已关联 · ${videoStatus.source || "素材"}`
+    : videoStatus.reason === "generating"
+    ? "视频生成中"
+    : "缺少视频素材";
+  const videoStatusShortLabel = videoStatus.ready
+    ? "已关联"
+    : videoStatus.reason === "generating"
+    ? "生成中"
+    : "缺视频";
+  const compactClipLabel = item.displayLabel || item.label || "片段";
+  const reviewStatusLabel = getString(meta.status) || "待复核";
   return (
-    <div className="grid gap-3 rounded-md border border-gray-200 bg-gray-50 p-3 lg:grid-cols-[minmax(0,1fr)_260px]">
-      <div className="grid gap-3 md:grid-cols-5">
-        <SummaryCell label="类型">
-          <StatusPill tone={track?.id === "storyboard" ? "blue" : "green"}>
-            {track?.label || "片段"}
-          </StatusPill>
-        </SummaryCell>
-        <SummaryCell label="内容">{item.label || "未命名"}</SummaryCell>
-        <SummaryCell label="时间">
-          {formatTimelineMs(item.startMs)} - {formatTimelineMs(item.endMs)}
-        </SummaryCell>
-        <SummaryCell label="状态">
-          {getString(meta.status) || "待复核"}
-        </SummaryCell>
-        <SummaryCell label="视频素材">
-          {videoStatus.ready
-            ? `已关联 · ${videoStatus.source || "素材"}`
-            : videoStatus.reason === "generating"
-              ? "视频生成中"
-              : "缺少视频素材"}
-        </SummaryCell>
+    <div
+      data-clip-production-summary="true"
+      data-clip-production-summary-layout="inline-identity"
+      className="flex min-w-0 items-center gap-2 text-xs max-[760px]:block"
+    >
+      <div className="min-w-0 flex-1">
+        <div
+          data-clip-production-kicker="current-video"
+          data-clip-production-kicker-layout="title-first"
+          className="flex min-w-0 items-center gap-2 max-[760px]:gap-1.5"
+        >
+          <span
+            data-clip-type-badge="neutral"
+            data-clip-type-badge-visibility="sr-only"
+            className="sr-only"
+          >
+            当前{track?.label || "片段"}
+          </span>
+          <span
+            data-clip-production-mobile-label="true"
+            title={item.label || compactClipLabel}
+            className="hidden min-w-0 max-w-[5rem] truncate text-[11px] font-medium text-slate-600 max-[760px]:inline"
+          >
+            {compactClipLabel}
+          </span>
+          <span
+            data-clip-production-title="full"
+            title={item.label || compactClipLabel}
+            className="min-w-0 max-w-[4.5rem] shrink-0 truncate text-sm font-semibold leading-5 text-gray-950 max-[760px]:sr-only"
+          >
+            {compactClipLabel}
+          </span>
+          <ClipVideoStatusLabel
+            label={videoStatusShortLabel}
+            title={videoStatusLabel}
+            ready={videoStatus.ready}
+            reason={videoStatus.reason}
+          />
+          <span
+            data-clip-production-meta="true"
+            title={`片段时间 ${formatTimelineMs(
+              item.startMs,
+            )} - ${formatTimelineMs(item.endMs)} · ${reviewStatusLabel}`}
+            className="flex min-w-0 shrink-0 items-center gap-x-2 text-[11px] text-gray-500 max-[760px]:sr-only"
+          >
+            <span className="font-mono">
+              {formatTimelineMs(item.startMs)} - {formatTimelineMs(item.endMs)}
+            </span>
+            <span
+              data-clip-production-review-status="sr-only"
+              className="sr-only"
+            >
+              {reviewStatusLabel}
+            </span>
+          </span>
+          <span className="font-mono">
+            <span
+              data-clip-production-mobile-time="true"
+              className="hidden min-w-0 truncate text-[11px] text-gray-500 max-[760px]:inline"
+            >
+              {formatTimelineMs(item.startMs)}-{formatTimelineMs(item.endMs)}
+            </span>
+          </span>
+        </div>
       </div>
-      <ClipVideoPreview url={videoStatus.url || null} label="播放选中片段视频" />
+      <ClipVideoPreview
+        url={videoStatus.url || null}
+        label="播放选中片段视频"
+      />
     </div>
   );
 }
 
-function SummaryCell({
+function ClipVideoStatusLabel({
   label,
-  children,
+  title,
+  ready,
+  reason,
 }: {
   label: string;
-  children: ReactNode;
+  title: string;
+  ready: boolean;
+  reason?: string | null;
 }) {
+  const state = ready
+    ? "ready"
+    : reason === "generating"
+    ? "generating"
+    : "missing";
   return (
-    <div className="min-w-0 text-xs">
-      <div className="text-gray-500">{label}</div>
-      <div className="mt-1 truncate font-medium text-gray-950">{children}</div>
-    </div>
+    <span
+      title={title}
+      data-clip-video-status="inline"
+      data-clip-video-state={state}
+      className={`inline-flex items-center gap-1 whitespace-nowrap text-[11px] font-medium ${
+        state === "ready"
+          ? "text-green-700"
+          : state === "generating"
+          ? "text-blue-700"
+          : "text-amber-700"
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className={`h-1.5 w-1.5 rounded-full ${
+          state === "ready"
+            ? "bg-green-500"
+            : state === "generating"
+            ? "bg-blue-500"
+            : "bg-amber-500"
+        }`}
+      />
+      {label}
+    </span>
   );
 }
 
@@ -90,125 +167,14 @@ function ClipVideoPreview({
   url: string | null;
   label: string;
 }) {
-  if (!url) {
-    return (
-      <div className="flex min-h-28 items-center justify-center rounded-md border border-dashed border-gray-300 bg-white px-3 text-xs text-gray-500">
-        暂无可播放视频
-      </div>
-    );
-  }
+  if (!url) return null;
   return (
     <video
       aria-label={label}
-      className="w-full rounded-md border border-gray-200 bg-black"
+      className="h-16 w-36 rounded-md border border-gray-200 bg-black"
       controls
       preload="none"
       src={url}
     />
-  );
-}
-
-export function ClipEnvironmentSection({
-  scene,
-  environments,
-  selectedEnvironmentId,
-  environmentSaving,
-  onEnvironmentChange,
-  onSaveEnvironment,
-}: {
-  scene: NormalizedScene | null;
-  environments: Environment[];
-  selectedEnvironmentId: number | null;
-  environmentSaving: boolean;
-  onEnvironmentChange: (value: number | null) => void;
-  onSaveEnvironment: () => void;
-}) {
-  const hasScene = Boolean(scene);
-
-  return (
-    <section className="rounded-md border border-gray-200 p-3">
-      <div className="text-sm font-semibold text-gray-950">场景环境</div>
-      <div className="mt-3 space-y-2">
-        {scene ? (
-          <div className="text-xs text-gray-500">
-            场景 {scene.scene_number} · {scene.slug_line}
-          </div>
-        ) : (
-          <div className="text-xs text-amber-700">
-            未匹配规范化场景，当前环境仅用于片段生成参考。
-          </div>
-        )}
-        <select
-          aria-label="片段环境"
-          value={selectedEnvironmentId ?? ""}
-          onChange={(event) =>
-            onEnvironmentChange(
-              event.target.value ? Number(event.target.value) : null,
-            )
-          }
-          className={operatorSelectClass("w-full")}
-        >
-          <option value="" disabled>
-            {environments.length ? "选择场景环境" : "暂无可选环境"}
-          </option>
-          {environments.map((env) => (
-            <option key={env.id} value={env.id}>
-              {env.name}
-              {(env.linked_virtual_ip_count || 0) > 0 ? " · IP资产" : ""}
-            </option>
-          ))}
-        </select>
-        {hasScene ? (
-          <button
-            type="button"
-            onClick={onSaveEnvironment}
-            disabled={environmentSaving || selectedEnvironmentId === null}
-            className={operatorButtonClass("primary", "w-full")}
-          >
-            {environmentSaving ? "保存中..." : "保存场景环境"}
-          </button>
-        ) : (
-          <StatusPill tone="gray">片段生成参考</StatusPill>
-        )}
-      </div>
-    </section>
-  );
-}
-
-export function ClipNavigationActions({
-  videoReady,
-  onNavigateToScript,
-  onNavigateToStoryboard,
-  onNavigateToTasks,
-}: {
-  videoReady: boolean;
-  onNavigateToScript: () => void;
-  onNavigateToStoryboard: () => void;
-  onNavigateToTasks: () => void;
-}) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      <button
-        type="button"
-        onClick={onNavigateToScript}
-        className={operatorButtonClass("secondary")}
-      >
-        剧本
-      </button>
-      <button
-        type="button"
-        onClick={onNavigateToStoryboard}
-        className={operatorButtonClass(videoReady ? "secondary" : "primary")}
-      >
-        替换片段
-      </button>
-      <button
-        type="button"
-        onClick={onNavigateToTasks}
-        className={operatorButtonClass("secondary")}
-      >
-        任务
-      </button>
-    </div>
   );
 }

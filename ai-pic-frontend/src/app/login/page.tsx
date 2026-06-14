@@ -10,6 +10,7 @@ import {
   operatorInputClass,
 } from "@/components/shared";
 import { authAPI } from "@/utils/api/endpoints";
+import { resolveSafeLoginReturnPath } from "@/utils/authReturnPath";
 
 export default function Login() {
   const router = useRouter();
@@ -37,7 +38,11 @@ export default function Login() {
           token: response.data.access_token,
         }),
       );
-      router.push("/");
+      router.push(
+        resolveSafeLoginReturnPath(
+          new URLSearchParams(window.location.search).get("next"),
+        ),
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "登录失败，请稍后重试");
     } finally {

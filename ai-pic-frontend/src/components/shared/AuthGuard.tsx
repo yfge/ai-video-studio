@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  buildLoginPathForReturn,
+  currentBrowserReturnPath,
+} from "@/utils/authReturnPath";
 import { isAuthenticated } from "@/utils/auth";
 
 interface AuthGuardProps {
@@ -18,7 +22,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
       const isAuth = isAuthenticated();
 
       if (!isAuth) {
-        router.push("/login");
+        router.push(buildLoginPathForReturn(currentBrowserReturnPath()));
         return;
       }
 

@@ -7,13 +7,8 @@ import {
 import {
   IMAGE_KEYS,
   VIDEO_KEYS,
-  audioDurationMs,
-  countTrackClips,
-  formatDurationMs,
-  maxTrackEndMs,
   mediaUrl,
   numberValue,
-  resolveTimelineAudioSource,
   storyboardFrames,
   stringify,
   timeLabel,
@@ -49,20 +44,6 @@ export type StoryboardSupportSummary = {
   gridSheetUrl: string | null;
   gridPanelCount: number;
   gridGeneratedAt: string | null;
-};
-
-export type StoryboardTimelineOverview = {
-  timelineLabel: string;
-  status: string | null;
-  durationLabel: string;
-  trackSummary: string;
-  trackCount: number;
-  clipCount: number;
-  dialogueClipCount: number;
-  videoClipCount: number;
-  audioUrl: string | null;
-  audioVersion: string | null;
-  audioGeneratedAt: string | null;
 };
 
 type StoryboardGridPanel = {
@@ -105,44 +86,6 @@ export function buildStoryboardSupportSummary(
     gridSheetUrl: grid.sheetUrl,
     gridPanelCount: grid.panelCount,
     gridGeneratedAt: grid.generatedAt,
-  };
-}
-
-export function buildStoryboardTimelineOverview(
-  selectedTimelineSpec?: TimelineResponse | null,
-  selectedAudioTimeline?: Record<string, unknown> | null,
-): StoryboardTimelineOverview | null {
-  if (!selectedTimelineSpec) return null;
-  const spec = selectedTimelineSpec.spec;
-  const tracks = Array.isArray(spec?.tracks) ? spec.tracks : [];
-  const clipCount = tracks.reduce(
-    (total, track) =>
-      total + (Array.isArray(track.clips) ? track.clips.length : 0),
-    0,
-  );
-  const dialogueClipCount = countTrackClips(tracks, "dialogue");
-  const videoClipCount = countTrackClips(tracks, "video");
-  const durationMs =
-    numberValue(spec?.duration_ms) ??
-    audioDurationMs(spec?.source) ??
-    audioDurationMs(selectedAudioTimeline) ??
-    maxTrackEndMs(tracks);
-  const audio = resolveTimelineAudioSource(spec?.source, selectedAudioTimeline);
-
-  return {
-    timelineLabel: `Timeline ${selectedTimelineSpec.id} · v${selectedTimelineSpec.version}`,
-    status: getString(selectedTimelineSpec.status) ?? null,
-    durationLabel: durationMs != null ? formatDurationMs(durationMs) : "未定时",
-    trackSummary: `${tracks.length} 轨 · ${clipCount} clips`,
-    trackCount: tracks.length,
-    clipCount,
-    dialogueClipCount,
-    videoClipCount,
-    audioUrl: audio.url,
-    audioVersion:
-      stringify(selectedTimelineSpec.source_audio_timeline_version) ??
-      stringify(audio.record?.version),
-    audioGeneratedAt: getString(audio.record?.generated_at) ?? null,
   };
 }
 

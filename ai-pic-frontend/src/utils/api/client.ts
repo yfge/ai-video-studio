@@ -1,5 +1,9 @@
 import { applyTraceHeaders, readTraceHeaders } from "@/utils/api/trace";
 import type { ApiTraceMeta } from "@/utils/api/types";
+import {
+  buildLoginPathForReturn,
+  currentBrowserReturnPath,
+} from "@/utils/authReturnPath";
 
 export interface HttpClientOptions extends RequestInit {
   /**
@@ -107,7 +111,9 @@ export async function httpClient<T = unknown>(
         typeof window !== "undefined" &&
         !window.location.pathname.includes("/login")
       ) {
-        window.location.href = "/login";
+        window.location.href = buildLoginPathForReturn(
+          currentBrowserReturnPath(),
+        );
       }
 
       return {

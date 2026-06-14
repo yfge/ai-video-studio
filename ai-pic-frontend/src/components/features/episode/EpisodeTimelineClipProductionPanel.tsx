@@ -1,7 +1,6 @@
 "use client";
 
 import type { TimelineItem, TimelineTrack } from "@/components/features";
-import { OperatorPanel, OperatorSectionHeader } from "@/components/shared";
 import type {
   Environment,
   EpisodeCharacter,
@@ -16,17 +15,11 @@ import {
   timelineClipVideoStatusFromResolvedVideo,
 } from "./EpisodeTimelineRenderModel";
 import { TimelineClipProviderReworkControls } from "./TimelineClipProviderReworkControls";
-import {
-  selectedTimelineClipId,
-  TimelineClipAssetAuditPanel,
-} from "./TimelineClipAssetAuditPanel";
+import { selectedTimelineClipId } from "./TimelineClipAssetAuditPanel";
 import { isTimelineVideoClip } from "./TimelineClipProviderReworkModel";
 import type { VideoModelOption } from "./TimelineClipProviderReworkControlsTypes";
-import {
-  ClipEnvironmentSection,
-  ClipNavigationActions,
-  ClipProductionSummary,
-} from "./EpisodeTimelineClipProductionSections";
+import { ClipProductionSummary } from "./EpisodeTimelineClipProductionSections";
+import { EpisodeTimelineClipSupportPanel } from "./EpisodeTimelineClipSupportPanel";
 
 type NotifyVariant = "success" | "error" | "warning" | "info";
 
@@ -95,86 +88,85 @@ export function EpisodeTimelineClipProductionPanel({
   const videoStatus =
     timelineClipVideoStatusFromResolvedVideo(resolvedVideo) ??
     timelineClipVideoStatus(timelineItemMeta(item), selectedStoryboard);
+  const headerAction =
+    item && isVideoClip ? <span className="sr-only">片段分镜管理</span> : null;
 
   return (
-    <OperatorPanel className="mt-4">
-      <OperatorSectionHeader
-        title="选中片段生产"
-        subtitle="片段状态、资产审计和生成参数集中处理"
-      />
-      <div className="space-y-4 p-4">
-        <ClipProductionSummary
-          item={item}
-          track={track}
-          selectedStoryboard={selectedStoryboard}
-          resolvedVideo={resolvedVideo}
-        />
-        {item ? (
+    <section
+      data-clip-production-panel="dock"
+      data-clip-production-surface="inline-workflow-band"
+      data-clip-production-surface-style="selected-clip-dock"
+      className="border-t border-slate-200 bg-slate-50/70 shadow-none"
+    >
+      <div className="px-2 py-1.5 min-[760px]:px-3">
+        <div
+          data-clip-production-top-row="action-dock"
+          data-clip-production-top-row-layout="selected-clip-production-dock"
+          className={`grid min-w-0 items-center gap-x-2 gap-y-1 px-0 py-0 ${
+            item && isVideoClip
+              ? "min-[1040px]:grid-cols-[minmax(14rem,18rem)_minmax(30rem,max-content)_minmax(10rem,1fr)]"
+              : ""
+          }`}
+        >
           <div
-            className={
-              isVideoClip
-                ? "grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(360px,1.05fr)]"
-                : "grid gap-4"
-            }
+            data-clip-current-bar="identity"
+            data-clip-current-bar-layout="identity-chip"
+            className="flex min-w-0 items-center gap-2 px-0 py-0 text-xs text-slate-700"
           >
-            <div className="space-y-4">
-              <ClipEnvironmentSection
-                scene={scene}
-                environments={environments}
-                selectedEnvironmentId={selectedEnvironmentId}
-                environmentSaving={environmentSaving}
-                onEnvironmentChange={onEnvironmentChange}
-                onSaveEnvironment={onSaveEnvironment}
-              />
-              <ClipNavigationActions
-                videoReady={videoStatus.ready}
-                onNavigateToScript={onNavigateToScript}
-                onNavigateToStoryboard={onNavigateToStoryboard}
-                onNavigateToTasks={onNavigateToTasks}
-              />
-              <TimelineClipAssetAuditPanel
+            <span className="sr-only">选中片段生产</span>
+            {headerAction}
+            <div className="min-w-0 flex-1">
+              <ClipProductionSummary
                 item={item}
-                timelineId={timelineId}
-                timelineVersion={timelineVersion}
-                clipAssets={clipAssets}
-                loading={clipAssetsLoading}
-                error={clipAssetsError}
-                onReworkRecorded={onReworkRecorded}
-                onNotify={onNotify}
-                showProviderControls={false}
+                track={track}
+                selectedStoryboard={selectedStoryboard}
+                resolvedVideo={resolvedVideo}
               />
             </div>
-            {isVideoClip ? (
-              <section className="rounded-md border border-gray-200 p-3">
-                <div className="text-sm font-semibold text-gray-950">
-                  片段分镜管理
-                </div>
-                <div className="mt-1 text-xs text-gray-500">
-                  {clipId || "未关联稳定片段 ID"}
-                </div>
-                <TimelineClipProviderReworkControls
-                  episodeId={episodeId}
-                  timelineId={timelineId}
-                  timelineVersion={timelineVersion}
-                  clipId={clipId}
-                  item={item}
-                  episodeCharacters={episodeCharacters}
-                  episodeCharactersLoading={episodeCharactersLoading}
-                  episodeCharactersError={episodeCharactersError}
-                  environments={environments}
-                  selectedEnvironmentId={selectedEnvironmentId}
-                  videoModels={videoModels}
-                  videoModelsLoading={videoModelsLoading}
-                  onNavigateToCharacters={onNavigateToCharacters}
-                  onQueued={onReworkRecorded}
-                  onGenerationCompleted={onGenerationCompleted}
-                  onNotify={onNotify}
-                />
-              </section>
-            ) : null}
           </div>
-        ) : null}
+          {item && isVideoClip ? (
+            <TimelineClipProviderReworkControls
+              episodeId={episodeId}
+              timelineId={timelineId}
+              timelineVersion={timelineVersion}
+              clipId={clipId}
+              item={item}
+              episodeCharacters={episodeCharacters}
+              episodeCharactersLoading={episodeCharactersLoading}
+              episodeCharactersError={episodeCharactersError}
+              environments={environments}
+              selectedEnvironmentId={selectedEnvironmentId}
+              videoModels={videoModels}
+              videoModelsLoading={videoModelsLoading}
+              onNavigateToCharacters={onNavigateToCharacters}
+              onQueued={onReworkRecorded}
+              onGenerationCompleted={onGenerationCompleted}
+              onNotify={onNotify}
+            />
+          ) : null}
+          <EpisodeTimelineClipSupportPanel
+            item={item}
+            scene={scene}
+            environments={environments}
+            selectedEnvironmentId={selectedEnvironmentId}
+            environmentSaving={environmentSaving}
+            timelineId={timelineId}
+            timelineVersion={timelineVersion}
+            clipAssets={clipAssets}
+            clipAssetsLoading={clipAssetsLoading}
+            clipAssetsError={clipAssetsError}
+            videoReady={videoStatus.ready}
+            isVideoClip={isVideoClip}
+            onEnvironmentChange={onEnvironmentChange}
+            onSaveEnvironment={onSaveEnvironment}
+            onNavigateToScript={onNavigateToScript}
+            onNavigateToStoryboard={onNavigateToStoryboard}
+            onNavigateToTasks={onNavigateToTasks}
+            onReworkRecorded={onReworkRecorded}
+            onNotify={onNotify}
+          />
+        </div>
       </div>
-    </OperatorPanel>
+    </section>
   );
 }

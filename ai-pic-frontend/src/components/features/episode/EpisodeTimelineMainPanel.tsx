@@ -1,22 +1,14 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import type { TimelineItem, TimelineTrack } from "@/components/features";
-import { Timeline } from "@/components/features";
-import {
-  OperatorMainCanvas,
-  OperatorPanel,
-  OperatorSectionHeader,
-  OperatorState,
-  operatorButtonClass,
-  operatorSelectClass,
-} from "@/components/shared";
+import { OperatorMainCanvas } from "@/components/shared";
 import type {
   TimelineRenderJobResponse,
   TimelineRenderType,
 } from "@/utils/api/types";
-import { GenerationTaskStatusLine } from "@/components/shared/notifications";
 import type { TimelineRenderReadiness } from "./EpisodeTimelineRenderModel";
+import { EpisodeTimelineCanvasPanel } from "./EpisodeTimelineCanvasPanel";
 import { TimelineRenderPanel } from "./EpisodeTimelineRenderPanel";
 
 type ModelOption = {
@@ -29,6 +21,7 @@ type ModelOption = {
 export function EpisodeTimelineMainPanel({
   tracks,
   selectedItemId,
+  timelineCanvasRef,
   onSelectItem,
   selectedScriptId,
   timingModel,
@@ -51,6 +44,7 @@ export function EpisodeTimelineMainPanel({
 }: {
   tracks: TimelineTrack[];
   selectedItemId: string | null;
+  timelineCanvasRef?: Ref<HTMLElement>;
   onSelectItem: (item: TimelineItem) => void;
   selectedScriptId: number | null;
   timingModel: string;
@@ -77,89 +71,44 @@ export function EpisodeTimelineMainPanel({
 }) {
   return (
     <OperatorMainCanvas>
-      <OperatorPanel>
-        <OperatorSectionHeader
-          title="时间轴主画布"
-          subtitle="对白音轨、时间轴、分镜占位按同一时间码对齐"
-          action={
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-gray-600">
-                Timeline 生成设置
-              </span>
-              <select
-                value={timingModel}
-                onChange={(event) => setTimingModel(event.target.value)}
-                disabled={modelsLoading}
-                className={operatorSelectClass("w-40")}
-              >
-                <option value="">自动模型</option>
-                {models.map((model) => {
-                  const providerScopedId =
-                    model.provider && model.id
-                      ? `${model.provider}:${model.id}`
-                      : model.id;
-                  const value =
-                    model.model_id || providerScopedId || model.name || "";
-                  if (!value) return null;
-                  return (
-                    <option key={value} value={value}>
-                      {model.name || model.model_id || model.id}
-                    </option>
-                  );
-                })}
-              </select>
-              <label className="flex items-center gap-1 text-xs text-gray-600">
-                <input
-                  type="checkbox"
-                  checked={useDurationControl}
-                  onChange={(event) =>
-                    setUseDurationControl(event.target.checked)
-                  }
-                />
-                时长精控
-              </label>
-              <button
-                type="button"
-                onClick={onGenerateTimelinePipeline}
-                disabled={pipelineBusy || !selectedScriptId}
-                className={operatorButtonClass("primary")}
-              >
-                {pipelineBusy ? "生成中..." : "生成 Timeline"}
-              </button>
-            </div>
-          }
+      <div
+        data-episode-timeline-main-layout="timeline-first-with-production"
+        className="space-y-1"
+      >
+        <EpisodeTimelineCanvasPanel
+          tracks={tracks}
+          selectedItemId={selectedItemId}
+          timelineCanvasRef={timelineCanvasRef}
+          onSelectItem={onSelectItem}
+          selectedScriptId={selectedScriptId}
+          timingModel={timingModel}
+          setTimingModel={setTimingModel}
+          models={models}
+          modelsLoading={modelsLoading}
+          useDurationControl={useDurationControl}
+          setUseDurationControl={setUseDurationControl}
+          pipelineBusy={pipelineBusy}
+          onGenerateTimelinePipeline={onGenerateTimelinePipeline}
+          pipelineTask={pipelineTask}
         />
-        <div className="p-4">
-          {tracks.length ? (
-            <Timeline
-              tracks={tracks}
-              selectedItemId={selectedItemId}
-              onSelect={onSelectItem}
-              initialZoom={1}
-            />
-          ) : (
-            <OperatorState title="选择剧本并生成时间轴后，这里会显示对白和分镜轨道。" />
-          )}
-        </div>
         {clipProductionPanel}
-        <TimelineRenderPanel
-          readiness={renderReadiness}
-          latestJob={latestRenderJob}
-          loading={renderJobsLoading}
-          busy={renderBusy}
-          error={renderError}
-          onQueueRender={onQueueRender}
-          onRetryRender={onRetryRender}
-        />
-        {pipelineTask ? (
-          <div className="border-t border-gray-100 px-4 py-1.5">
-            <GenerationTaskStatusLine
-              label="时间轴流水线"
-              task={pipelineTask}
-            />
-          </div>
-        ) : null}
-      </OperatorPanel>
+        <section
+          data-episode-render-strip="compact"
+          data-episode-render-strip-surface="inline-workflow-footer"
+          data-episode-render-strip-style="selected-clip-footer-dock"
+          className="border-t border-slate-200 bg-slate-50/70 shadow-none"
+        >
+          <TimelineRenderPanel
+            readiness={renderReadiness}
+            latestJob={latestRenderJob}
+            loading={renderJobsLoading}
+            busy={renderBusy}
+            error={renderError}
+            onQueueRender={onQueueRender}
+            onRetryRender={onRetryRender}
+          />
+        </section>
+      </div>
     </OperatorMainCanvas>
   );
 }

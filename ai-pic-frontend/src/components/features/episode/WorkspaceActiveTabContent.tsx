@@ -39,8 +39,6 @@ interface WorkspaceActiveTabContentProps {
   selectedAudioTimeline: Record<string, unknown> | null;
   selectedStoryboard: Record<string, unknown> | null;
   normalizedScenes: NormalizedScene[];
-  normalizedScenesLoading: boolean;
-  normalizedScenesError: string | null;
   timingModel: string;
   setTimingModel: (value: string) => void;
   generateForm: ScriptGenerationRequest;
@@ -81,8 +79,6 @@ export function WorkspaceActiveTabContent({
   selectedAudioTimeline,
   selectedStoryboard,
   normalizedScenes,
-  normalizedScenesLoading,
-  normalizedScenesError,
   timingModel,
   setTimingModel,
   generateForm,
@@ -145,8 +141,6 @@ export function WorkspaceActiveTabContent({
         selectedAudioTimeline={selectedAudioTimeline}
         selectedStoryboard={selectedStoryboard}
         normalizedScenes={normalizedScenes}
-        normalizedScenesLoading={normalizedScenesLoading}
-        normalizedScenesError={normalizedScenesError}
         timingModel={timingModel}
         setTimingModel={setTimingModel}
         showAlert={showAlert}

@@ -27,8 +27,7 @@ export function WorkspaceStoryboardActions({
 }: WorkspaceStoryboardActionsProps) {
   const [syncingAudioStoryboard, setSyncingAudioStoryboard] = useState(false);
   const hasClipStoryboardEntry = Boolean(clipStoryboardHref);
-  const showAudioStoryboardSync =
-    !hasClipStoryboardEntry || Boolean(selectedAudioTimeline);
+  const showAudioStoryboardSync = !hasClipStoryboardEntry;
   const canSyncAudioTimelineStoryboard = Boolean(
     selectedAudioTimeline && selectedScriptId && !syncingAudioStoryboard,
   );
@@ -84,7 +83,7 @@ export function WorkspaceStoryboardActions({
       {clipStoryboardHref ? (
         <Link
           href={clipStoryboardHref}
-          className={operatorButtonClass("primary")}
+          className={operatorButtonClass("secondary")}
         >
           进入第一个片段分镜
         </Link>

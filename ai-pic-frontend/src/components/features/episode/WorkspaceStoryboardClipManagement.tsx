@@ -110,7 +110,7 @@ function StoryboardClipManagementRow({
           {item.videoStatusLabel}
         </div>
       )}
-      <Link href={href} className={operatorButtonClass("primary")}>
+      <Link href={href} className={operatorButtonClass("secondary")}>
         进入片段分镜
       </Link>
     </div>

@@ -176,8 +176,8 @@ describe("timeline clip rework controls", () => {
       { container: dom.window.document.body },
     );
 
-    assert.ok(utils.getByText("片段分镜图"));
-    assert.ok(utils.getByText("片段视频"));
+    assert.ok(utils.getByLabelText("步骤 1 · 片段分镜图"));
+    assert.ok(utils.getByLabelText("步骤 3 · 片段视频"));
     assert.ok(utils.getByRole("button", { name: "生成片段分镜图" }));
     assert.ok(utils.getByRole("button", { name: "生成/重做此片段视频" }));
     assert.ok(utils.getByLabelText("视频参考来源"));

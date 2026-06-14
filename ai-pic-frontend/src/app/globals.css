@@ -37,3 +37,23 @@ input::placeholder,
 textarea::placeholder {
   color: #6b7280;
 }
+
+[data-timeline-viewport="lanes"] {
+  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-width: thin;
+}
+
+[data-timeline-viewport="lanes"]::-webkit-scrollbar {
+  height: 6px;
+}
+
+[data-timeline-viewport="lanes"]::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-timeline-viewport="lanes"]::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}

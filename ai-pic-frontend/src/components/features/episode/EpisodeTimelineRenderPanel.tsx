@@ -1,12 +1,20 @@
 "use client";
 
-import { ProgressBar, StatusPill, operatorButtonClass } from "@/components/shared";
-import { getString } from "@/hooks/useEpisodeDetail";
+import { ProgressBar, operatorButtonClass } from "@/components/shared";
 import type {
   TimelineRenderJobResponse,
   TimelineRenderType,
 } from "@/utils/api/types";
 import type { TimelineRenderReadiness } from "./EpisodeTimelineRenderModel";
+import {
+  MissingClipsDetails,
+  TimelineRenderActionButtons,
+  TimelineRenderStatusHeader,
+  renderJobFailureText,
+  renderJobMissingClipCount,
+  renderJobOutputUrl,
+  renderTypeLabel,
+} from "./EpisodeTimelineRenderPanelParts";
 
 export function TimelineRenderPanel({
   readiness,
@@ -28,59 +36,87 @@ export function TimelineRenderPanel({
   const outputUrl = renderJobOutputUrl(latestJob);
   const missingFromJob = renderJobMissingClipCount(latestJob);
   const canRender = readiness.ready && !busy;
+  const finalButtonVariant = canRender ? "primary" : "secondary";
   const renderInFlight =
     latestJob?.status === "queued" || latestJob?.status === "running";
+  const blockedByMissingClips =
+    !readiness.ready && readiness.missingClips.length > 0 && !latestJob;
+  const readyClipCount = Math.max(
+    0,
+    readiness.videoClipCount - readiness.missingClips.length,
+  );
+  const readyPercent = readiness.videoClipCount
+    ? Math.round((readyClipCount / readiness.videoClipCount) * 100)
+    : 0;
+  if (blockedByMissingClips) {
+    return (
+      <details data-timeline-render-panel="collapsed" className="px-2 py-1">
+        <summary
+          data-timeline-render-summary="inline"
+          data-timeline-render-summary-layout="clustered-status-strip"
+          className="flex min-h-7 w-full max-w-full cursor-pointer list-none items-center gap-2 px-2 py-0.5 marker:hidden [&::-webkit-details-marker]:hidden"
+        >
+          <div className="min-w-0 shrink">
+            <TimelineRenderStatusHeader
+              readiness={readiness}
+              latestJob={latestJob}
+              loading={loading}
+              error={error}
+            />
+          </div>
+          <span
+            data-timeline-render-readiness-meter="inline-count"
+            title={`${readyClipCount}/${readiness.videoClipCount} 个片段就绪`}
+            className="ml-1 inline-flex items-center gap-1.5 whitespace-nowrap text-[11px] font-semibold text-slate-600"
+          >
+            <span
+              data-timeline-render-readiness-track="true"
+              aria-hidden="true"
+              className="h-1.5 w-12 overflow-hidden rounded-full bg-slate-200"
+            >
+              <span
+                data-timeline-render-readiness-fill="true"
+                className="block h-full rounded-full bg-amber-400"
+                style={{ width: `${readyPercent}%` }}
+              />
+            </span>
+            <span>
+              {readyClipCount}/{readiness.videoClipCount} 已备
+            </span>
+          </span>
+          <span
+            data-timeline-render-missing-action="inline-link"
+            title="查看缺失片段"
+            className="inline-flex h-6 items-center whitespace-nowrap px-1 text-[11px] font-semibold text-slate-600 hover:text-slate-950"
+          >
+            查看
+          </span>
+        </summary>
+        <div className="mt-2 border-t border-gray-100 pt-2">
+          <MissingClipsDetails missingClips={readiness.missingClips} />
+        </div>
+      </details>
+    );
+  }
 
   return (
-    <div className="border-t border-gray-100 px-4 py-3">
+    <div data-timeline-render-panel="expanded" className="px-2.5 py-1.5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusPill tone={readiness.ready ? "green" : "amber"}>
-            {readiness.ready
-              ? `${readiness.videoClipCount} 个片段可渲染`
-              : readiness.videoClipCount
-                ? `缺 ${readiness.missingClips.length} 个片段`
-                : "无视频轨"}
-          </StatusPill>
-          {latestJob ? (
-            <StatusPill tone={renderJobTone(latestJob.status)}>
-              {renderTypeLabel(latestJob.render_type)} ·{" "}
-              {renderStatusLabel(latestJob.status)}
-            </StatusPill>
-          ) : null}
-          {loading ? <span className="text-xs text-gray-500">刷新中...</span> : null}
-          {error ? <span className="text-xs text-red-600">{error}</span> : null}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => onQueueRender("proxy")}
-            disabled={!canRender}
-            className={operatorButtonClass("secondary")}
-          >
-            渲染预览
-          </button>
-          <button
-            type="button"
-            onClick={() => onQueueRender("final")}
-            disabled={!canRender}
-            className={operatorButtonClass("primary")}
-          >
-            导出成片
-          </button>
-          {latestJob?.status === "failed" ? (
-            <button
-              type="button"
-              onClick={() =>
-                onRetryRender(latestJob.render_type as TimelineRenderType)
-              }
-              disabled={!readiness.ready || busy}
-              className={operatorButtonClass("secondary")}
-            >
-              重试
-            </button>
-          ) : null}
-        </div>
+        <TimelineRenderStatusHeader
+          readiness={readiness}
+          latestJob={latestJob}
+          loading={loading}
+          error={error}
+        />
+        <TimelineRenderActionButtons
+          canRender={canRender}
+          finalButtonVariant={finalButtonVariant}
+          latestJob={latestJob}
+          readiness={readiness}
+          busy={busy}
+          onQueueRender={onQueueRender}
+          onRetryRender={onRetryRender}
+        />
       </div>
 
       {latestJob ? (
@@ -93,7 +129,7 @@ export function TimelineRenderPanel({
       ) : null}
 
       {!readiness.ready && readiness.missingClips.length > 0 ? (
-        <MissingClipsSummary missingClips={readiness.missingClips} />
+        <MissingClipsDetails missingClips={readiness.missingClips} />
       ) : null}
 
       {latestJob?.status === "failed" ? (
@@ -138,85 +174,9 @@ export function TimelineRenderPanel({
 
       {renderInFlight ? (
         <div className="mt-3 text-xs text-gray-500">
-          render_job_id={latestJob?.id} 正在处理
+          渲染任务 #{latestJob?.id} 正在处理
         </div>
       ) : null}
     </div>
   );
-}
-
-function MissingClipsSummary({
-  missingClips,
-}: {
-  missingClips: TimelineRenderReadiness["missingClips"];
-}) {
-  const generating = missingClips.filter(
-    (clip) => clip.reason === "generating",
-  );
-  const missing = missingClips.filter((clip) => clip.reason !== "generating");
-  const joinIds = (clips: typeof missingClips) =>
-    clips
-      .slice(0, 4)
-      .map((clip) => clip.clipId)
-      .join("、") + (clips.length > 4 ? " ..." : "");
-  return (
-    <div className="mt-3 space-y-1 text-xs">
-      {generating.length > 0 ? (
-        <div className="text-blue-700">
-          生成中片段（完成后自动可渲染）：{joinIds(generating)}
-        </div>
-      ) : null}
-      {missing.length > 0 ? (
-        <div className="text-amber-800">缺失片段：{joinIds(missing)}</div>
-      ) : null}
-    </div>
-  );
-}
-
-function renderJobOutputUrl(job: TimelineRenderJobResponse | null) {
-  return job?.output_asset?.file_url || job?.output_asset?.file_path || null;
-}
-
-function renderJobMissingClipCount(job: TimelineRenderJobResponse | null) {
-  const missing = job?.log?.missing_clips;
-  return Array.isArray(missing) ? missing.length : 0;
-}
-
-function renderJobFailureText(
-  job: TimelineRenderJobResponse,
-  missingClipCount: number,
-) {
-  const code = getString(job.log?.code);
-  if (code === "missing_clip_videos") {
-    return `缺少 ${missingClipCount} 个视频片段`;
-  }
-  if (code === "no_video_clips") return "时间轴没有可渲染的视频轨";
-  if (code === "stale_timeline_version") return "时间轴版本已变化";
-  return code || "渲染失败";
-}
-
-function renderTypeLabel(value: string) {
-  if (value === "proxy") return "预览";
-  if (value === "final") return "成片";
-  if (value === "export") return "导出";
-  return value;
-}
-
-function renderStatusLabel(value: string) {
-  if (value === "queued") return "排队";
-  if (value === "running") return "渲染中";
-  if (value === "succeeded") return "完成";
-  if (value === "failed") return "失败";
-  if (value === "cancelled") return "已取消";
-  return value;
-}
-
-function renderJobTone(
-  status: string,
-): "blue" | "green" | "amber" | "red" | "gray" {
-  if (status === "succeeded") return "green";
-  if (status === "failed" || status === "cancelled") return "red";
-  if (status === "running") return "amber";
-  if (status === "queued") return "blue";
-  return "gray";
 }

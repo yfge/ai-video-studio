@@ -27,8 +27,6 @@ interface WorkspaceTimelineTabContentProps {
   selectedAudioTimeline: Record<string, unknown> | null;
   selectedStoryboard: Record<string, unknown> | null;
   normalizedScenes: NormalizedScene[];
-  normalizedScenesLoading: boolean;
-  normalizedScenesError: string | null;
 
   // Model selection
   timingModel: string;
@@ -55,8 +53,6 @@ export function WorkspaceTimelineTabContent({
   selectedAudioTimeline,
   selectedStoryboard,
   normalizedScenes,
-  normalizedScenesLoading,
-  normalizedScenesError,
   timingModel,
   setTimingModel,
   showAlert,
@@ -177,6 +173,23 @@ export function WorkspaceTimelineTabContent({
     router.push(`${pathname}?${params.toString()}`);
   }, [pathname, router, searchParams, selectedScriptId]);
 
+  const handleSelectedClipIdChange = useCallback(
+    (clipId: string | null) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("tab", "timeline");
+      if (selectedScriptId) params.set("scriptId", String(selectedScriptId));
+      if (clipId) {
+        params.set("clipId", clipId);
+      } else {
+        params.delete("clipId");
+      }
+      const next = params.toString();
+      if (next === searchParams.toString()) return;
+      router.replace(`${pathname}?${next}`, { scroll: false });
+    },
+    [pathname, router, searchParams, selectedScriptId],
+  );
+
   if (scripts.length === 0) {
     return (
       <OperatorState
@@ -190,18 +203,16 @@ export function WorkspaceTimelineTabContent({
     <EpisodeTimelineWorkspace
       episodeId={episodeId}
       selectedScriptId={selectedScriptId}
-      selectedScript={selectedScript}
       selectedTimelineSpec={selectedTimelineSpec}
       onTimelineUpdated={onTimelineUpdated}
       resolvedVideos={resolvedVideos}
       resolvedVideosError={resolvedVideosError}
       reloadResolvedVideos={reloadResolvedVideos}
+      onSelectedClipIdChange={handleSelectedClipIdChange}
       initialSelectedClipId={initialSelectedClipId}
       selectedAudioTimeline={selectedAudioTimeline}
       selectedStoryboard={selectedStoryboard}
       normalizedScenes={normalizedScenes}
-      normalizedScenesLoading={normalizedScenesLoading}
-      normalizedScenesError={normalizedScenesError}
       pipelineBusy={pipelineBusy}
       timingModel={timingModel}
       setTimingModel={setTimingModel}

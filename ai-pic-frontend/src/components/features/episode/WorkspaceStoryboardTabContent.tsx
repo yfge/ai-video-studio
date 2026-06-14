@@ -14,14 +14,14 @@ import type {
 } from "@/utils/api/types";
 import { episodeWorkspaceHref } from "@/utils/routes";
 import {
-  buildStoryboardTimelineOverview,
   buildStoryboardSupportFrames,
   buildStoryboardSupportSummary,
-  type StoryboardTimelineOverview,
 } from "./WorkspaceStoryboardSupportModel";
 import { WorkspaceStoryboardActions } from "./WorkspaceStoryboardActions";
 import { WorkspaceStoryboardClipManagement } from "./WorkspaceStoryboardClipManagement";
 import { StoryboardSupportFrameRow } from "./WorkspaceStoryboardFrameRow";
+import { WorkspaceStoryboardTimelinePanel } from "./WorkspaceStoryboardTimelinePanel";
+import { buildStoryboardTimelineOverview } from "./WorkspaceStoryboardTimelineOverviewModel";
 
 type ShowAlert = (options: {
   message: string;
@@ -88,7 +88,10 @@ export function WorkspaceStoryboardTabContent({
 
   return (
     <div className="space-y-4">
-      <OperatorPanel>
+      <section
+        data-storyboard-support-shell="unframed"
+        className="border-b border-slate-200 bg-white"
+      >
         <OperatorSectionHeader
           title="分镜辅助工作区"
           subtitle="按视频片段汇总分镜、首尾帧和视频状态"
@@ -110,27 +113,35 @@ export function WorkspaceStoryboardTabContent({
             />
           }
         />
-        <div className="mt-4 grid gap-3 text-xs text-gray-600 sm:grid-cols-3">
-          <ContextCell
-            label="时间轴来源"
-            value={
-              summary.timelineId
-                ? `Timeline ${summary.timelineId} · v${
-                    summary.timelineVersion ?? "?"
-                  }`
-                : summary.generationSource ?? "当前剧本 beat"
-            }
+        {timelineOverview ? (
+          <WorkspaceStoryboardTimelinePanel
+            episodeKey={episodeKey}
+            selectedScriptId={selectedScriptId}
+            selectedTimelineSpec={localTimelineSpec}
+            selectedAudioTimeline={selectedAudioTimeline}
+            selectedStoryboard={selectedStoryboard}
+            overview={timelineOverview}
           />
-          <ContextCell label="分镜状态" value={storyboardStatus} />
-          <ContextCell
-            label="关键帧 / 视频"
+        ) : null}
+        <div
+          data-storyboard-support-context-strip="inline"
+          className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-100 bg-slate-50/50 px-3 py-1.5 text-xs text-slate-600"
+        >
+          <SupportMetaItem
+            label="来源"
+            value={storyboardTimelineSourceLabel(
+              summary.timelineId,
+              summary.timelineVersion,
+              summary.generationSource,
+            )}
+          />
+          <SupportMetaItem label="分镜" value={storyboardStatus} />
+          <SupportMetaItem
+            label="素材"
             value={`${summary.imageCount} 关键帧 · ${summary.videoCount} 视频`}
           />
         </div>
-        {timelineOverview ? (
-          <StoryboardTimelineOverviewPanel overview={timelineOverview} />
-        ) : null}
-      </OperatorPanel>
+      </section>
 
       <WorkspaceStoryboardClipManagement
         episodeKey={episodeKey}
@@ -171,54 +182,21 @@ export function WorkspaceStoryboardTabContent({
   );
 }
 
-function ContextCell({ label, value }: { label: string; value: string }) {
+function SupportMetaItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-gray-200 bg-white px-3 py-2">
-      <div className="text-gray-500">{label}</div>
-      <div className="mt-1 font-medium text-gray-800">{value}</div>
-    </div>
+    <span className="inline-flex min-w-0 items-center gap-1.5">
+      <span className="text-slate-500">{label}</span>
+      <span className="truncate font-medium text-slate-800">{value}</span>
+    </span>
   );
 }
 
-function StoryboardTimelineOverviewPanel({
-  overview,
-}: {
-  overview: StoryboardTimelineOverview;
-}) {
-  return (
-    <div className="mt-4 rounded-md border border-gray-200 bg-gray-50 p-3">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="text-xs text-gray-500">当前时间轴</div>
-          <div className="mt-1 text-sm font-semibold text-gray-900">
-            {overview.timelineLabel}
-          </div>
-          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600">
-            <span>状态 {overview.status ?? "未知"}</span>
-            <span>时长 {overview.durationLabel}</span>
-            <span>{overview.trackSummary}</span>
-            <span>对白 {overview.dialogueClipCount}</span>
-            <span>视频 {overview.videoClipCount}</span>
-            {overview.audioVersion ? (
-              <span>音频 v{overview.audioVersion}</span>
-            ) : null}
-          </div>
-        </div>
-        {overview.audioUrl ? (
-          <div className="min-w-0 flex-1 basis-72">
-            <div className="mb-1 text-xs text-gray-500">音轨</div>
-            <audio
-              aria-label="播放时间轴音轨"
-              className="w-full"
-              controls
-              preload="none"
-              src={overview.audioUrl}
-            />
-          </div>
-        ) : (
-          <div className="text-xs text-amber-700">暂无可播放音轨 URL</div>
-        )}
-      </div>
-    </div>
-  );
+function storyboardTimelineSourceLabel(
+  timelineId: string | null,
+  timelineVersion: string | null,
+  generationSource: string | null,
+) {
+  return timelineId
+    ? `Timeline ${timelineId} · v${timelineVersion ?? "?"}`
+    : generationSource ?? "当前剧本 beat";
 }

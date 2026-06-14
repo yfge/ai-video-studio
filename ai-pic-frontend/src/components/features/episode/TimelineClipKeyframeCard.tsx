@@ -1,12 +1,10 @@
 "use client";
 
 import { operatorButtonClass } from "@/components/shared";
+import { ClipProductionActionIcon } from "./ClipProductionActionIcon";
+import { ClipProductionActionShell } from "./ClipProductionActionShell";
 import { TimelineClipTaskStatusLine } from "./TimelineClipTaskStatusLine";
 import type { TrackedClipGenerationTask } from "./useTimelineClipGenerationTaskTracker";
-
-const CARD_CLASS = "rounded-md border border-gray-200 bg-white p-3";
-const CARD_TITLE_CLASS = "text-xs font-semibold text-gray-900";
-const CARD_DESCRIPTION_CLASS = "text-[11px] leading-4 text-gray-500";
 
 export function TimelineClipKeyframeCard({
   generating,
@@ -22,26 +20,30 @@ export function TimelineClipKeyframeCard({
   onGenerate: () => void;
 }) {
   return (
-    <section className={CARD_CLASS}>
-      <div className="mb-3">
-        <div className={CARD_TITLE_CLASS}>首尾帧</div>
-        <div className={CARD_DESCRIPTION_CLASS}>
-          基于上方分镜/IP/环境参考生成片段首帧和尾帧，供视频生成的首尾帧模式使用。
-        </div>
-      </div>
-      <button
-        type="button"
-        disabled={!canGenerate}
-        className={operatorButtonClass("secondary", "w-full")}
-        onClick={onGenerate}
+    <ClipProductionActionShell kind="keyframes" step="2" title="首尾帧">
+      <div
+        data-clip-action-group="keyframes"
+        className="inline-flex w-full min-w-0 items-center min-[720px]:w-auto"
       >
-        {generating ? "提交中..." : "生成首尾帧"}
-      </button>
+        <button
+          type="button"
+          aria-label="生成首尾帧"
+          disabled={!canGenerate}
+          className={operatorButtonClass(
+            "secondary",
+            "!h-8 w-full min-w-0 gap-1.5 whitespace-nowrap rounded-md border border-slate-200 bg-white px-2.5 text-slate-700 shadow-none hover:bg-slate-50 min-[720px]:min-w-[8.5rem]",
+          )}
+          onClick={onGenerate}
+        >
+          <ClipProductionActionIcon kind="keyframes" />
+          <span>{generating ? "提交中..." : "生成首尾帧"}</span>
+        </button>
+      </div>
       <TimelineClipTaskStatusLine
         kind="keyframes"
         task={keyframesTask}
         currentClipId={currentClipId ?? null}
       />
-    </section>
+    </ClipProductionActionShell>
   );
 }

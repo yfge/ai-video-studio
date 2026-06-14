@@ -189,6 +189,7 @@ export function useEpisodeDetail({
     episodeMeta: metadata.episodeMeta,
     selectedAudioTimeline: metadata.selectedAudioTimeline,
     selectedTimelineSpec: metadata.selectedTimelineSpec,
+    timelineSpecLoading: metadata.timelineSpecLoading,
     setSelectedTimelineSpec: metadata.setSelectedTimelineSpec,
     selectedStoryboard: metadata.selectedStoryboard,
     formats,

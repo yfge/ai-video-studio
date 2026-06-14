@@ -1,0 +1,5230 @@
+## User Prompt
+
+PLEASE IMPLEMENT THIS PLAN: 剧集 Workspace 首屏与主路径 UX 改进计划。
+
+## Goals
+
+- Keep Episode Workspace Timeline-first and video-clip-first.
+- Preserve login deep links through `/login?next=...`.
+- Resolve stale or support-only `clipId` values to the first processable video clip.
+- Put selected video clip production actions above Timeline positioning UI.
+- Restore scene/environment matching for video clips whose `scene_id` is a normalized scene id.
+
+## Changes
+
+- Added safe auth return path helpers and wired `AuthGuard`, API 401 redirects, and login success redirects through them.
+- Tightened Timeline selection so URL `clipId` resolves only to video clips; storyboard support item clicks still map to a same-source video clip when one exists.
+- Delayed stale deep-link fallback until a video track is available, preventing early storyboard support selection from clearing `clipId`.
+- Reordered the Timeline tab so selected clip production renders before render/export state and Timeline canvas.
+- Moved the three real production controls (`生成片段分镜图`, `生成首尾帧`, `生成/重做此片段视频`) to the top of the selected clip panel and collapsed parameter-heavy controls.
+- Follow-up after user report `没有时间轴了`: added a compact `片段定位时间轴` inside the selected production panel and made the full Timeline canvas always render; only Timeline generation settings stay collapsed.
+- Follow-up correction for the same issue: upgraded the compact locator from a thin video-only strip into a visible multi-track timeline with time ticks, track labels, clip labels, and accessible clip selection buttons. Moved the full Timeline canvas before the render/export panel so the workspace no longer reads as a production form with no Timeline.
+- Follow-up after user report that the UI was still too awkward: removed the Timeline tab's left context rail, compressed the Timeline header, moved episode context into a one-line status strip, and tightened the selected clip production panel spacing so the real video-clip actions sit higher in the first viewport.
+- Continued visual polish for the active "too ugly" goal: extracted a Timeline-specific command header, replaced the large episode header card with a two-line command bar, and tightened the selected clip command surface. An intermediate four-column header wrapped badly at 1280px and pushed actions down; browser evidence contradicted that direction, so it was corrected to the two-row command bar before final validation.
+- Continued polish pass: removed the separate `剧集上下文` strip from the Timeline main canvas because it duplicated the header state and pushed the selected clip production panel down. The old context parts file was deleted after confirming it had no remaining references.
+- Continued polish pass: flattened the selected clip command surface by removing the visible nested border around `片段分镜管理`, putting the three primary clip actions above the compact locator, and downgrading the locator to a lighter auxiliary row instead of a card that blocks the main actions.
+- Continued polish pass for `太丑，继续优化`: converted the three clip generation cards into a single divided command dock, hid labels for very short Timeline locator segments, and moved `片段分镜管理` plus the selected `clipId` into the production panel header. This removes one nested gray card layer while keeping the primary clip actions and the visible Timeline in the first viewport.
+- Continued polish pass for the same active goal: compressed the Timeline tab workspace header from a large two-row card plus gray status strip into a flatter command strip. Episode title, script selection, return link, and the primary action now share the top row; production status and support links use a thin second row without a nested gray container.
+- Continued polish pass for the same active goal: reduced visual noise in the compact Timeline locator. The video track remains the primary colored production track; dialogue, subtitle, and storyboard rows now use smaller muted gray segments and no dense labels unless selected.
+- Continued polish pass for the same active goal: converted the selected clip summary from a table plus large empty video placeholder into a compact production status strip. Missing videos now show as a status pill instead of a large dashed "暂无可播放视频" block.
+- Continued polish pass for the same active goal: flattened the now-visible `场景环境` and `资产审计` secondary panels. Scene environment selection and save action now sit in a compact row, and asset audit title, clip id, and count share a single header row.
+- Continued polish pass for the same active goal: tightened the three-step clip generation command dock. Buttons are shorter, details summaries no longer render as gray blocks, and the dock height is reduced without removing storyboard/keyframe/video controls or parameter drawers.
+- Continued polish pass for the same active goal: compressed global operator chrome. The left navigation rail was reduced from 240px to 208px, the sticky header from 64px to 56px, and main shell padding was tightened while keeping full navigation labels.
+- Follow-up after user report `没有时间轴了`: removed the duplicate `剧集工作台 · 第N集 · 标题` line from the workspace shell header, renamed the compact locator to direct `时间轴`, increased its visual weight, and kept it in the first viewport above secondary panels.
+- Browser follow-up found the UI had selected `video_scene_580_beat_3923_001` while the URL still showed stale `clipId=video_scene_580_beat_3911_001`. The initial stale-clip fallback now immediately syncs the resolved preferred video clip id and dedupes later selection notifications.
+- Continued polish pass for `太丑，继续优化`: compacted the Timeline workspace header again by removing the inner `IP 剧集工作台` badge, using a thinner two-row command strip, and removing the extra top margin before the Timeline tab content.
+- Continued polish pass for the same goal: flattened the three-step clip generation area into a command toolbar. Storyboard, keyframe, and video generation buttons now sit on the same row as their labels, and the video step no longer uses a full pale-blue background block.
+- Continued polish pass for the same goal: added a workspace-only compact navigation rail. The Episode Workspace keeps accessible nav labels through `aria-label` and `title`, but the desktop rail visually shrinks from the full text sidebar to an icon rail so the Timeline workspace has more horizontal room.
+- Continued polish pass for the same goal: converted the selected clip status row from another bordered card into a thin metadata line. The row still shows clip type, label, time, review status, and missing-video state, but it no longer adds another white card layer between the Timeline and environment/assets panels.
+- Continued polish pass for the same goal: hid the global operator search box on the Episode Workspace only. The production page now keeps the breadcrumb, user badge, and logout control in the shell header without the unrelated `搜索 IP、故事、剧集` field.
+- Continued polish pass for the same goal: removed the white card frame from the Timeline workspace command header. Episode title, script selection, production status, support links, and the primary action now render as a lightweight underlined toolbar before the selected clip production panel.
+- Latest follow-up after user report `没有时间轴了`: restored the full multi-track Timeline canvas to the top of the Timeline tab, before the selected clip production panel. The thin compact locator was removed so there is only one primary Timeline surface, and shared Timeline clip buttons now expose stable `aria-label="在时间轴中选择 ..."` selection names.
+- Continued polish pass after restoring the Timeline: compressed the primary Timeline canvas instead of moving it away. The Timeline now defaults to overview zoom, uses denser tracks, a smaller internal toolbar, and a shorter outer header so it remains visibly first while leaving selected clip actions and scene controls in the first viewport.
+- Continued polish pass for the selected clip production area: flattened the three-step command strip by removing its extra nested border, tightening the selected-clip panel header/body spacing, and replacing the visible `片段分镜管理` blue pill with a quieter `video clip` badge while retaining screen-reader text for the management region.
+- Continued polish pass after restoring the full Timeline: merged `场景环境` and `资产审计` into one compact support panel below the primary command strip, removed their duplicate card frames, and moved rarely used asset rework forms behind a collapsed `资产操作` disclosure.
+- Continued polish pass for `太丑，继续优化`: changed the Timeline page production status row from repeated status pills into a lighter dot rail, and muted long Timeline overview labels so short clips keep aria/title metadata without filling the canvas with dense prompt text.
+- Continued polish pass for narrow workspace viewports: converted the selected clip's three generation actions from stacked rows into a persistent three-column command rail. The full action labels remain visible and accessible, but `生成/重做此片段视频` now sits on the same row as storyboard and keyframe generation instead of being pushed down.
+- Continued polish pass for the Timeline workspace header: moved the primary next action into the episode title row, folded `返回故事` into the auxiliary action row, and replaced the fixed-height support buttons with lighter text buttons so the primary Timeline and clip production panels start earlier.
+- Continued polish pass for the Timeline canvas itself: removed the duplicate outer Timeline panel header and merged the `时间轴` title, time-window metadata, `Timeline 生成设置`, and zoom controls into the Timeline card's own toolbar. This keeps the full multi-track Timeline first while removing one nested white card layer.
+- Continued polish pass for Timeline usability: added fit-to-width overview zoom for the Timeline tab so the default first view shows the full episode duration instead of only the first segment of a horizontally scrolling canvas. Manual zoom remains available through the slider and an `适配` reset action.
+- Follow-up after user report `没有时间轴了`: root cause was that the Timeline still rendered but the fit-to-width overview had been compressed into a 197px card with 25px tracks and a 10px selected clip, making it visually read as missing. Increased the primary Timeline canvas density to readable 37px tracks, added a blue `当前定位` marker for the selected clip, kept full-episode fit-to-width behavior, and split item/marker rendering into small Timeline helper components to keep file boundaries clean.
+- Continued polish pass for `太丑，继续优化`: collapsed empty asset audit into a compact `资产审计` disclosure row inside the support panel, removed the default visible `暂无资产记录。` empty state from the first viewport, and shortened the Timeline selected-marker badge from full dialogue text to the current clip time range.
+- Split asset audit row and operation details into a small helper file so the newly compacted audit panel stayed within component size boundaries.
+- Continued polish pass for the same goal: removed visible `01/02/03` step badges from the clip generation command rail, made the generation buttons the first visual element in each column, and downgraded `片段分镜图` / `首尾帧` / `片段视频` labels plus parameter summaries into smaller metadata.
+- Continued polish pass for the same goal: added compact Timeline display labels so the Timeline toolbar and tick marks show `00:00` / `02:32` style labels instead of `.000` millisecond precision when the time falls on whole seconds. Precise milliseconds remain in tooltips/internal values and non-whole selected clip ranges.
+- Continued polish pass for the same goal: compressed the Timeline workspace header from a three-row form-like header into a two-row workbar. Episode title, script selection, and the primary next action now share the top row; the production rail and support menu remain in the second row.
+- Continued polish pass for the same goal: downgraded scene support navigation (`剧本` / `替换片段` / `任务`) from full buttons to a compact `辅助` text action row so it no longer competes with the generation buttons or scene environment save action.
+- Continued polish pass for the same goal: extracted the scene environment, auxiliary navigation, and asset audit support area into `EpisodeTimelineClipSupportPanel`, removed the nested white support card, and downgraded empty asset audit from a gray bordered card to a plain disclosure row.
+- Continued polish pass for the same goal: removed the long `video_scene_...` engineering id from the primary selected-clip header and replaced it with human-facing `视频片段` / video readiness badges; the stable clip id remains visible in asset audit for traceability.
+- Continued polish pass for the same goal: simplified the primary Timeline toolbar visible text from `时间轴窗口 ... 时长 152.0s / Timeline 生成设置 / 缩放` to `00:00 – 02:32 · 152s / 生成设置 / 视图`, while keeping the original accessibility/test anchors through `sr-only` text and `aria-label`.
+- Continued polish pass for the same goal: localized the visible production rail step from `Timeline` to `时间轴`, and changed the off-tab primary action from `回到 Timeline` to `回到时间轴`, leaving the established `生成 Timeline` action name unchanged.
+- Continued polish pass for the same goal: moved the `支持视图` menu into the primary action row next to `处理缺失片段`, so the second row contains only the production rail instead of a detached support-menu label floating on the right.
+- Split scene matching and Timeline canvas helpers to keep touched production components inside file-size boundaries.
+- Split Timeline toolbar and fit-zoom state into small files to keep `Timeline.tsx` inside repository file-size contracts.
+- Updated Timeline helper/layout tests and added auth return path tests.
+- Follow-up after user report `没有时间轴了`: real browser showed a regression shape where stale clip state could leave the production panel on a storyboard support item instead of the same-source video clip. `useInitialTimelineClipSelection` now continuously promotes same-source support selections to the video item and clears stale `clipId` when only non-video tracks are available.
+- Follow-up for dialogue-only Timeline states: Timeline generation controls now stay expanded when tracks exist but no video clip is present, and the header primary action treats a Timeline without a video clip entry as `生成 Timeline` instead of sending the user to support views.
+- Replaced compact workspace nav rail letter placeholders (`W/I/S/E/T`) with local SVG icons while preserving `aria-label` and `title` labels; added a focused icon rendering test.
+- Continued polish pass for `太丑，继续优化`: converted the selected clip generation controls from three hard-divided equal columns into a lighter command bar. Storyboard and keyframe actions remain compact secondary controls, while `生成/重做此片段视频` is wider and visually primary.
+- Follow-up after user report `没有时间轴了`: built-in browser reproduction showed the Timeline still existed but fit-to-width compressed a 152s episode into a narrow viewport, leaving the selected 3.32s clip as a 10px block. The Timeline tab now uses a readable horizontal production timeline instead of default full-episode compression, selected clips auto-scroll into view, and shorter clip labels render sooner.
+- Added a layout regression test that asserts long-episode Timeline clip blocks stay wide enough to scan instead of being compressed into unreadable markers.
+- Continued polish pass for the active `太丑，继续优化` goal: muted non-video Timeline item labels at default zoom so dialogue/subtitle/storyboard tracks remain clickable positioning context without turning the Timeline into repeated long text. The primary video track and selected/high-zoom clips still render labels.
+- Added a layout regression test that verifies muted non-video labels remain accessible through Timeline `aria-label` clip selection.
+- Continued polish pass for `太丑，继续优化`: hid inactive scene-environment save until an environment is selected and downgraded the environment-row support entry from visible `更多` text to a 32px `...` affordance with aria-label `更多操作`; save remains primary once enabled.
+- Follow-up after user report `没有时间轴了`: built-in browser showed the Timeline canvas was present, but the detailed lanes only exposed the first 20 seconds of a 02:32 episode, making the page read as if there was no full timeline. Added an always-visible `全片概览` rail above the scrollable lanes so all video clips are visible in one screen, while preserving the readable detailed track lanes below.
+- Added layout regression coverage that requires the Timeline canvas to render `全片概览`, its full-episode rail, selected marker, and video overview items before the scrollable detailed lanes.
+- Continued polish pass for `太丑，继续优化`: compressed the new `全片概览` from a two-row 70px block into a 37px inline rail so the selected clip production panel moves back up while keeping all 16 video clips visible at a glance.
+- Continued polish pass for the same goal: downgraded the Timeline header's `处理缺失片段` action from blue primary to secondary outline when the selected clip production panel is already visible, leaving `生成/重做此片段视频` as the dominant blue action in the first viewport.
+- Continued polish pass for the same goal: compressed non-video Timeline lanes from 44px to 32px and reduced lane gaps from 8px to 4px. The video lane stays at 60px with 42px clip blocks, while dialogue/subtitle/storyboard remain visible as compact positioning context.
+- Continued polish pass for the same goal: compressed the Timeline time ruler from 44px to 36px so the full Timeline remains readable but stops occupying more height than the auxiliary lanes.
+- Continued polish pass for the same goal: changed the two repeated visible `参数` controls in the selected clip command rail into 32px `...` affordances with full aria-label/title text, making `生成/重做此片段视频` visually wider and less crowded.
+- Continued polish pass for the same goal: downgraded the disabled `保存场景环境` control from a blue primary button to a neutral secondary button when no environment is selected. The actual save behavior is unchanged; the button becomes primary again once a saveable environment selection exists, leaving `生成/重做此片段视频` as the only blue primary action in the selected-clip panel by default.
+- Continued polish pass for the same goal: downgraded the disabled `导出成片` render/export control to secondary styling when clips are still missing. The button still becomes primary once the Timeline is render-ready, while the selected clip's `生成/重做此片段视频` remains the only active blue primary action in the default first viewport.
+- Follow-up after user report `没有时间轴了`: made the primary Timeline canvas visually readable again by increasing track/button height, adding time-grid lines, and giving dialogue/video/subtitle/storyboard clips compact visible labels (`对白 1`, `视频 1`, `字幕 1`, `分镜 1`) while preserving full clip text in aria labels and titles.
+- Follow-up for reload flicker: `useEpisodeMetadata` now tracks Timeline spec loading and suppresses legacy `audio_timeline` fallback while native Timeline is still loading, preventing the workspace from briefly showing a dialogue-only legacy timeline or `生成 Timeline` when a native video Timeline exists.
+- Split Timeline grid/tick and track-row rendering into `TimelineGrid.tsx` so `Timeline.tsx` stays under the repository file-size contract after the readability fix.
+- Continued polish pass for the active `太丑，继续优化` goal: reduced the selected-clip command strip visual noise by removing the gray command background, shortening the three generation buttons, removing duplicate visible captions under the buttons, and keeping only compact parameter disclosures (`4 格 · 参数与参考`, `绑定与参数`) below the relevant actions.
+- Follow-up after user report `没有时间轴了`: rechecked the current built-in Browser state and verified the full multi-track `时间轴` is still the first main panel before `选中片段生产`. Also removed the visible `video_scene_...` engineering id from the default collapsed `资产审计` header while keeping it inside the expanded `资产操作` detail for traceability.
+- Continued polish pass for `太丑，继续优化`: replaced the Timeline's selected-clip overlay from a wide blue `当前片段 · ...` badge sitting over the tracks with a small `当前` time-ruler marker. The full `当前片段 · <time range>` text remains as screen-reader-only content, and the selected clip is still indicated by the vertical line plus the selected clip outline.
+- Continued polish pass for the same goal: collapsed the secondary clip navigation row (`剧本` / `替换片段` / `任务`) behind a small `辅助操作` disclosure. The support actions remain available when expanded, but they no longer render as a visible text row competing with scene environment and asset audit controls in the first viewport.
+- Continued polish pass for the same goal: removed duplicated visible status badges from the selected clip production header. The header now only names the panel, while clip type and missing-video readiness remain in the compact clip summary row.
+- Continued polish pass for the same goal: stopped empty `资产审计 0 条` from taking the desktop support panel's right half. Empty audit state now stays as a compact disclosure under the scene support controls, while loading/error/real asset records still promote the audit into the split panel.
+- Continued polish pass for the same goal: merged the collapsed `辅助操作` and empty `资产审计` controls into one compact utility row. This removes one default secondary row from the narrow first viewport while preserving script/storyboard/task links and asset traceability.
+- Continued polish pass for the same goal: compressed the visible Timeline toolbar range label from the duplicate `00:00 – 02:32 · 152s` form to `全片 02:32`, while preserving the hidden `时间轴窗口 ... 时长 ...` accessibility/test anchor.
+- Continued polish pass for the same goal: changed the selected clip production panel from a rounded white card into a flat `border-y` production band. The Timeline still owns the framed canvas, while selected-clip generation reads as the next work section rather than another card stacked below it.
+- Continued polish pass for the same goal: compressed `场景环境` into a single responsive control row on desktop. Scene label, selected scene hint, environment selector, and save button now share one row, reducing the selected-clip production band height without changing environment binding behavior.
+- Follow-up after user report `没有时间轴了`: restored the Timeline canvas visual weight after the compacting pass made it read like a thin locator. The Timeline now defaults to 1x readable zoom, uses 60px tracks with 42px clip blocks, widens the track-label rail, and exposes `data-timeline-canvas` for regression coverage.
+- Continued polish pass for `太丑，继续优化`: merged the visible `选中片段生产` title into the selected-clip summary row and removed the command rail's extra bottom divider. The production band keeps the same clip-scoped storyboard/keyframe/video actions, but no longer spends a separate title row before showing the selected clip and actions.
+- Follow-up after user report `没有时间轴了`: kept the full multi-track Timeline as the first main panel and made it read more like an actual editing timeline by adding a distinct time ruler band, sticky track labels, stronger video production lane styling, and stable `data-timeline-*` regression anchors. The selected clip generation buttons still remain visible below the Timeline in the first viewport.
+- Continued polish pass for `太丑，继续优化`: reduced non-video Timeline lane height while keeping the video lane at full production height. Dialogue/subtitle/storyboard tracks now read as positioning context instead of competing equally with the selected video production lane, and the clip actions/render summary move higher in the first viewport.
+- Continued polish pass for `太丑，继续优化`: tightened the Timeline workspace workbar by shrinking the script selector from a full-width form control into a compact 26rem command-bar control. The primary action and support menu stay on the right, while the Timeline and selected-clip production positions remain unchanged.
+- Continued polish pass for `太丑，继续优化`: merged the production-step rail into the same single-row Timeline workbar instead of rendering it as a second row. This uses the empty middle space, removes one visible workbar row, and moves the Timeline/clip production path higher without changing deep-link or action behavior.
+- Follow-up after user report `没有时间轴了`: kept the full Timeline first and made the video lane unmistakably primary by rendering the `video` track before dialogue/subtitle/storyboard, adding a visible `主线` badge, strengthening the `时间尺` ruler/grid, and adding stable `data-timeline-grid` / `data-timeline-track-row` regression anchors.
+- Continued polish pass for `太丑，继续优化`: made the selected-clip command bar parameter affordances readable. The old squeezed `4格` / `参数` blocks are now stable-width `分镜参数` / `视频参数` controls, preserving the one-row storyboard/keyframe/video generation command path without hiding the actual parameter drawers.
+- Continued polish pass for `太丑，继续优化`: flattened the selected-clip command surface by removing the nested gray command dock, border, and inset shadow around the storyboard/keyframe/video action row. The command rail now reads as a true toolbar inside the production band while preserving the same clip-scoped controls and parameter drawers.
+- Continued polish pass for `太丑，继续优化`: replaced the visible `选中片段生产` label with `当前片段` and changed the selected-clip summary into a stable `identity-line` grid. The original label remains as sr-only text for existing anchors, while the visible first-viewport copy reads more like an editor status line.
+- Continued polish pass for `太丑，继续优化`: lightened the render/export strip from another warning-like block into a compact `输出` row. Existing `渲染/导出` and `渲染输出` anchors remain as screen-reader text, while readiness now renders as a small text badge.
+- Follow-up URL-sync fix from built-in Browser evidence: Timeline clip selection now also accepts legacy native clip records that expose the production clip id as `id` instead of `clip_id`, so stale deep links fall back to a video clip and keep a valid `?clipId=...` instead of clearing it.
+- Continued polish pass for `太丑，继续优化`: rebalanced the selected-clip command rail from five equally loud controls into three production actions plus two lightweight `参数` toggles. The video generation action is now the widest command, storyboard/keyframe actions stay visible, and parameter drawers remain accessible through aria labels.
+- Follow-up after user report `没有时间轴了`: increased the primary Timeline canvas back to a clearly readable locator surface. The video production lane is 72px high, support lanes are 36px, the ruler is 40px, the overview rail is 28px, and the Timeline container now carries `data-timeline-density="primary"` / `aria-label="片段时间轴定位区"` while keeping the three clip production actions visible in the first viewport.
+- Continued polish pass for `太丑，继续优化`: flattened the secondary support area immediately below the clip commands. The scene environment row now uses an inline layout instead of a bordered gray card, the render/export strip is a single flat top divider instead of a white double-border bar, and missing render readiness is shown as a small status-dot label instead of a yellow bordered pill.
+- Continued polish pass for the same goal: removed the remaining white double-border surface from the selected clip production panel itself. The panel now uses `data-clip-production-surface="transparent"` and a transparent background, while preserving the selected-clip identity line, command rail, scene environment row, and render/export strip in the first viewport.
+- Continued polish pass for the same goal: quieted the Timeline workspace header actions. The missing-clip action keeps accessible label `处理缺失片段` but renders as a short amber ghost action `缺失片段`, and the support menu keeps accessible label `支持视图` but renders as `支持`; the selected clip video generation button remains the only active blue primary control in the first viewport.
+- Continued polish pass for the same goal: replaced visible `...` placeholder text in compact parameter/support controls with a reusable three-dot SVG icon. The controls keep their aria labels and titles, while the first viewport no longer reads as if placeholder text was left in the command rail.
+- Continued polish pass for `太丑，继续优化`: compressed the restored full Timeline canvas instead of moving it away. The overview rail, ruler, video lane, secondary lanes, and lane gaps are shorter, the outer Timeline surface is lighter, and the production panel moved higher while the multi-track Timeline remains the first primary surface.
+- Continued polish pass for the same goal: replaced parameter disclosure three-dot icons with a sliders/settings SVG icon so the controls read as parameter drawers rather than accidental ellipsis placeholders. The separate support overflow keeps the more-actions icon and aria label.
+- Continued polish pass for the same goal: added lightweight SVG action icons to the three selected-clip production commands. The storyboard, keyframe, and video buttons are no longer pure text bars, while the video generation button remains the only blue primary action in the first viewport.
+- Continued polish pass for the same goal: added a thin teal left accent to the selected-clip production band. This groups the current clip summary, production commands, and scene support without reintroducing a white card, rounded panel, or nested surface.
+- Continued polish pass for the same goal: muted non-selected `全片概览` items from saturated teal to slate, leaving only the current overview marker blue. The overview remains a whole-episode locator, but no longer competes with the primary video lane and selected-clip production actions.
+- Continued polish pass for the same goal: softened the Timeline ruler and grid lines by replacing the thick dark ruler divider with a 1px slate-200 divider and muting tick/grid contrast. The ruler remains readable but no longer visually cuts through the primary video lane.
+- Follow-up after user report `没有时间轴了`: changed the Timeline tab's main canvas back to whole-episode fit by default, renamed the reset control to `全片适配`, and reduced low-zoom clip label noise so all 16 video clips are visible in the first viewport without overlapping text. Manual zoom remains available through the Timeline slider.
+- Continued polish pass for `太丑，继续优化`: replaced the visible floating `当前` Timeline bubble with an editor-style selected range and start cursor. The selected clip still has screen-reader text (`当前片段 · ...`) and a selected ring, but the time ruler no longer has a small pill overlapping the first clip.
+- Continued polish pass for `太丑，继续优化`: grouped the storyboard and video parameter drawers into their own production action controls. The settings icons now sit as attached right-side segments of `生成片段分镜图` and `生成/重做此片段视频`, instead of floating as separate dots across the command rail.
+- Continued polish pass for `太丑，继续优化`: made the video parameter segment inherit the blue primary action tone. The video generation action and its parameter drawer now read as one connected primary control, while the storyboard parameter segment remains a quieter secondary drawer.
+- Continued polish pass for `太丑，继续优化`: replaced the environment-row support overflow's visible three-dot icon with a short `辅助` text trigger. The menu keeps `aria-label="更多操作"` and the same collapsed support content, but no longer looks like a stray placeholder dot in the first viewport.
+- Continued polish pass for `太丑，继续优化`: muted support-track item labels in whole-episode fit mode. Dialogue, subtitle, and storyboard tracks still render clickable positioning blocks with aria/title metadata, but only the video production lane keeps visible clip labels by default.
+- Continued polish pass for `太丑，继续优化`: compressed the full-episode Timeline overview into a `minimap` rail. The overview label is shortened to `全片`, the rail height is 24px, overview clip blocks are lighter and smaller, and the duration summary now reads `02:32 · 16 段` so the overview no longer feels like a second full Timeline above the main lanes.
+- Continued polish pass for `太丑，继续优化`: flattened the selected-clip three-step production area from three bordered mini-cards into one segmented command rail. The rail keeps the visible `1/2/3` step sequence and the same storyboard/keyframe/video buttons, but each column no longer paints its own card background or border; the video button remains the only blue primary action.
+- Continued polish pass for `太丑，继续优化`: flattened the scene environment/support row below the production rail. `场景环境`, the scene label, environment selector, and `更多` support menu now sit on a transparent secondary row with only a thin top divider, removing another white card layer from the first viewport while keeping environment save behavior unchanged.
+- Continued polish pass for `太丑，继续优化`: flattened the selected clip identity row above the production rail. The row now renders as an inline metadata line (`data-clip-current-bar-layout="inline"`) instead of a rounded white card, while preserving the current clip label, type badge, time range, review status, and missing-video pill.
+- Continued polish pass for `太丑，继续优化`: muted non-selected video clip blocks on the primary Timeline. The selected video clip keeps its 2px border and blue locator ring, while unselected video clips now use a 1px border, lighter 14% teal fill, and a subtle inset shadow so the video track remains readable without competing with the blue clip-generation action.
+- Continued polish pass for `太丑，继续优化`: muted the Timeline left video-track label. The video track row remains primary and all 16 clips stay visible, but the sticky `视频 / 主线` label now uses a white/90 surface with teal text and a small bordered `主线` badge instead of a solid teal block.
+- Continued polish pass for `太丑，继续优化`: made the selected-clip command rail action-first. The visible `1 / 2 / 3` step chips and duplicate `片段分镜图 / 首尾帧 / 片段视频` mini headers were removed from the first viewport; step metadata now lives on command sections through `aria-label` and `data-*`, while the three real generation buttons remain visible and the video button remains the sole blue primary action.
+- Continued polish pass for `太丑，继续优化`: replaced the two repeated visible `参数` text segments in the selected-clip command rail with settings-icon segments. The drawers keep their full `aria-label` and title text, but the first viewport no longer shows extra `参数` labels next to the storyboard and video generation buttons.
+- Continued polish pass for `太丑，继续优化`: muted auxiliary Timeline lanes in full-episode fit. Dialogue, subtitle, and storyboard tracks now render as light clickable positioning blocks without visible text by default, while preserving `aria-label`/`title` metadata; the video production lane remains labeled and visually primary.
+- Follow-up after user report `没有时间轴了`: browser reproduction showed the Timeline DOM was present, but the previous grid/ruler muting made the canvas read too weakly as a real time axis. Restored a clearer multi-track Timeline by adding an explicit teal axis line, stronger tick/grid styling, a more visible video main track, and stronger selected/unselected video clip contrast while keeping auxiliary lanes muted and clickable.
+- Continued polish pass for `太丑，继续优化`: collapsed the scene environment row into a lightweight summary by default. The wide native environment select, `更多` support menu, and inactive save control no longer occupy the first viewport unless the operator opens `选择环境`; clips with an existing saved environment still open the row and keep `保存场景环境` available.
+- Continued polish pass for `太丑，继续优化`: compacted the Timeline toolbar. The zoom slider now lives behind a closed `视图` disclosure, the reset button visible text is shortened from `全片适配` to `适配` while retaining `aria-label="重置为全片适配视图"`, and scene environment selection now renders a fallback option for a saved `scene.environment_id` while environment options are still loading.
+- Continued polish pass for `太丑，继续优化`: changed the selected-clip command rail from three near-equal action columns to a wide-primary layout. Storyboard and keyframe generation are narrower secondary actions, while `生成/重做此片段视频` takes the majority of the rail width so the selected video clip production path reads as the dominant action.
+- Continued polish pass for `太丑，继续优化`: downgraded the duplicated header missing-clips action into a small `缺片段` status chip. The control keeps `aria-label="处理缺失片段"` and click behavior, while the full missing count and `查看缺失` action remain in the output row.
+- Follow-up after user report `没有时间轴了`: made the primary Timeline surface read explicitly as a Timeline again. The canvas title is now `时间轴定位`, the toolbar shows the selected clip context (`当前 视频 1 · 00:00-00:03.320`), and Timeline type definitions were split into `TimelineTypes.ts` so the enhanced `Timeline.tsx` remains inside the repository line boundary.
+- Continued polish pass for `太丑，继续优化`: made the selected video clip block itself readable in the Timeline. The selected video item now expands to a 54px minimum, shows the full compact label `视频 1`, uses an opaque selected fill, and suppresses labels on adjacent video items covered by the selected block while preserving their `aria-label` / `title` click targets.
+- Continued polish pass for `太丑，继续优化`: reduced visual fragmentation in the selected-clip command rail by removing the visible left divider from the compact parameter affordances. The storyboard and video parameter entries remain 40x32 icon-only controls with their original `aria-label` values, but no longer read as separate bordered button cells.
+- Continued polish pass for `太丑，继续优化`: removed the redundant visible `当前片段` label from the selected-clip identity row. The row now starts directly with the clip type, title, time range, review state, and missing-video status while preserving the screen-reader `选中片段生产` label.
+- Continued polish pass for `太丑，继续优化`: converted the selected-clip command rail from a bordered segmented table into a transparent toolbar. The three generation actions still keep the wide-primary video layout, but the outer white frame, `divide-x` separators, and per-action padding shells are gone.
+- Continued polish pass for `太丑，继续优化`: repaired the command toolbar's parameter affordance after removing the outer frame. The storyboard and video parameter icons are now attached split-button segments again, so they no longer float as orphan icons while the toolbar surface itself remains transparent.
+- Continued polish pass for `太丑，继续优化`: removed the internal script id from the visible workspace script selector. The selected script value still carries the numeric `scriptId`, but the operator-facing label now shows title and version only instead of `- ID: ...`.
+- Continued polish pass for `太丑，继续优化`: cleaned the scene environment summary label. Visible scene labels now strip redundant `SCENE n -` prefixes, so the row reads `场景 1 · 开场钩子` instead of repeating `场景 1 · SCENE 1 - 开场钩子`.
+- Continued polish pass for `太丑，继续优化`: iconified the low-frequency Timeline toolbar controls. `Timeline 生成设置`, `视图缩放`, and `重置为全片适配视图` keep their accessible labels and titles, but the first viewport no longer shows `生成设置 / 视图 / 适配` as competing text next to the main clip-production actions.
+- Follow-up after user report `没有时间轴了`: wrapped the Episode Workspace route in `AuthGuard` so unauthenticated deep links redirect to `/login?next=...` before workspace data hooks run, preventing the page from sitting on `加载剧集工作台...` with 401 responses. Renamed the Timeline canvas heading from `时间轴定位` to `全片时间轴` so the primary multi-track Timeline reads as a real first-screen surface.
+- Continued polish pass for `太丑，继续优化`: compressed the selected clip production panel into a desktop action dock. The selected clip summary and the three generation actions now share the same first row on wide viewports, while scene environment and render/export stay below; this reduced the default first-screen production panel height without hiding the Timeline or clip-scoped buttons.
+- Continued polish pass for `太丑，继续优化`: split the collapsed output/render strip into a full-width status row. The output readiness stays on the left and the `查看缺失` action moves to the right, so the render/export row no longer appears as a small cluster of text floating in a wide blank band.
+- Continued polish pass for `太丑，继续优化`: tightened the scene environment summary row. The collapsed environment row now uses smaller vertical padding and a 24px environment affordance, reducing the production panel height while preserving the `选择环境` disclosure, environment selector, save behavior, and auxiliary support menu.
+- Follow-up after user report `没有时间轴了`: made the primary Timeline canvas explicit again with a stable `data-timeline="workspace"` root, a `data-timeline-canvas-panel="primary"` wrapper, visible `TIMELINE / 全片时间轴` toolbar labeling, and a higher-contrast full-episode overview rail. The full multi-track Timeline remains at the top of the Timeline tab before the selected clip production panel.
+- Continued polish pass for `太丑，继续优化`: converted the collapsed render/output row from a thin transparent text strip into a lightweight workbar with a clip readiness meter (`0/16 就绪` in the current episode). Missing clips still keep render/export buttons hidden until ready, but the lower first-viewport area now has a visible output state instead of dropping straight into blank gray page background.
+- Continued polish pass for `太丑，继续优化`: shortened the selected clip video-readiness badge from `缺少视频素材` to `缺视频` so it no longer repeats the output workbar state or crowds the production row. The full status remains available on the badge `title`, and `StatusPill` now supports this title use case.
+- Continued polish pass for `太丑，继续优化`: demoted the duplicate header `缺片段` action into a 32px warning-symbol button with `aria-label`/`title="处理缺失片段"`. The output workbar remains the visible `查看缺失` entry point, so the header no longer repeats the same missing-clips text away from the main work area.
+- Continued polish pass for `太丑，继续优化`: compressed the Timeline header production rail from four visible text steps into a compact dot rail. The header now shows only `生产主线` plus status dots, while each step still keeps `aria-label` and `title` metadata for accessibility and tests.
+- Continued polish pass for `太丑，继续优化`: converted the low-frequency header `支持` text control into a 32px icon button with `aria-label`/`title="支持视图"`. The support menu still opens `返回故事`、`剧本设置`、`分镜参考`、`临时角色/IP 绑定`, but the default Timeline header no longer shows an extra floating support word next to the missing-clips warning.
+- Split the new header support menu into `EpisodeWorkspaceTimelineHeaderSupportMenu.tsx` after `check_repo_contracts` caught `EpisodeWorkspaceTimelineHeader.tsx` at 251 lines. The header is now 156 lines and the support menu is 99 lines.
+- Continued polish pass for `太丑，继续优化`: replaced the duplicate-looking Timeline toolbar slider icons with distinct controls. `Timeline 生成设置` now uses a pipeline/node icon, `视图缩放` uses a zoom icon, and `重置为全片适配视图` keeps the fit icon, while all three remain icon-only with their original `aria-label` and `title`.
+- Continued polish pass for `太丑，继续优化`: replaced the selected clip command rail's duplicate slider-style parameter affordances with compact 32px `...` more buttons. The storyboard and video parameter drawers keep their original `aria-label` / `title`, but they no longer look like peer production tools competing with the main generation buttons.
+- Continued polish pass for `太丑，继续优化`: localized and de-duplicated the Timeline canvas toolbar title. The visible header now reads `时间轴` + `全片` instead of `TIMELINE` + `全片时间轴`, while the heading keeps `aria-label="全片时间轴"` for accessibility and tests.
+- Continued polish pass for `太丑，继续优化`: removed the second visible `全片` from the Timeline toolbar duration label. The header now reads `时间轴 / 全片 / 02:32` instead of `时间轴 / 全片 / 全片 02:32`, while the screen-reader-only window text still carries the full range and duration.
+- Follow-up after user report `没有时间轴了`: made the primary Timeline surface visually read as a real Timeline again instead of a compressed table. The full-episode overview now labels itself `全片时间轴`, the ruler label changed from `时间尺 / 轨道` to `时间轴 / 片段轨`, the primary video lane label reads `视频轨`, and the Timeline lane heights were increased while preserving the selected-clip production buttons in the first viewport.
+- Continued polish pass for `太丑，继续优化`: grouped the selected-clip generation actions into a lightweight command tray. The production panel itself stays flat, but storyboard, keyframe, video, and parameter affordances now sit on one subtle rail instead of floating as separate pasted controls; the video generation action remains the only blue primary button.
+- Continued polish pass for `太丑，继续优化`: reduced duplicate selection emphasis in the Timeline. The selected video clip keeps its clear ring, while the full-height Timeline guide was downgraded from a thick blue cursor to a 1px translucent guide and a lighter selected range so it no longer steals focus from the clip blocks and production actions.
+- Continued polish pass for `太丑，继续优化`: downgraded the duplicated full-episode overview from a second full Timeline row into a compact `总览` strip. It keeps clickable whole-episode navigation and selected marker metadata, but no longer competes visually with the detailed multi-track Timeline below.
+- Continued polish pass for `太丑，继续优化`: compressed the auxiliary Timeline lanes while preserving the video production lane. The video lane remains 88px tall, but dialogue/subtitle/storyboard lanes now use 40px rows with 4px gaps so they read as context rather than large empty table rows.
+- Continued polish pass for `太丑，继续优化`: compressed the collapsed render/output workbar into a single-line status strip. The output status, readiness meter, and `查看缺失` action remain visible, but the row no longer renders as a mostly empty two-line card.
+- Continued polish pass for `太丑，继续优化`: tightened the restored full Timeline canvas and selected-clip action dock. The Timeline keeps the multi-track first-screen surface, but the overview rail, time ruler, auxiliary lanes, and grid lines are shorter/lighter; the selected-clip action tray now gives `生成/重做此片段视频` the widest column and a 36px primary button while storyboard/keyframe actions remain secondary.
+- Continued polish pass for `太丑，继续优化`: neutralized the primary Timeline video clips. Unselected video clips no longer inherit the teal track color; they now use a blue-gray material fill and border, while the selected clip keeps a softer 1px blue focus ring instead of the previous stronger 2px ring and heavier shadow.
+- Continued polish pass for `太丑，继续优化`: flattened the scene environment row from a standalone dock card into an inline context strip under the clip command dock. The row keeps the same scene label, environment selection, save behavior, and support overflow, but removes the rounded card frame and shadow.
+- Continued polish pass for `太丑，继续优化`: flattened the collapsed output/render row from an inset rounded dock into an inline status strip. The row still exposes output readiness, the `0/16 就绪` meter, and `查看缺失`, but removes the wide empty card frame, shadow, and extra vertical height.
+- Continued polish pass for `太丑，继续优化`: removed the selected-clip production top row's outer dock shell. The current clip summary and command tray keep their own compact boundaries, but the wrapper no longer adds a third rounded border/shadow layer around them.
+- Continued polish pass for `太丑，继续优化`: compressed the Timeline's sticky left rail from 112px to 88px, changed the ruler origin into a compact-axis label, and removed the visible `主线` chip from the video track label while keeping the accessible metadata. The Timeline stays first and fully visible, but reads less like a spreadsheet.
+- Follow-up from the same browser pass: Playwright evidence showed the selected video clip could remain selected while the URL was overwritten back to `?tab=timeline&scriptId=143` without `clipId`. `useInitialTimelineClipSelection` now clears its last-synced cache when the URL-sync callback changes, allowing the current video clip to re-sync after outer workspace URL normalization.
+- Continued polish pass for `太丑，继续优化`: downgraded the storyboard/video parameter affordances from 36px split-button segments into 28px ghost icon controls. The primary generation buttons now keep complete rounded boundaries, and `生成/重做此片段视频` remains the only strong blue action in the selected-clip command row.
+- Continued polish pass for `太丑，继续优化`: converted the render/output strip from a white footer card into a true inline footer. It keeps the output readiness, `0/16 就绪` meter, and `查看缺失` disclosure, but drops the inset `mx-3`, bottom radius, side borders, bottom border, and white background.
+- Follow-up after user report `没有时间轴了`: restored explicit Timeline identity in the primary canvas by showing the full visible heading `全片时间轴`, strengthening the Timeline border/toolbar separation to `border-slate-400`, and marking the canvas with `data-timeline-presence="primary-time-axis"`. The full Timeline remains before the selected clip production panel.
+- Continued polish pass for `太丑，继续优化`: restored the Timeline header's missing-clips action from an icon-only amber `!` back to a visible `处理缺失片段` button. It remains amber/secondary so it does not compete with the selected clip's blue `生成/重做此片段视频` action, but the action is no longer cryptic.
+- Continued polish pass for `太丑，继续优化`: compressed the Timeline header production rail so ready steps render as bare status dots, while only incomplete steps keep visible labels (`片段待`, `导出待`). The accessible labels and titles still expose `剧本 已就绪` and `时间轴 已就绪`.
+- Continued polish pass for `太丑，继续优化`: neutralized the video parameter affordance so both storyboard/video parameter icons use the same transparent ghost tone. The selected clip's `生成/重做此片段视频` button remains the only strong blue control in the command row.
+- Continued polish pass for `太丑，继续优化`: merged the Timeline toolbar's separate `时间轴` badge and `全片时间轴` heading into a single strong `全片时间轴` heading badge. The Timeline identity stays explicit, but the toolbar no longer repeats `时间轴全片时间轴`.
+- Continued polish pass for `太丑，继续优化`: replaced the header missing-clips button's bare `!` text with a proper warning SVG icon and made the label nowrap. The action remains visible and amber/secondary, but no longer reads like a temporary debug marker.
+- Continued polish pass for `太丑，继续优化`: converted the Timeline header production rail from mixed text pills into a dot-only status rail. The header keeps full `aria-label` / `title` status metadata, while visible missing-clip remediation remains on the `处理缺失片段` action and output strip.
+- Continued polish pass for `太丑，继续优化`: tightened the dot-only production rail into real 10px circular status dots instead of 16x24 dot containers. Ready states are filled green dots and pending states are white/gray outlined dots with the same accessible metadata.
+- Continued polish pass for `太丑，继续优化`: converted the selected clip video readiness from a bordered amber status pill into an inline `缺视频` status with a small amber dot. The full `缺少视频素材` text remains available on `title`, but the control no longer reads as another button next to the clip generation actions.
+- Split `ClipEnvironmentSection` into `EpisodeTimelineClipEnvironmentSection.tsx` after `check_repo_contracts` caught `EpisodeTimelineClipProductionSections.tsx` at 257 lines. The summary file is now 116 lines and the environment section is 139 lines.
+- Continued polish pass for `太丑，继续优化`: changed the selected-clip parameter affordances from slider/settings glyphs to true three-dot `更多` glyphs. The two compact parameter entries remain accessible through `aria-label` and `title`, but no longer read as tuning controls competing with the generation buttons.
+- Continued polish pass for `太丑，继续优化`: folded the Timeline toolbar reset control into the compact `视图缩放` menu. The default Timeline toolbar now exposes only `Timeline 生成设置` and `视图缩放` as direct controls; reset remains available inside the view panel.
+- Continued polish pass for `太丑，继续优化`: softened the Timeline title from a black badge to a plain `全片时间轴` heading with a subtle left rule. The heading remains visible and accessible, but no longer reads as a heavy pasted label inside the Timeline toolbar.
+- Continued polish pass for `太丑，继续优化`: changed the Timeline selected-clip context from a blue pill into inline status text. The toolbar still shows the current clip and a compact time range, while the exact millisecond range remains in the `title`.
+- Continued polish pass for `太丑，继续优化`: muted non-video Timeline track markers from colored dots into small gray guide lines. The video track keeps the primary colored marker; dialogue, subtitle, and storyboard tracks now read as support context instead of competing legend items.
+- Follow-up after user report `没有时间轴了`: browser reproduction showed the primary Timeline DOM was still present in the first viewport, but clip-selection flows needed a stable visibility anchor. Added `useTimelineSelectionVisibility`, anchored the primary Timeline section as `#episode-timeline-canvas`, and scroll the primary Timeline back into view when selected clip changes while the Timeline is off-screen.
+- Continued polish pass for `太丑，继续优化`: downgraded the output strip `查看缺失` affordance from a small amber button to an inline text action. The output row still expands the missing-clip list, but it no longer adds a second yellow button competing with the header `处理缺失片段` action.
+- Continued polish pass for `太丑，继续优化`: downgraded the Timeline header `处理缺失片段` action from an amber bordered button to an inline warning action. The action keeps its label, icon, aria/title metadata, and click behavior, but no longer competes visually with the selected clip's blue `生成/重做此片段视频` control.
+- Continued polish pass for `太丑，继续优化`: neutralized the selected clip type badge. The `视频` label now renders as a subtle left-rule metadata tag instead of a green success pill, leaving `缺视频` as the only status color in the selected-clip summary.
+- Continued polish pass for `太丑，继续优化`: reduced the storyboard/video parameter affordances to `micro-more` triggers. The parameter popovers remain available, but the default command row now uses 24x24 low-contrast icon buttons instead of more prominent 28px ellipsis controls.
+- Follow-up after user report `没有时间轴了`: real browser validation showed the Timeline was present but too easy to read as a generic table. Added an explicit visible `Timeline` identity badge to the primary Timeline toolbar and neutralized dialogue/subtitle/storyboard support clip fills to gray so the video lane reads as the main timeline path.
+- Continued polish pass for `太丑，继续优化`: removed the visible `更多` text button from the scene-environment row and replaced it with a 24px three-dot icon affordance. The selected-clip production panel inner spacing was also tightened from `space-y-1.5 py-2` to `space-y-1 py-1.5`, keeping the primary clip actions visible while reducing weak secondary controls.
+- Continued polish pass for `太丑，继续优化`: localized the primary Timeline toolbar identity from a black English `Timeline` tag to a lighter Chinese `时间轴` badge with an axis icon. This keeps the Timeline anchor explicit while avoiding a debug-looking black label inside the Chinese workspace UI.
+- Continued polish pass for `太丑，继续优化`: merged the separate Timeline identity badge into the existing `全片时间轴` heading. This removes the duplicated `时间轴 / 全片时间轴` toolbar text and the axis icon that visually read like `++`, while keeping `data-timeline-identity-badge="primary"` on the actual heading.
+- Follow-up after user report `没有时间轴了`: real browser showed the Timeline existed but the detailed lane default exposed only the first few video blocks of a 02:32 episode. The Timeline tab now defaults the primary canvas to whole-episode fit-to-width and adds a subtle blue video-axis line so all 16 video clips are visible as one continuous time axis while the selected-clip production buttons remain in the first viewport.
+- Continued polish pass for `太丑，继续优化`: fixed blank-looking short video clips in the fitted Timeline. Whole-episode video blocks now render readable compact labels (`5`, `9`, `13`) when full labels do not fit, and labels adjacent to the selected clip shift right instead of disappearing under the selected block.
+- Continued polish pass for `太丑，继续优化`: demoted auxiliary Timeline lanes from empty-looking clip cards into subtle positioning ticks in whole-episode fit mode. Dialogue, subtitle, and storyboard clips remain clickable with aria/title metadata, but default to 8px gray context bars and 28px support rows so the video production lane and generation buttons dominate the first viewport.
+- Continued polish pass for `太丑，继续优化`: tightened the selected-clip command buttons into a flatter 32px command bar. Storyboard and keyframe buttons keep their full labels but use smaller widths, and the primary video generation button drops the blue shadow while staying the only strong blue action.
+- Follow-up after latest user report `没有时间轴了`: made the primary Timeline surface harder to visually lose by marking it with `data-timeline-visibility-contract="first-screen-primary"`, strengthening the Timeline root border, and changing the overview label from generic `总览` to visible `全片总览`.
+- Continued polish pass for `太丑，继续优化`: grouped the three selected-clip generation buttons into one lightweight command toolbar. The toolbar uses a single subtle slate surface without shadow or card nesting, keeping `生成/重做此片段视频` as the only strong blue primary action.
+- Continued polish pass for `太丑，继续优化`: fixed the Timeline workspace header's narrow-viewport overflow. The header now uses a mobile-first single-column workbar and only restores the compact 4-column desktop layout from 760px up, so `生产主线`, `处理缺失片段`, and support-view controls no longer push the page sideways.
+- Continued polish pass for `太丑，继续优化`: compressed the mobile Timeline workspace header from four stacked rows into a two-row workbar. The first row keeps episode title plus primary/support actions, and the second row keeps script selection plus production status dots, bringing the mobile Timeline back up without reintroducing horizontal overflow.
+- Follow-up after user report `没有时间轴了`: real browser reproduction showed the Timeline DOM was present, but the default full-episode fit compressed a 02:32 episode into small blocks that visually read as a locator strip instead of a working time axis. The full-episode `全片总览` rail stays available, but the primary Timeline lanes now default back to a readable 1x horizontal working timeline with scrollable lanes, wide video clips, visible compact support labels, and a `重置视图` control.
+- Continued polish pass for `太丑，继续优化`: reduced visual competition in the selected-clip command tray by changing storyboard/video parameter affordances from visible `参数` label buttons into 24px three-dot controls. The full meanings remain available through `aria-label` / `title`, and the video parameter trigger was neutralized from blue to the same gray tone as storyboard parameters so `生成/重做此片段视频` remains the only strong blue action.
+- Continued polish pass for `太丑，继续优化`: cleaned selected-clip command labels so storyboard/keyframe actions no longer render duplicate DOM text from responsive label spans. The storyboard button now uses short visible `分镜图` with full `aria-label` / `title` `生成片段分镜图`, preserving meaning without wrapping on mobile.
+- Follow-up after latest user report `没有时间轴了`: browser reproduction showed the primary Timeline DOM was present, but the canvas had been flattened enough to read like a generic table. Restored Timeline visual prominence by strengthening the root surface, making the ruler a visible `时间尺` axis band, marking the video lane with `data-timeline-primary-lane="video-production"`, and restoring a strong selected-video clip state while keeping the Timeline before selected-clip production.
+- Continued polish pass for `太丑，继续优化`: removed the selected-clip command tray's inner white-card border/shadow and narrowed the desktop command group from a broad 690px span to a lighter toolbar. Storyboard/keyframe buttons now use 8.75rem desktop minima and the video action uses a 14.5rem-16.5rem range, keeping `生成/重做此片段视频` primary without making the row feel like a nested card.
+- Continued polish pass for `太丑，继续优化`: tightened the selected-clip identity/action alignment. The desktop top row now uses `minmax(14rem,20rem)_max-content` with a 6px grid gap, moving the command toolbar closer to the current clip identity instead of floating in the middle of the first viewport.
+- Follow-up after the latest user report `没有时间轴了`: real browser reproduction showed the Timeline DOM was still present, but the default 1x working lanes exposed only the first few blocks of a 02:32 episode, so users could read it as a local clip table rather than the full time axis. The primary Timeline now defaults to whole-episode fit-to-width again, keeps the visible `全片总览` rail, shows all 16 video clips in the desktop first viewport, and keeps manual zoom available inside the compact view menu.
+- Continued polish pass for `太丑，继续优化`: fixed label collisions in the fitted Timeline video lane. Medium-short non-selected video clips now render compact numeric badges with a subtle white inset instead of mixing `视频 N` labels directly beside bare numbers, removing visual runs like `视频 45`, `89`, and `1213` while keeping full clip names in `aria-label` and tooltips.
+- Continued polish pass for `太丑，继续优化`: rebalanced the selected-clip identity/action row. The desktop identity column was reduced from the older 20rem max to an 18rem max so the generation command toolbar sits close to the current clip title without truncating the title, instead of floating in the middle of the first viewport.
+- Continued polish pass for `太丑，继续优化`: changed the output/render strip from floating bare text into a subtle status footer. The row keeps the same collapsed missing-clip behavior, but now has a light slate background and clearer top boundary so it reads as part of the workspace surface rather than a debug line.
+- Continued polish pass for `太丑，继续优化`: replaced the output footer's plain `0/16 就绪` text with a compact progress meter plus count. The missing-clip state is now scannable as production status while keeping `查看缺失` as the only action in that footer.
+- Follow-up after latest user report `没有时间轴了`: browser reproduction showed the Timeline DOM and 16 video clips were present in the first viewport, but the surface could still read as a generic table. Strengthened the primary Timeline as an explicit production time axis with a blue root surface, visible `时间尺` axis band, stronger video lane, selected cursor, full-episode overview rail, and selected video clip styling.
+- Tightened clip-selection visibility behavior so the primary Timeline scrolls back into view not only when fully off-screen, but also when only a small visible sliver remains after clip selection changes.
+- Continued polish pass for `太丑，继续优化`: turned the selected-clip storyboard/video parameter `...` controls from orphan micro-buttons into attached split-button tails. Storyboard parameters now attach to the secondary storyboard button, and video binding/parameters attach to the blue video generation button so the command row reads as two coherent action groups instead of loose dots.
+- Continued polish pass for `太丑，继续优化`: simplified the selected clip identity summary from a gray `视频` badge plus scattered metadata into a production-kicker line. The summary now shows `当前视频` and `缺视频` above the clip title, while time range and review status stay on the metadata line; the old gray badge treatment is gone.
+- Continued polish pass for `太丑，继续优化`: muted unselected video clips in the primary Timeline. The selected video clip remains strong blue with ring emphasis, while other video clips now use `data-timeline-item-tone="primary-muted"`, lighter slate-blue fill, softer border, and inset shadow so the video lane no longer reads as 16 equally strong buttons.
+- Continued polish pass for `太丑，继续优化`: removed the selected-clip command tray's remaining gray surface. The storyboard/keyframe/video controls now sit in a transparent toolbar row (`data-clip-command-surface-style="single-toolbar"`), keeping the action groups without another nested card-like background.
+- Continued polish pass for `太丑，继续优化`: muted the blocked output/render strip. The `输出` label is now a secondary `text-xs` label, blocked readiness text uses slate instead of amber, and `查看缺失` is a neutral text action; the small amber dot still communicates missing clip blockage.
+- Follow-up after user report `没有时间轴了`: restored the Storyboard support tab's visual Timeline by extracting `WorkspaceStoryboardTimelinePanel`, rendering the shared multi-track Timeline directly under the support header, and moving the old timeline/audio summary below the canvas. The support tab still exposes only clip-scoped links and keeps whole-scene/whole-episode grid generation hidden.
+- Continued polish pass for `太丑，继续优化`: unified non-Timeline tabs onto the compact workspace workbar. The Storyboard support tab no longer renders the old `IP 剧集工作台` card, production status block, and visible support-tab buttons above its content; it now uses the same thin title/script/production/action row as the Timeline tab with support navigation behind the existing menu.
+- Continued polish pass for `太丑，继续优化`: hid the legacy `同步分镜占位` action whenever the Storyboard support tab already has a clip-scoped Timeline entry. The audio-timeline fallback remains available only when there is no native clip entry, keeping the visible support header focused on `进入第一个片段分镜`.
+- Continued polish pass for `太丑，继续优化`: compressed the Storyboard support Timeline summary. The large gray `当前时间轴` card and always-visible native audio player are now a compact metadata strip; audio playback is still available behind a collapsed `音轨` disclosure.
+- Follow-up after latest user report `没有时间轴了`: made Timeline absence impossible in empty/loading states. The Timeline tab now renders an explicit empty video-track Timeline frame instead of a plain empty state when no clips are available, and Storyboard support now builds a fallback Timeline overview from audio/legacy state or `Timeline 待生成` so the shared Timeline surface remains visible even before native Timeline tracks load. Empty Timeline states hide the selected-clip production panel instead of showing `请选择时间轴片段。`. The Storyboard Timeline overview builder was split into `WorkspaceStoryboardTimelineOverviewModel.ts` to keep touched files within repo size contracts.
+- Continued polish pass for `太丑，继续优化`: compressed the Storyboard support context cards into a single inline metadata strip. The repeated `时间轴来源` / `分镜状态` / `关键帧 / 视频` card row is gone, while source, storyboard status, and material counts remain visible below the Timeline summary. This moves `片段分镜管理` higher without changing Timeline data or clip-scoped links.
+- Continued polish pass for `太丑，继续优化`: downgraded the Storyboard support header's `进入第一个片段分镜` link from a blue primary button to a secondary outline link. The clip-scoped href is unchanged, but the support tab no longer presents a competing primary-blue action above the Timeline.
+- Continued polish pass for `太丑，继续优化`: removed the Storyboard support tab's outer card frame around the Timeline. The top support section now uses an unframed `data-storyboard-support-shell="unframed"` band, keeping the shared Timeline as the only framed primary surface and reducing the card-in-card look.
+- Continued polish pass for `太丑，继续优化`: downgraded repeated Storyboard clip-management row links (`进入片段分镜`) from primary blue to secondary outline, eliminating repeated blue support actions while preserving clip-scoped hrefs.
+- Follow-up after latest user report `没有时间轴了`: browser reproduction showed the primary Timeline DOM was still present, but the Timeline tab layout had drifted back to `Timeline -> selected clip production -> render`. Reordered the Timeline main canvas to `selected clip production -> full Timeline canvas -> render/export` and added `data-episode-timeline-main-layout="production-first-with-timeline"` so the main video actions are first while the full multi-track Timeline remains immediately visible.
+- Continued polish pass for `太丑，继续优化`: compacted the mobile selected-clip command rail from a two-row layout into a single three-action row. Storyboard/keyframe/video actions keep full aria labels and titles, while visible labels are shortened to `分镜图`, `首尾帧`, and `生成视频`; button text is now `whitespace-nowrap` to prevent vertical wrapping on 390px viewports.
+- Continued polish pass for `太丑，继续优化`: compacted the mobile workspace workbar. Mobile now shows the primary missing-clips action as `缺片段` while keeping `aria-label/title="处理缺失片段"`, hides the visible `生产主线` label behind sr-only on mobile while preserving status dots, and uses 28px mobile heights for script select / primary action / support trigger.
+- Follow-up after user report `没有时间轴了`: browser reproduction showed the Timeline was mounted and visible, but the selected-clip summary still pushed it too low on mobile. The selected-clip summary now renders as a one-line mobile kicker (`当前视频 / 缺视频 / time range`) while keeping the full clip title and metadata available in desktop/accessibility text, moving the full Timeline higher without removing clip-scoped production actions.
+- Continued polish pass for `太丑，继续优化`: compressed the primary Timeline toolbar on mobile. The toolbar is now a two-column grid with title/duration on the left and view/setup controls on the right; selected-clip context becomes screen-reader-only below 560px because the same selection is already visible in the production panel and Timeline lane.
+- Continued polish pass for `太丑，继续优化`: restored compact selected-clip identity on mobile without adding height. The production summary now shows `视频 1` from `displayLabel` in the same one-line kicker as `当前视频 / 缺视频 / time range`, while the full long clip title remains hidden on mobile and available via title/accessibility.
+- Follow-up after latest user report `没有时间轴了`: browser reproduction showed the Timeline DOM was present, but the canvas still read as a weak locator/table. Restored it as an explicit primary time-axis surface by strengthening the Timeline root border/ring, making `全片总览` a visible `main-time-axis` overview rail, increasing ruler/video/support lane heights, darkening the time-grid/video axis, strengthening muted video clip fills, and restoring the header primary action text from mobile `缺片段` to full `处理缺失片段`.
+- Continued polish pass for `太丑，继续优化`: compacted workspace-only operator chrome. `compactNavigation` pages now use a 48px shell header and tighter main top padding while non-compact pages keep the existing 56px shell rhythm, moving the Episode Workspace workbar, selected production panel, Timeline, and render footer up without changing Timeline or clip-production behavior.
+- Follow-up after latest user report `没有时间轴了`: browser reproduction showed the Timeline DOM and canvas were present in the first viewport, but the `production-first-with-timeline` order made the page read as selected-clip actions first and time-axis second. Reordered the Timeline main canvas to `Timeline -> selected clip production -> render/export`, with `data-episode-timeline-main-layout="timeline-first-with-production"`, so the full multi-track Timeline is the first workspace surface while the selected clip generation buttons remain visible in the first viewport.
+- Continued polish pass for `太丑，继续优化`: compressed the compact workspace shell into a utility strip. Mobile compact pages now use a 32px shell header, hide the duplicate breadcrumb visually while keeping it accessible, and render smaller username/logout controls; desktop compact pages keep a 40px shell header with the breadcrumb visible. Non-compact operator pages keep the existing 56px rhythm.
+- Continued polish pass for the same goal: refined the primary Timeline surface from a thick blue card into a calmer production time axis. The Timeline now uses a neutral surface with a 4px blue left axis marker, neutral toolbar/overview/ruler bands, lighter video-lane fill, and muted non-selected video clip blocks while keeping the selected clip ring and video lane prominence.
+- Continued polish pass for `太丑，继续优化`: tightened the selected-clip production actions into a segmented command toolbar. The storyboard, keyframe, and video controls now share a single subtle toolbar surface, all visible action buttons are 28px tall, parameter tails are 24px wide, and the video action remains the only strong blue action.
+- Follow-up after latest user report `没有时间轴了`: browser evidence showed the Timeline DOM and first-screen position were present, but the surface still read too much like a generic table. Strengthened the primary Timeline root, overview filmstrip, time-ruler band, and video production lane while keeping the Timeline first and selected-clip production immediately below it.
+- Continued polish pass for `太丑，继续优化`: collapsed the selected-clip production area into a single inline work strip. The environment selector now occupies the right side of the same top row on desktop, the generation actions no longer sit inside a gray bordered command card, and mobile keeps the three primary actions on one row.
+- Continued polish pass for the same goal: converted the selected-clip identity summary into an inline desktop row. The current video label, missing-video state, clip title, time range, and review state now share one line on desktop while mobile keeps its existing compact kicker, reducing the production strip height without hiding the selected clip title.
+- Follow-up after latest user report `没有时间轴了`: browser reproduction showed the Timeline DOM and first-screen position were present, but the surface still visually read like a weak blue table. Strengthened the Timeline as an explicit production time axis with a dark `时间尺`, dark video production rail, filmstrip-styled video clip blocks, and a stable fallback from Timeline spec while `/resolved-videos` is still loading so the render footer no longer flickers to `无视频轨`.
+- Continued polish pass for `太丑，继续优化`: decluttered the mobile fitted Timeline video lane. Narrow whole-episode video clips no longer force a numeric label into every compressed slice; readable-width clips still show compact numbers, selected clips still show the full `视频 N` label, and full labels remain available through `aria-label`/title.
+- Continued polish pass for `太丑，继续优化`: compressed the mobile full-episode overview rail by hiding repeated visible `全片总览` and range text behind sr-only metadata on compact Timeline widths. The overview rail now uses the available mobile width while desktop keeps the visible label and `02:32 · 16 段` summary.
+- Follow-up after latest user report `没有时间轴了`: live browser evidence showed the Timeline DOM was present, but the compact mobile canvas could still read like a compressed locator strip. Increased compact Timeline dimensions to a full readable canvas (40px ruler, 112px video lane, 32px support lanes, 80px track labels), restored visible `视频轨` labeling on compact widths, and added regression coverage for compact Timeline readability.
+- Continued polish pass for `太丑，继续优化`: cleaned the render/export footer from a debug-like `输出 / 缺 N 个片段 / 0/N 就绪 / 查看缺失` line into a production status strip: `导出状态 / 待补 N 段 / 0/N 已备 / 查看`. The missing-clips disclosure behavior is unchanged.
+- Follow-up after latest user report `没有时间轴了`: browser reproduction confirmed the Timeline DOM and lanes were present in the first viewport, but the toolbar only exposed a small duration value. The Timeline toolbar now shows a visible segment/time summary such as `16 段 · 02:32` next to `全片时间轴`, making the primary time axis harder to miss while keeping the Timeline first and selected-clip production below it.
+- Continued polish pass for `太丑，继续优化`: tightened the desktop selected-clip production row. The current-clip identity column now caps at 18rem, the generation command rail sits 6px after it, and the environment support column follows as the third track, so the production strip reads as one continuous workflow instead of a left label plus a floating center toolbar.
+- Follow-up after latest user report `没有时间轴了`: built-in browser confirmed the Timeline DOM existed, but the surface still read too weakly. Strengthened the visible Timeline identity to `时间轴导航 · 全片时间轴`, added a stronger blue left axis marker/root ring, changed the ruler into a clear blue time-axis band, and tied the video production lane to the same blue axis while keeping Timeline first and selected-clip actions directly below it.
+- Continued polish pass for `太丑，继续优化`: softened the Timeline toolbar title from the patch-like visible `时间轴导航 · 全片时间轴` to the natural visible `全片时间轴`, while preserving the hidden `时间轴导航` DOM anchor so the time-axis remains discoverable without duplicating wording in the UI.
+- Continued polish pass for `太丑，继续优化`: unified the selected-clip production commands into a connected action bar. The storyboard, keyframe, and video actions now share one rounded/bordered surface with internal dividers, while the individual buttons drop their standalone borders and rounded corners so the row reads as one production toolbar rather than three temporary controls.
+- Continued polish pass for `太丑，继续优化`: cleaned up the selected-clip identity line. The visible desktop order is now `视频 1 -> 缺视频 -> time/status`, and the old `当前视频` label is retained only as an sr-only DOM anchor, removing the duplicated visible `当前视频 / 视频 1` wording from the production strip.
+- Follow-up after latest user report `没有时间轴了`: real browser reproduction showed the Timeline DOM, video track, and 16 video clips were present, but the time-axis identity was still weak. Strengthened the primary Timeline surface again with a blue editor title, heavier root border/left axis, taller ruler, taller video lane, stronger time-axis line, and thicker video clip rails while keeping the Timeline first and selected-clip production directly below it.
+- Continued polish pass for `太丑，继续优化`: replaced the render/export footer's bare text line with a full-width export status bar. The collapsed state now reads `导出状态 / 待补 N 段 / 0/N 已备 / 查看缺失`, has a compact progress meter, and keeps the existing details disclosure for missing clip ids.
+- Latest follow-up after user report `没有时间轴了`: built-in browser fallback showed the Timeline was present at the top of both desktop and mobile first viewports. Kept the `Timeline -> selected clip production -> render/export` order, and removed the selected-clip production top row's extra white-card shell (`inline-workstrip`) so the visible Timeline remains the only dominant framed surface.
+- Continued polish pass for `太丑，继续优化`: softened the primary Timeline chrome without hiding the Timeline. The toolbar identity badge, ruler origin, and video track label now use white/light slate surfaces with blue/teal axis insets instead of saturated blue/black blocks; the selected clip, video lane, and generation video action remain the strong visual anchors.
+- Continued polish pass for `太丑，继续优化`: flattened the selected-clip identity row from a small card/pill into a transparent metadata line. The row keeps the selected video, missing-video status, time range, and review state, but drops its background, border box, rounded corners, and shadow so the production strip reads as one workflow row under the Timeline.
+- Follow-up after latest user report `没有时间轴了`: built-in browser and Playwright evidence showed the Timeline existed, but mobile only exposed a scrollable readable window while the full-episode overview was still too thin and gray to read as the all-episode time axis. Promoted the overview into a visible `全片轴` with blue axis framing and 16 teal segment blocks, leaving the lower lane as the detailed current-window editor.
+- Continued polish pass for `太丑，继续优化`: compressed non-video Timeline support lanes into `reference-strip` rows. The video track keeps its dominant height and filmstrip clips, while `对白 / 字幕 / 分镜` become lightweight reference bands so the page reads less like an empty spreadsheet and moves selected-clip production higher in the first viewport.
+- Continued polish pass for `太丑，继续优化`: changed the render/export footer from a separate gray `status-footer` band into a white `inline-workflow-footer`, so the selected clip production row and render readiness read as one continuous workflow surface instead of two stacked panels.
+- Follow-up after latest user report `没有时间轴了`: browser reproduction showed the Timeline DOM and first-screen position were present, but video clips still read like oversized cards or a generic selector rather than a time axis. Converted primary video clips into centered `timeline-bar` items (selected 44px, muted 38px) inside the video lane, preserving the full-episode overview, ruler, selected state, and clip-scoped generation actions.
+- Continued polish pass for `太丑，继续优化`: tightened the primary video Timeline lane after converting clips to bars. The video lane now uses 104px compact / 116px regular height instead of the previous oversized 124px / 140px track, keeping the timeline bars readable while reducing empty white table space and moving the selected-clip workflow higher.
+- Continued polish pass for `太丑，继续优化`: softened the primary Timeline frame. The Timeline root now uses a 1px light-blue border, 4px left axis marker, and smaller shadow instead of the earlier 2px border, 6px saturated left bar, and large blue drop shadow; the full Timeline surface, overview rail, ruler, video lane, and selected clip remain visually present.
+- Continued polish pass for `太丑，继续优化`: removed the extra blue left-axis line from the selected-clip identity row. The Timeline remains the only dominant left-axis surface, while the production strip now reads as a plain inline workflow row with the same selected clip metadata and generation actions.
+- Continued polish pass for `太丑，继续优化`: compressed the auxiliary Timeline support lanes again. Dialogue/subtitle/storyboard lanes now use 22px compact / 24px regular height, while their 8px reference ticks remain clickable and accessible. This reduces the empty-table feel under the video track and moves the selected-clip workflow higher without weakening the primary video lane.
+- Continued polish pass for `太丑，继续优化`: replaced the cramped three-short-label selected-clip action strip with a readable priority action tray. Mobile now puts `生成/重做此片段视频` on a full-width first row, with `生成片段分镜图` and `生成首尾帧` on the second row; desktop keeps the actions inline with full labels and a calmer separated tray.
+- Continued polish pass for `太丑，继续优化`: humanized the render/export footer copy. The collapsed footer now reads as a finished-video readiness line (`成片 / 待补 N 段 / N/N / 缺失片段`) instead of the previous engineering-flavored `导出状态 / 查看缺失` wording, while keeping the same collapsed missing-clip details behavior.
+- Continued polish pass for `太丑，继续优化`: simplified the selected-clip environment context ribbon. The visible summary now reads as `环境 · 开场钩子` plus the environment picker, while the full `场景 N · slug` label remains in the title and sr-only text for accessibility and tests.
+- Continued polish pass for `太丑，继续优化`: reduced duplicate Timeline wording by changing the full-episode overview rail's visible label from the jargon-like `全片轴` to `总览`. The label title and sr-only text still preserve `全片时间轴` and `全片概览` semantics, so the Timeline remains discoverable.
+- Follow-up after latest user report `没有时间轴了`: Playwright fallback evidence showed the Timeline DOM, video track, and primary actions were still present, but the softened surface could read as a locator/table instead of an explicit time axis. Restored visible Timeline affordance by strengthening the root frame to a 4px blue left axis, making the ruler axis line stronger, showing `主时间轴` under the video track label, and restoring muted video clips from gray-white to readable teal bars while keeping the selected clip and video-generation action as the primary anchors.
+- Continued polish pass for `太丑，继续优化`: flattened the selected-clip production strip under the Timeline. The strip now uses a single inline workflow band (`inline-workflow-band`) instead of a slate container with an inner white card; the current clip identity row is transparent, while the generation command tray keeps the actual button boundaries. This keeps the Timeline as the only dominant framed surface and reduces the card-in-card look before the render footer.
+- Continued polish pass for `太丑，继续优化`: simplified the environment row into a visible `环境 · scene · choice` text line and converted the render/export missing-clips footer into a continuous `成片` status line with a neutral `查看` text action. This reduces mobile fragmentation while keeping the Timeline first, selected clip actions visible, and the render readiness state scannable.
+- Continued polish pass for `太丑，继续优化`: reduced the Timeline table feel without hiding the time axis. Timeline grid lines now fade from the ruler into the lanes instead of drawing hard full-height spreadsheet dividers, and the lane viewport scrollbar is a 6px subtle rail with transparent track and light slate thumb. The ruler, selected clip, video lane, production actions, and render status remain visible in the first viewport.
+- Continued polish pass for `太丑，继续优化`: lowered the saturation of unselected video clips and overview blocks. Muted video clips now use a calmer teal-50 fill, teal-300 border, softer filmstrip rails, and lighter overview blocks, while the selected video clip remains blue and the primary `生成/重做此片段视频` action remains the strongest visual anchor.
+- Continued polish pass for `太丑，继续优化`: muted auxiliary Timeline track labels. Dialogue/subtitle/storyboard labels now use transparent backgrounds, transparent borders, 10px slate text, and shorter reference ticks, while the video track label remains the only primary lane header.
+- Continued polish pass for `太丑，继续优化`: removed the floating mini-card treatment from Timeline toolbar controls. Timeline generation settings and view controls now render as ghost icon buttons on the toolbar instead of a bordered white control box, while both controls still open their existing settings/view panels.
+
+- Continued polish pass for `太丑，继续优化`: removed the selected-clip command toolbar's remaining gray outer tray. The storyboard/keyframe/video actions now sit directly in a transparent flat action cluster under the Timeline, reducing one more nested container while keeping the Timeline first and all three clip-scoped actions visible in the first viewport.
+- Continued polish pass for `太丑，继续优化`: reduced the Timeline time-ruler lane from the previous 52/48px heights to a consistent 44px. The video production lane still keeps its readable height and starts directly under the ruler axis, reducing table-like whitespace without weakening the first-screen Timeline.
+- Continued polish pass for `太丑，继续优化`: shortened the selected-clip environment summary from the older `选择环境` wording to a quieter `未设置 / 更换` action pair. The expanded selector and save behavior are unchanged, but the collapsed production strip reads less like a form tail.
+- Continued polish pass for `太丑，继续优化`: clustered the collapsed render/export footer status next to the `成片` label instead of pushing `0/N 已备` and `查看` to the far right. This removes a long empty status-line gap while keeping the same missing-clips disclosure behavior.
+
+## Validation
+
+- Timeline support-lane thinning evidence:
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback.
+  - Pre-change audit evidence saved under `artifacts/runs/2026-06-14T-next-ux-audit-pw-071/`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-support-lane-thin-pw-072/`.
+  - Verified mobile `390x844`: support rows reduced from `27px` to `23px`, Timeline height reduced from `343px` to `331px`, selected production strip moved from `top=456` to `top=444`, video track remains `106px`, support reference items remain `8px`, 16 detailed video clips, 16 overview video clips, no whole-scene grid generation entry, no console errors, and only Next/RSC navigation aborts as failed requests.
+  - Verified desktop `1440x900`: support rows reduced from `31px` to `25px`, Timeline height reduced from `383px` to `365px`, selected production strip moved from `top=486` to `top=468`, video track remains `118px`, support reference items remain `8px`, 16 detailed video clips, 16 overview video clips, no whole-scene grid generation entry, no console errors, and only Next/RSC navigation aborts as failed requests.
+- Latest validation after Timeline support-lane thinning:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "compact Timeline dimensions|emphasizes the video track|distant support track|primary Timeline first" tests/timelineWorkspaceLayout.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 4 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 22 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg '^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/')` passed.
+  - `git diff --check` passed.
+- Selected-clip identity row flattening evidence:
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback.
+  - Pre-change audit evidence saved under `artifacts/runs/2026-06-14T-next-ux-audit-pw-069/`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-production-identity-plain-pw-070/`.
+  - Verified mobile `390x844`: selected-clip identity row keeps `top=463 height=20` and now has `borderLeftWidth=0px`, class `text-slate-700`, storyboard/keyframe/video buttons remain visible, Timeline remains first-screen at `top=109 height=343`, 16 detailed video clips, 16 overview video clips, no whole-scene grid generation entry, no console errors, and only Next/RSC navigation aborts as failed requests.
+  - Verified desktop `1440x900`: selected-clip identity row keeps `top=496 height=24` and now has `borderLeftWidth=0px`, class `text-slate-700`, storyboard/keyframe/video buttons remain visible, Timeline remains first-screen at `top=99 height=383`, 16 detailed video clips, 16 overview video clips, no whole-scene grid generation entry, no console errors, and only Next/RSC navigation aborts as failed requests.
+- Latest validation after selected-clip identity row flattening:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "selected clip summary|primary Timeline first|video clip generation|production" tests/timelineWorkspaceLayout.test.tsx` passed: 6 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 22 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg '^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/')` passed.
+  - `git diff --check` passed.
+- Timeline frame softening evidence:
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback.
+  - Pre-change audit evidence saved under `artifacts/runs/2026-06-14T-next-ux-audit-pw-067/`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-frame-soften-pw-068/`.
+  - Verified mobile `390x844`: Timeline remains first-screen at `top=109 height=343`, root border changed to `1px`, left axis marker `4px`, shadow `0px 8px 18px rgba(37,99,235,0.1)`, video track `height=106`, selected video bar `44px`, 16 detailed video clips, 16 overview video clips, no whole-scene grid generation entry, no console errors, and only Next/RSC navigation aborts as failed requests.
+  - Verified desktop `1440x900`: Timeline remains first-screen at `top=99 height=383`, root border changed to `1px`, left axis marker `4px`, shadow `0px 8px 18px rgba(37,99,235,0.1)`, video track `height=118`, selected video bar `44px`, 16 detailed video clips, 16 overview video clips, no whole-scene grid generation entry, no console errors, and only Next/RSC navigation aborts as failed requests.
+- Latest validation after Timeline frame softening:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "primary Timeline first|compact Timeline dimensions|emphasizes the video track|full-episode overview" tests/timelineWorkspaceLayout.test.tsx` passed: 4 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 22 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg '^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/')` passed.
+  - `git diff --check` passed.
+- Timeline video-lane tightening evidence:
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback.
+  - Pre-change audit evidence saved under `artifacts/runs/2026-06-14T-next-ux-audit-pw-065/`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-video-lane-tighten-pw-066/`.
+  - Verified mobile `390x844`: Timeline height reduced from `365px` to `345px`, video track from `126px` to `106px`, selected video bar remains `44px`, muted video bars remain `38px`, production strip moved from `top=478` to `top=458`, 16 detailed video clips, 16 overview video clips, no whole-scene grid generation entry, no console errors, and only Next/RSC navigation aborts as failed requests.
+  - Verified desktop `1440x900`: Timeline height reduced from `409px` to `385px`, video track from `142px` to `118px`, selected video bar remains `44px`, muted video bars remain `38px`, production strip moved from `top=512` to `top=488`, 16 detailed video clips, 16 overview video clips, no whole-scene grid generation entry, no console errors, and only Next/RSC navigation aborts as failed requests.
+- Latest validation after Timeline video-lane tightening:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "compact Timeline dimensions|emphasizes the video track|readable fitted Timeline|suppresses cramped mobile fitted video labels" tests/timelineWorkspaceLayout.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 3 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 22 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg '^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/')` passed.
+  - `git diff --check` passed.
+- Timeline bar restoration evidence:
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback.
+  - Pre-change audit evidence saved under `artifacts/runs/2026-06-14T-timeline-missing-current-pw-063/`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-bar-restored-pw-064/`.
+  - Verified mobile `390x844`: Timeline `top=109 height=365`, video track `height=126`, selected video clip `data-timeline-item-visual=timeline-bar height=44`, muted video clips `height=38`, production strip remains directly below at `top=478`, no whole-scene grid generation entry, no console errors, and only Next/RSC navigation aborts as failed requests.
+  - Verified desktop `1440x900`: Timeline `top=99 height=409`, video track `height=142`, selected video clip `data-timeline-item-visual=timeline-bar height=44`, muted video clips `height=38`, production strip remains directly below at `top=512`, no whole-scene grid generation entry, no console errors, and only Next/RSC navigation aborts as failed requests.
+- Latest validation after Timeline bar restoration:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "readable fitted Timeline|emphasizes the video track|compact Timeline dimensions|keeps compact Timeline overview|suppresses cramped mobile fitted video labels" tests/timelineWorkspaceLayout.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 4 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 22 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `git diff --check` passed.
+- Render/export footer white-surface evidence:
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback.
+  - Pre-change audit evidence saved under `artifacts/runs/2026-06-14T-production-strip-audit-pw-059/`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-render-footer-white-pw-060/`.
+  - Verified mobile `390x844`: render strip `top=606 height=37`, `data-episode-render-strip-surface=inline-workflow-footer`, background `rgb(255, 255, 255)`, production strip remains white, 16 overview video items, 16 detailed video items, no whole-scene grid generation entry, no console errors, and only Next RSC navigation aborts as failed requests.
+  - Verified desktop `1440x900`: render strip `top=588 height=37`, `data-episode-render-strip-surface=inline-workflow-footer`, background `rgb(255, 255, 255)`, production strip remains white, 16 overview video items, 16 detailed video items, no whole-scene grid generation entry, no console errors, and only Next RSC navigation aborts as failed requests.
+- Latest validation after render/export footer white-surface polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "missing render actions|primary Timeline first|compact Timeline dimensions|emphasizes the video track" tests/timelineWorkspaceLayout.test.tsx` passed: 4 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 22 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Timeline support-lane compression evidence:
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-support-strip-pw-058/`.
+  - Verified mobile `390x844`: Timeline height reduced to `389px`, video track remains `150px`, three support rows are `reference-strip` lanes with `minHeight=26px`, production strip moved up to `top=502`, render strip moved up to `top=617`, 16 overview video items, 16 detailed video items, no whole-scene grid generation entry, no console errors, and only Next RSC navigation aborts as failed requests.
+  - Verified desktop `1440x900`: Timeline height reduced to `437px`, video track remains `170px`, three support rows are `reference-strip` lanes with `minHeight=30px`, production strip moved up to `top=540`, render strip moved up to `top=599`, 16 overview video items, 16 detailed video items, no whole-scene grid generation entry, no console errors, and only Next RSC navigation aborts as failed requests.
+- Latest validation after support-lane compression:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "keeps the primary Timeline first while preserving selected clip production|emphasizes the video track|compact Timeline dimensions|distant support track" tests/timelineWorkspaceLayout.test.tsx` passed: 4 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 22 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - A full `tests/timelineWorkspaceLayout.test.tsx` run was also attempted after the fix; it passed through the relevant Timeline/production/support-lane subtests and then stalled in the later unrelated asset-audit area, so it was terminated rather than reported as a passing full-file run.
+- Full-episode axis evidence:
+  - Built-in browser was used first. After login, it preserved the deep link and showed the Timeline DOM at the top with 16 video clips; the issue was visual discoverability, not missing data.
+  - Chrome DevTools MCP was retried and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; Playwright with system Google Chrome was used for screenshots and DOM evidence.
+  - Pre-change evidence saved under `artifacts/runs/2026-06-14T-timeline-missing-audit-pw-056/`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-overview-axis-pw-057/`.
+  - Verified mobile `390x844`: Timeline `top=109 height=435`, visible overview `top=158 height=41`, overview rail `height=28`, visible `全片轴`, 16 overview video items, 16 detailed video items, no whole-scene grid generation entry, no console errors, and only Next RSC navigation aborts as failed requests.
+  - Verified desktop `1440x900`: Timeline `top=99 height=483`, visible overview `top=152 height=45`, overview rail `height=32`, visible `全片轴`, 16 overview video items, 16 detailed video items, no whole-scene grid generation entry, no console errors, and only Next RSC navigation aborts as failed requests.
+- Latest validation after full-episode axis fix:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "overview|primary Timeline first|missing render actions|production" tests/timelineWorkspaceLayout.test.tsx` passed: 8 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 60 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `git diff --check` passed.
+- Selected-clip identity-line evidence:
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version returned HTTP Not Found`; used Playwright with system Google Chrome fallback.
+  - Pre-change audit evidence saved under `artifacts/runs/2026-06-14T-next-polish-audit-pw-051/`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-production-identity-line-pw-052/`.
+  - Verified desktop `1440x900`: Timeline `top=99 height=471`, production strip `top=574 height=44`, selected identity line `height=24`, `data-clip-current-bar-layout=metadata-line`, transparent background, no box shadow, storyboard/keyframe/video actions still present, 16 detailed video items, 16 overview video items, no whole-scene grid generation entry, no console errors, and only Next RSC navigation aborts as failed requests.
+  - Verified mobile `390x844`: Timeline `top=109 height=415`, production strip reduced from `106px` to `100px`, selected identity line `height=20`, `data-clip-current-bar-layout=metadata-line`, transparent background, no box shadow, storyboard/keyframe/video actions still present, no whole-scene grid generation entry, no console errors, and only Next RSC navigation aborts as failed requests.
+- Latest validation after selected-clip identity-line polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "primary Timeline first|selected clip summary|production|video clip generation|Timeline generation controls" tests/timelineWorkspaceLayout.test.tsx` passed: 7 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts` passed: 18 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Timeline axis/toolbar softening evidence:
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version returned HTTP Not Found`; used Playwright with system Google Chrome fallback.
+  - Pre-change current-state evidence saved under `artifacts/runs/2026-06-14T-continue-ux-audit-pw-048/`.
+  - Intermediate axis-label evidence saved under `artifacts/runs/2026-06-14T-timeline-axis-soften-pw-049/`.
+  - Final evidence saved under `artifacts/runs/2026-06-14T-timeline-toolbar-soften-pw-050/`.
+  - Verified desktop `1440x900`: Timeline `top=99 height=471`, toolbar background `bg-slate-50/80`, identity badge `bg-white` / `text-blue-800`, ruler origin `bg-white`, video track label `bg-white`, 16 detailed video items, 16 overview video items, 4 track rows, no whole-scene grid generation entry, no console errors, and only Next RSC navigation aborts as failed requests.
+  - Verified mobile `390x844`: Timeline `top=109 height=415`, toolbar background `bg-slate-50/80`, identity badge `bg-white` / `text-blue-800`, ruler origin `bg-white`, video track label `bg-white`, 16 detailed video items, 16 overview video items, 4 track rows, no whole-scene grid generation entry, no console errors, and only Next RSC navigation aborts as failed requests.
+- Latest validation after Timeline axis/toolbar softening:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "Timeline generation controls|primary Timeline first|emphasizes the video track|compact Timeline dimensions|full-episode overview" tests/timelineWorkspaceLayout.test.tsx` passed: 5 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts` passed: 18 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Timeline presence recheck evidence saved under `artifacts/runs/2026-06-14T-timeline-missing-repro-pw-047/`:
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version returned HTTP Not Found`; used Playwright with system Google Chrome fallback.
+  - `mobile-before-fix.png` and `desktop-before-fix.png` show the full multi-track Timeline in the first viewport before the selected clip production strip.
+  - Verified mobile `390x844`: final URL synced to `clipId=video_scene_580_beat_3923_001`, Timeline `top=109 height=416`, video track `height=150`, production strip `top=529 height=106`, `timelineItems=16`, no whole-scene grid generation entry, no console errors, and only Next RSC navigation aborts as failed requests.
+  - Verified desktop `1440x900`: Timeline `top=99 height=472`, video track `height=170`, production strip `top=575 height=44`, `timelineItems=16`, no whole-scene grid generation entry, no console errors, and only Next RSC navigation aborts as failed requests.
+- Latest validation after Timeline presence recheck / production strip shell removal:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "primary Timeline first|compact Timeline dimensions|brings the primary Timeline back|full-episode overview|selected clip summary|video clip generation|production" tests/timelineWorkspaceLayout.test.tsx` passed: 10 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "missing render actions|falls back to the Timeline spec|primary Timeline first" tests/timelineWorkspaceLayout.test.tsx` passed: 3 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts` passed: 18 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx` passed: 4 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts` passed: 14 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/authReturnPath.test.ts tests/operatorShellLayout.test.ts tests/operatorShellNavIcon.test.tsx` passed: 5 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Render/export footer polish evidence saved under `artifacts/runs/2026-06-14T-render-footer-polish-pw-045/`:
+  - `desktop-render-footer.png`
+  - `mobile-render-footer.png`
+  - `desktop-render-footer-dom.json`
+  - `mobile-render-footer-dom.json`
+  - Chrome DevTools was retried first and still failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with system Chrome fallback.
+  - Verified desktop and mobile keep one primary Timeline canvas, one video track row, 16 video items, and zero storyboard grid actions.
+  - Verified the mobile render footer now renders as a 338px-wide status bar with `导出状态`, `待补 16 段`, `0/16 已备`, and `查看缺失`; console had no errors/pageerrors and network had no 4xx/5xx responses.
+- `cd ai-pic-frontend && npx tsx --test --test-name-pattern "missing render actions|falls back to the Timeline spec|primary Timeline first" tests/timelineWorkspaceLayout.test.tsx` passed: 3 targeted tests, 35 skipped.
+- `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts` passed: 18 tests.
+- `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx` passed: 4 tests.
+- `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts` passed: 14 tests.
+- `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+- `cd ai-pic-frontend && npm run build` passed.
+- `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` was attempted, but the full file hung after subtest 24 without a failure report; the lingering process was killed. A later broad post-24 pattern run also hung before reaching matching assertions and was killed. The affected render/footer tests above passed and the other related focused files passed.
+- `python scripts/check_repo_docs.py` passed.
+- `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard)` passed.
+- `git diff --check` passed.
+- Latest Timeline visibility evidence saved under `artifacts/runs/2026-06-14T-timeline-visible-pw-043/`:
+  - `timeline-visible.png`
+  - `timeline-visible-full.png`
+  - `browser-dom.json`
+  - `console.json`
+  - `network.json`
+  - Chrome DevTools was retried first and still failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with system Chrome fallback.
+  - Verified the deep link redirects through `/login?next=...`, returns to the Timeline workspace, and stale `clipId=video_scene_580_beat_3911_001` syncs to `clipId=video_scene_580_beat_3923_001`.
+  - Verified DOM counts: one primary Timeline canvas, one video track row, 16 video items, zero whole-scene/whole-episode storyboard grid actions.
+  - Verified the Timeline canvas is first in the viewport with height 472px, ruler height 52px, video track min-height 168px, and the selected clip production panel remains visible below it.
+  - Verified console has no error/pageerror entries and network has no 4xx/5xx responses.
+- `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 38 tests.
+- `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts` passed: 18 tests.
+- `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx` passed: 4 tests.
+- `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts` passed: 14 tests.
+- `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+- `cd ai-pic-frontend && npm run build` passed.
+- `python scripts/check_repo_docs.py` passed.
+- `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard)` passed.
+- `git diff --check` passed.
+- `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts` passed: 50 tests.
+- `cd ai-pic-frontend && npm run lint` passed with existing warnings only:
+  - `eslint.config.mjs` anonymous default export warning.
+  - two existing `@next/next/no-img-element` warnings in environment and virtual-IP reference image fields.
+- `cd ai-pic-frontend && npm run build` passed.
+- `python scripts/check_repo_contracts.py --mode diff <changed frontend files>` passed.
+- `python scripts/check_repo_docs.py` passed.
+- `git diff --check` passed.
+- Built-in browser validation used `http://localhost:8089/episodes/12c6eb572eda47138a5fc821c225a1af/workspace?tab=timeline&scriptId=143&clipId=video_scene_580_beat_3911_001`.
+  - Unauthenticated deep link redirected to `/login?next=...`.
+  - Login returned to the workspace and stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - First viewport showed `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频`.
+  - `未匹配规范化场景`, `生成宫格分镜图`, and `宫格图生成成片` were absent.
+  - Console error log was empty.
+  - Evidence saved under `artifacts/runs/2026-06-12T02-47-39-970Z/`.
+  - Chrome DevTools was attempted first and failed twice because `127.0.0.1:9222/json/version` returned HTTP Not Found; validation continued with the Browser plugin `iab` tab Playwright surface.
+  - Follow-up evidence saved:
+    - `episode-workspace-timeline-restored-first-screen.png`
+    - `episode-workspace-timeline-restored-validation.json`
+    - Verified `片段定位时间轴` is in the first viewport and full `时间轴主画布` remains available below.
+  - Final polished UI evidence saved:
+    - `episode-workspace-polished4-first-screen.png`
+    - `episode-workspace-polished4-validation.json`
+    - Verified stale `clipId` synced to `video_scene_580_beat_3923_001`, `片段定位时间轴` at y=456, and the three primary clip actions at y=565 in the 1280x720 first viewport.
+    - Verified `生成宫格分镜图`, `宫格图生成成片`, and `未匹配规范化场景` were absent; console warn/error count was 0.
+  - Continued polish evidence saved:
+    - `episode-workspace-polished5-first-screen.png`
+    - `episode-workspace-polished5-validation.json`
+    - Browser data showed the four-column header was worse: the three primary clip actions moved down to y=593.
+    - `episode-workspace-polished6-first-screen.png`
+    - `episode-workspace-polished6-validation.json`
+    - Final candidate showed `片段定位时间轴` at y=405 and the three primary clip actions at y=499, while preserving `clipId=video_scene_580_beat_3923_001`, no grid storyboard entry, no unmatched-scene warning, and console warn/error count 0.
+  - Additional vertical-chrome removal evidence saved:
+    - `episode-workspace-polished7-first-screen.png`
+    - `episode-workspace-polished7-validation.json`
+    - Verified the separate `剧集上下文` strip was absent, selected clip production started at y=250, `片段定位时间轴` moved to y=347, and the three primary clip actions moved to y=441 in the 1280x720 first viewport.
+    - Verified stale `clipId` still synced to `video_scene_580_beat_3923_001`, full `时间轴主画布` remained below, `生成宫格分镜图` / `宫格图生成成片` / `未匹配规范化场景` stayed absent, and console warn/error count was 0.
+  - Primary-action-first polish evidence saved:
+    - Browser plugin DOM validation ran, but `tab.screenshot` repeatedly timed out on `Page.captureScreenshot`; screenshot capture fell back to Playwright with system Chrome after DevTools was also unavailable.
+    - The first fallback attempt navigated too quickly after login and aborted an in-flight character fetch; it was discarded and rerun with login isolated on a separate page before final deep-link validation.
+    - `episode-workspace-polished8-playwright-first-screen.png`
+    - `episode-workspace-polished8-playwright-validation.json`
+    - Verified stale `clipId` synced to `video_scene_580_beat_3923_001`, the three primary clip actions moved to y=378, `片段定位时间轴` stayed visible at y=480, and full `时间轴主画布` remained below.
+    - Verified `生成宫格分镜图`, `宫格图生成成片`, and `未匹配规范化场景` were absent; final-page console warn/error count was 0.
+  - Timeline restored evidence saved under `artifacts/runs/2026-06-12T04-11-23-558Z-timeline-restored/`:
+    - `episode-workspace-timeline-restored-first-screen.png`
+    - `episode-workspace-timeline-restored-validation.json`
+    - Chrome DevTools was retried first and still failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with system Chrome fallback.
+    - Verified the first viewport includes a multi-track `片段定位时间轴` at y=489 with clickable clip buttons for dialogue, video, subtitle, and storyboard rows.
+    - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`, no grid storyboard entry, no unmatched-scene warning, scene environment save visible, console warn/error count 0, and failed request count 0.
+  - Command dock polish evidence saved under `artifacts/runs/2026-06-12T04-16-48-212Z-timeline-command-dock/`:
+    - `episode-workspace-command-dock-first-screen.png`
+    - `episode-workspace-command-dock-validation.json`
+    - Verified the three primary clip actions moved to y=369 and `片段定位时间轴` moved to y=475 while preserving the valid video clip selection, no grid storyboard entry, no unmatched-scene warning, console warn/error count 0, and failed request count 0.
+  - Flatter production panel evidence saved under `artifacts/runs/2026-06-12T04-18-28-453Z-timeline-flatter-panel/`:
+    - `episode-workspace-flatter-panel-first-screen.png`
+    - `episode-workspace-flatter-panel-validation.json`
+    - Verified the production command dock starts at y=307, the three primary clip actions moved to y=343, and `片段定位时间轴` moved to y=449 in the 1280x720 first viewport.
+    - Verified stale `clipId=video_scene_580_beat_3911_001` still synced to `video_scene_580_beat_3923_001`, no grid storyboard entry, no unmatched-scene warning, scene environment save visible, console warn/error count 0, and failed request count 0.
+  - Compact header evidence saved under `artifacts/runs/2026-06-12T04-23-01-874Z-timeline-compact-header/`:
+    - `episode-workspace-compact-header-first-screen.png`
+    - `episode-workspace-compact-header-validation.json`
+    - Chrome DevTools was retried and still failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with system Chrome fallback.
+    - Verified `选中片段生产` moved from y=252 to y=218, the three primary clip actions moved from y=343 to y=309, and `片段定位时间轴` moved from y=449 to y=415 in the 1280x720 first viewport.
+    - Verified stale `clipId=video_scene_580_beat_3911_001` still synced to `video_scene_580_beat_3923_001`, no grid storyboard entry, no unmatched-scene warning, scene environment save visible, console warn/error count 0, and failed request count 0.
+  - Timeline locator de-noise evidence saved under `artifacts/runs/2026-06-12T04-27-01-373Z-timeline-locator-muted/`:
+    - `episode-workspace-locator-muted-first-screen.png`
+    - `episode-workspace-locator-muted-validation.json`
+    - Chrome DevTools was retried and still failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with system Chrome fallback.
+    - Verified primary clip actions stayed at y=309 and `片段定位时间轴` stayed at y=415 while non-video locator rows rendered as muted gray 12px-high segments and video row remained the 20px-high colored production track.
+    - Verified stale `clipId=video_scene_580_beat_3911_001` still synced to `video_scene_580_beat_3923_001`, no grid storyboard entry, no unmatched-scene warning, scene environment save visible, console warn/error count 0, and failed request count 0.
+  - Clip status strip evidence saved under `artifacts/runs/2026-06-12T04-31-12-439Z-clip-status-strip/`:
+    - `episode-workspace-clip-status-strip-first-screen.png`
+    - `episode-workspace-clip-status-strip-validation.json`
+    - Chrome DevTools was retried and still failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with system Chrome fallback.
+    - Verified the large empty `暂无可播放视频` placeholder was absent, missing video state rendered as a compact `缺少视频素材` pill, and `时间轴主画布` moved from y=1074 to y=978 in the 1280x720 first viewport.
+    - Verified stale `clipId=video_scene_580_beat_3911_001` still synced to `video_scene_580_beat_3923_001`, no grid storyboard entry, no unmatched-scene warning, scene environment save visible, console warn/error count 0, and failed request count 0.
+  - Secondary panel flattening evidence saved under `artifacts/runs/2026-06-12T04-35-04-363Z-secondary-panels-flat/`:
+    - `episode-workspace-secondary-panels-flat-first-screen.png`
+    - `episode-workspace-secondary-panels-flat-validation.json`
+    - Chrome DevTools was retried and still failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with system Chrome fallback.
+    - Verified `场景环境` is visible at y=678, `保存场景环境` is in the same compact control row at y=706, `资产审计` is visible at y=680 with count pill `0 条`, and `时间轴主画布` moved from y=978 to y=958.
+    - Verified stale `clipId=video_scene_580_beat_3911_001` still synced to `video_scene_580_beat_3923_001`, no grid storyboard entry, no unmatched-scene warning, scene environment save visible, console warn/error count 0, and failed request count 0.
+  - Compact action dock evidence saved under `artifacts/runs/2026-06-12T04-39-09-517Z-compact-action-dock/`:
+    - `episode-workspace-compact-action-dock-first-screen.png`
+    - `episode-workspace-compact-action-dock-validation.json`
+    - Chrome DevTools was retried and still failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with system Chrome fallback.
+    - Verified the three-step production form height reduced from 121px to 105px, `片段定位时间轴` moved from y=415 to y=399, and `时间轴主画布` moved from y=958 to y=942 in the 1280x720 first viewport.
+    - Verified stale `clipId=video_scene_580_beat_3911_001` still synced to `video_scene_580_beat_3923_001`, no large empty video placeholder, no grid storyboard entry, no unmatched-scene warning, scene environment save visible, console warn/error count 0, and failed request count 0.
+  - Compact shell rail evidence saved under `artifacts/runs/2026-06-12T04-43-30-059Z-compact-shell-rail/`:
+    - `episode-workspace-compact-shell-rail-first-screen.png`
+    - `episode-workspace-compact-shell-rail-validation.json`
+    - Chrome DevTools was retried and still failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with system Chrome fallback.
+    - Verified sidebar width is 208px, header height is 56px, main content x starts at 208, and navigation labels remain visible.
+    - Verified primary clip actions moved from y=305 to y=293, `片段定位时间轴` moved from y=399 to y=387, and `时间轴主画布` moved from y=942 to y=930 in the 1280x720 first viewport.
+    - Verified stale `clipId=video_scene_580_beat_3911_001` still synced to `video_scene_580_beat_3923_001`, no large empty video placeholder, no grid storyboard entry, no unmatched-scene warning, scene environment save visible, console warn/error count 0, and failed request count 0.
+  - Timeline visibility and URL-sync evidence saved under `artifacts/runs/2026-06-12T04-58-00Z-timeline-url-sync-visible/`:
+    - `episode-workspace-timeline-url-sync-visible.png`
+    - `episode-workspace-timeline-url-sync-visible-validation.json`
+    - Chrome DevTools was retried first and still failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with system Chrome fallback.
+    - Verified unauthenticated deep link preserved `/login?next=...`, then returned to the workspace.
+    - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+    - Verified `选中片段生产` at y=206, primary clip actions at y=293, and direct `时间轴` heading at y=387 in the first viewport.
+    - Verified top shell header no longer includes duplicate `剧集工作台 · ...` subtitle, no grid storyboard entry, no unmatched-scene warning, scene environment save visible, final-page console warn/error count 0, failed request count 0, and 5xx response count 0.
+  - Compact Timeline header evidence saved under `artifacts/runs/2026-06-12T05-10-00Z-compact-timeline-header/`:
+    - `episode-workspace-compact-timeline-header.png`
+    - `episode-workspace-compact-timeline-header-validation.json`
+    - Chrome DevTools was retried first and still failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with system Chrome fallback.
+    - Verified the inner header panel height is 82px, `选中片段生产` moved to y=181, primary clip actions moved to y=268, and direct `时间轴` moved to y=362 in the 1280x720 first viewport.
+    - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`, no inner `IP 剧集工作台` badge, no duplicate shell subtitle, no grid storyboard entry, no unmatched-scene warning, scene environment save visible, console warn/error count 0, failed request count 0, and 5xx response count 0.
+  - Flat command toolbar evidence saved under `artifacts/runs/2026-06-12T05-16-00Z-flat-command-toolbar/`:
+    - `episode-workspace-flat-command-toolbar.png`
+    - `episode-workspace-flat-command-toolbar-validation.json`
+    - Chrome DevTools was retried first and still failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with system Chrome fallback.
+    - Verified the clip generation command area height is 76px, primary clip actions moved to y=243, direct `时间轴` moved to y=333, and `场景环境` moved to y=628 in the 1280x720 first viewport.
+    - Verified video command section background is white instead of pale blue, stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`, no grid storyboard entry, no unmatched-scene warning, scene environment save visible, console warn/error count 0, failed request count 0, and 5xx response count 0.
+  - Compact navigation rail evidence saved under `artifacts/runs/2026-06-12T05-29-00Z-compact-nav-rail-clean/`:
+    - `episode-workspace-compact-nav-rail.png`
+    - `episode-workspace-compact-nav-rail-validation.json`
+    - Chrome DevTools was retried first and still failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with system Chrome fallback.
+    - Verified the workspace-only sidebar width is 56px, main content starts at x=56, and main width is 1224px in the 1280x720 viewport.
+    - Verified nav links retain `aria-label` and `title`, stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`, primary clip actions remain at y=243, direct `时间轴` remains at y=333, no grid storyboard entry, no unmatched-scene warning, scene environment save visible, console warn/error count 0, failed request count 0, and 5xx response count 0.
+  - Thin clip status line evidence saved under `artifacts/runs/2026-06-12T05-46-00Z-thin-clip-status-line-clean/`:
+    - `episode-workspace-thin-clip-status-line.png`
+    - `episode-workspace-thin-clip-status-line-validation.json`
+    - Chrome DevTools was retried first and still failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with system Chrome fallback.
+    - Verified the clip status line container is 24px high with no card background, while preserving `缺少视频素材`, selected `clipId=video_scene_580_beat_3923_001`, and clip metadata.
+    - Verified `场景环境` moved to y=610.5 and `资产审计` to y=612.5 in the 1280x720 viewport, stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`, no grid storyboard entry, no unmatched-scene warning, scene environment save visible, console warn/error count 0, failed request count 0, and 5xx response count 0.
+  - Workspace search removal evidence saved under `artifacts/runs/2026-06-12T06-00-00Z-hide-workspace-search/`:
+    - `episode-workspace-hide-search.png`
+    - `episode-workspace-hide-search-validation.json`
+    - Chrome DevTools was retried first and still failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with system Chrome fallback.
+    - Verified the shell header text is `IP 中心 / 故事生产 / 第10集`, `geyunfei`, and `退出`; `搜索 IP、故事、剧集` is absent on the Episode Workspace.
+    - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`, no duplicate shell subtitle, no grid storyboard entry, no unmatched-scene warning, console warn/error count 0, failed request count 0, and 5xx response count 0.
+  - Unframed workspace header evidence saved under `artifacts/runs/2026-06-12T06-12-00Z-unframed-workspace-header/`:
+    - `episode-workspace-unframed-header.png`
+    - `episode-workspace-unframed-header-validation.json`
+    - Chrome DevTools was retried first and still failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with system Chrome fallback.
+    - Verified the workspace header has no white card background, only a 1px bottom divider; header height is 73px.
+    - Verified selected clip production moved to y=172, primary clip actions to y=234, direct `时间轴` to y=324, and `场景环境` to y=601.5 in the 1280x720 viewport.
+    - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`, global search remains hidden, no duplicate shell subtitle, no grid storyboard entry, no unmatched-scene warning, console warn/error count 0, failed request count 0, and 5xx response count 0.
+  - Latest `没有时间轴了` reproduction evidence saved under `artifacts/runs/2026-06-12T-no-timeline-repro/`:
+    - `episode-workspace-no-timeline-repro.png`
+    - `metrics.json`
+    - Verified the page still had Timeline data, but the full `时间轴主画布` was at y=881 and out of the 1280x720 first viewport; the first viewport only showed a thin compact locator inside the production panel.
+  - Latest Timeline restore evidence saved under `artifacts/runs/2026-06-12T-timeline-restored/`:
+    - `episode-workspace-timeline-restored.png`
+    - `metrics.json`
+    - Chrome DevTools was retried first and still failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with system Chrome fallback.
+    - Verified full multi-track `时间轴` is now the first main panel at y=170, `时间轴窗口` starts at y=221, selected clip production starts at y=556.65625, and the three primary clip actions remain visible at y=618.65625 in the 1280x720 first viewport.
+    - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`, no grid storyboard entry, no unmatched-scene warning, console warn/error count 0, failed request count 0 apart from favicon abort, and 5xx response count 0.
+  - Compact primary Timeline evidence saved under `artifacts/runs/2026-06-12T-compact-primary-timeline/`:
+    - `episode-workspace-compact-primary-timeline.png`
+    - `metrics.json`
+    - Verified the restored Timeline stayed first while selected clip production moved up from y=556.65625 to y=492.65625 and primary clip actions moved from y=618.65625 to y=554.65625.
+  - Dense primary Timeline evidence saved under `artifacts/runs/2026-06-12T-dense-primary-timeline/`:
+    - `episode-workspace-dense-primary-timeline.png`
+    - `metrics.json`
+    - Chrome DevTools was retried first and still failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with system Chrome fallback.
+    - Verified full multi-track `时间轴` remains the first main panel, `时间轴窗口` is y=233, selected clip production is y=436.65625, the three primary clip actions are y=498.65625, and `场景环境` is y=626.65625 in the 1280x720 first viewport.
+    - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`, no grid storyboard entry, no unmatched-scene warning, console warn/error count 0, failed request count 0 apart from dev/HMR aborts, and 5xx response count 0.
+  - Flat production command strip evidence saved under `artifacts/runs/2026-06-12T-flat-production-command-strip/`:
+    - `episode-workspace-flat-production-command-strip.png`
+    - `metrics.json`
+    - Chrome DevTools was retried first and still failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with system Chrome fallback.
+    - Verified the selected clip command form is now an unbordered 75px-high strip, selected clip production is y=434.90625, the three primary clip actions moved to y=484.15625, `场景环境` moved to y=604.15625, and the old visible `片段分镜管理` pill no longer occupies visual space.
+    - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`, no grid storyboard entry, no unmatched-scene warning, console warn/error count 0, failed request count 0, and 5xx response count 0.
+  - Unified support panel evidence saved under `artifacts/runs/2026-06-12T-unified-support-panel/`:
+    - `episode-workspace-unified-support-panel.png`
+    - `metrics.json`
+    - Verified `场景环境` and `资产审计` share one compact secondary panel below the clip command strip, while the full multi-track `时间轴` remains first in the Timeline tab.
+  - Collapsed asset actions evidence saved under `artifacts/runs/2026-06-12T-collapsed-asset-actions/`:
+    - `episode-workspace-collapsed-asset-actions.png`
+    - `metrics.json`
+    - Chrome DevTools was retried first and still failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with system Chrome fallback.
+    - Verified the full multi-track `时间轴` remains first, selected clip production starts at y=434.90625, primary clip actions are y=484.15625, `场景环境` is visible at y=606.15625, and the secondary support panel is 126px high after collapsing asset rework forms.
+    - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`, no grid storyboard entry, no unmatched-scene warning, console warn/error count 0, failed request count 0, and 5xx response count 0.
+  - Status rail and muted Timeline label evidence saved under `artifacts/runs/2026-06-12T-status-rail-muted-timeline-iab/`:
+    - `episode-workspace-status-rail-muted-timeline-iab.png`
+    - `metrics.json`
+    - Chrome DevTools was retried first and still failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used the built-in Browser plugin `iab` surface.
+    - Verified unauthenticated deep link redirected to `/login?next=...`, login returned to the workspace, and stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+    - Verified the visible production status row no longer renders repeated `已就绪` / `待处理` text pills, Timeline overview labels are reduced to short labels such as `视频 2` and `转场留白` while aria/title metadata stays on clip buttons, and the full multi-track `时间轴` remains first.
+    - Verified `选中片段生产`, `生成片段分镜图`, `生成首尾帧`, `生成/重做此片段视频`, and `场景环境` remain reachable in the first viewport for the built-in Browser size; `生成宫格分镜图` and `未匹配规范化场景` were absent; console warn/error count was 0.
+  - Compact command rail evidence saved under `artifacts/runs/2026-06-12T-compact-command-rail-iab/`:
+    - `episode-workspace-compact-command-rail-iab.png`
+    - `metrics.json`
+    - Chrome DevTools was retried twice and remained unavailable with `127.0.0.1:9222/json/version` HTTP Not Found; this run used the built-in Browser plugin `iab` surface.
+    - Verified the three primary clip actions now share one row in the narrow built-in Browser viewport: `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` all render at y=613.1640625.
+    - Verified `生成/重做此片段视频` moved up from y=708.1640625 in the prior evidence to y=613.1640625, and `场景环境` moved up from y=824.1640625 to y=735.1640625.
+    - Verified full multi-track `时间轴` remains first, stale `clipId=video_scene_580_beat_3911_001` stays synced to `clipId=video_scene_580_beat_3923_001`, `生成宫格分镜图` and `未匹配规范化场景` are absent, and console warn/error count is 0.
+  - Compact workspace header evidence saved under `artifacts/runs/2026-06-12T-compact-workspace-header-light-actions-iab/`:
+    - `episode-workspace-compact-workspace-header-light-actions-iab.png`
+    - `metrics.json`
+    - Chrome DevTools was retried twice and remained unavailable with `127.0.0.1:9222/json/version` HTTP Not Found; this run used the built-in Browser plugin `iab` surface.
+    - Verified the header keeps `当前剧本`, `处理缺失片段`, `返回故事`, `剧本设置`, `分镜参考`, and `临时角色/IP 绑定` visible while removing a separate action row.
+    - Verified `时间轴` moved from y=280 in earlier status-rail evidence to y=228, `选中片段生产` moved from y=538.9140625 to y=486.9140625, the three primary clip actions moved from y=613.1640625 to y=561.1640625, and `场景环境` moved from y=735.1640625 to y=683.1640625 in the built-in Browser viewport.
+    - Verified full multi-track `时间轴` remains first, stale `clipId=video_scene_580_beat_3911_001` stays synced to `clipId=video_scene_580_beat_3923_001`, `生成宫格分镜图` and `未匹配规范化场景` are absent, and console warn/error count is 0.
+  - Single-layer Timeline canvas evidence saved under `artifacts/runs/2026-06-12T-single-layer-timeline-iab/`:
+    - `episode-workspace-single-layer-timeline-iab.png`
+    - `metrics.json`
+    - Chrome DevTools was retried twice and remained unavailable with `127.0.0.1:9222/json/version` HTTP Not Found; this run used the built-in Browser plugin `iab` surface.
+    - Verified the Timeline card now owns the `时间轴` heading, `时间轴窗口`, `Timeline 生成设置`, and `缩放` controls in one toolbar; the duplicate outer Timeline panel header is gone.
+    - Verified the Timeline card height is 197px, `选中片段生产` moved from y=486.9140625 to y=435.25, the three primary clip actions moved from y=561.1640625 to y=509.5, and `场景环境` moved from y=683.1640625 to y=631.5 in the built-in Browser viewport.
+    - Verified full multi-track `时间轴` remains first, stale `clipId=video_scene_580_beat_3911_001` stays synced to `clipId=video_scene_580_beat_3923_001`, `生成宫格分镜图` and `未匹配规范化场景` are absent, and console warn/error count is 0.
+  - Fit-to-width Timeline overview evidence saved under `artifacts/runs/2026-06-12T-fit-width-timeline-iab/`:
+    - `episode-workspace-fit-width-timeline-iab.png`
+    - `metrics.json`
+    - Chrome DevTools was retried twice and remained unavailable with `127.0.0.1:9222/json/version` HTTP Not Found; this run used the built-in Browser plugin `iab` surface.
+    - Verified the Timeline overview now fits the full 00:00.000-02:32.000 duration in the built-in Browser viewport: `timelineScroller.clientWidth=561` and `timelineScroller.scrollWidth=561`.
+    - Verified the toolbar exposes `适配` for returning to the full overview after manual zoom, while `Timeline 生成设置` and `缩放` remain visible.
+    - Verified the full multi-track `时间轴` remains first, stale `clipId=video_scene_580_beat_3911_001` stays synced to `clipId=video_scene_580_beat_3923_001`, `生成宫格分镜图` and `未匹配规范化场景` are absent, and console warn/error count is 0.
+  - Readable Timeline follow-up evidence saved under `artifacts/runs/2026-06-12T-readable-timeline-iab/`:
+    - `episode-workspace-readable-timeline-iab.png`
+    - `metrics.json`
+    - Chrome DevTools was retried twice and remained unavailable with `127.0.0.1:9222/json/version` HTTP Not Found; this run used the built-in Browser plugin `iab` surface.
+    - Verified the primary Timeline card grew from 197px to 265px in the built-in Browser viewport, each track grew from 25px to 37px, the selected clip target grew from about 10px to 14px, and the selected clip now has a visible `当前定位 · 懒惰是第一动力，但爱是最终目的` marker.
+    - Verified `timelineScroller.clientWidth=561` and `timelineScroller.scrollWidth=561`, preserving the full-episode fit-to-width overview while making the canvas readable.
+    - Verified `选中片段生产` remains in the first viewport at y=475.25, the three primary clip actions remain visible at y=549.5, `场景环境` remains visible at y=671.5, `生成宫格分镜图` and `未匹配规范化场景` are absent, and console warn/error count is 0.
+  - Compact empty asset audit and short marker evidence saved under `artifacts/runs/2026-06-12T-compact-asset-audit-marker-iab/`:
+    - `episode-workspace-compact-asset-audit-marker-iab.png`
+    - `metrics.json`
+    - Chrome DevTools was retried twice and remained unavailable with `127.0.0.1:9222/json/version` HTTP Not Found; this run used the built-in Browser plugin `iab` surface.
+    - Verified the Timeline selected marker now displays a compact time range (`当前片段 · 00:00-00:03.320`) instead of full dialogue text.
+    - Verified the empty asset audit is collapsed by default: `assetDetails.open=false`, the visible row is 42px high, and the support panel height dropped from 227px before this pass to 180px.
+    - Verified the primary Timeline remains first, `timelineScroller.clientWidth=561` and `timelineScroller.scrollWidth=561`, selected clip production is y=475.25, primary clip actions are y=549.5, `场景环境` remains visible at y=671.5, `生成宫格分镜图` and `未匹配规范化场景` are absent, and console warn/error count is 0.
+  - Command rail de-numbering evidence saved under `artifacts/runs/2026-06-12T-command-rail-no-step-badges-iab/`:
+    - `episode-workspace-command-rail-no-step-badges-iab.png`
+    - `metrics.json`
+    - Chrome DevTools was retried twice and remained unavailable with `127.0.0.1:9222/json/version` HTTP Not Found; this run used the built-in Browser plugin `iab` surface.
+    - Verified visible `01` / `02` / `03` step badges are absent (`bodyHasStepNumbers=false`), while `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain in one row.
+    - Verified primary clip actions moved from y=549.5 to y=524.5 in the built-in Browser viewport, `场景环境` moved from y=671.5 to y=667, `生成宫格分镜图` and `未匹配规范化场景` are absent, and console warn/error count is 0.
+  - Compact Timeline time label evidence saved under `artifacts/runs/2026-06-12T-compact-timeline-time-labels-iab/`:
+    - `episode-workspace-compact-timeline-time-labels-iab.png`
+    - `metrics.json`
+    - Chrome DevTools was retried twice and remained unavailable with `127.0.0.1:9222/json/version` HTTP Not Found; this run used the built-in Browser plugin `iab` surface.
+    - Verified the Timeline toolbar now shows `时间轴窗口 00:00 – 02:32` and tick labels are `00:00`, `00:20`, `00:40`, `01:00`, `01:20`, `01:40`, `02:00`, `02:20`; `bodyHasMillisecondZeroTicks=false`.
+    - Verified Timeline card height dropped from 265px to 241px, selected clip production moved from y=475.25 to y=451.25, primary clip actions moved from y=524.5 to y=500.5, `场景环境` moved from y=667 to y=643, `生成宫格分镜图` and `未匹配规范化场景` are absent, and console warn/error count is 0.
+  - Two-row workspace header evidence saved under `artifacts/runs/2026-06-12T-two-row-workspace-header-iab/`:
+    - `episode-workspace-two-row-header-iab.png`
+    - `metrics.json`
+    - Chrome DevTools was retried twice and remained unavailable with `127.0.0.1:9222/json/version` HTTP Not Found; this run used the built-in Browser plugin `iab` surface.
+    - The first capture attempt landed on `/login?next=...` after auth expiry and was discarded; final evidence was recaptured after login and points to the workspace URL.
+    - Verified the Timeline workspace header is now 63px high, with episode title, current script select, and `处理缺失片段` on the same row.
+    - Verified Timeline card moved up to y=147, selected clip production moved to y=417.25, primary clip actions moved to y=466.5, `场景环境` moved to y=609, `生成宫格分镜图` and `未匹配规范化场景` are absent, and console warn/error count is 0.
+  - Lightweight support action evidence saved under `artifacts/runs/2026-06-12T-light-support-actions-iab/`:
+    - `episode-workspace-light-support-actions-iab.png`
+    - `metrics.json`
+    - Chrome DevTools was retried twice and remained unavailable with `127.0.0.1:9222/json/version` HTTP Not Found; this run used the built-in Browser plugin `iab` surface.
+    - Verified the full multi-track `时间轴` remains the first main panel, the selected clip production panel starts at y=417.25, and `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` stay aligned at y=466.5.
+    - Verified the support panel is 168px high, the compact `辅助` row is visible, `替换片段` remains available as light text, `场景环境` is visible at y=609, and `保存场景环境` is visible at y=637.
+    - Verified `生成宫格分镜图` and `未匹配规范化场景` are absent, and console warn/error count is 0.
+  - Flat support panel evidence saved under `artifacts/runs/2026-06-12T-flat-support-panel-iab/`:
+    - `episode-workspace-flat-support-panel-iab.png`
+    - `metrics.json`
+    - Chrome DevTools was retried twice and remained unavailable with `127.0.0.1:9222/json/version` HTTP Not Found; this run used the built-in Browser plugin `iab` surface.
+    - Verified the full multi-track `时间轴` remains the first main panel at y=147, selected clip production remains at y=417.25, and the three primary clip actions remain aligned at y=466.5.
+    - Verified the flat support panel height dropped from 168px to 143px after removing the nested white support card and gray empty audit card, while `场景环境` stays visible at y=609 and `保存场景环境` at y=637.
+    - Verified stale `clipId=video_scene_580_beat_3911_001` stays synced to `clipId=video_scene_580_beat_3923_001`, `生成宫格分镜图` and `未匹配规范化场景` are absent, and console warn/error count is 0.
+  - Human production header evidence saved under `artifacts/runs/2026-06-12T-human-production-header-iab/`:
+    - `episode-workspace-human-production-header-iab.png`
+    - `metrics.json`
+    - Chrome DevTools was retried twice and remained unavailable with `127.0.0.1:9222/json/version` HTTP Not Found; this run used the built-in Browser plugin `iab` surface.
+    - Verified the selected-clip production header no longer contains `video_scene_580_beat_3923_001`; it now shows `视频片段` and `待生成视频`.
+    - Verified asset audit still contains `video_scene_580_beat_3923_001` for traceability, the full multi-track `时间轴` remains first, selected clip production remains at y=417.25, and the three primary clip actions remain aligned at y=466.5.
+    - Verified stale `clipId=video_scene_580_beat_3911_001` stays synced to `clipId=video_scene_580_beat_3923_001`, `生成宫格分镜图` and `未匹配规范化场景` are absent, and console warn/error count is 0.
+  - Compact Timeline toolbar evidence saved under `artifacts/runs/2026-06-12T-compact-timeline-toolbar-iab/`:
+    - `episode-workspace-compact-timeline-toolbar-iab.png`
+    - `metrics.json`
+    - Chrome DevTools was retried twice and remained unavailable with `127.0.0.1:9222/json/version` HTTP Not Found; this run used the built-in Browser plugin `iab` surface.
+    - Verified the Timeline toolbar now visibly shows `00:00 – 02:32 · 152s`, `生成设置`, and `视图` instead of `Timeline 生成设置`, `时间轴窗口 ...`, `时长 152.0s`, and `缩放`.
+    - Verified the settings button still exposes `aria-label="Timeline 生成设置"`, selected clip production remains at y=417.25, the three primary clip actions remain aligned at y=466.5, `生成宫格分镜图` and `未匹配规范化场景` are absent, and console warn/error count is 0.
+  - Chinese production rail evidence saved under `artifacts/runs/2026-06-12T-zh-production-rail-iab/`:
+    - `episode-workspace-zh-production-rail-iab.png`
+    - `metrics.json`
+    - Chrome DevTools was retried twice and remained unavailable with `127.0.0.1:9222/json/version` HTTP Not Found; this run used the built-in Browser plugin `iab` surface.
+    - Verified the visible production rail now reads `生产主线 剧本 时间轴 片段视频 渲染/导出`, with no English `Timeline` step in the top rail.
+    - Verified selected clip production remains at y=417.25, the three primary clip actions remain aligned at y=466.5, `生成宫格分镜图` and `未匹配规范化场景` are absent, and console warn/error count is 0.
+  - Support-menu top-row evidence saved under `artifacts/runs/2026-06-12T-support-menu-top-row-iab/`:
+    - `episode-workspace-support-menu-top-row-iab.png`
+    - `metrics.json`
+    - Chrome DevTools was retried twice and remained unavailable with `127.0.0.1:9222/json/version` HTTP Not Found; this run used the built-in Browser plugin `iab` surface.
+    - The first Browser fallback navigation timed out after landing on `/login?next=...`; the same preserved deep link was then logged in and recaptured.
+    - Verified `支持视图` shares the right-side action group with `处理缺失片段` (`supportInPrimaryGroup=true`) and is no longer below the primary button (`supportBelowPrimary=false`).
+    - Verified stale `clipId=video_scene_580_beat_3911_001` syncs to `clipId=video_scene_580_beat_3923_001`, selected clip production remains visible, `生成宫格分镜图` and `未匹配规范化场景` are absent, and console warn/error count is 0.
+  - Local `ai-video-frontend` dev container was restarted during browser validation because Turbopack/HMR kept serving stale client behavior for these cross-module changes.
+- Latest local validation after the final `没有时间轴了` fixes:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 52 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only: anonymous default export in `eslint.config.mjs` and two existing `@next/next/no-img-element` warnings.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Latest built-in Browser evidence saved under `artifacts/runs/2026-06-12T-nav-rail-icons-iab/`:
+  - Chrome DevTools was retried twice and still failed because `http://127.0.0.1:9222/json/version` returned HTTP 404, so this run used the built-in Browser plugin `iab` surface.
+  - `episode-workspace-video-clip-main-path-iab.png`
+  - `episode-workspace-video-clip-main-path-iab.json`
+  - Verified the deep link `clipId=video_scene_580_beat_3911_001` resolves to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the first main panel is the full multi-track `时间轴`, selected video clip production is below it, and `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` each appear once.
+  - Verified stale empty selection text `请选择时间轴片段。` is absent, `未匹配规范化场景` is absent, whole-scene grid entries are absent, the compact nav rail renders 5 icons with preserved labels, and console warn/error count is 0.
+  - The earlier fallback screenshot in the same folder captured the failure shape before the final selection correction: the page had video tracks but the selected panel was still on a storyboard support item. The final screenshot above is the corrected state.
+- Command bar weight evidence saved under `artifacts/runs/2026-06-12T-command-bar-weight-iab/`:
+  - Chrome DevTools was retried twice and still failed because `http://127.0.0.1:9222/json/version` returned HTTP 404, so this run used the built-in Browser plugin `iab` surface.
+  - `episode-workspace-command-bar-weight-iab.png`
+  - `metrics.json`
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` are aligned on the same row at y=464.5 in a 1440x900 viewport.
+  - Verified `生成/重做此片段视频` is wider than the storyboard action by more than 1.25x, making the video step visually primary.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` still resolves to `clipId=video_scene_580_beat_3923_001`, no whole-scene grid entries are present, `未匹配规范化场景` is absent, and console warn/error count is 0.
+- Latest validation after the command bar weight pass:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 52 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Latest Timeline readability evidence saved under `artifacts/runs/2026-06-12T-timeline-visibility-iab/`:
+  - `timeline-visibility-before.png` and `timeline-visibility-metrics-before.json` captured the failure shape: the Timeline DOM was present, but the first video clip rendered as a 10.0625px-wide block in the built-in Browser viewport.
+  - `timeline-visibility-after.png`, `timeline-visibility-metrics-after.json`, and `browser-logs-after.json` captured the fix: the same clip rendered as a 250px-wide block, the Timeline scroller width was 3900px against a 561px viewport, the URL synced to `clipId=video_scene_580_beat_3923_001`, whole-scene grid entries were absent, `未匹配规范化场景` was absent, and browser logs had no warn/error entries.
+- Latest validation after the Timeline readability fix:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 54 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Timeline label de-noise evidence saved under `artifacts/runs/2026-06-12T-next-ux-polish-iab/`:
+  - `workspace-before.png` and `metrics-before.json` captured the noisy shape where dialogue, subtitle, and storyboard rows repeated long clip text in the visible Timeline.
+  - `workspace-after.png`, `workspace-final-clean-tab.png`, `metrics-after.json`, and `metrics-final-clean-tab.json` captured the cleaned shape: auxiliary rows are visible as positioning bars, video labels remain visible, and long auxiliary labels remain in `aria-label` for accessible selection.
+  - Final built-in Browser metrics: visible long Timeline labels in viewport dropped to 1 while 4 long labels remained available through accessible Timeline clip labels; `timelineScrollWidth=3900`, `timelineClientWidth=561`, and the stale deep link resolved to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `生成宫格分镜图`, `宫格图生成成片`, `场景宫格分镜`, and `未匹配规范化场景` were absent.
+  - Chrome DevTools was retried twice and still failed because `http://127.0.0.1:9222/json/version` returned HTTP Not Found, so the visual validation used the built-in Browser plugin `iab` surface.
+  - Built-in Browser `dev.logs` returned one historical Fast Refresh dependency-array error from the same development session before the clean-tab capture; it was not reproduced by the final page state. A supplemental clean Playwright run was attempted, but the bundled browser was not installed and the system Chrome channel timed out during launch, so it was interrupted and not used as evidence.
+- Latest validation after the Timeline label de-noise pass:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 55 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Scene environment save-button de-emphasis evidence saved under `artifacts/runs/2026-06-12T-scene-env-save-secondary-iab/`:
+  - `workspace-scene-env-save-secondary.png`, `metrics.json`, and `browser-logs.json`.
+  - Chrome DevTools was retried twice and still failed because `http://127.0.0.1:9222/json/version` returned HTTP Not Found, so this run used the built-in Browser plugin `iab` surface.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` resolved to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `保存场景环境` is disabled, uses secondary white/gray styling (`isSecondary=true`, `isBluePrimary=false`), and `生成/重做此片段视频` remains the active blue primary action (`isBluePrimary=true`).
+  - Verified `生成宫格分镜图`, `宫格图生成成片`, `场景宫格分镜`, and `未匹配规范化场景` were absent.
+  - Built-in Browser logs still contained the historical Fast Refresh dependency-array error from the same development session; it was recorded as historical session noise rather than a newly reproduced final-state console result.
+- Latest validation after the scene environment save-button de-emphasis:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 56 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Render/export disabled-primary de-emphasis evidence saved under `artifacts/runs/2026-06-12T-clip-command-summary-iab/`:
+  - `metrics-before.json` and `workspace-before.png` captured the pre-check state for this pass.
+  - `metrics-after.json` captured the final browser DOM state after the render/export button change. Screenshot capture timed out on `Page.captureScreenshot`, and the in-app browser did not support coordinate element screenshot for this tab, so the decisive evidence for this pass is DOM metrics rather than a final screenshot.
+  - Chrome DevTools was retried twice and still failed because `http://127.0.0.1:9222/json/version` returned HTTP Not Found, so this run used the built-in Browser plugin `iab` surface.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` resolved to `clipId=video_scene_580_beat_3923_001`.
+  - Verified disabled `导出成片` uses secondary white/gray styling (`isSecondary=true`, `isBluePrimary=false`) and disabled `渲染预览` also remains secondary, while `生成/重做此片段视频` remains the active blue primary action (`isBluePrimary=true`).
+  - Verified `生成宫格分镜图`, `宫格图生成成片`, `场景宫格分镜`, and `未匹配规范化场景` were absent in the browser metrics.
+- Latest validation after the render/export disabled-primary de-emphasis:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 56 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Timeline readability and reload-guard evidence saved under `artifacts/runs/2026-06-12T-no-timeline-regression-iab/`:
+  - `timeline-live.png` and `timeline-live-metrics.json` captured the reported failure shape: the Timeline DOM existed, but the 561px viewport had a 3900px scroller with 24px-high items and several blank auxiliary row labels, making the Timeline read like thin status bars.
+  - `timeline-post-wait.png` and `timeline-post-wait-metrics.json` captured the visual fix: 40 Timeline clip buttons, 30px-high clip blocks, visible compact labels for dialogue/video/subtitle/storyboard rows, selected video clip production below the Timeline, no whole-scene grid entries, and no unmatched-scene warning.
+  - `timeline-loading-guard-metrics.json`, `timeline-early-after-loading-guard.png`, and `timeline-stable-after-loading-guard.png` verified reload behavior after the loading guard: early and stable states did not fall back to a legacy dialogue-only timeline, the URL stayed on `clipId=video_scene_580_beat_3923_001`, the stable Timeline viewport was 279px high with 40 clip buttons, `生成/重做此片段视频` was present, `生成宫格分镜图` / `宫格图生成成片` / `未匹配规范化场景` were absent, and browser error logs were empty.
+  - Chrome DevTools was retried twice and still failed because `http://127.0.0.1:9222/json/version` returned HTTP 404, so this run used the built-in Browser plugin `iab` surface.
+- Latest validation after the Timeline readability and reload-guard pass:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 57 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed after splitting `TimelineGrid.tsx`.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - Post-split built-in Browser refresh saved `timeline-after-split.png` and `timeline-after-split-metrics.json`, verifying 40 Timeline buttons, compact labels starting with `对白 1` and `视频 1`, 30px clip button heights, a 279px Timeline viewport, `生成/重做此片段视频` present, no whole-scene grid entries, no unmatched-scene warning, and no browser errors.
+- Command strip de-noise evidence saved under `artifacts/runs/2026-06-12T-next-visual-polish-iab/`:
+  - `workspace-before.png` and `metrics-before.json` captured the pre-change state.
+  - `workspace-after-command-trim.png`, `metrics-after-command-trim.json`, and `browser-errors-after-command-trim.json` captured the result: the command strip height dropped to 64px, the gray command background was removed, the three primary clip actions stayed aligned on one row, `生成/重做此片段视频` remained visually primary at 288px wide, `场景环境` moved up to y=645, no whole-scene grid entries or unmatched-scene warning appeared, and browser error logs were empty.
+  - Chrome DevTools was retried twice and still failed because `http://127.0.0.1:9222/json/version` returned HTTP 404, so this run used the built-in Browser plugin `iab` surface.
+- Latest validation after the command strip de-noise pass:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 57 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Latest built-in Browser evidence for `没有时间轴了` follow-up saved under `artifacts/runs/2026-06-12T-timeline-visible-fix-iab/`:
+  - Chrome DevTools was retried twice and still failed because `http://127.0.0.1:9222/json/version` returned HTTP 404, so this run used the built-in Browser plugin `iab` surface.
+  - `workspace-current.png` and `metrics-current.json` captured the first check showing the full multi-track `时间轴` in the first viewport before the selected clip production panel.
+  - `workspace-after-login.png`, `metrics-after-login.json`, and `browser-errors-after-login.json` captured the logged-in validation after auth refresh.
+  - Verified unauthenticated reload preserved `/login?next=...`, then returned to the workspace deep link with `clipId=video_scene_580_beat_3923_001`.
+  - Verified `时间轴` is visible at y=150, `选中片段生产` is visible at y=485, and `timelineBeforeProduction=true` in the built-in Browser viewport.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` are present; `生成宫格分镜图`, `宫格图生成成片`, `场景宫格分镜`, and `未匹配规范化场景` are absent; browser error count is 0.
+  - Verified the collapsed `资产审计` summary text is `资产审计0 条展开`, does not include `video_scene_...`, and expanded details still include `片段 ID：video_scene_580_beat_3923_001`.
+- Latest validation after the asset-audit header and Timeline visibility follow-up:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 58 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l 'ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx'` reported 199 lines, so the Next.js workspace page stayed inside the 200-line boundary.
+- Timeline selected-marker polish evidence saved under `artifacts/runs/2026-06-12T-next-polish-iab/`:
+  - `workspace-ready-before.png` and `metrics-ready-before.json` captured the pre-change marker as a larger blue `当前片段 · ...` overlay in the Timeline track area.
+  - `workspace-after-marker-compact.png`, `metrics-after-marker-compact.json`, and `browser-errors-after-marker-compact.json` captured the cleaned state with one small visible `当前` marker at y=202 and the full selected-clip text retained as hidden accessibility text.
+  - Chrome DevTools was retried twice and still failed because `http://127.0.0.1:9222/json/version` returned HTTP 404, so this run used the built-in Browser plugin `iab` surface.
+  - Verified the three primary clip actions remain visible at y=535, `生成宫格分镜图`, `宫格图生成成片`, `场景宫格分镜`, and `未匹配规范化场景` are absent, and browser error count is 0.
+- Latest validation after the Timeline selected-marker polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 58 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l 'ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx' ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/src/components/features/Timeline/TimelineSelectedMarker.tsx` reported 199, 198, and 62 lines respectively.
+- Support navigation collapse evidence saved under `artifacts/runs/2026-06-12T-support-row-polish-iab/`:
+  - `workspace-before.png` and `metrics-before.json` captured the noisy first-viewport row `辅助 剧本 替换片段 任务`.
+  - `workspace-after.png`, `metrics-after.json`, and `browser-errors-after.json` captured the cleaned state: the first viewport now shows a single `辅助操作` disclosure at y=715, the disclosure is closed by default, and the three secondary actions remain available inside it.
+  - Chrome DevTools was retried twice and still failed because `http://127.0.0.1:9222/json/version` returned HTTP 404, so this run used the built-in Browser plugin `iab` surface.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` are still present; `生成宫格分镜图`, `宫格图生成成片`, `场景宫格分镜`, and `未匹配规范化场景` are absent; browser error count is 0.
+- Latest validation after the support navigation collapse:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 59 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l 'ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx' ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx` reported 199 and 200 lines respectively.
+- Selected production header de-noise evidence saved under `artifacts/runs/2026-06-12T-next-compact-status-iab/`:
+  - `workspace-before.png` and `metrics-before.json` captured the duplicated header badges `视频片段` and `待生成视频` above the clip summary row.
+  - `workspace-after.png`, `metrics-after.json`, and `browser-errors-after.json` captured the cleaned state: the production header text is only `选中片段生产`, exact visible `视频片段` and `待生成视频` matches are gone, while `缺少视频素材` and `待复核` remain in the clip summary row.
+  - Chrome DevTools was retried twice and still failed because `http://127.0.0.1:9222/json/version` returned HTTP 404, so this run used the built-in Browser plugin `iab` surface.
+  - Verified the three primary clip actions remained visible at y=534, whole-scene grid generation entries were absent, unmatched-scene warning was absent, and browser error count was 0.
+- Latest validation after selected production header de-noise:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 59 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l 'ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx' ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionPanel.tsx` reported 199 and 159 lines respectively.
+- `没有时间轴了` follow-up recheck evidence saved under `artifacts/runs/2026-06-12T-no-timeline-iab-recheck/`:
+  - `timeline-first-screenshot.png` and `browser-evidence.json` captured the current built-in Browser state for `http://localhost:8089/episodes/12c6eb572eda47138a5fc821c225a1af/workspace?tab=timeline&scriptId=143&clipId=video_scene_580_beat_3923_001`.
+  - Chrome DevTools had already been retried twice in this run and returned HTTP 404 on `http://127.0.0.1:9222/json/version`, so this recheck used the built-in Browser plugin `iab` surface.
+  - Verified the multi-track Timeline is visible in the first viewport: `时间轴` heading at y=150, selected production heading at y=485, and `timelineBeforeProduction=true`.
+  - Verified visible Timeline clip buttons include `对白 1`, `视频 1`, `视频 2`, `视频 3`, `字幕 1`, `分镜 1`, `分镜 2`, and `分镜 3`.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` are present; `生成宫格分镜图`, `宫格图生成成片`, and `场景宫格分镜` are absent.
+  - Browser logs contained only React DevTools/HMR development messages, with no error-level entries.
+- Render/export missing-state collapse:
+  - Changed `TimelineRenderPanel` so a Timeline with missing clip videos shows a compact closed `渲染/导出` summary instead of exposing disabled `渲染预览` and `导出成片` buttons in the first viewport.
+  - Kept render actions and the missing-clip details available after expanding the summary, and kept ready/succeeded render output behavior unchanged.
+  - Split render panel helpers into `EpisodeTimelineRenderPanelParts.tsx`, reducing `EpisodeTimelineRenderPanel.tsx` to 155 lines while keeping the new parts file at 174 lines.
+  - Updated `timelineWorkspaceLayout.test.tsx` to assert missing render actions live inside a closed details block until expanded.
+- Render/export collapse browser evidence saved under `artifacts/runs/2026-06-12T-render-collapse-iab/`:
+  - Chrome DevTools was retried twice and still returned HTTP 404 on `http://127.0.0.1:9222/json/version`, so this run used the built-in Browser plugin `iab` surface.
+  - After re-authentication, the deep link returned to `http://localhost:8089/episodes/12c6eb572eda47138a5fc821c225a1af/workspace?tab=timeline&scriptId=143&clipId=video_scene_580_beat_3923_001`.
+  - `workspace-render-collapsed.png`, `metrics.json`, and `browser-logs.json` captured the final first viewport.
+  - Verified the render summary is closed by default, reads `渲染/导出 ... 缺 16 个片段 ... 展开`, and `document.body.innerText` no longer includes `渲染预览` or `导出成片` until the summary is opened.
+  - Verified the three primary selected-clip actions remain present; `生成宫格分镜图`, `宫格图生成成片`, `场景宫格分镜`, and `未匹配规范化场景` remain absent; browser error logs are empty.
+- Latest validation after render/export collapse:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 59 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l 'ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx' ai-pic-frontend/src/components/features/episode/EpisodeTimelineRenderPanel.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineRenderPanelParts.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionPanel.tsx ai-pic-frontend/src/components/features/Timeline/Timeline.tsx` reported 199, 155, 174, 159, and 198 lines respectively.
+- Video-track emphasis polish:
+  - Updated `TimelineGrid.tsx` and `TimelineItemButton.tsx` so the `video` track is visually treated as the primary production lane, while dialogue/subtitle/storyboard tracks remain readable but quieter.
+  - Added `data-track-id` on Timeline track rows for stable styling/test hooks.
+  - Kept the selected video clip button compact and labeled `视频 1`, with the main blue selected ring still visible.
+  - Updated `timelineWorkspaceLayout.test.tsx` with a focused assertion that the video lane uses the primary `bg-teal-50/70` treatment while dialogue remains `bg-white/80`.
+- Video-track emphasis browser evidence saved under `artifacts/runs/2026-06-12T-video-track-emphasis-iab/`:
+  - `workspace-video-track-emphasis.png`, `metrics.json`, and `browser-logs.json` captured the final built-in Browser viewport.
+  - Verified `data-track-id="video"` has `border-teal-200 bg-teal-50/70`, while `dialogue`, `subtitle`, and `storyboard` tracks use `border-gray-100 bg-white/80`.
+  - Verified the selected video clip remains visible at y=284, the three selected-clip production actions remain present, disabled render/export buttons stay out of `document.body.innerText`, whole-scene grid entries remain absent, unmatched-scene warning remains absent, and browser error logs are empty.
+- Latest validation after video-track emphasis:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 60 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l 'ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx' ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/src/components/features/Timeline/TimelineGrid.tsx ai-pic-frontend/src/components/features/Timeline/TimelineItemButton.tsx` reported 199, 198, 135, and 100 lines respectively.
+- Selected clip summary-first polish:
+  - Moved `ClipProductionSummary` above `TimelineClipProviderReworkControls` in `EpisodeTimelineClipProductionPanel.tsx`, so the operator sees the selected video clip, timing, review state, and missing-video status before the three generation commands.
+  - Added `data-clip-production-summary` as a stable test hook on the summary row.
+  - Added `timelineWorkspaceLayout.test.tsx` coverage asserting the selected clip summary appears before `生成片段分镜图`, and production commands still appear before the scene environment support area.
+- Summary-first browser evidence saved under `artifacts/runs/2026-06-12T-production-summary-first-iab/`:
+  - `workspace-summary-first.png`, `metrics.json`, and `browser-logs.json` captured the final built-in Browser viewport.
+  - Chrome DevTools was retried twice and still returned HTTP 404 on `http://127.0.0.1:9222/json/version`, so this run used the built-in Browser plugin `iab` surface.
+  - Verified the clip summary row is at y=528, generation buttons start at y=566, and `场景环境` starts at y=645.
+  - Verified `summaryBeforeCommands=true`, whole-scene grid entries remain absent, render/export disabled buttons remain out of `document.body.innerText`, unmatched-scene warning remains absent, and browser error logs are empty.
+- Latest validation after selected clip summary-first polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 61 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l 'ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx' ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionPanel.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx tests/timelineWorkspaceLayout.test.tsx` reported 199, 159, 198, and 1085 lines respectively.
+- Controlled support menu polish:
+  - Replaced the uncontrolled Timeline header `details` support menu with a controlled `支持视图` button.
+  - The support menu now starts closed, exposes `aria-expanded`, closes after selecting a support destination, and closes on blur.
+  - Updated `timelineWorkspaceLayout.test.tsx` to assert the support menu items are absent by default, appear after opening, and disappear after selecting `分镜参考`.
+- Controlled support menu browser evidence saved under `artifacts/runs/2026-06-12T-support-menu-controlled-iab/`:
+  - `workspace-support-menu-closed.png`, `metrics.json`, and `browser-logs.json` captured the final Timeline first viewport.
+  - Chrome DevTools was retried twice and still returned HTTP 404 on `http://127.0.0.1:9222/json/version`, so this run used the built-in Browser plugin `iab` surface.
+  - Verified `支持视图` has `aria-expanded=false`, support menu item text is absent from `document.body.innerText`, and `时间轴` remains visible at y=150 with no support popup covering it.
+  - Verified opening the support menu shows all four support destinations, selecting `分镜参考` navigates to `tab=storyboard`, and returning to the Timeline deep link restores the closed default state.
+  - Verified whole-scene grid entries remain absent, disabled render/export buttons remain out of `document.body.innerText`, unmatched-scene warning remains absent, and browser error logs are empty.
+- Latest validation after controlled support menu polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 61 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l 'ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx' ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceTimelineHeader.tsx ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceHeader.tsx tests/timelineWorkspaceLayout.test.tsx` reported 199, 194, 225, and 1095 lines respectively.
+- Compact asset audit browser evidence saved under `artifacts/runs/2026-06-12T-compact-asset-audit-iab/`:
+  - `workspace-compact-asset-audit-desktop.png`, `workspace-compact-asset-audit-narrow.png`, `metrics.json`, and `browser-logs.json` captured the final built-in Browser state.
+  - Verified the empty asset audit uses `data-clip-support-layout="compact"` instead of the split desktop panel, while the full multi-track `时间轴` remains visible before `选中片段生产`.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible in the first viewport on the narrow view.
+  - Verified whole-scene grid generation entries remain absent and browser error logs are empty.
+- Latest validation after compact asset audit polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 24 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 62 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipSupportPanel.tsx 'ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx' ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx` reported 130, 199, 198, and 198 lines respectively.
+- Support utility-row browser evidence saved under `artifacts/runs/2026-06-12T-support-utilities-row-iab/`:
+  - `metrics.json` and `browser-logs.json` captured the final built-in Browser state. Screenshot capture failed on both the existing and a fresh Browser tab because `tab.screenshot` timed out on `Page.captureScreenshot`; this run does not claim screenshot evidence.
+  - Verified `data-clip-support-utilities` is visible at y=715 and contains both `辅助操作` and `资产审计`, with `data-clip-support-layout="compact"`.
+  - Verified the render/export missing summary moved up to y=767 after removing the extra utility row; `渲染预览` and `导出成片` remain absent from `document.body.innerText` by default.
+  - Verified whole-scene grid generation entries and the unmatched-scene warning remain absent, and browser error logs are empty.
+- Latest validation after support utility-row polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 24 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 62 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipSupportPanel.tsx ai-pic-frontend/src/components/features/episode/TimelineClipAssetAuditPanel.tsx 'ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx' ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx` reported 143, 146, 199, and 198 lines respectively.
+- Compact Timeline range browser evidence saved under `artifacts/runs/2026-06-12T-compact-timeline-range-iab/`:
+  - `metrics.json` and `browser-logs.json` captured the final built-in Browser state. Screenshot capture again failed because `tab.screenshot` timed out on `Page.captureScreenshot`; this run does not claim screenshot evidence.
+  - Verified `全片 02:32` is visible at y=154, the old visible `00:00 – 02:32 · 152s` label is absent from `document.body.innerText`, and the hidden `时间轴窗口 00:00 – 02:32` anchor remains in `textContent`.
+  - Verified the full Timeline remains visible before `选中片段生产`, the three selected-clip generation actions remain visible, whole-scene grid entries and unmatched-scene warning remain absent, and browser error logs are empty.
+- Latest validation after compact Timeline range polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 24 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 62 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/TimelineToolbar.tsx ai-pic-frontend/src/components/features/Timeline/Timeline.tsx 'ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx' ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipSupportPanel.tsx` reported 82, 198, 199, and 143 lines respectively.
+- Flat selected-clip production panel evidence saved under `artifacts/runs/2026-06-12T-flat-production-panel-iab/`:
+  - `metrics.json` and `browser-logs.json` captured the final built-in Browser state. Screenshot capture still failed because `tab.screenshot` timed out on `Page.captureScreenshot`; this run does not claim screenshot evidence.
+  - Verified the selected clip production panel now has `data-clip-production-panel="flat"` with class `border-y border-gray-200 bg-white/70`, and no `rounded-lg` card class.
+  - Verified the full Timeline remains visible before selected production, the three selected-clip generation actions remain visible, render disabled buttons remain hidden by default, whole-scene grid entries and unmatched-scene warning remain absent, and browser error logs are empty.
+- Latest validation after flat selected-clip production panel:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 24 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 62 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionPanel.tsx ai-pic-frontend/src/components/features/Timeline/TimelineToolbar.tsx 'ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx' ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipSupportPanel.tsx` reported 162, 82, 199, and 143 lines respectively.
+- Compact scene environment row evidence saved under `artifacts/runs/2026-06-12T-compact-environment-row-iab/`:
+  - `metrics.json` and `browser-logs.json` captured the final built-in Browser state. Screenshot capture still failed because `tab.screenshot` timed out on `Page.captureScreenshot`; this run does not claim screenshot evidence.
+  - Verified `data-clip-environment-row` is visible at y=645 with height 32px, the environment selector is in the same row, and the support utility row moved up to y=687.
+  - Verified Timeline remains before selected production, selected-clip generation actions remain visible, render disabled buttons remain hidden by default, whole-scene grid entries and unmatched-scene warning remain absent, and browser error logs are empty.
+- Latest validation after compact scene environment row:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 24 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 62 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionPanel.tsx 'ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx' ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipSupportPanel.tsx` reported 200, 162, 199, and 143 lines respectively.
+- Restored Timeline canvas browser evidence saved under `artifacts/runs/2026-06-12T-timeline-canvas-restored-iab/`:
+  - `metrics.json`, `browser-logs.json`, and `screenshot-note.txt` captured the final built-in Browser state. Screenshot capture was not retried because the previous `Page.captureScreenshot` attempt timed out and reset the Browser control session; this run does not claim screenshot evidence.
+  - Verified `data-timeline-canvas` is the first main panel at y=143 with height 369px, the first video clip is 166px wide and 42px high, the `1x` zoom reset is visible, and `选中片段生产` starts after the Timeline at y=528.
+  - Verified `生成片段分镜图` and `生成/重做此片段视频` remain visible in the 1280x720 viewport, whole-scene grid entries remain absent, unmatched-scene warning remains absent, and browser error logs are empty.
+- Latest validation after restored Timeline visual weight:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 24 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 62 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineCanvasPanel.tsx 'ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx' ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipSupportPanel.tsx` reported 198, 170, 199, 200, and 143 lines respectively.
+- Production title merge browser evidence saved under `artifacts/runs/2026-06-12T-production-title-merged-iab/`:
+  - `metrics.json`, `browser-logs.json`, and `screenshot-note.txt` captured the final built-in Browser state. Screenshot capture was not retried because recent `Page.captureScreenshot` attempts timed out and reset the Browser control session; this run does not claim screenshot evidence.
+  - Verified production band height dropped from 235px to 190px, the primary clip generation actions moved from y=614 to y=569, `场景环境` moved from y=688 to y=643, and `辅助操作`/`资产审计` moved into the 1280x720 first viewport at y=685.
+  - Verified the Timeline remains first at y=143 with height 369px, the command rail has no bottom divider, whole-scene grid entries remain absent, unmatched-scene warning remains absent, and browser error logs are empty.
+- Latest validation after production title merge:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 24 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 62 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionPanel.tsx ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkCards.tsx ai-pic-frontend/src/components/features/Timeline/Timeline.tsx 'ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx'` reported 164, 185, 198, and 199 lines respectively.
+- Compact command parameter evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-compact-commands-iab/`:
+  - `metrics.json`, `browser-logs.json`, `evidence-summary.md`, and `workspace-first-viewport.png` captured the final built-in Browser state.
+  - Verified the full Timeline remains first at y=143 with height 369px.
+  - Verified the selected-clip command rail is 40px high, with `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` visible at y=557.
+  - Verified storyboard/video parameter controls are collapsed into compact `4格` and `参数` entries; their floating panels are `display:none` while closed.
+  - Verified `场景环境` is visible at y=612 and `渲染/导出` is now readable at y=696 in the 1280x720 first viewport.
+  - Verified asset-audit loading and empty states stay in the compact support layout instead of temporarily promoting the support area into a split panel.
+  - Verified whole-scene grid entries remain absent, unmatched-scene warning remains absent, and browser warn/error logs are empty.
+- Latest validation after compact command parameter pass:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 62 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/CompactProductionDetails.tsx ai-pic-frontend/src/components/features/episode/TimelineClipStoryboardReferenceCard.tsx ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkCardSections.tsx ai-pic-frontend/src/components/features/episode/TimelineClipVideoReworkCard.tsx ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkCards.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipSupportPanel.tsx ai-pic-frontend/src/components/features/episode/TimelineClipAssetAuditPanel.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineMainPanel.tsx ai-pic-frontend/src/components/features/Timeline/Timeline.tsx 'ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx' ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx` reported 43, 198, 46, 176, 185, 143, 145, 103, 198, 199, and 200 lines respectively.
+- Support overflow evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-support-overflow-iab/`:
+  - `metrics.json`, `browser-logs.json`, `evidence-summary.md`, and `workspace-first-viewport.png` captured the final built-in Browser state.
+  - Verified the full Timeline remains first at y=143 with height 369px.
+  - Verified the selected-clip command rail stays at y=553 with height 40px, and all three primary clip generation actions remain visible at y=557.
+  - Verified secondary support actions and empty asset audit are collapsed into a 20px `更多操作` row at y=654, with the floating panel `display:none` while closed.
+  - Verified opening `更多操作` reveals `辅助操作`, `剧本`, `替换片段`, `任务`, and `资产审计` in a floating panel without making the default first viewport noisier.
+  - Verified `场景环境` remains visible at y=612, and `渲染/导出` is now fully visible at y=692 with visibleHeight=27 in the 1280x720 first viewport.
+  - Verified whole-scene grid entries remain absent, unmatched-scene warning remains absent, and browser warn/error logs are empty.
+- Latest validation after support overflow pass:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 24 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 62 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipSupportPanel.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx ai-pic-frontend/src/components/features/episode/CompactProductionDetails.tsx ai-pic-frontend/src/components/features/episode/TimelineClipStoryboardReferenceCard.tsx ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkCardSections.tsx ai-pic-frontend/src/components/features/episode/TimelineClipVideoReworkCard.tsx ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkCards.tsx ai-pic-frontend/src/components/features/Timeline/Timeline.tsx 'ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx'` reported 200, 165, 43, 198, 46, 176, 185, 198, and 199 lines respectively.
+- Timeline ruler/sticky-track evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-timeline-restore-iab/`:
+  - `before-timeline.png` captured the pre-change built-in Browser state where Timeline existed but looked visually weak.
+  - `after-timeline.png` captured a transient Next.js loading state after reload and was discarded as validation evidence.
+  - `after-timeline-ready.png` and `after-timeline-ready-audit.json` captured the ready built-in Browser state.
+  - Verified the full Timeline remains first at y=143 with height 369px, the new `data-timeline-ruler` is visible at y=177, the video track label is visible/sticky at x=77, and the selected video clip remains a readable 166px by 42px item.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible at y=557 in the 1280x720 first viewport.
+  - Verified whole-scene grid entries remain absent, unmatched-scene warning remains absent, and built-in Browser warn/error logs are empty.
+- Latest validation after Timeline ruler/sticky-track pass:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 24 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 62 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/src/components/features/Timeline/TimelineGrid.tsx ai-pic-frontend/src/components/features/Timeline/TimelineItemButton.tsx` reported 198, 147, and 103 lines respectively.
+- Timeline lane-density evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-lane-density-iab/`:
+  - `before-lane-density.png`, `after-lane-density.png`, and `lane-density-audit.json` captured the built-in Browser state.
+  - Verified the full Timeline remains first at y=143. The Timeline height reduced from 369px to 317px without hiding the canvas.
+  - Verified the video lane remains primary at 60px row height with a 42px readable selected clip, while dialogue/subtitle/storyboard rows are 44px with 26px contextual clips.
+  - Verified primary clip actions moved up from y=557 to y=505, `场景环境` moved up to y=560, and `渲染/导出` is fully visible at y=640 in the 1280x720 first viewport.
+  - Verified whole-scene grid entries remain absent, unmatched-scene warning remains absent, and built-in Browser warn/error logs are empty.
+- Latest validation after Timeline lane-density pass:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 24 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 62 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/src/components/features/Timeline/TimelineGrid.tsx ai-pic-frontend/src/components/features/Timeline/TimelineItemButton.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 200, 150, 103, and 1212 lines respectively.
+- Compact workbar evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-compact-workbar-iab/`:
+  - `compact-workbar.png` and `compact-workbar-audit.json` captured the built-in Browser state.
+  - Verified the timeline header remains compact at y=72 with height 59px, while the script selector width is now 416px instead of the previous full middle column width.
+  - Verified the primary action remains at the right (`处理缺失片段` at x=1090), the support menu remains at x=1192, and the production rail remains visible.
+  - Verified the Timeline stays first at y=143 with height 317px, selected-clip production remains y=464, primary clip actions remain y=505, and render/export remains y=640.
+  - Verified whole-scene grid entries remain absent, unmatched-scene warning remains absent, and built-in Browser warn/error logs are empty.
+- Latest validation after compact workbar pass:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 24 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 62 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceTimelineHeader.tsx ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/src/components/features/Timeline/TimelineGrid.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 194, 200, 150, and 1223 lines respectively.
+- Single-row workbar evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-single-row-workbar-iab/`:
+  - `single-row-workbar.png` and `single-row-workbar-audit.json` captured the built-in Browser state.
+  - Verified the Timeline workbar height dropped from 59px to 39px, and `data-production-step-rail="compact"` now renders in the same row at x=606.
+  - Verified the Timeline moved from y=143 to y=123, selected-clip production moved from y=464 to y=444, primary clip actions moved from y=505 to y=485, and render/export moved from y=640 to y=620.
+  - Verified the primary action and support menu remain on the right, whole-scene grid entries remain absent, unmatched-scene warning remains absent, and built-in Browser warn/error logs are empty.
+- Latest validation after single-row workbar pass:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 24 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 62 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceTimelineHeader.tsx ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/src/components/features/Timeline/TimelineGrid.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 192, 200, 150, and 1228 lines respectively.
+- "No Timeline" follow-up evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-timeline-restored-iab/`:
+  - `timeline-restored-first-viewport.png`, `layout-metrics.json`, and `console-warn-error.json` captured the built-in Browser state for the valid Timeline deep link.
+  - Verified the Timeline is present in the first viewport at y=123 with height 317px, and the time ruler spans 7728px for the 02:32 episode.
+  - Verified selected clip production is below the Timeline at y=444, with `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` visible.
+  - `stale-clip-login-return-timeline.png` and `stale-clip-login-return.json` captured the old `clipId=video_scene_580_beat_3911_001` path: it first reached `/login?next=...`, then after login returned to the workspace and normalized the URL to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the stale-link return state still has the Timeline at y=123, selected clip production at y=444, whole-scene grid entries absent, and built-in Browser warn/error logs empty.
+- Balanced command dock evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-balanced-command-dock-iab/`:
+  - `balanced-command-dock.png`, `balanced-command-dock-metrics.json`, `browser-warn-error.json`, and `evidence-summary.md` captured the built-in Browser state after making the selected-clip command rail balanced.
+  - Changed the command rail from the old wide-video layout to `data-clip-command-layout="balanced"` with a compact dock and `1fr / 1fr / 1.15fr` desktop columns.
+  - Verified the Timeline remains first at y=123 with height 317px.
+  - Verified selected clip production remains below the Timeline at y=444, with command rail height 46px and primary action widths of 317px, 356px, and 366px for storyboard, keyframes, and video respectively.
+  - Verified `场景环境` remains visible at y=546, whole-scene grid entries remain absent, and built-in Browser warn/error logs are empty.
+- Latest validation after balanced command dock pass:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 24 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 62 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkCards.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx 'ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx' ai-pic-frontend/src/components/features/Timeline/Timeline.tsx` reported 195, 1239, 199, and 200 lines respectively.
+- Compact environment dock evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-compact-environment-dock-iab/`:
+  - `compact-environment-metrics.json`, `browser-warn-error.json`, `screenshot-attempt.json`, and `evidence-summary.md` captured the built-in Browser state after making the scene environment row compact.
+  - Changed the scene environment row to `data-clip-environment-layout="compact"`, constrained the environment select to 384px, and reduced the save button to a 64px visible control while preserving the accessible name `保存场景环境`.
+  - Verified the Timeline remains first at y=123 with height 317px.
+  - Verified selected clip production remains below the Timeline at y=444, command rail stays at y=481 with height 46px, and the environment row is y=544 with height 34px.
+  - Verified support overflow remains visible at y=586, whole-scene grid entries remain absent, and built-in Browser warn/error logs are empty.
+  - Built-in Browser `Page.captureScreenshot` timed out for both full viewport and clipped screenshots in this run; this evidence is DOM layout and console evidence only.
+- Latest validation after compact environment dock pass:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 24 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 62 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkCards.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx 'ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx' ai-pic-frontend/src/components/features/Timeline/Timeline.tsx` reported 174, 195, 1250, 199, and 200 lines respectively.
+- Compact render strip evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-compact-render-strip-iab/`:
+  - `compact-render-strip-metrics.json`, `browser-warn-error.json`, `screenshot-attempt.json`, and `evidence-summary.md` captured the built-in Browser state after making render/export a flat compact strip.
+  - Replaced the `OperatorPanel` card wrapper with `data-episode-render-strip="compact"` and added `data-timeline-render-panel="collapsed"` to the default missing-clip state.
+  - Changed the default missing-clip render affordance from a card-like `展开` control to a compact `查看缺失` strip action; render/export buttons and missing clip details remain behind the closed disclosure.
+  - Verified the Timeline remains first at y=123 with height 317px.
+  - Verified selected clip production remains below the Timeline at y=444 with height 167px, support overflow remains at y=586, and the render strip is y=615 with height 38px.
+  - Verified the render disclosure is closed by default, whole-scene grid entries remain absent, and built-in Browser warn/error logs are empty.
+  - Built-in Browser clipped screenshot timed out via `Page.captureScreenshot`; this evidence is DOM layout and console evidence only.
+- Latest validation after compact render strip pass:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 24 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 62 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineMainPanel.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineRenderPanel.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx 'ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx' ai-pic-frontend/src/components/features/Timeline/Timeline.tsx` reported 106, 155, 1265, 199, and 200 lines respectively.
+- Inline support menu evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-inline-support-menu-iab/`:
+  - `inline-support-menu-metrics.json`, `browser-warn-error.json`, `screenshot-attempt.json`, and `evidence-summary.md` captured the built-in Browser state after moving `更多操作` into the environment dock.
+  - Moved `data-clip-support-overflow="compact"` into `data-clip-environment-row`, added `data-clip-support-placement="environment"`, and right-aligned the floating support menu from the environment action area.
+  - Verified the Timeline remains first at y=123 with height 317px.
+  - Verified selected clip production remains below the Timeline at y=444 and its height dropped from 167px to 141px.
+  - Verified command rail remains at y=481 with height 46px, environment row remains y=544 with height 34px, support menu is y=545 with height 32px inside the environment row, and render strip moved up to y=589.
+  - Verified whole-scene grid entries remain absent and built-in Browser warn/error logs are empty.
+  - Built-in Browser clipped screenshot timed out via `Page.captureScreenshot`; this evidence is DOM layout and console evidence only.
+- Latest validation after inline support menu pass:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 24 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 62 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipSupportPanel.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx 'ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx' ai-pic-frontend/src/components/features/Timeline/Timeline.tsx` reported 200, 182, 1271, 199, and 200 lines respectively.
+- Latest Timeline-primary follow-up evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-timeline-restored-iab/`:
+  - `browser-evidence.json` captured the built-in Browser state after logging in through low-level keypress events because Browser fill/type hit the virtual clipboard limitation.
+  - Verified the deep link returned to `/episodes/12c6eb572eda47138a5fc821c225a1af/workspace?tab=timeline&scriptId=143&clipId=video_scene_580_beat_3923_001`.
+  - Verified the full Timeline is visible at y=123 with height 317px, the `时间尺` ruler is visible at y=157, and the `video` main lane is above the dialogue lane (`video` y=201, dialogue y=270).
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible below the Timeline, while `生成宫格分镜图` and `宫格图生成成片` remain absent.
+  - Built-in Browser warn/error logs were empty.
+  - Built-in Browser screenshot capture still timed out via `Page.captureScreenshot`; this run uses DOM layout and console evidence only.
+- Latest validation after Timeline-primary follow-up:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 24 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 62 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/TimelineGrid.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineWorkspaceModel.ts ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 157, 243, and 1283 lines respectively.
+- Readable command-parameter evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-readable-command-params-iab/`:
+  - `readable-command-params.png` captured the built-in Browser first viewport.
+  - `browser-evidence.json` captured DOM layout and console evidence.
+  - Verified the Timeline remains first at y=123 with height 317px, selected clip production remains y=444 with height 141px, and the command rail remains y=481 with height 46px.
+  - Verified parameter controls now render as `分镜参数` and `视频参数`, both 72px wide, instead of the earlier 35px/40px squeezed controls.
+  - Verified primary actions remain in one row: `生成片段分镜图` y=488, `生成首尾帧` y=488, and `生成/重做此片段视频` y=488.
+  - Verified `生成宫格分镜图` and `宫格图生成成片` remain absent, and built-in Browser warn/error logs are empty.
+- Latest validation after readable command-parameter pass:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 24 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 62 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/CompactProductionDetails.tsx ai-pic-frontend/src/components/features/episode/TimelineClipStoryboardReferenceCard.tsx ai-pic-frontend/src/components/features/episode/TimelineClipVideoReworkCard.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 43, 198, 176, and 1295 lines respectively.
+- Flat command-surface evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-flat-command-surface-iab/`:
+  - `flat-command-surface.png` captured the built-in Browser first viewport.
+  - `browser-evidence.json` captured DOM layout and console evidence.
+  - Verified the nested command surface has no frame (`has_nested_frame: false`), no background frame, and no shadow.
+  - Verified the command rail height dropped from 46px to 32px, selected clip production height dropped from 141px to 127px, environment row moved to y=530, and render strip moved to y=575.
+  - Verified the full Timeline remains first at y=123 with height 317px, and the three primary clip actions plus `分镜参数` / `视频参数` remain in one row at y=481.
+  - Verified `生成宫格分镜图` and `宫格图生成成片` remain absent, and built-in Browser warn/error logs are empty.
+- Latest validation after flat command-surface pass:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 24 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 62 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkCards.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 194 and 1299 lines respectively.
+- Current-clip identity evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-current-clip-identity-iab/`:
+  - `current-clip-identity.png` captured the built-in Browser first viewport.
+  - `browser-evidence.json` captured DOM layout and console evidence.
+  - Verified the visible production heading is now `当前片段` at y=455, while `选中片段生产` is preserved as sr-only text.
+  - Verified the clip summary uses `data-clip-production-summary-layout="identity-line"`, remains one line at y=451 with height 24px, and keeps the video status pill visible.
+  - Verified the Timeline remains first at y=123 with height 317px, command rail remains y=481 with height 32px, environment row remains y=530, and render strip remains y=575.
+  - Verified `生成宫格分镜图` and `宫格图生成成片` remain absent, and built-in Browser warn/error logs are empty.
+- Latest validation after current-clip identity pass:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 24 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 62 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionPanel.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 168, 188, and 1311 lines respectively.
+- Light render-strip evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-light-render-strip-iab/`:
+  - `light-render-strip.png` captured the built-in Browser first viewport.
+  - `browser-evidence.json` captured DOM layout, login/deep-link behavior, and console evidence.
+  - Verified unauthenticated deep link redirected to `/login?next=...`; because Browser `fill`/`type` hit the virtual clipboard limitation, login was completed with normal Playwright key presses.
+  - Verified stale `clipId=video_scene_missing_for_check` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the full Timeline remains first at y=123 with height 317px, selected clip production remains y=444 with height 127px, and render strip remains y=575 with visible title `输出`.
+  - Verified `生成片段分镜图`, `生成首尾帧`, `生成/重做此片段视频`, and scene environment save remain available in the first viewport.
+  - Verified `生成宫格分镜图`, `宫格图生成成片`, and `场景宫格分镜` remain absent; built-in Browser warn/error logs are empty.
+- Latest validation after light render-strip pass:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 25 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 63 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Command-rail refinement evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-polish-continue-iab/`:
+  - `before.png` and `before-metrics.json` captured the built-in Browser state before this pass.
+  - `command-rail-refined.png` captured the built-in Browser first viewport after the pass.
+  - `command-rail-refined.json` captured DOM layout and console evidence.
+  - Verified the full Timeline remains first at y=123 with height 317px, selected clip production remains y=444 with height 127px, and the command rail remains y=481 with height 32px.
+  - Verified command widths changed to storyboard 336px, keyframes 279px, video 413px, and two `参数` toggles at 48px each; video remains the only active blue primary command.
+  - Verified `生成宫格分镜图`, `宫格图生成成片`, and `场景宫格分镜` remain absent; built-in Browser warn/error logs are empty.
+- Latest validation after command-rail refinement:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 25 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 63 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Secondary environment-row polish evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-polish-secondary-iab/`:
+  - `before.png` and `before-metrics.json` captured the built-in Browser state before this pass.
+  - `secondary-support-polished.png` captured the built-in Browser first viewport after the pass.
+  - `secondary-support-polished.json` captured DOM layout and console evidence.
+  - Verified full Timeline remains first at y=123 with height 317px, selected clip production remains y=444 with height 127px, command rail remains y=481 with height 32px, environment row remains y=530 with height 34px, and render strip remains y=575 with height 38px.
+  - Verified the inactive `保存场景环境` button is absent by default, while the support entry is a 32px `...` control with aria-label `更多操作`.
+  - Verified `生成宫格分镜图`, `宫格图生成成片`, and `场景宫格分镜` remain absent; built-in Browser warn/error logs are empty.
+- Latest `没有时间轴了` follow-up evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-missing-timeline-iab/`:
+  - `current.png` and `current-metrics.json` confirmed the pre-fix page still had a Timeline canvas at y=123 with height 317px, but the detailed lanes only exposed the first 20s of a 02:32 episode.
+  - `timeline-overview.png` captured the built-in Browser first viewport after adding the full-episode overview rail.
+  - `timeline-overview-metrics.json` captured DOM layout evidence: `全片概览` is at y=156 with height 70px, overview rail is 1070px wide, 16 video overview items are present, selected marker is visible, detailed video track remains below, and selected clip production remains visible at y=514.
+  - `timeline-overview-console.json` captured empty built-in Browser warn/error logs.
+  - Verified `生成/重做此片段视频` remains visible in the first viewport and whole-scene grid entries remain absent.
+- Latest validation after full-episode Timeline overview pass:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 28 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 66 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Compact overview/action-hierarchy evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-polish-pass-iab/`:
+  - `before.png` and `before-metrics.json` captured the built-in Browser state before this pass.
+  - `compact-overview.png` and `compact-overview-metrics.json` captured the first viewport after compressing `全片概览` into an inline rail.
+  - `final.png`, `final-metrics.json`, and `final-console.json` captured the final built-in Browser state after also downgrading the header `处理缺失片段` action.
+  - Verified `全片概览` uses `data-timeline-overview-layout="inline"`, overview height dropped from 70px to 37px, the full Timeline height dropped from 387px to 354px, the selected clip production panel moved from y=514 to y=481, and the main command rail moved from y=551 to y=518.
+  - Verified the overview rail still contains 16 video items, the selected clip marker remains visible, and the detailed video/dialogue/subtitle/storyboard lanes remain below the overview.
+  - Verified `处理缺失片段` is now secondary outline at y=72, while `生成/重做此片段视频` remains the blue primary action at y=518.
+  - Verified `生成宫格分镜图`, `宫格图生成成片`, and `场景宫格分镜` remain absent; built-in Browser warn/error logs are empty.
+- Latest validation after compact overview/action-hierarchy pass:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 28 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 66 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Compact secondary-lane evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-compact-secondary-lanes-iab/`:
+  - `compact-secondary-lanes.png` captured the built-in Browser first viewport.
+  - `compact-secondary-lanes-metrics.json` captured DOM layout evidence after the secondary-lane compression.
+  - `compact-secondary-lanes-console.json` captured empty built-in Browser warn/error logs.
+  - Verified full Timeline remains first at y=123 while Timeline height dropped from 354px to 302px and the detailed track viewport dropped from 283px to 231px.
+  - Verified video track remains the primary 60px lane with a 42px visible clip block, while dialogue/subtitle/storyboard tracks are compact 32px lanes with 20px visible clip blocks and 4px gaps.
+  - Verified selected clip production moved to y=429, command rail moved to y=466, environment row moved to y=515, and render strip moved to y=560 in the 1280x720 first viewport.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible; `生成宫格分镜图`, `宫格图生成成片`, and `场景宫格分镜` remain absent.
+- Latest validation after compact secondary-lane pass:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 28 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 66 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Compact ruler evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-compact-ruler-iab/`:
+  - `compact-ruler.png` captured the built-in Browser first viewport.
+  - `compact-ruler-metrics.json` captured DOM layout evidence after compressing the Timeline ruler.
+  - `compact-ruler-console.json` captured empty built-in Browser warn/error logs.
+  - Verified ruler height is 36px, the selected marker remains visible, and the time ticks plus sticky track labels still render.
+  - Verified full Timeline remains first at y=123 while Timeline height dropped from 302px to 294px and the detailed track viewport dropped from 231px to 223px.
+  - Verified selected clip production moved to y=421, command rail moved to y=458, environment row moved to y=507, and render strip moved to y=552 in the 1280x720 first viewport.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible; `生成宫格分镜图`, `宫格图生成成片`, and `场景宫格分镜` remain absent.
+- Latest validation after compact ruler pass:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 28 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 66 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` first failed while fetching Google Fonts `Geist`; immediate rerun passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Parameter-affordance evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-parameter-affordance-iab/`:
+  - `parameter-affordance.png` captured the built-in Browser first viewport.
+  - `parameter-affordance-metrics.json` captured DOM layout evidence after downgrading visible parameter controls.
+  - `parameter-affordance-console.json` captured empty built-in Browser warn/error logs.
+  - Verified the two parameter summaries are 32x32 `...` controls with aria-label/title `展开分镜参数与参考` and `展开视频绑定与参数`.
+  - Verified visible `参数` summary text is absent, `生成/重做此片段视频` remains the blue primary action at y=458, and the primary video action width increased to 429px.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible; `生成宫格分镜图`, `宫格图生成成片`, and `场景宫格分镜` remain absent.
+- Latest validation after parameter-affordance pass:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 28 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 66 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Timeline-readable follow-up evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-timeline-visible-iab/`:
+  - `timeline-visible.png` captured the built-in Browser first viewport.
+  - `timeline-visible-metrics.json` captured DOM layout evidence after increasing the primary Timeline density.
+  - `timeline-visible-console.json` captured empty built-in Browser warn/error logs.
+  - Verified the primary Timeline canvas is first at y=123 with height 334px and `data-timeline-density="primary"`.
+  - Verified the overview rail is 28px high, the ruler is 40px high, the video track is 72px high, and the first viewport still shows `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` at y=498.
+  - Verified `生成宫格分镜图`, `宫格图生成成片`, and `场景宫格分镜` remain absent.
+- Latest validation after Timeline-readable follow-up:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 28 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 66 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Flat support-row polish evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-flat-support-iab/`:
+  - `flat-support.png` captured the built-in Browser first viewport.
+  - `flat-support-metrics.json` captured DOM layout evidence after flattening the support rows.
+  - `flat-support-console.json` captured empty built-in Browser warn/error logs.
+  - Verified the primary Timeline canvas remains first at y=123 with height 334px and `data-timeline-density="primary"`.
+  - Verified the three primary clip actions remain visible at y=498.
+  - Verified the scene environment row now uses `data-clip-environment-layout="inline"`, has no slate card border/background, and remains visible at y=547.
+  - Verified the render strip now uses `data-episode-render-strip-surface="flat"`, class `border-t border-gray-100 bg-transparent`, and remains visible at y=590.
+  - Verified render readiness uses a compact dot label at y=601, whole-scene grid entries remain absent, unmatched-scene text remains absent, and the workspace deep link is still on `clipId=video_scene_580_beat_3923_001`.
+- Latest validation after flat support-row polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 28 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 66 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Transparent production-panel evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-transparent-production-iab/`:
+  - `transparent-production.png` captured the built-in Browser first viewport.
+  - `transparent-production-metrics.json` captured DOM layout evidence after removing the selected clip production panel's white double-border surface.
+  - `transparent-production-console.json` captured empty built-in Browser warn/error logs.
+  - Verified the primary Timeline canvas remains first at y=123 with height 334px.
+  - Verified `data-clip-production-panel="flat"` now has `data-clip-production-surface="transparent"` and class `bg-transparent`.
+  - Verified the selected clip summary remains visible at y=469, the three primary clip actions remain visible at y=499, the scene environment row remains visible at y=548, and the render strip remains visible at y=590.
+  - Verified whole-scene grid entries remain absent, unmatched-scene text remains absent, and the deep link stays on `clipId=video_scene_580_beat_3923_001`.
+- Latest validation after transparent production-panel polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 28 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 66 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Quiet header-actions evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-header-quiet-iab/`:
+  - `header-quiet.png` captured the built-in Browser first viewport.
+  - `header-quiet-metrics.json` captured DOM layout evidence after downgrading the top-right auxiliary actions.
+  - `header-quiet-console.json` captured empty built-in Browser warn/error logs.
+  - Verified the header action with accessible name `处理缺失片段` renders visible text `缺失片段`, has no border class, and uses amber ghost styling.
+  - Verified the support menu with accessible name `支持视图` renders visible text `支持`, has no border class, and remains clickable.
+  - Verified the primary Timeline canvas remains first at y=123 with height 334px, the selected clip production panel remains transparent, and `生成/重做此片段视频` remains the blue primary action at y=499.
+  - Verified whole-scene grid entries remain absent, unmatched-scene text remains absent, and the deep link stays on `clipId=video_scene_580_beat_3923_001`.
+- Latest validation after quiet header-actions polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 28 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 66 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Icon affordance evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-icon-affordance-iab/`:
+  - `icon-affordance.png` captured the built-in Browser first viewport.
+  - `icon-affordance-metrics.json` captured DOM layout evidence after replacing visible `...` controls with SVG icons.
+  - `icon-affordance-console.json` captured empty built-in Browser warn/error logs.
+  - Verified both compact parameter summaries contain SVG icons, have empty visible text, and retain aria/title labels `展开分镜参数与参考` and `展开视频绑定与参数`.
+  - Verified the environment-row support summary contains an SVG icon, keeps aria/title label `更多操作`, and no summary has visible text exactly `...`.
+  - Verified the primary Timeline canvas remains first at y=123 with height 334px, the selected clip production panel remains transparent, whole-scene grid entries remain absent, unmatched-scene text remains absent, and the deep link stays on `clipId=video_scene_580_beat_3923_001`.
+- Latest validation after icon affordance polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 28 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 66 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Density and parameter-icon polish evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-polish-iab-2/`:
+  - `before-polish.png` / `before-polish-metrics.json` captured the built-in Browser baseline after the previous pass.
+  - `after-density-polish.png` / `after-density-polish-metrics.json` captured the denser Timeline canvas.
+  - `after-parameter-icon-polish.png` / `after-parameter-icon-polish-metrics.json` captured the final sliders-icon parameter controls.
+  - `after-parameter-icon-polish-console.json` captured empty built-in Browser warn/error logs.
+  - Verified the full Timeline canvas remains first at y=123, with height reduced from 334px to 280px.
+  - Verified the selected clip production panel moved up from y=461 to y=407, render strip moved to y=536, and the three primary clip actions remain visible at y=445.
+  - Verified both parameter summaries now have empty visible text, one SVG, three paths, and aria/title labels `展开分镜参数与参考` and `展开视频绑定与参数`.
+  - Verified whole-scene grid entries remain absent, unmatched-scene text remains absent, console warn/error count is 0, and the deep link stays on `clipId=video_scene_580_beat_3923_001`.
+- Latest validation after density and parameter-icon polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 28 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 66 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+- Production action icon evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-polish-iab-3/`:
+  - `before-next-polish.png` / `before-next-polish-metrics.json` captured the built-in Browser baseline before adding command icons.
+  - `after-action-icons.png` / `after-action-icons-metrics.json` captured the final iconized command buttons.
+  - `after-action-icons-console.json` captured empty built-in Browser warn/error logs.
+  - During validation, the Browser session expired and redirected to `/login?next=...`; login with the repository test account returned to the same workspace deep link before final evidence capture.
+  - Verified the workspace deep link stayed on `clipId=video_scene_580_beat_3923_001`.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` each contain one SVG icon, remain 32px high, and stay at y=445.
+  - Verified the primary Timeline canvas remains first at y=123 with height 280px, selected clip production remains at y=407, whole-scene grid entries remain absent, unmatched-scene text remains absent, and console warn/error count is 0.
+- Latest validation after production action icon polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 28 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 66 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+- Production band accent evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-polish-iab-4/`:
+  - `before-production-band.png` / `before-production-band-metrics.json` captured the built-in Browser baseline before adding the accent.
+  - `after-production-band.png` / `after-production-band-metrics.json` captured the final accented production band.
+  - `after-production-band-console.json` captured empty built-in Browser warn/error logs.
+  - Verified the selected clip production panel keeps `data-clip-production-surface="transparent"` and now uses `border-l-2 border-teal-500/60 bg-transparent`, with no white card surface.
+  - Verified the primary Timeline canvas remains first at y=123 with height 280px, selected production remains at y=407, and the three primary action buttons remain visible at y=443 with SVG icons.
+  - Verified only one blue primary button is visible, whole-scene grid entries remain absent, unmatched-scene text remains absent, and console warn/error count is 0.
+- Latest validation after production band accent polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 28 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 66 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+- Muted overview evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-polish-iab-5/`:
+  - `after-muted-overview.png` captured the built-in Browser first viewport.
+  - `after-muted-overview-metrics.json` captured DOM layout and class evidence for the overview rail.
+  - `after-muted-overview-console.json` captured empty built-in Browser warn/error logs.
+  - Verified the primary Timeline canvas remains first at y=123 with height 280px.
+  - Verified `全片概览` still renders 16 video items, with 15 non-selected items using `bg-slate-200`, 0 using `bg-teal-300`, and 1 selected item using `bg-blue-500`.
+  - Verified selected production remains at y=407, whole-scene grid entries remain absent, unmatched-scene text remains absent, and console warn/error count is 0.
+- Latest validation after muted overview polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 28 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 66 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+- Muted ruler evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-polish-iab-6/`:
+  - `after-muted-ruler.png` captured the built-in Browser first viewport.
+  - `after-muted-ruler-metrics.json` captured DOM class and layout evidence for the Timeline ruler.
+  - `after-muted-ruler-console.json` captured empty built-in Browser warn/error logs.
+  - Verified the primary Timeline canvas remains first at y=123 with height 280px.
+  - Verified the ruler now uses `border-b border-slate-200 bg-white`, with no `border-b-2` and no `border-slate-500`.
+  - Verified selected production remains at y=407, whole-scene grid entries remain absent, unmatched-scene text remains absent, and console warn/error count is 0.
+- Latest validation after muted ruler polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 28 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 66 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+- Follow-up after user report `没有时间轴了`: built-in Browser showed the Timeline DOM and rows still existed, but the previous muted ruler/overview made the first viewport read like a pale table instead of a real time axis. Restored Timeline visual weight by renaming the full-episode overview to `全片时间轴`, increasing the overview rail height, strengthening the time ruler/grid contrast, tinting the video production lane, and adding stable selected-item attributes to shared Timeline clip buttons.
+- Timeline visibility recovery evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-no-timeline-iab/`:
+  - `before-no-timeline.png` / `before-no-timeline-metrics.json` captured the built-in Browser baseline before the fix.
+  - `stale-clip-timeline.png` / `stale-clip-timeline-metrics.json` verified the old deep link still resolved to `clipId=video_scene_580_beat_3923_001` and the Timeline DOM existed.
+  - `after-timeline-visible.png` / `after-timeline-visible-metrics.json` captured the final first viewport after restoring Timeline contrast.
+  - `after-timeline-visible-console.json` captured empty built-in Browser warn/error logs.
+  - Verified the primary Timeline canvas is first at y=123 with height 293px, `全片时间轴` overview is visible at y=161 with a 28px rail, the time ruler uses `border-slate-300`, the video track uses `bg-teal-50/35`, and selected clip `video-video_scene_580_beat_3923_001` is visible as a 166px block.
+  - Verified selected production remains directly below the Timeline, whole-scene grid entries remain absent, unmatched-scene text remains absent, and console warn/error count is 0.
+- Latest validation after Timeline visibility recovery:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 28 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 66 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Continued polish pass for `太丑，继续优化`: reduced command-bar visual noise by changing the two prerequisite clip actions (`生成片段分镜图`, `生成首尾帧`) from white secondary form buttons to centered ghost actions. `生成/重做此片段视频` remains the only blue primary action in the selected clip production band.
+- Command-bar hierarchy evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-polish-iab-8/`:
+  - `before-polish-8.png` / `before-polish-8-metrics.json` captured the built-in Browser baseline before this pass.
+  - `after-command-bar-polish.png` / `after-command-bar-polish-metrics.json` captured the first ghost-action attempt.
+  - `after-centered-command-bar.png` / `after-centered-command-bar-metrics.json` captured the final centered ghost command bar.
+  - `after-centered-command-bar-console.json` captured empty built-in Browser warn/error logs.
+  - Verified storyboard/keyframe actions no longer include `bg-white`, no longer use `justify-start`, and retain 32px command height.
+  - Verified video generation remains `bg-blue-600`, the primary Timeline canvas stays first at y=123 with height 293px, selected production stays at y=420, and render strip stays at y=549.
+  - Verified whole-scene grid entries remain absent, unmatched-scene text remains absent, and console warn/error count is 0.
+- Latest validation after command-bar hierarchy polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 28 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 66 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Continued polish pass for `太丑，继续优化`: collapsed the blocked render/export state further. When clip videos are missing and there is no active render job, the `输出` strip now shows only the readiness status plus `查看缺失`; disabled `渲染预览` and `导出成片` buttons are no longer exposed until the Timeline is actually render-ready or render-job state exists.
+- Output-strip polish evidence saved under `artifacts/runs/2026-06-12T-episode-workspace-polish-iab-9/`:
+  - `before-polish-9.png` / `before-polish-9-metrics.json` captured the built-in Browser baseline before this pass.
+  - After code changes, the built-in Browser session expired and redirected to `/login?next=...`, proving the deep link was preserved.
+  - Browser automation could not complete login in this run: locator fill and CUA typing both failed because the Browser virtual clipboard was unavailable; a token-injection attempt was blocked by Browser Use URL policy and was not pursued further.
+  - Therefore the post-change browser proof is limited to the login redirect/deep-link state; the output-strip behavior is covered by component tests in `tests/timelineWorkspaceLayout.test.tsx`.
+- Latest validation after output-strip polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 28 tests, including missing-output state with no visible `渲染预览` / `导出成片` buttons and ready-output state with both actions present.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 66 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Whole-episode Timeline fit evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-10/`:
+  - `before-polish-10.png` / `before-polish-10-metrics.json` captured the baseline where the detailed Timeline existed but only exposed the first few clips at 1x zoom.
+  - `after-polish-10-fit-timeline-v2.png` / `after-polish-10-fit-timeline-v2-metrics.json` captured the final first viewport after restoring whole-episode fit.
+  - Chrome DevTools and Browser plugin validation were not used for this final capture because the prior built-in Browser login path was blocked by unavailable virtual clipboard support; this run used Playwright with system Chrome fallback and records that explicitly.
+  - Verified `data-timeline-fit-to-width="true"`, reset action `全片适配`, and 16/16 Timeline video buttons visible in the 1280x720 first viewport.
+  - Verified selected production remains directly below the Timeline, whole-scene grid entries remain absent, unmatched-scene text remains absent, and no failed application requests occurred. Console output contained only React DevTools/HMR development messages; one Next RSC request was aborted during navigation.
+- Latest validation after whole-episode Timeline fit:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 28 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 66 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Selected range marker evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-11/`:
+  - `after-selected-range-marker.png` / `after-selected-range-marker-metrics.json` captured the final first viewport.
+  - This run used Playwright with system Chrome fallback for the same reason as the prior browser evidence: built-in Browser login automation was blocked by unavailable virtual clipboard support.
+  - Verified 16/16 Timeline video buttons are visible, `data-timeline-selected-range="true"` exists at the selected clip span, and the old visible `当前` bubble is absent.
+  - Verified whole-scene grid entries remain absent, unmatched-scene text remains absent, failed request count is 0, and console output only contains React DevTools/HMR development messages.
+- Latest validation after selected range marker polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 28 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 66 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Production action group evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-12/`:
+  - `after-action-groups.png` / `after-action-groups-metrics.json` captured the final first viewport.
+  - This run used Playwright with system Chrome fallback for the same reason as the prior browser evidence: built-in Browser login automation was blocked by unavailable virtual clipboard support.
+  - Verified `data-clip-action-group="storyboard"` and `data-clip-action-group="video"` exist at 32px height, the parameter summary count remains 2, and 16/16 Timeline video buttons remain visible.
+  - Verified whole-scene grid entries remain absent, unmatched-scene text remains absent, failed request count is 0, and console output only contains React DevTools/HMR development messages.
+- Latest validation after production action grouping:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 28 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 66 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Primary video parameter segment evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-13/`:
+  - `after-primary-parameter-segment.png` / `after-primary-parameter-segment-metrics.json` captured the final first viewport.
+  - This run used Playwright with system Chrome fallback for the same reason as the prior browser evidence: built-in Browser login automation was blocked by unavailable virtual clipboard support.
+  - Verified the video parameter summary has `data-clip-parameter-tone="primary"` and blue primary styling, while the storyboard parameter summary remains `data-clip-parameter-tone="default"`.
+  - Verified 16/16 Timeline video buttons remain visible, whole-scene grid entries remain absent, unmatched-scene text remains absent, failed request count is 0, and console output only contains React DevTools/HMR development messages.
+- Latest validation after primary video parameter segment polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 28 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 66 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Support menu label evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-14/`:
+  - `after-support-menu-label.png` / `after-support-menu-label-metrics.json` captured the final first viewport.
+  - This run used Playwright with system Chrome fallback for the same reason as the prior browser evidence: built-in Browser login automation was blocked by unavailable virtual clipboard support.
+  - Verified `data-clip-support-summary="ghost"` renders visible text `辅助`, keeps `aria-label="更多操作"`, and remains a 32px-high secondary trigger beside the environment selector.
+  - Verified 16/16 Timeline video buttons remain visible, whole-scene grid entries remain absent, unmatched-scene text remains absent, failed request count is 0, and console output only contains React DevTools/HMR development messages.
+- Latest validation after support menu label polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 28 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 66 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Muted support-track label evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-15/`:
+  - `after-muted-support-track-labels.png` / `after-muted-support-track-labels-metrics.json` captured the final first viewport.
+  - This run used Playwright with system Chrome fallback for the same reason as the prior browser evidence: built-in Browser login automation was blocked by unavailable virtual clipboard support.
+  - Verified 24 visible support-track items have no visible labels, while the video lane still shows labels such as `视频 2`, `视频 3`, and `视频 4`.
+  - Verified 16/16 Timeline video buttons remain visible, whole-scene grid entries remain absent, unmatched-scene text remains absent, failed request count is 0, and console output only contains React DevTools/HMR development messages.
+- Latest validation after muted support-track label polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Follow-up for user feedback `没有时间轴了`: restored Timeline readability instead of further compressing it. The detailed Timeline now uses a taller time ruler and lanes, selected video clips keep a visible compact label in whole-episode fit, and dialogue/subtitle/storyboard support lanes show compact labels (`对白 1`, `字幕 1`, `分镜 1`) rather than empty blocks.
+- Timeline-restoration evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-16/`:
+  - `current-before-no-timeline-fix.png` / `current-before-no-timeline-fix-metrics.json` captured the unauthenticated redirect baseline while proving the deep link returned to `/login?next=...`.
+  - `current-authenticated-before-no-timeline-fix.png` / `current-authenticated-before-no-timeline-fix-metrics.json` captured the authenticated baseline where the Timeline canvas existed but support-track labels were empty and the selected first video clip had no visible label.
+  - `after-no-timeline-fix.png` / `after-no-timeline-fix-metrics.json` captured the restored first viewport.
+  - This run used Playwright with system Chrome fallback because prior built-in Browser login automation was blocked by unavailable virtual clipboard support.
+  - Verified Timeline canvas is visible at 1180x337, the time ruler is 36px high, the video track is 69px high, dialogue/subtitle/storyboard tracks are each 39px high, selected `视频 1` is visible, and support labels include `对白 1-4`, `字幕 1-4`, and `分镜 1-16`.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain present in the first viewport, whole-scene grid entries remain absent, console error count is 0, and no application API request returned 4xx/5xx.
+- Latest validation after Timeline readability restoration:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Continued polish pass for `太丑，继续优化`: fixed the selected Timeline clip overlap introduced by making short clips readable. The selected first video clip now keeps its true fitted width instead of expanding to 58px and covering `视频 2`; the selected range/cursor remains visible and the production summary below carries the full selected text.
+- Also replaced the standalone parameter glyphs in the production action rail with compact `参数` text segments. The storyboard and video actions now read as `生成... + 参数`, instead of showing unlabeled slider icons beside the main buttons.
+- Selected-overlap and parameter-label evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-17/`:
+  - `after-selected-overlap-fix.png` / `after-selected-overlap-fix-metrics.json` captured the intermediate Timeline-only correction.
+  - `after-selected-overlap-and-parameter-label-fix.png` / `after-selected-overlap-and-parameter-label-fix-metrics.json` captured the final first viewport.
+  - This run used Playwright with system Chrome fallback because prior built-in Browser login automation was blocked by unavailable virtual clipboard support.
+  - Verified the selected first video clip is 24px wide, no longer overlaps the second video clip, and `视频 2` remains readable.
+  - Verified the two parameter summaries render visible text `参数`, retain their `default` and `primary` tones, have no svg-only glyphs, and remain 32px high.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, whole-scene grid entries remain absent, console error count is 0, and no application API request returned 4xx/5xx.
+- Latest validation after selected-overlap and parameter-label polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Continued polish pass for `太丑，继续优化`: balanced the selected clip production command rail. The desktop command grid now uses `1fr / 0.9fr / 1.25fr` columns instead of the previous `0.9fr / 0.62fr / 1.35fr`, reducing the empty space around storyboard/keyframe actions while keeping the video action visually primary.
+- Balanced command-rail evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-18/`:
+  - `after-balanced-command-rail.png` / `after-balanced-command-rail-metrics.json` captured the final first viewport.
+  - This run used Playwright with system Chrome fallback because prior built-in Browser login automation was blocked by unavailable virtual clipboard support.
+  - Verified command grid class is `grid-cols-[minmax(12rem,1fr)_minmax(10rem,0.9fr)_minmax(18rem,1.25fr)]`.
+  - Verified storyboard action width is 318px, keyframe action width is 322px, video action width is 408px, and the two parameter segments remain 40px wide.
+  - Verified selected video clips still do not overlap, whole-scene grid entries remain absent, console error count is 0, and no application API request returned 4xx/5xx.
+- Latest validation after balanced command-rail polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Continued polish pass for `太丑，继续优化`: added a compact in-lane label for the selected short video clip. Whole-episode fit now renders the selected first video clip as `1` inside the 24px block, keeping the true Timeline width and preserving the full clip title in the production summary below.
+- Selected clip number-label evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-19/`:
+  - `after-selected-clip-number-label.png` / `after-selected-clip-number-label-metrics.json` captured the final first viewport.
+  - This run used Playwright with system Chrome fallback because prior built-in Browser login automation was blocked by unavailable virtual clipboard support.
+  - Verified the selected first video clip text is `1`, width remains 24px, and it still does not overlap `视频 2`.
+  - Verified command grid remains the balanced `1fr / 0.9fr / 1.25fr` layout, whole-scene grid entries remain absent, console error count is 0, and no application API request returned 4xx/5xx.
+- Latest validation after selected clip number-label polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Continued polish pass for `太丑，继续优化`: cleaned up narrow support-track labels. Dialogue/subtitle/storyboard clips that are too narrow for labels now show numeric markers (`1`, `2`, `3`, `4`) instead of truncated text like `对...`, `字...`, or `分...`; wider storyboard clips still show labels such as `分镜 2`.
+- Support numeric-label evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-20/`:
+  - `after-support-numeric-labels.png` / `after-support-numeric-labels-metrics.json` captured the final first viewport.
+  - This run used Playwright with system Chrome fallback because prior built-in Browser login automation was blocked by unavailable virtual clipboard support.
+  - Verified visible support labels no longer contain `...`, narrow dialogue/subtitle clips show `1-4`, narrow storyboard clips show numbers, and wider storyboard clips still show `分镜 N`.
+  - Verified selected video clip remains `1`, still does not overlap `视频 2`, whole-scene grid entries remain absent, console error count is 0, and no application API request returned 4xx/5xx.
+- Latest validation after support numeric-label polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Continued polish pass for `太丑，继续优化`: tightened the collapsed output/render strip. The missing-clips state now renders `输出 · 缺 N 个片段 · 查看缺失` as one compact left-aligned inline group instead of spreading `查看缺失` to the far right of an otherwise empty row.
+- Compact output-strip evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-21/`:
+  - `after-compact-output-strip.png` / `after-compact-output-strip-metrics.json` captured the final first viewport.
+  - This run used Playwright with system Chrome fallback because prior built-in Browser login automation was blocked by unavailable virtual clipboard support.
+  - Verified `data-timeline-render-summary="inline"` is 174px wide, uses `inline-flex` and `justify-start`, and the `查看缺失` chip sits next to the missing count at x=202 rather than the far right edge.
+  - Verified selected video clip still does not overlap `视频 2`, support labels remain free of `...`, whole-scene grid entries remain absent, console error count is 0, and no application API request returned 4xx/5xx.
+- Latest validation after compact output-strip polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Continued polish pass for `太丑，继续优化`: reorganized the selected clip production rail into three explicit step blocks. The visible flow now reads `1 片段分镜图`, `2 首尾帧`, `3 片段视频`; the video block stays the only blue primary action, while storyboard/keyframe actions use consistent secondary button treatment and parameter controls remain inside their step.
+- Step command-rail evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-22/`:
+  - `after-step-command-rail.png` / `after-step-command-rail-metrics.json` captured the final first viewport.
+  - This run used Playwright with system Chrome fallback because full in-app Browser navigation/screenshot tools were not available in this turn.
+  - Authentication for the browser capture used the backend login API token written to same-origin localStorage before opening the workspace. The earlier form-click attempt submitted before React handled the form, so it was recorded as diagnostic evidence in `debug-load-failure.png` / `debug-load-failure.json`.
+  - Verified the workspace deep link normalized to the valid selected video clip URL `clipId=video_scene_580_beat_3923_001`.
+  - Verified exactly three command cards render with steps `1`, `2`, `3` and titles `片段分镜图`, `首尾帧`, `片段视频`.
+  - Verified whole-scene grid entries remain absent, selected video clip still does not overlap `视频 2`, support labels remain free of `...`, console error count is 0, and no application API request returned 4xx/5xx after authenticated workspace load.
+- Latest validation after step command-rail polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Continued polish pass for `太丑，继续优化`: tightened the scene environment/support row below the production rail. The environment binding now sits in a light `support-bar` surface with the scene identity, environment select, save action when applicable, and a bordered `更多` support menu instead of a loose `辅助` text label.
+- Environment support-bar evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-23/`:
+  - `after-environment-support-bar.png` / `after-environment-support-bar-metrics.json` captured the final first viewport.
+  - This run used Playwright with system Chrome fallback because full in-app Browser navigation/screenshot tools were not available in this turn.
+  - Authentication for the browser capture used the backend login API token written to same-origin localStorage before opening the workspace.
+  - Verified the workspace deep link normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the environment row renders `data-clip-environment-layout="support-bar"`, the support trigger text is `更多`, and its aria label is `更多片段支持操作`.
+  - Verified whole-scene grid entries remain absent, selected video clip still does not overlap `视频 2`, support labels remain free of `...`, console error count is 0, and no application API request returned 4xx/5xx.
+- Latest validation after environment support-bar polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Continued polish pass for `太丑，继续优化`: removed the long teal left rail from the selected clip production panel. The production area now uses a subtle top separator (`data-clip-production-surface="separated"`) while keeping the panel transparent, avoiding a fake selected-card look around the already structured command cards and support bar.
+- Separated production-panel evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-24/`:
+  - `after-separated-production-panel.png` / `after-separated-production-panel-metrics.json` captured the final first viewport.
+  - This run used Playwright with system Chrome fallback because full in-app Browser navigation/screenshot tools were not available in this turn.
+  - Authentication for the browser capture used the backend login API token written to same-origin localStorage before opening the workspace.
+  - Verified the workspace deep link normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `data-clip-production-surface="separated"` and confirmed the production panel no longer has teal or `border-l-2` classes.
+  - Verified whole-scene grid entries remain absent, selected video clip still does not overlap `视频 2`, support labels remain free of `...`, console error count is 0, and no application API request returned 4xx/5xx.
+- Latest validation after separated production-panel polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Continued polish pass for `太丑，继续优化`: turned the selected clip identity line into a light `identity-bar` so the clip type, title, time range, review status, and video-material status read as one coherent strip above the three production steps. The bar uses a thin gray border and white translucent background, without shadow or large-card styling.
+- Current clip identity-bar evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-25/`:
+  - `after-current-clip-identity-bar.png` / `after-current-clip-identity-bar-metrics.json` captured the final first viewport.
+  - This run used Playwright with system Chrome fallback because full in-app Browser navigation/screenshot tools were not available in this turn.
+  - Authentication for the browser capture used the backend login API token written to same-origin localStorage before opening the workspace.
+  - Verified the workspace deep link normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `data-clip-production-summary-layout="identity-bar"`, `data-clip-current-bar="identity"`, and that the current bar does not use shadow or large rounded-card styling.
+  - Verified whole-scene grid entries remain absent, selected video clip still does not overlap `视频 2`, support labels remain free of `...`, console error count is 0, and no application API request returned 4xx/5xx.
+- Latest validation after current clip identity-bar polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Continued polish pass for `太丑，继续优化`: grouped the Timeline toolbar controls into a compact right-side control strip. `Timeline 生成设置`, the zoom range, and reset now share a light gray bordered surface, the visible zoom copy is `视图缩放`, and the range input uses a tighter width with blue accent.
+- Compact Timeline-toolbar evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-26/`:
+  - `after-compact-timeline-toolbar.png` / `after-compact-timeline-toolbar-metrics.json` captured the final first viewport.
+  - This run used Playwright with system Chrome fallback because full in-app Browser navigation/screenshot tools were not available in this turn.
+  - Authentication for the browser capture used the backend login API token written to same-origin localStorage before opening the workspace.
+  - Verified the workspace deep link normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the toolbar control group renders `data-timeline-toolbar-controls="compact"` and includes `生成设置`, `视图缩放`, and `全片适配`.
+  - Verified whole-scene grid entries remain absent, selected video clip still does not overlap `视频 2`, support labels remain free of `...`, console error count is 0, and no application API request returned 4xx/5xx.
+- Latest validation after compact Timeline-toolbar polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Continued polish pass for `太丑，继续优化`: tightened the compact Timeline toolbar after the previous grouping pass. The toolbar now has `data-timeline-toolbar="compact"`, uses `py-1` instead of `py-1.5`, the grouped controls use `py-0.5`, and the zoom range has a direct `aria-label="视图缩放"` instead of relying on a hidden duplicate label.
+- Tighter Timeline-toolbar evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-27/`:
+  - `after-tighter-timeline-toolbar.png` / `after-tighter-timeline-toolbar-metrics.json` captured the final first viewport.
+  - This run used Playwright with system Chrome fallback because full in-app Browser navigation/screenshot tools were not available in this turn.
+  - Authentication for the browser capture used the backend login API token written to same-origin localStorage before opening the workspace.
+  - Verified the workspace deep link normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified toolbar height is 39px, grouped control height is 30px, Timeline height is 339px, and the render summary bottom margin is 15px.
+  - Verified toolbar control text is `生成设置视图缩放全片适配`, without the prior duplicate hidden `缩放`.
+  - Verified whole-scene grid entries remain absent, selected video clip still does not overlap `视频 2`, support labels remain free of `...`, console error count is 0, and no application API request returned 4xx/5xx.
+- Latest validation after tighter Timeline-toolbar polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Minimap Timeline-overview evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-28/`:
+  - `after-minimap-overview.png` / `after-minimap-overview-metrics.json` captured the final first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Authentication for the browser capture used the backend login API token written to same-origin localStorage before opening the workspace.
+  - Verified the workspace deep link normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the overview renders `data-timeline-overview-layout="minimap"` and `data-timeline-overview-density="mini"`, overview height is 33px, rail height is 24px, and the visible summary is `02:32 · 16 段`.
+  - Verified the first viewport still includes `生成片段分镜图`, `生成首尾帧`, `生成/重做此片段视频`, the scene environment row, and the compact output row.
+  - Verified whole-scene grid entries remain absent, console error count is 0, and no application API request returned 4xx/5xx.
+- Latest validation after minimap Timeline-overview polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Segmented command-rail evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-29/`:
+  - `after-segmented-command-rail.png` / `after-segmented-command-rail-metrics.json` captured the final first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Authentication for the browser capture used the backend login API token written to same-origin localStorage before opening the workspace.
+  - Verified the workspace deep link normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `data-clip-command-surface="segmented"`, surface height is 70px, columns are divided with `divide-x`, individual command cards no longer carry `rounded-md`, `border-*`, `bg-white`, or `bg-blue-50` classes, and the video column keeps `data-clip-command-card-tone="primary"`.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible in the first viewport, with the video action width at 397px.
+  - Verified whole-scene grid entries remain absent, console error count is 0, and no application API request returned 4xx/5xx.
+- Latest validation after segmented command-rail polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Flat environment-row evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-30/`:
+  - `after-flat-environment-row.png` / `after-flat-environment-row-metrics.json` captured the final first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Authentication for the browser capture used the backend login API token written to same-origin localStorage before opening the workspace.
+  - Verified the workspace deep link normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `data-clip-environment-layout="support-bar"` now renders with `border-t border-gray-100 bg-transparent`, the row no longer uses a white card background or rounded card frame, and the support aside spacing is `px-1 pt-1`.
+  - Verified the scene environment row starts at y=591, output row starts at y=645, and `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible in the first viewport.
+  - Verified whole-scene grid entries remain absent, console error count is 0, and no application API request returned 4xx/5xx.
+- Latest validation after flat environment-row polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Inline current-clip-row evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-31/`:
+  - `after-inline-current-clip-row.png` / `after-inline-current-clip-row-metrics.json` captured the final first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Authentication for the browser capture used the backend login API token written to same-origin localStorage before opening the workspace.
+  - Verified the workspace deep link normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `data-clip-current-bar-layout="inline"`, current bar class is `flex min-w-0 items-center gap-2 px-1 py-1`, and the row no longer uses a white card background, rounded frame, shadow, or gray border.
+  - Verified the current metadata row height is 32px, command rail starts at y=503, scene environment row starts at y=585, output row starts at y=639, and all three clip actions remain visible in the first viewport.
+  - Verified whole-scene grid entries remain absent, console error count is 0, and no application API request returned 4xx/5xx.
+- Latest validation after inline current-clip-row polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Muted video-clip Timeline evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-32/`:
+  - `after-muted-video-clips.png` / `after-muted-video-clips-metrics.json` captured the final first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Authentication for the browser capture used the backend login API token written to same-origin localStorage before opening the workspace.
+  - Verified the workspace deep link normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified all 16 video clips remain visible. The selected video clip keeps `borderWidth: 2px`, blue ring classes, and text `1`; the first unselected video clip uses `backgroundColor: rgba(15, 118, 110, 0.14)`, `borderColor: rgba(15, 118, 110, 0.533)`, and `borderWidth: 1px`.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible in the first viewport.
+  - Verified whole-scene grid entries remain absent, console error count is 0, and no application API request returned 4xx/5xx.
+- Latest validation after muted video-clip Timeline polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Muted Timeline track-label evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-33/`:
+  - `after-muted-track-label.png` / `after-muted-track-label-metrics.json` captured the final first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Authentication for the browser capture used the backend login API token written to same-origin localStorage before opening the workspace.
+  - Verified the workspace deep link normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the video track label class now uses `border-teal-200 bg-white/90 font-bold text-teal-900`, the `主线` badge uses a bordered white surface, and the video track row remains `bg-teal-50/35`.
+  - Verified Timeline height is 327px, selected video clip border is 2px, unselected video clip border is 1px, and all three clip actions remain visible in the first viewport.
+  - Verified whole-scene grid entries remain absent, console messages are empty, and no network requests failed.
+- Latest validation after muted Timeline track-label polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+- Action-first command-rail evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-34/`:
+  - `after-action-first-command-rail.png` / `after-action-first-command-rail-metrics.json` captured the final first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Authentication for the browser capture used the backend login API token written to same-origin localStorage before opening the workspace.
+  - Verified the workspace deep link normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the command rail surface height is 46px, visible step blocks are empty, and each command section keeps `aria-label` values for `步骤 1 · 片段分镜图`, `步骤 2 · 首尾帧`, and `步骤 3 · 片段视频`.
+  - Verified Timeline height is 327px, `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, and the video action remains 397px wide.
+  - Verified whole-scene grid entries remain absent, the unmatched-scene warning remains absent, console messages are empty, and no network requests failed.
+- Latest validation after action-first command-rail polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Icon-only parameter control evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-35/`:
+  - `after-icon-parameter-controls.png` / `after-icon-parameter-controls-metrics.json` captured the final first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Authentication for the browser capture used the backend login API token written to same-origin localStorage before opening the workspace.
+  - Verified the workspace loads with `clipId=video_scene_580_beat_3923_001`.
+  - Verified both parameter summaries have empty visible text, render SVG icons, keep `aria-label` values `展开分镜参数与参考` and `展开视频绑定与参数`, and have 40px by 32px hit areas.
+  - Verified `visibleParameterTextNodes` is 0, the command rail surface remains 46px tall, and `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible.
+  - Verified whole-scene grid entries remain absent, the unmatched-scene warning remains absent, console messages are empty, and no network requests failed.
+- Latest validation after icon-only parameter-control polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/timelineClipReworkControls.test.ts` passed: 43 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Muted auxiliary Timeline lanes evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-36/`:
+  - `after-muted-auxiliary-lanes.png` / `after-muted-auxiliary-lanes-metrics.json` captured the final first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Authentication for the browser capture used the backend login API token written to same-origin localStorage before opening the workspace.
+  - Verified the workspace loads with `clipId=video_scene_580_beat_3923_001`.
+  - Verified visible text arrays for dialogue, subtitle, and storyboard tracks are empty, while video track text still includes `1`, `视频 2`, `视频 3`, and later video labels.
+  - Verified auxiliary storyboard blocks keep `aria-label`/`title`, render with `rgba(..., 0.03)` fill, `rgba(..., 0.267)` border, and `1px` border width.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, whole-scene grid entries remain absent, the unmatched-scene warning remains absent, console messages are empty, and no network requests failed.
+- Latest validation after muted auxiliary Timeline lanes:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Timeline restoration evidence after `没有时间轴了` saved under `artifacts/runs/2026-06-13T-episode-workspace-restore-timeline-pw-38/`:
+  - `after-restored-timeline.png` / `after-restored-timeline-metrics.json` captured the final first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Authentication for the browser capture used the backend login API token written to same-origin localStorage before opening the workspace.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the Timeline canvas is visible at 1180x327, the ruler uses `border-b-2 border-teal-500/55 bg-white`, the explicit axis line uses `border-teal-500/70`, grid lines use `bg-slate-300/45`, and tick labels use white labels with a small shadow.
+  - Verified the video main track uses `border-teal-500 bg-teal-50/55`, its sticky label uses `bg-teal-50/90 text-teal-950`, all 16 video items are present, and the selected video item remains visible with a 24x54 rect and blue ring.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, whole-scene grid entries remain absent, the unmatched-scene warning remains absent, and no network requests failed.
+  - Console messages were only standard development info (`React DevTools` hint and `[HMR] connected`); no error/warn messages were present.
+- Latest validation after restoring Timeline visual weight:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Compact environment-row evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-39/`:
+  - `after-compact-environment-row.png` / `after-compact-environment-row-metrics.json` captured the final first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Authentication for the browser capture used the backend login API token written to same-origin localStorage before opening the workspace.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the Timeline canvas remains visible at 1180x327 and the three primary clip actions remain visible at the same positions.
+  - Verified the scene environment row uses `data-clip-environment-layout="summary"`, is closed by default, and its visible summary is `场景环境 / 场景 1 · SCENE 1 - 开场钩子 / 选择环境`.
+  - Verified visible first-viewport text no longer includes the native select placeholder `选择场景环境`, the support trigger `更多`, or `保存场景环境` when no environment is selected.
+  - Verified whole-scene grid entries remain absent, the unmatched-scene warning remains absent, and no network requests failed.
+  - Console messages were only standard development info (`React DevTools` hint and `[HMR] connected`); no error/warn messages were present.
+- Latest validation after compact environment-row polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Compact Timeline toolbar evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-40/`:
+  - `after-compact-timeline-toolbar.png` / `after-compact-timeline-toolbar-metrics.json` captured the final first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Authentication for the browser capture used the backend login API token written to same-origin localStorage before opening the workspace.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the Timeline toolbar still renders above a visible 1180x327 Timeline canvas, the view controls are closed by default, and the visible toolbar text is reduced to `生成设置 / 视图 / 适配`.
+  - Verified visible first-viewport text no longer includes `视图缩放` or `全片适配`; the zoom range remains in the closed view disclosure with `aria-label="视图缩放"` and the fit reset keeps `aria-label="重置为全片适配视图"`.
+  - Verified the scene environment row remains closed by default, the three primary clip actions remain visible, whole-scene grid entries remain absent, the unmatched-scene warning remains absent, and no network requests failed.
+  - Console messages were only standard development info (`React DevTools` hint and `[HMR] connected`); no error/warn messages were present.
+- Latest validation after compact Timeline toolbar polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Wide-primary command-rail evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-41/`:
+  - `after-wide-primary-command-rail.png` / `after-wide-primary-command-rail-metrics.json` captured the final first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Authentication for the browser capture used the backend login API token written to same-origin localStorage before opening the workspace.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `data-clip-command-layout="wide-primary-video"` and the command grid tracks are `0.72fr / 0.55fr / 1.75fr`.
+  - Verified the visible button widths are 215px for `生成片段分镜图`, 191px for `生成首尾帧`, and 606px for `生成/重做此片段视频`, so the video action is clearly wider than both setup actions.
+  - Verified the Timeline canvas remains visible, the scene environment row and Timeline view controls remain closed by default, whole-scene grid entries remain absent, the unmatched-scene warning remains absent, and no network requests failed.
+  - Console messages were only standard development info (`React DevTools` hint and `[HMR] connected`); no error/warn messages were present.
+- Latest validation after wide-primary command-rail polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Compact missing-chip header evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-polish-pw-42/`:
+  - `after-compact-missing-chip-header.png` / `after-compact-missing-chip-header-metrics.json` captured the first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the header action keeps `aria-label="处理缺失片段"` but the visible text is shortened to `缺片段`, rendered as a compact amber chip.
+  - Verified the longer visible `缺失片段` header text is absent, while the output row still shows the full missing state through `缺 16 个片段` and `查看缺失`.
+  - Verified the wide-primary command rail, visible Timeline canvas, closed scene environment row, and closed Timeline view controls are preserved.
+  - Verified whole-scene grid entries remain absent, the unmatched-scene warning remains absent, and no network requests failed.
+  - Console messages were only standard development info (`React DevTools` hint and `[HMR] connected`); no error/warn messages were present.
+- Timeline identity evidence after the latest `没有时间轴了` report saved under `artifacts/runs/2026-06-13T-episode-workspace-timeline-visible-pw-43/`:
+  - `after-timeline-visible-context.png` / `after-timeline-visible-context-metrics.json` captured the first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Login was performed through the real `/login?next=...` form flow before reopening the workspace deep link.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the Timeline canvas is visible at 1180x327 near the top of the first viewport, with heading `时间轴定位` and selected context `当前 视频 1 · 00:00-00:03.320`.
+  - Verified the selected clip production panel remains visible below the Timeline, with `生成片段分镜图`, `生成首尾帧`, and the wide `生成/重做此片段视频` command rail still in the first viewport.
+  - Verified whole-scene grid entries remain absent and the unmatched-scene warning remains absent.
+  - Console messages were only standard development info (`React DevTools` hint and `[HMR] connected`); no error/warn messages were present.
+  - The only request failures recorded were `net::ERR_ABORTED` dev-server navigation/chunk cancellations during login/deep-link transitions; no HTTP 4xx/5xx responses were recorded.
+- Latest validation after restoring explicit Timeline identity:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Selected video label evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-selected-label-pw-46/`:
+  - `after-selected-video-label-occlusion.png` / `after-selected-video-label-occlusion-metrics.json` captured the first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Login was performed through the real `/login?next=...` form flow before reopening the workspace deep link.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the selected video Timeline item is 54x54, has visible text `视频 1`, is no longer a bare `1`, uses opaque `rgb(204, 251, 241)` selected fill, and keeps `z-index: 20`.
+  - Verified the adjacent `视频 2` item's visible label is hidden because it is covered by the selected item, while its `aria-label="在时间轴中选择 视频 2"` remains intact.
+  - Verified the Timeline heading `时间轴定位`, selected context, and the three production buttons remain visible in the first viewport.
+  - Verified whole-scene grid entries remain absent and the unmatched-scene warning remains absent.
+  - Console messages were only standard development info (`React DevTools` hint and `[HMR] connected`); no error/warn messages were present.
+  - The only request failures recorded were `net::ERR_ABORTED` dev-server navigation/chunk cancellations during login/deep-link transitions; no HTTP 4xx/5xx responses were recorded.
+- Latest validation after selected video label polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Compact parameter-affordance evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-parameter-affordance-pw-47/`:
+  - `after-parameter-affordance.png` / `after-parameter-affordance-metrics.json` captured the first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Login was performed through the real `/login?next=...` form flow before reopening the workspace deep link.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified both compact parameter summaries are icon-only, keep 40x32 hit areas, preserve `aria-label="展开分镜参数与参考"` and `aria-label="展开视频绑定与参数"`, and have transparent left-border color instead of the previous visible divider.
+  - Verified the Timeline heading `时间轴定位`, selected context, and the three production buttons remain visible in the first viewport.
+  - Verified whole-scene grid entries remain absent and the unmatched-scene warning remains absent.
+  - Console messages were only standard development info (`React DevTools` hint and `[HMR] connected`); no error/warn messages were present.
+  - The only request failures recorded were `net::ERR_ABORTED` dev-server navigation/chunk cancellations during login/deep-link transitions; no HTTP 4xx/5xx responses were recorded.
+- Latest validation after compact parameter-affordance polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Current-label removal evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-current-label-pw-48/`:
+  - `after-current-label-removed.png` / `after-current-label-removed-metrics.json` captured the first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Login was performed through the real `/login?next=...` form flow, then the final authenticated workspace page was opened in a fresh browser page so console/network evidence was not polluted by login-page request aborts.
+  - Verified unauthenticated deep link preserved `/login?next=...`, login returned to the original workspace deep link, and stale `clipId=video_scene_580_beat_3911_001` normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `[data-clip-production-heading="current"]` is absent, `data-clip-current-bar-layout="summary-only"`, and the selected-clip identity row starts directly with the clip summary instead of the redundant visible `当前片段` label.
+  - Verified the row still exposes the screen-reader `选中片段生产` label and still shows the clip type, title, time range, review state, and missing-video status.
+  - Verified the Timeline heading `时间轴定位`, selected context, and the three production buttons remain visible in the first viewport.
+  - Verified whole-scene grid entries remain absent and the unmatched-scene warning remains absent.
+  - Final authenticated workspace console messages were only standard development info (`React DevTools` hint and `[HMR] connected`); no error/warn messages were present.
+  - Final authenticated workspace request failure count was 0 and HTTP 4xx/5xx response count was 0.
+- Latest validation after current-label removal polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Command toolbar evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-command-toolbar-pw-49/`:
+  - `after-command-toolbar.png` / `after-command-toolbar-metrics.json` captured the first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Login was performed through the real `/login?next=...` form flow, then the final authenticated workspace page was opened in a fresh browser page so console/network evidence was not polluted by login-page request aborts.
+  - Verified unauthenticated deep link preserved `/login?next=...`, login returned to the original workspace deep link, and stale `clipId=video_scene_580_beat_3911_001` normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `data-clip-command-surface="toolbar"` replaced the old segmented surface, the command surface is transparent with 0px border, the command grid uses 8px gaps, and `divide-x` separators are absent.
+  - Verified the wide-primary layout remains: storyboard button width 269px, keyframe button width 236px, and the video generation button width 711px in the 1440px viewport.
+  - Verified the Timeline heading `时间轴定位`, selected context, selected-clip summary, and all three production buttons remain visible in the first viewport.
+  - Verified whole-scene grid entries remain absent and the unmatched-scene warning remains absent.
+  - Final authenticated workspace console messages were only standard development info (`React DevTools` hint and `[HMR] connected`); no error/warn messages were present.
+  - Final authenticated workspace request failure count was 0 and HTTP 4xx/5xx response count was 0.
+- Latest validation after command-toolbar polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Split-parameter affordance evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-split-parameter-pw-50/`:
+  - `after-split-parameter.png` / `after-split-parameter-metrics.json` captured the first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Login was performed through the real `/login?next=...` form flow, then the final authenticated workspace page was opened in a fresh browser page so console/network evidence was not polluted by login-page request aborts.
+  - Verified unauthenticated deep link preserved `/login?next=...`, login returned to the original workspace deep link, and stale `clipId=video_scene_580_beat_3911_001` normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the command surface remains `data-clip-command-surface="toolbar"` with transparent background and 0px outer border, while the old segmented surface remains absent.
+  - Verified the storyboard parameter summary is a 40x32 attached split segment with `border-l-0`, `border-gray-200`, white background, and 0px gap after the `生成片段分镜图` button.
+  - Verified the video parameter summary is a 40x32 attached blue split segment with 0px gap after the `生成/重做此片段视频` button.
+  - Verified the Timeline heading `时间轴定位`, selected context, selected-clip summary, and all three production buttons remain visible in the first viewport.
+  - Verified whole-scene grid entries remain absent and the unmatched-scene warning remains absent.
+  - Final authenticated workspace console messages were only standard development info (`React DevTools` hint and `[HMR] connected`); no error/warn messages were present.
+  - Final authenticated workspace had no HTTP 4xx/5xx responses. The only failed request was a benign `net::ERR_ABORTED` Next RSC request cancelled during stale `clipId` URL normalization.
+- Latest validation after split-parameter affordance polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Script label cleanup evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-script-label-pw-51/`:
+  - `after-script-label-clean.png` / `after-script-label-clean-metrics.json` captured the first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Login was performed through the real `/login?next=...` form flow, then the final authenticated workspace page was opened in a fresh browser page so console/network evidence was not polluted by login-page request aborts.
+  - Verified unauthenticated deep link preserved `/login?next=...`, login returned to the original workspace deep link, and stale `clipId=video_scene_580_beat_3911_001` normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the script selector still has value `143`, but the selected visible text is `新世界 - 剧本 (v1.0)` and neither the selected option nor the page body contains `ID: 143`.
+  - Verified the Timeline heading `时间轴定位`, selected context, selected-clip summary, and all three production buttons remain visible in the first viewport.
+  - Verified whole-scene grid entries remain absent and the unmatched-scene warning remains absent.
+  - Final authenticated workspace console messages were only standard development info (`React DevTools` hint and `[HMR] connected`); no error/warn messages were present.
+  - Final authenticated workspace request failure count was 0 and HTTP 4xx/5xx response count was 0.
+- Latest validation after script-label cleanup:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Scene environment label cleanup evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-scene-label-pw-52/`:
+  - `after-scene-label-clean.png` / `after-scene-label-clean-metrics.json` captured the first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Login was performed through the real `/login?next=...` form flow, then the final authenticated workspace page was opened in a fresh browser page so console/network evidence was not polluted by login-page request aborts.
+  - Verified unauthenticated deep link preserved `/login?next=...`, login returned to the original workspace deep link, and stale `clipId=video_scene_580_beat_3911_001` normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the environment summary reads `场景环境 / 场景 1 · 开场钩子 / 选择环境` and the page body no longer contains `SCENE 1 - 开场钩子`.
+  - Verified the Timeline heading `时间轴定位`, selected context, selected-clip summary, script label cleanup, and all three production buttons remain visible in the first viewport.
+  - Verified whole-scene grid entries remain absent and the unmatched-scene warning remains absent.
+  - Final authenticated workspace console messages were only standard development info (`React DevTools` hint and `[HMR] connected`); no error/warn messages were present.
+  - Final authenticated workspace request failure count was 0 and HTTP 4xx/5xx response count was 0.
+- Latest validation after scene-label cleanup:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Icon-only Timeline toolbar evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-timeline-tools-pw-53/`:
+  - `after-icon-timeline-tools.png` / `after-icon-timeline-tools-metrics.json` captured the first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Login was performed through the real `/login?next=...` form flow, then the final authenticated workspace page was opened in a fresh browser page so console/network evidence was not polluted by login-page request aborts.
+  - Verified unauthenticated deep link preserved `/login?next=...`, login returned to the original workspace deep link, and stale `clipId=video_scene_580_beat_3911_001` normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the `Timeline 生成设置`, `视图缩放`, and `重置为全片适配视图` controls render as 24x24 icon controls with SVGs, empty visible text, and intact `aria-label` / `title` values.
+  - Verified the first viewport body no longer contains the low-frequency Timeline tool texts `生成设置`, `视图`, or `适配`.
+  - Verified the Timeline heading `时间轴定位`, selected context, selected-clip summary, script label cleanup, scene label cleanup, and all three production buttons remain visible in the first viewport.
+  - Verified whole-scene grid entries remain absent and the unmatched-scene warning remains absent.
+  - Final authenticated workspace console messages were only standard development info (`React DevTools` hint and `[HMR] connected`); no error/warn messages were present.
+  - Final authenticated workspace request failure count was 0 and HTTP 4xx/5xx response count was 0.
+- Latest validation after icon-only Timeline toolbar polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Timeline restored/auth-guard evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-timeline-restored-pw-56/`:
+  - `01-login-next.png`, `02-timeline-visible-after-login.png`, and `browser-metrics.json` captured the route behavior and authenticated first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Verified unauthenticated deep link redirected to `/login?next=%2Fepisodes%2F12c6eb572eda47138a5fc821c225a1af%2Fworkspace%3Ftab%3Dtimeline%26scriptId%3D143%26clipId%3Dvideo_scene_580_beat_3911_001`.
+  - Verified login returned to the workspace and stale `clipId=video_scene_580_beat_3911_001` normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the authenticated first viewport includes `全片时间轴`, `data-timeline-canvas` at 1340x327, visible video track at 1338x69, selected `视频 1`, and the three production buttons `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频`.
+  - Verified `加载剧集工作台...`, whole-scene grid entries, and unmatched-scene warning were absent from the authenticated workspace.
+  - Final authenticated workspace console warn/error count was 0, failed request count was 0, and HTTP 4xx/5xx response count was 0.
+- Latest validation after auth-guard/Timeline-heading fix:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/authReturnPath.test.ts` passed: 31 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx` reported 195 lines after adding the AuthGuard wrapper.
+- Action-dock production panel evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-action-dock-pw-58/` and `artifacts/runs/2026-06-13T-episode-workspace-action-dock-1280-pw-59/`:
+  - `after-action-dock.png`, `after-action-dock-metrics.json`, `after-action-dock-1280.png`, and `after-action-dock-1280-metrics.json` captured the 1440x950 and 1280x720 first viewports.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Verified the full Timeline remains visible at the top (`data-timeline-canvas` 1340x327 at 1440 wide).
+  - Verified the selected production panel height dropped from 142px to 104px and the command row moved from y=499 to y=463 at 1440 wide.
+  - Verified 1280x720 has no action-dock overflow, all three clip production buttons remain visible, and render/export moved to y=562.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` still normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified whole-scene grid entries, unmatched-scene warning, and `加载剧集工作台...` were absent. Final console warn/error count was 0 and HTTP 4xx/5xx response count was 0.
+- Latest validation after action-dock production panel polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionPanel.tsx` reported 174 lines.
+- Split render strip evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-render-strip-pw-61/`:
+  - `after-render-strip.png` and `after-render-strip-metrics.json` captured the 1280x720 first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Verified the collapsed render summary uses `w-full justify-between`, with output status at x=86 and `查看缺失` right-aligned at x=1188.
+  - Verified the full Timeline remains visible at 1180x327, the production panel remains 104px tall, and stale `clipId=video_scene_580_beat_3911_001` still normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified whole-scene grid entries, unmatched-scene warning, and `加载剧集工作台...` were absent. Final console warn/error count was 0 and HTTP 4xx/5xx response count was 0.
+- Latest validation after split render strip polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineRenderPanel.tsx` reported 152 lines.
+- Compact environment row evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-env-compact-pw-63/`:
+  - `after-env-compact.png` and `after-env-compact-metrics.json` captured the 1280x720 first viewport.
+  - Chrome DevTools was attempted first and failed because `mcp__chrome_devtools.list_pages` could not connect to `127.0.0.1:9222`; this run used Playwright with the system Chrome executable fallback.
+  - Verified the full Timeline remains visible at 1180x327 and all clip-scoped production buttons stay in the first action row.
+  - Verified the collapsed environment row height dropped from 45px to 33px, the environment summary from 36px to 28px, and the selected production panel from 104px to 86px.
+  - Verified render/export moved up to y=544, `场景环境` and `选择环境` remain visible, and stale `clipId=video_scene_580_beat_3911_001` still normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified whole-scene grid entries, unmatched-scene warning, and `加载剧集工作台...` were absent. Final console warn/error count was 0 and HTTP 4xx/5xx response count was 0.
+- Latest validation after compact environment row polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionPanel.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipSupportPanel.tsx` reported 174, 225, and 205 lines respectively; `check_repo_contracts --mode diff` passed.
+- Timeline explicit-visibility evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-timeline-visible-pw-65/`:
+  - `timeline-visible.png` and `timeline-visible-metrics.json` captured the 1280x720 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified `data-timeline-canvas-panel="primary"` and `data-timeline="workspace"` both occupy the first viewport at 1180x339, with the detailed lanes at 1180x253 and the video track at 1180x69.
+  - Verified visible `TIMELINE`, `全片时间轴`, full-episode overview rail, time ruler, video/dialogue/subtitle/storyboard lanes, and selected `视频 1` remain above the selected clip production panel.
+  - Verified the three clip-scoped production actions remain visible, whole-scene grid entries and unmatched-scene warning remain absent, console warn/error count was 0, and HTTP 4xx/5xx response count was 0.
+  - Request failures were limited to benign Next RSC `net::ERR_ABORTED` navigations while stale `clipId` normalized to the selected video clip id.
+- Latest validation after Timeline explicit-visibility polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/src/components/features/Timeline/TimelineToolbar.tsx ai-pic-frontend/src/components/features/Timeline/TimelineOverview.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineCanvasPanel.tsx` reported 200, 173, 113, and 197 lines respectively.
+- Output workbar evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-output-workbar-pw-67/`:
+  - `output-workbar.png` and `output-workbar-metrics.json` captured the 1280x720 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the full Timeline remains visible at 1180x339, the selected production panel remains 86px tall, and the output workbar renders at 1180x58 with a 1086px readiness meter and right-aligned `查看缺失` action.
+  - Verified `0/16 就绪` is visible in the first viewport, the three clip-scoped production actions remain visible, whole-scene grid entries and unmatched-scene warning remain absent, console warn/error count was 0, request failure count was 0, and HTTP 4xx/5xx response count was 0.
+- Latest validation after output workbar polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineRenderPanel.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineMainPanel.tsx` reported 175 and 107 lines respectively.
+- Short selected-clip status evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-short-status-pw-69/`:
+  - `short-status.png` and `short-status-metrics.json` captured the 1280x720 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified selected clip summary now contains `缺视频`, no longer contains `缺少视频素材` as visible text, and the badge `title` remains `缺少视频素材`.
+  - Verified the full Timeline remains visible at 1180x339, selected production panel remains 86px tall, output workbar remains visible, `0/16 就绪` remains visible, and all three clip-scoped production actions remain visible.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console warn/error count was 0, and HTTP 4xx/5xx response count was 0. Request failures were limited to benign Next RSC `net::ERR_ABORTED` navigations during login/clip URL normalization.
+- Latest validation after short selected-clip status polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx ai-pic-frontend/src/components/shared/operator/StatusPill.tsx` reported 231 and 38 lines respectively; `check_repo_contracts --mode diff` passed.
+- Header missing-clips action evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-header-missing-icon-pw-73/`:
+  - `header-missing-icon.png` and `header-missing-icon-metrics.json` captured the 1280x720 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the header missing-clips control is a 32x32 warning-symbol button with `title="处理缺失片段"` and no visible `缺片段` text in the header.
+  - Verified output workbar still shows `查看缺失`, `0/16 就绪` remains visible, the full Timeline remains visible at 1180x339, selected production panel remains 86px tall, and all three clip-scoped production actions remain visible.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console warn/error count was 0, and HTTP 4xx/5xx response count was 0. Request failures were limited to benign Next RSC `net::ERR_ABORTED` navigation during clip URL normalization.
+- Latest validation after header missing-clips action polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceTimelineHeader.tsx` reported 222 lines; `check_repo_contracts --mode diff` passed.
+- Header production dot-rail evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-header-dots-pw-75/`:
+  - `header-dots.png` and `header-dots-metrics.json` captured the 1280x720 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the header production rail uses `data-production-step-rail-layout="dots"`, visible labels are reduced to `生产主线`, the dot rail measures 110x8, and each step still exposes its status through `aria-label` and `title`.
+  - Verified the full Timeline remains visible at 1180x339 before the selected production panel, selected production panel remains visible at 86px tall, output workbar remains visible at 58px tall, `0/16 就绪` remains visible, and all three clip-scoped production actions remain visible.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console warn/error count was 0, and HTTP 4xx/5xx response count was 0. Request failures were limited to benign Next RSC `net::ERR_ABORTED` navigation during stale clip URL normalization.
+- Latest validation after header production dot-rail polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceTimelineHeader.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 231 and 2011 lines respectively; `check_repo_contracts --mode diff` passed.
+- Header support icon evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-support-icon-pw-77/`:
+  - `support-icon.png` and `support-icon-metrics.json` captured the 1280x720 first viewport after the support-menu split.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the support trigger is a 32x32 icon button with empty visible text, `aria-label="支持视图"`, `title="支持视图"`, and an SVG icon. The default header no longer contains visible `支持` text.
+  - Verified the support menu still opens `返回故事`, `剧本设置`, `分镜参考`, and `临时角色/IP 绑定`.
+  - Verified the full Timeline remains visible at 1180x339 before the selected production panel, selected production panel remains visible at 1180x86, output workbar remains visible at 1180x58, `0/16 就绪` remains visible, and all three clip-scoped production actions remain visible.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console warn/error count was 0, and HTTP 4xx/5xx response count was 0. Request failures were limited to benign Next RSC `net::ERR_ABORTED` navigation during stale clip URL normalization.
+- Latest validation after header support icon polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceTimelineHeader.tsx ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceTimelineHeaderSupportMenu.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 156, 99, and 2015 lines respectively.
+- Timeline toolbar icon evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-toolbar-icons-pw-79/`:
+  - `toolbar-icons.png` and `toolbar-icons-metrics.json` captured the 1280x720 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the Timeline toolbar controls are three distinct icon-only controls: `pipeline` for `Timeline 生成设置`, `zoom` for `视图缩放`, and `fit` for `重置为全片适配视图`.
+  - Verified the full Timeline remains visible at 1180x339 before the selected production panel, selected production panel remains visible at 1180x86, output workbar remains visible at 1180x58, `0/16 就绪` remains visible, and all three clip-scoped production actions remain visible.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console warn/error count was 0, and HTTP 4xx/5xx response count was 0. Request failures were limited to benign Next RSC `net::ERR_ABORTED` navigation during stale clip URL normalization.
+- Latest validation after Timeline toolbar icon polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/TimelineToolbar.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineCanvasPanel.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 175, 199, and 2017 lines respectively.
+- Selected clip parameter-more evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-parameter-more-pw-81/`:
+  - `parameter-more.png` and `parameter-more-metrics.json` captured the 1280x720 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the two clip parameter summaries are 32x32 `...` more affordances with `data-clip-parameter-icon="more"`, empty visible text, and preserved labels `展开分镜参数与参考` / `展开视频绑定与参数`.
+  - Verified the old slider-style parameter icon path count is 0, the storyboard generation button remains 139.5px wide, and the primary video generation button remains 385px wide.
+  - Verified the full Timeline remains visible at 1180x339 before the selected production panel, selected production panel remains visible at 1180x86, output workbar remains visible at 1180x58, `0/16 就绪` remains visible, and all three clip-scoped production actions remain visible.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console warn/error count was 0, and HTTP 4xx/5xx response count was 0. Request failures were limited to benign Next RSC `net::ERR_ABORTED` navigation during login and stale clip URL normalization.
+- Latest validation after selected clip parameter-more polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/CompactProductionDetails.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 80 and 2020 lines respectively.
+- Localized Timeline title evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-localized-timeline-title-pw-83/`:
+  - `localized-timeline-title.png` and `localized-timeline-title-metrics.json` captured the 1280x720 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the visible Timeline toolbar title is `时间轴` + `全片`, the heading still exposes `aria-label="全片时间轴"`, and the toolbar has no visible `TIMELINE` / `Timeline` text.
+  - Verified the full Timeline remains visible at 1180x339 before the selected production panel, selected production panel remains visible at 1180x86, output workbar remains visible at 1180x58, `0/16 就绪` remains visible, and all three clip-scoped production actions remain visible.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console warn/error count was 0, and HTTP 4xx/5xx response count was 0. Request failures were limited to benign Next RSC `net::ERR_ABORTED` navigation during stale clip URL normalization.
+- Latest validation after localized Timeline title polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/TimelineToolbar.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 180 and 2028 lines respectively.
+- Compact Timeline duration evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-compact-duration-pw-85/`:
+  - `compact-duration.png` and `compact-duration-metrics.json` captured the 1280x720 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the visible Timeline toolbar title is `时间轴` + `全片` + `02:32`, with `hasRepeatedFullDuration=false` for `全片 02:32`, and with no visible `TIMELINE` / `Timeline` text.
+  - Verified the full Timeline remains visible at 1180x339 before the selected production panel, selected production panel remains visible at 1180x86, output workbar remains visible at 1180x58, `0/16 就绪` remains visible, and all three clip-scoped production actions remain visible.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console warn/error count was 0, and HTTP 4xx/5xx response count was 0. Request failures were limited to benign Next RSC `net::ERR_ABORTED` navigation during stale clip URL normalization.
+- Latest validation after compact Timeline duration polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed after fixing the assertion to allow multiple `00:01.200` timestamps: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/TimelineToolbar.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 180 and 2029 lines respectively.
+- Timeline visibility restoration evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-timeline-restored-pw-90/`:
+  - `timeline-restored.png` and `timeline-restored-metrics.json` captured the 1365x768 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the full Timeline remains first at 1265x399, the detailed lanes are 313px tall, the video track is 88px tall, and the selected video item is 74px tall.
+  - Verified visible Timeline copy includes `全片时间轴`, `时间轴`, `片段轨`, and `视频轨`, while the old `时间尺` label is absent.
+  - Verified the selected production panel remains visible at y=526, the output workbar remains visible at y=617, and `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` are still visible in the first viewport.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console warn/error count was 0, and HTTP 4xx/5xx response count was 0.
+- Latest validation after Timeline visibility restoration:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Selected clip action tray evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-action-tray-pw-93/`:
+  - `action-tray.png` and `action-tray-metrics.json` captured the 1365x768 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the action rail now uses `data-clip-command-surface="action-tray"` with a 795x42 lightweight tray while the outer production panel remains flat.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible; the video button remains 416px wide and the only active blue primary button in the selected-clip row.
+  - Verified the full Timeline remains first at 1265x399, selected production panel remains visible at y=526, and output workbar remains visible at y=627 in the first viewport.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified whole-scene grid entries, old `时间尺` label, and unmatched-scene warning remain absent, console warn/error count was 0, and HTTP 4xx/5xx response count was 0.
+- Latest validation after selected clip action tray polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkCards.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 197 and 2031 lines respectively.
+- Timeline selected guide evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-selected-guide-pw-95/`:
+  - `selected-guide.png` and `selected-guide-metrics.json` captured the 1365x768 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the full-height selected Timeline guide is now 1px wide with `bg-blue-500/55`, the selected range uses `border-blue-300/55 bg-blue-50/25`, and the selected video clip itself remains clearly ringed at 54x74.
+  - Verified the full Timeline remains first at 1265x399, selected production panel remains visible at y=526, action tray remains visible at y=535, and output workbar remains visible at y=627 in the first viewport.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible.
+  - Verified whole-scene grid entries, old `时间尺` label, and unmatched-scene warning remain absent, console warn/error count was 0, and HTTP 4xx/5xx response count was 0.
+- Latest validation after Timeline selected guide polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/TimelineSelectedMarker.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 65 and 2036 lines respectively.
+- Compact overview strip evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-overview-strip-pw-97/`:
+  - `overview-strip.png` and `overview-strip-metrics.json` captured the 1365x768 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the full-episode overview now uses `data-timeline-overview-layout="strip"` and `data-timeline-overview-density="compact"`, with the visible label `总览`; the rail height is 16px and the overview row height is 25px.
+  - Verified the full Timeline remains first at 1265x383, detailed lanes remain visible at 1263x313, selected production panel moved up to y=510, action tray moved up to y=519, and output workbar moved up to y=611 in the first viewport.
+  - Verified the overview still exposes 16 clickable video overview items and selected marker metadata.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible.
+  - Verified whole-scene grid entries, old `时间尺` label, and unmatched-scene warning remain absent, console warn/error count was 0, and HTTP 4xx/5xx response count was 0.
+- Latest validation after compact overview strip polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/TimelineOverview.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 113 and 2038 lines respectively.
+- Compact support-lane evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-support-lanes-pw-99/`:
+  - `support-lanes.png` and `support-lanes-metrics.json` captured the 1365x768 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the video lane remains the primary 88px row, while dialogue, subtitle, and storyboard rows now each render at 40px with 4px gaps. Dialogue clip buttons remain 30px high and clickable.
+  - Verified the full Timeline remains first at 1265x351, detailed lanes remain visible at 1263x281, selected production panel moved up to y=478, action tray moved up to y=487, and output workbar moved up to y=579 in the first viewport.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible.
+  - Verified whole-scene grid entries, old `时间尺` label, and unmatched-scene warning remain absent, console warn/error count was 0, and HTTP 4xx/5xx response count was 0.
+- Latest validation after compact support-lane polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 200 and 2038 lines respectively.
+- Compact render strip evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-render-strip-pw-101/`:
+  - `render-strip.png` and `render-strip-metrics.json` captured the 1365x768 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the collapsed render panel now uses a one-line `grid-cols-[auto_minmax(8rem,1fr)_auto]` summary at 36px high, and the full render strip height dropped to 46px.
+  - Verified the output status, `0/16 就绪` readiness meter, and `查看缺失` action remain visible in the first viewport.
+  - Verified the full Timeline remains first at 1265x351, selected production panel remains visible at y=478, action tray remains visible at y=487, and output workbar remains visible at y=578.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible.
+  - Verified whole-scene grid entries, old `时间尺` label, and unmatched-scene warning remain absent, console warn/error count was 0, and HTTP 4xx/5xx response count was 0.
+- Latest validation after compact render strip polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineRenderPanel.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 175 and 2048 lines respectively.
+- Timeline visibility regression check for the user report "没有时间轴了":
+  - Before patch evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-no-timeline-before-pw-001/` showed Timeline data was present, but the UI had compressed the module into `时间轴 / 全片`, a 25px overview strip labeled `总览`, and an 88px video lane.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; browser validation used Playwright with the system Chrome executable fallback.
+  - Restored the visible heading to `全片时间轴`, changed the overview from `data-timeline-overview-layout="strip"` / `density="compact"` to `overview-rail` / `locator`, made the overview rail 24px high, changed the overview label to `全片概览`, changed the ruler origin to `全片时间轴 / 轨道`, and raised lane heights to 104px for video and 44px for support lanes.
+- Restored Timeline evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-timeline-restored-pw-002/`:
+  - `timeline-restored.png` and `timeline-restored-metrics.json` captured the 1440x900 first viewport.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `全片时间轴`, `全片概览`, and `轨道` are visible; the Timeline canvas is 1340x395, the detailed lanes are 313px tall, the overview rail is 24px tall, and the video track is 105px tall.
+  - Verified selected-clip production remains visible at y=522, the action tray remains visible at y=531, and output workbar remains visible at y=622 in the first viewport.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible.
+  - Verified whole-scene grid entries remain absent, console warn/error count was 0, and the observed `/characters`, `/timelines`, `/resolved-videos`, `/clip-assets`, and `/render-jobs` requests returned 200.
+- Latest validation after restored Timeline visibility patch:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/src/components/features/Timeline/TimelineOverview.tsx ai-pic-frontend/src/components/features/Timeline/TimelineToolbar.tsx ai-pic-frontend/src/components/features/Timeline/TimelineGrid.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 200, 113, 177, 184, and 2049 lines respectively.
+- Environment context strip evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-environment-strip-pw-003/`:
+  - `environment-strip.png` and `environment-strip-metrics.json` captured the 1440x900 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Polished the default scene environment row from a loose text/control line into `data-clip-environment-layout="context-strip"` with `border-slate-200 bg-slate-50/70`, a 32px summary row, and a compact environment status chip.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the environment row is collapsed by default, remains visible at y=577 with a 1304x41 footprint, and does not show the unmatched-scene warning.
+  - Verified the full Timeline remains first at 1340x395, selected-clip production remains visible at y=522, action tray remains visible at y=531, and output workbar remains visible at y=632 in the first viewport.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible.
+  - Verified whole-scene grid entries remain absent, console warn/error count was 0, and the observed `/characters`, `/timelines`, `/resolved-videos`, `/clip-assets`, and `/render-jobs` requests returned 200.
+- Latest validation after environment context strip polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 231 and 2051 lines respectively.
+- Output workbar polish evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-output-workbar-pw-004/`:
+  - `output-workbar.png` and `output-workbar-metrics.json` captured the 1440x900 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Replaced the full-width amber readiness line with a short 80px status meter and a `0/16 就绪` chip, keeping the collapsed `查看缺失` action.
+  - Changed the output strip surface from `bg-white/90 shadow-sm` to a lighter `border-slate-200 bg-slate-50/80` workbar.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the render strip remains 1340x46 at y=632, render summary remains 36px high, and the readiness track width is 80px instead of spanning the viewport.
+  - Verified the full Timeline remains first at 1340x395, selected-clip production remains visible at y=522, action tray remains visible at y=531, and the environment row remains visible at y=577.
+  - Verified `生成片段分镜图`, `生成首尾帧`, `生成/重做此片段视频`, and `查看缺失` remain visible.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console warn/error count was 0, and the observed `/characters`, `/timelines`, `/resolved-videos`, `/clip-assets`, and `/render-jobs` requests returned 200.
+- Latest validation after output workbar polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineMainPanel.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineRenderPanel.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 107, 175, and 2057 lines respectively.
+- Balanced selected-clip action tray evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-balanced-actions-pw-005/`:
+  - `balanced-actions.png` and `balanced-actions-metrics.json` captured the 1440x900 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Changed the action layout from `data-clip-command-layout="wide-primary-video"` to `balanced-video-primary`, using columns `1fr / 0.8fr / 1.25fr` instead of the earlier oversized video column.
+  - Replaced the visual `...` parameter triggers with compact settings icons while preserving the same accessible labels and popover behavior.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified storyboard action is 269x32, keyframe action is 216x32, and the video action is 337x32; the video button itself is 305px wide instead of the previous oversized primary button.
+  - Verified the parameter summaries are 32x32, text-empty, and expose `data-clip-parameter-icon="settings"`.
+  - Verified the full Timeline remains first at 1340x395, selected-clip production remains visible at y=522, output workbar remains visible at y=632, and all three main actions remain visible.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console warn/error count was 0, and the observed `/characters`, `/timelines`, `/resolved-videos`, `/clip-assets`, and `/render-jobs` requests returned 200.
+- Latest validation after balanced selected-clip action tray polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkCards.tsx ai-pic-frontend/src/components/features/episode/CompactProductionDetails.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 197, 87, and 2066 lines respectively.
+- Header production-step evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-header-step-pills-pw-006/`:
+  - `header-step-pills.png` and `header-step-pills-metrics.json` captured the 1440x900 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Replaced the tiny unlabeled production dots with compact labeled status pills using `data-production-step-rail-layout="pills"` and `data-production-step-pills="compact"`.
+  - Verified the header remains compact at 1344x39, while the production rail reads `生产主线剧本就绪时间轴就绪片段待导出待`.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the full Timeline remains first at 1340x395, selected-clip production remains visible at y=522, and output workbar remains visible at y=632.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console warn/error count was 0, and the observed `/characters`, `/timelines`, `/resolved-videos`, `/clip-assets`, and `/render-jobs` requests returned 200.
+- Latest validation after header production-step polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceTimelineHeader.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 182 and 2074 lines respectively.
+- Selected clip production dock evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-production-dock-pw-007/`:
+  - `production-dock.png` and `production-dock-metrics.json` captured the 1440x900 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Converted the selected-clip production area from a transparent separator into `data-clip-production-panel="dock"` with `data-clip-production-surface="unified"`.
+  - Changed the selected clip summary from `identity-bar` to `identity-dock`, giving the clip title, time range, review state, and missing-video status a clearer two-line identity area.
+  - Kept the action rail in the first viewport as `data-clip-command-layout="balanced-video-primary"`, with storyboard, keyframe, and video actions measured at 269x32, 210x32, and 328x32 respectively.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the full Timeline remains first at 1340x395, selected-clip production remains visible at y=522 with a 1340x126 footprint, and output workbar remains visible at y=652.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console warn/error count was 0, and the observed `/characters`, `/timelines`, `/resolved-videos`, `/clip-assets`, and `/render-jobs` requests returned 200.
+- Latest validation after selected clip production dock polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionPanel.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkCards.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 175, 233, 200, and 2079 lines respectively.
+- Render output dock evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-render-dock-pw-008/`:
+  - `render-dock.png` and `render-dock-metrics.json` captured the 1440x900 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Changed the output strip from the full-width `workbar` surface to `data-episode-render-strip-surface="dock"` with `mx-3 rounded-lg border border-slate-200 bg-white`.
+  - Verified the render strip is inset at x=88 with a 1316x46 footprint, matching the selected-clip production dock instead of hard-cutting across the full canvas.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the full Timeline remains first at 1340x395, selected-clip production remains visible at y=522, and output dock remains visible at y=652.
+  - Verified `生成片段分镜图`, `生成首尾帧`, `生成/重做此片段视频`, `0/16 就绪`, and `查看缺失` remain visible.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console warn/error count was 0, and the observed `/characters`, `/timelines`, `/resolved-videos`, `/clip-assets`, and `/render-jobs` requests returned 200.
+- Latest validation after render output dock polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineMainPanel.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 107 and 2081 lines respectively.
+- Scene environment dock evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-environment-dock-pw-009/`:
+  - `environment-dock.png` and `environment-dock-metrics.json` captured the 1440x900 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Changed the scene environment row from `data-clip-environment-layout="context-strip"` to `context-dock`, using a rounded white dock with `border-slate-200` and a subtle shadow instead of a full-width gray separator.
+  - Verified the environment dock is inset at x=92 with a 1308x42 footprint, sits between the selected-clip production dock and render output dock, and remains collapsed by default.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the full Timeline remains first at 1340x395, selected-clip production remains visible at y=522, environment dock remains visible at y=596, and output dock remains visible at y=653.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console warn/error count was 0, and the observed `/characters`, `/timelines`, `/resolved-videos`, `/clip-assets`, and `/render-jobs` requests returned 200.
+- Latest validation after scene environment dock polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 233 and 2085 lines respectively.
+- Muted Timeline canvas evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-timeline-muted-pw-010/`:
+  - `timeline-muted.png` and `timeline-muted-metrics.json` captured the 1440x900 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Reduced the Timeline structural emphasis by changing the ruler and axis from thick teal borders to single slate borders.
+  - Changed the video track row from a teal-tinted lane to a neutral white lane while keeping its 105px primary height and `主线` badge.
+  - Changed selected video clips to a blue production focus (`rgb(219, 234, 254)` background, `rgb(37, 99, 235)` border) and reduced unselected video clip fill to `rgba(..., 0.14)`.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the full Timeline remains first at 1340x395, selected-clip production remains visible at y=522, environment dock remains visible at y=596, and output dock remains visible at y=653.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console warn/error count was 0, and the observed `/characters`, `/timelines`, `/resolved-videos`, `/clip-assets`, and `/render-jobs` requests returned 200.
+- Latest validation after muted Timeline canvas polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/TimelineGrid.tsx ai-pic-frontend/src/components/features/Timeline/TimelineItemButton.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 184, 158, and 2089 lines respectively.
+- Timeline polish evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-timeline-polish-pw-011/`:
+  - `timeline-polish.png` and `timeline-polish-metrics.json` captured the 1440x900 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; Playwright's bundled Chromium was also missing, so this run used Playwright with the system Chrome executable fallback.
+  - Verified the login deep link returned to the workspace and stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the full Timeline remains first at 1340x323, with a 20px overview rail, 38px ruler, 89px video lane, and 35px dialogue/subtitle/storyboard lanes.
+  - Verified selected-clip production remains visible at y=450, the command surface is 824x50, and the three main actions are visible at 36px height; `生成/重做此片段视频` is the widest action at 368px.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console error count was 0, failed response count was 0, and observed episode/timeline/character/resolved-video/clip-asset/render-job requests returned 200.
+- Latest validation after Timeline polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - After a small line-count cleanup, `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts tests/timelineWorkspaceLayout.test.tsx` passed: 43 tests.
+  - After the same cleanup, `cd ai-pic-frontend && npm run lint`, `cd ai-pic-frontend && npm run build`, `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)`, `python scripts/check_repo_docs.py`, and `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/src/components/features/Timeline/TimelineGrid.tsx ai-pic-frontend/src/components/features/Timeline/TimelineOverview.tsx ai-pic-frontend/src/components/features/Timeline/TimelineToolbar.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionPanel.tsx ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkCards.tsx ai-pic-frontend/src/components/features/episode/TimelineClipStoryboardReferenceCard.tsx ai-pic-frontend/src/components/features/episode/TimelineClipKeyframeCard.tsx ai-pic-frontend/src/components/features/episode/TimelineClipVideoReworkCard.tsx ai-pic-frontend/src/components/features/episode/CompactProductionDetails.tsx` reported 200, 184, 113, 177, 175, 200, 200, 45, 188, and 87 lines respectively.
+- Neutral Timeline video clip evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-timeline-neutral-clips-pw-012/`:
+  - `timeline-neutral-clips.png` and `timeline-neutral-clips-metrics.json` captured the 1440x900 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the login deep link returned to the workspace and stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the full Timeline remains first at 1340x323 and selected-clip production remains visible at y=450.
+  - Verified selected video clip style is `rgb(219, 234, 254)` with `rgb(37, 99, 235)` border, `ring-1`, and `shadow-sm`.
+  - Verified unselected video clip style is now `rgb(232, 238, 245)` with `rgb(168, 179, 193)` border instead of teal alpha fill.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, and the video action remains the widest 368px primary action.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console error count was 0, failed response count was 0, and observed episode/timeline/character/resolved-video/clip-asset/render-job requests returned 200.
+- Latest validation after neutral Timeline video clip polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Inline scene environment evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-environment-inline-pw-013/`:
+  - `environment-inline.png` and `environment-inline-metrics.json` captured the 1440x900 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the login deep link returned to the workspace and stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the environment row now uses `data-clip-environment-layout="inline-context"`, no box shadow, a 1px top border, and a 33px height.
+  - Verified selected-clip production panel height dropped from 132px to 121px, while the Timeline remains first at 1340x323 and the three main clip actions stay visible.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console error count was 0, failed response count was 0, and observed episode/timeline/character/resolved-video/clip-asset/render-job requests returned 200.
+- Latest validation after inline scene environment polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Inline render output evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-render-inline-pw-014/`:
+  - `render-inline.png` and `render-inline-metrics.json` captured the 1440x900 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the login deep link returned to the workspace and stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the output strip now uses `data-episode-render-strip-surface="inline"`, no box shadow, a 1px top border, and a 37px height.
+  - Verified the collapsed render summary is 32px high, `查看缺失` is 24px high, and the readiness meter still shows `0/16 就绪`.
+  - Verified the Timeline remains first at 1340x323, selected-clip production remains visible at y=450, and the three main clip actions stay visible.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console error count was 0, failed response count was 0, and observed episode/timeline/character/resolved-video/clip-asset/render-job requests returned 200.
+- Latest validation after inline render output polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Inline selected-clip production evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-production-inline-pw-015/`:
+  - `production-inline.png` and `production-inline-metrics.json` captured the 1440x900 first viewport.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the login deep link returned to the workspace and stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the selected-clip production top row now uses `data-clip-production-top-row-layout="inline-grid"`, no border, no box shadow, and transparent background.
+  - Verified selected-clip production panel height dropped from 121px to 115px, while the Timeline remains first at 1340x323.
+  - Verified the three main clip actions stay visible and the video action remains the widest primary action at 370px.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console error count was 0, failed response count was 0, and observed episode/timeline/character/resolved-video/clip-asset/render-job requests returned 200.
+- Latest validation after inline selected-clip production polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Scrollable Timeline correction evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-scrollable-timeline-pw-018/`:
+  - Reproduced the user report "没有时间轴了" first under `artifacts/runs/2026-06-13T-episode-workspace-no-timeline-repro-pw-017/`.
+  - Root cause: the Timeline DOM was present, but the main lanes were defaulting to whole-episode fit, compressing 152 seconds into the viewport and making the work surface read like a status overview instead of a usable Timeline.
+  - Removed the default `fitToWidth` mode from the workspace Timeline lanes while keeping the full-episode overview rail above them.
+  - Updated `timelineWorkspaceLayout.test.tsx` to assert `data-timeline-fit-to-width="false"`, `重置为 1x 视图`, and long-episode lane geometry with the second video clip beyond 7000px.
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the login deep link returned to the workspace and stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the Timeline remains first at 1340x323, the lane viewport is horizontally scrollable with `scrollWidth=7720`, and the selected first video clip is 166px wide instead of a compressed mini block.
+  - Verified selected-clip production remains visible in the first viewport and `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console error count was 0, and failed response count was 0. One Next RSC request was aborted during route synchronization (`net::ERR_ABORTED`) with no 4xx/5xx response.
+- Latest validation after scrollable Timeline correction:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Flat selected-clip production evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-flat-action-row-pw-020/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Flattened the selected clip identity area from `summary-dock` into `identity-line`: transparent background, no radius, no shadow, and a 2px blue left marker.
+  - Flattened the command surface from a bordered/shadowed white tray into a transparent action row, keeping the three production actions visible and keeping video generation as the widest primary action.
+  - Verified the production panel height dropped from 115px to 106px, the command surface is 36px high, and the Timeline remains first at 1340x323 with scrollable lane width 7720px.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible in the first viewport.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console error count was 0, and failed response count was 0. One Next RSC request was aborted during route synchronization (`net::ERR_ABORTED`) with no 4xx/5xx response.
+- Latest validation after flat selected-clip production polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionPanel.tsx ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkCards.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 175, 199, and 2103 lines respectively.
+- Flat Timeline shell evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-flat-timeline-shell-pw-021/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Flattened the Timeline container from a rounded-lg shadow/ring card into a rounded-md bordered workspace surface with `shadow-none`.
+  - Verified the Timeline remains first at 1340x323, remains visible, and still exposes a horizontally scrollable lane viewport with `scrollWidth=7720`.
+  - Verified the selected video clip remains 166px wide and selected, the selected-clip production panel remains visible at y=450, and the command surface stays a transparent 36px action row.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible in the first viewport.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console error count was 0, and failed response count was 0. One Next RSC request was aborted during route synchronization (`net::ERR_ABORTED`) with no 4xx/5xx response.
+- Latest validation after flat Timeline shell polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 200 and 2108 lines respectively.
+- Transparent output strip evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-transparent-output-strip-pw-022/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Flattened the render/export output strip from a full-width white band into a transparent status row with a thin top divider.
+  - Verified the render strip stays visible at y=560, 1316x37, with transparent background, no radius, and no shadow.
+  - Verified the Timeline remains first at 1340x323, the selected-clip production panel remains visible at y=450, and the output readiness meter still shows `0/16 就绪` with `查看缺失`.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible in the first viewport.
+  - Verified whole-scene grid entries and unmatched-scene warning remain absent, console error count was 0, failed request count was 0, and failed response count was 0.
+- Latest validation after transparent output strip polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineMainPanel.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 107 and 2109 lines respectively.
+- Timeline visibility correction after user report `没有时间轴了` saved under `artifacts/runs/2026-06-13T-episode-workspace-timeline-restored-pw-027/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Pre-fix browser checks under `artifacts/runs/2026-06-13T-episode-workspace-missing-timeline-pw-025/` and `artifacts/runs/2026-06-13T-episode-workspace-missing-timeline-pw-026/` showed the Timeline DOM existed across 1440x900, 1280x720, 1024x768, and 390x844 viewports, but the visual shell and scroll affordance were too weak.
+  - Strengthened the primary Timeline surface by increasing the shell border contrast, making the `时间轴` toolbar label a visible dark badge, giving the overview row a distinct work-surface background, and forcing the lane viewport to use a stable horizontal scroll surface.
+  - Added global scrollbar styling for `data-timeline-viewport="lanes"` so the scrollable production Timeline does not read as a static table on engines that support custom scrollbars.
+  - Verified the first viewport contains `data-timeline-canvas="true"` at 1340x325, selected video clip `video_scene_580_beat_3923_001`, 16 video items, 40 Timeline items, and a lane viewport with `scrollWidth=7720`.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible in the first viewport.
+  - Verified `生成宫格分镜图`, `宫格图生成成片`, and unmatched scene warnings remain absent; console error count was 0 and failed request count was 0.
+- Latest validation after Timeline visibility correction:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/src/components/features/Timeline/TimelineToolbar.tsx ai-pic-frontend/src/components/features/Timeline/TimelineOverview.tsx ai-pic-frontend/src/app/globals.css ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionPanel.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx` reported 200, 177, 113, 58, 175, and 233 lines respectively.
+- Timeline label de-duplication evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-timeline-labels-pw-029/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Reduced visible repeated Timeline labels from `时间轴 / 全片时间轴 / 全片概览` to `时间轴 / 全片 / 总览`.
+  - Preserved the accessible heading name `全片时间轴` on the compact heading and preserved `全片概览` as screen-reader-only overview text.
+  - Verified the first viewport keeps `data-timeline-canvas="true"` at 1340x325, selected video clip `video_scene_580_beat_3923_001`, 16 video items, 40 Timeline items, and visible `生成片段分镜图`, `生成首尾帧`, `生成/重做此片段视频`.
+  - Verified whole-scene grid entries remain absent; console error count was 0 and failed request count was 0.
+- Latest validation after Timeline label de-duplication:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/TimelineToolbar.tsx ai-pic-frontend/src/components/features/Timeline/TimelineOverview.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 180, 114, and 2130 lines respectively.
+- Timeline workspace auto-height and render footer evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-render-footer-pw-033/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Browser audit before the change showed the actual work content ended around y=599 in a 720px viewport while the shared workspace container still forced a 620px body, making the lower first viewport read as an unfinished gray area.
+  - Scoped the Episode Timeline workspace to `!h-auto !min-h-0 !overflow-visible` so this page no longer inherits the shared 620px fixed workspace shell.
+  - Converted the render/output strip from a transparent floating status row into a lightweight `footer` surface with a shallow white background, bottom radius, and no shadow.
+  - Verified the current workspace shell height is 475.656px, `min-height: 0px`, and `overflow-y: visible`; the render footer remains at 1156x37 with `data-episode-render-strip-surface="footer"`.
+  - Verified the Timeline remains visible at 1180x325, selected clip remains `video_scene_580_beat_3923_001`, and the selected clip production actions remain visible.
+  - Verified whole-scene grid entries remain absent; console error count was 0 and failed request count was 0.
+- Latest validation after Timeline workspace auto-height and render footer:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineWorkspace.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineMainPanel.tsx ai-pic-frontend/src/components/shared/operator/OperatorLayout.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 233, 107, 225, and 2143 lines respectively.
+- Environment ribbon polish evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-environment-ribbon-pw-034/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Changed the scene environment row from a table-like `inline-context` row into a `context-ribbon` with a small visible `环境` chip, a muted scene chip, and a right-aligned environment choice chip.
+  - Verified the deep link synced to `clipId=video_scene_580_beat_3923_001` and the first viewport still exposes the primary Timeline at 1180x325 before the selected clip production panel.
+  - Verified the workspace shell remains auto-height with height 474.65625, `min-height: 0px`, and `overflow-y: visible`; the render output remains a visible `footer` strip at y=560.65625.
+  - Verified the environment row renders at y=515.65625 with `data-clip-environment-layout="context-ribbon"` and a 24px choice chip, without restoring a bordered card/table frame.
+  - Verified 40 Timeline items, 16 video items, and 1 selected item are present, and `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible.
+  - Verified whole-scene grid entries remain absent; console showed only React DevTools/HMR informational messages, failed request count was 0, and failed response count was 0.
+- Latest validation after environment ribbon polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 239 and 2145 lines respectively.
+- Timeline left-rail compression and clipId resync evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-timeline-left-rail-pw-038/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - A pre-fix fallback browser pass under `artifacts/runs/2026-06-13T-episode-workspace-timeline-left-rail-pw-037/` showed the left rail compression worked, but also exposed that the final URL could lose `clipId` after outer URL normalization.
+  - Verified the same stale deep link now syncs to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the Timeline remains first at 1180x325, the sticky ruler origin is 88px wide with `data-timeline-ruler-origin-layout="compact-axis"`, the video track label is 88px wide, and the visible `主线` chip is absent.
+  - Verified the lane viewport remains a real horizontal Timeline with `scrollWidth=7696`, `clientWidth=1178`, 40 Timeline items, 16 video items, and one selected Timeline button.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible; whole-scene grid entries and unmatched-scene warnings remain absent.
+  - Console showed only React DevTools/HMR informational messages. The only request failures were aborted `_rsc` navigations from URL replacement; failed response count was 0.
+- Latest validation after Timeline left-rail compression and clipId resync:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/src/components/features/Timeline/TimelineGrid.tsx ai-pic-frontend/src/components/features/episode/useInitialTimelineClipSelection.ts ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 200, 183, 109, and 2174 lines respectively.
+- Ghost parameter affordance evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-ghost-parameters-pw-040/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the stale deep link still syncs to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the Timeline remains first at 1180x325, the selected clip production panel remains at y=452, and the command rail remains visible at y=467.328125.
+  - Verified both parameter summaries are 28x28 ghost icon controls (`h-7 w-7`), the storyboard parameter control is transparent, and the video parameter control uses a low-opacity blue material instead of a solid blue peer button.
+  - Verified the storyboard and video action groups use a 4px gap between the primary action and parameter icon, and the main generation buttons keep complete rounded boundaries instead of split-button right edges.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible; whole-scene grid entries and unmatched-scene warnings remain absent.
+  - Console showed only React DevTools/HMR informational messages. The only request failures were aborted `_rsc` navigations from URL replacement; failed response count was 0.
+- Latest validation after ghost parameter affordance polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/CompactProductionDetails.tsx ai-pic-frontend/src/components/features/episode/TimelineClipStoryboardReferenceCard.tsx ai-pic-frontend/src/components/features/episode/TimelineClipVideoReworkCard.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 87, 200, 188, and 2186 lines respectively.
+- Inline output footer evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-inline-output-pw-042/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the stale deep link still syncs to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the Timeline remains first at 1180x325 and the selected clip production panel remains visible at y=452.
+  - Verified the render strip now spans the full content width at 1180x37 with `data-episode-render-strip-surface="inline-footer"`, transparent background, top border only, no side borders, no bottom border, no inset `mx-3`, and no bottom radius.
+  - Verified the render summary still exposes output readiness, `0/16 就绪`, and `查看缺失`, and the missing-clips disclosure remains available.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible; whole-scene grid entries and unmatched-scene warnings remain absent.
+  - Console showed only React DevTools/HMR informational messages. The only request failures were aborted `_rsc` navigations from URL replacement; failed response count was 0.
+- Latest validation after inline output footer polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineMainPanel.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 107 and 2188 lines respectively.
+- Timeline explicit-identity evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-timeline-visible-pw-052/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified login preserved the workspace deep link and normalized the stale clip id to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the primary Timeline is present at 1180x325 with `data-timeline-presence="primary-time-axis"`, visible heading `全片时间轴`, `border-slate-400`, and it renders before the selected clip production panel.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, whole-scene grid actions remain absent, and the unmatched-scene warning is absent.
+  - Console showed only React DevTools/HMR informational messages. Failed responses were 0; the only failed requests were aborted `_rsc` navigations during URL normalization.
+- Latest validation after Timeline explicit-identity recovery:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/src/components/features/Timeline/TimelineToolbar.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 200, 178, and 2192 lines respectively.
+- Header missing-clips label evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-header-action-label-pw-055/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the stale deep link still normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the Timeline header missing-clips action is now visible at 108.671875x32 with text `!处理缺失片段`, `aria-label="处理缺失片段"`, `gap-1.5`, and amber secondary styling instead of the previous icon-only 32px square.
+  - Verified the primary Timeline remains present at 1180x325 with visible heading `全片时间轴`, and the selected clip actions `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible.
+  - Verified whole-scene grid actions and unmatched-scene warnings remain absent. Failed responses were 0; the only failed requests were aborted `_rsc` navigations during URL normalization.
+- Latest validation after header missing-clips label polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceTimelineHeader.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 182 and 2195 lines respectively.
+- Header production dot-rail evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-header-dot-rail-pw-058/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the stale deep link still normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the production rail visible text is reduced to `生产主线片段待导出待`; ready `script` and `timeline` steps are 12px dot pills with `data-production-step-compact="dot"`, `border-transparent`, and no visible `剧本就绪` / `时间轴就绪` text.
+  - Verified ready steps still expose `aria-label` / `title` values, while pending steps keep visible labels. The header `处理缺失片段` action remains visible and amber/secondary.
+  - Verified the primary Timeline remains present at 1180x325, selected clip generation actions remain visible, whole-scene grid actions remain absent, and unmatched-scene warnings remain absent.
+  - Failed responses were 0; the only failed requests were aborted `_rsc` navigations during URL normalization.
+- Latest validation after header production dot-rail polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceTimelineHeader.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 189 and 2202 lines respectively.
+- Neutral video-parameter affordance evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-neutral-video-params-pw-059/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the stale deep link still normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified both parameter summaries are 28x28 ghost controls with `data-clip-parameter-tone="default"`, transparent backgrounds, and gray text; the video parameter summary no longer uses blue primary styling.
+  - Verified `生成/重做此片段视频` remains the only blue primary control in the selected-clip command row.
+  - Verified the primary Timeline remains present at 1180x325, selected clip generation actions remain visible, whole-scene grid actions remain absent, and unmatched-scene warnings remain absent.
+  - Failed responses were 0; the only failed requests were aborted `_rsc` navigations during URL normalization.
+- Latest validation after neutral video-parameter affordance polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/TimelineClipVideoReworkCard.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx ai-pic-frontend/src/components/features/Timeline/TimelineToolbar.tsx ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceTimelineHeader.tsx` reported 187, 2204, 178, 200, and 189 lines respectively.
+- Timeline toolbar single-title evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-toolbar-title-pw-061/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the unauthenticated stale deep link first reached `/login?next=...`, then returned to the workspace and normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the Timeline toolbar module label is a single `全片时间轴` heading badge at 62x17.328125, and `duplicateToolbarTitle=false` for the old `时间轴全片时间轴` repetition.
+  - Verified the primary Timeline remains present with 40 Timeline items, 16 video items, and a 7696px scrollable lane viewport.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, while whole-scene grid actions and unmatched-scene warnings remain absent.
+  - Browser console warn/error count was 0; failed responses were 0. The only failed requests were aborted `_rsc` navigations during URL normalization.
+- Latest validation after Timeline toolbar single-title polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/TimelineToolbar.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 180 and 2208 lines respectively.
+- Header missing-clips icon evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-missing-action-icon-pw-062/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the unauthenticated stale deep link first reached `/login?next=...`, then returned to the workspace and normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the header missing-clips action remains visible at 118x32 with `aria-label="处理缺失片段"` and text `处理缺失片段`, but `missingActionHasBareBang=false`.
+  - Verified the warning indicator is now an SVG with `data-missing-clips-icon="warning"` instead of a visible punctuation character, and the button uses `whitespace-nowrap`.
+  - Verified the primary Timeline remains present with 40 Timeline items, 16 video items, and a 7696px scrollable lane viewport.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, while whole-scene grid actions and unmatched-scene warnings remain absent.
+  - Browser console warn/error count was 0; failed responses were 0. The only failed requests were aborted `_rsc` navigations during URL normalization.
+- Latest validation after header missing-clips icon polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceTimelineHeader.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 197 and 2209 lines respectively.
+- Header production dot-only rail evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-dot-only-rail-pw-063/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the unauthenticated stale deep link first reached `/login?next=...`, then returned to the workspace and normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the header production rail now uses `data-production-step-rail-layout="dots"` and visible rail text is only `生产主线`.
+  - Verified pending status label text is not visible in the header rail (`pendingLabelTextVisible=false`), while step dots retain `aria-label` and `title` metadata including `片段视频 待处理` and `渲染/导出 待处理`.
+  - Verified the primary Timeline remains present with 40 Timeline items, 16 video items, and a 7696px scrollable lane viewport.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, while whole-scene grid actions and unmatched-scene warnings remain absent.
+  - Browser console warn/error count was 0; failed responses were 0. The only failed requests were aborted `_rsc` navigations during URL normalization.
+- Latest validation after header production dot-only rail polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceTimelineHeader.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 175 and 2214 lines respectively.
+- Header production true-dot rail evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-true-dot-rail-pw-064/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the unauthenticated stale deep link first reached `/login?next=...`, then returned to the workspace and normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified all four production step indicators are true 10x10 circular dots with no child elements (`trueDots=true`) instead of 16x24 dot containers.
+  - Verified ready steps render as filled green dots and pending steps render as white/gray outlined dots, while each step retains `aria-label` and `title` metadata.
+  - Verified pending status label text is still not visible in the header rail (`pendingLabelTextVisible=false`).
+  - Verified the primary Timeline remains present with 40 Timeline items, 16 video items, and a 7696px scrollable lane viewport.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, while whole-scene grid actions and unmatched-scene warnings remain absent.
+  - Browser console warn/error count was 0; failed responses were 0. The only failed requests were aborted `_rsc` navigations during URL normalization.
+- Latest validation after header production true-dot rail polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 29 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceTimelineHeader.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 163 and 2221 lines respectively.
+- Inline selected-clip video status evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-inline-video-status-pw-065/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the unauthenticated stale deep link first reached `/login?next=...`, then returned to the workspace and normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the primary Timeline remains present in the first viewport with 40 Timeline items, 16 video items, `scrollWidth=7696`, and `clientWidth=1178`.
+  - Verified selected-clip `缺视频` renders as `data-clip-video-status="inline"`, `data-clip-video-state="missing"`, `borderWidth=0px`, transparent background, and `text-amber-700`, with `title="缺少视频素材"` and no visible long `缺少视频素材` text.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, while whole-scene grid actions and unmatched-scene warnings remain absent.
+  - Browser console warn/error count was 0 and failed responses were 0. The only failed requests were aborted `_rsc` navigations during URL normalization.
+- Latest validation after inline selected-clip video status polish and environment-section split:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipEnvironmentSection.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipSupportPanel.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 116, 139, 205, and 2233 lines respectively.
+- More-parameter icon polish evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-more-parameter-icons-pw-069/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the unauthenticated stale deep link first reached `/login?next=...`, then returned to the workspace and normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the primary Timeline remains present with 40 Timeline items, 16 video items, and the selected clip production actions visible in the first viewport.
+  - Verified both compact parameter summaries are 28x28 `data-clip-parameter-trigger-shape="more"` controls with `data-clip-parameter-icon="more"`, three SVG circles, and zero SVG paths.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, while whole-scene grid actions and unmatched-scene warnings remain absent.
+  - Browser console warn/error count was 0 and failed responses were 0. The only failed requests were aborted `_rsc` navigations during URL normalization.
+- Latest validation after more-parameter icon polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/CompactProductionDetails.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 81 and 2240 lines respectively.
+- Timeline toolbar view-menu polish evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-toolbar-view-menu-pw-071/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the unauthenticated stale deep link first reached `/login?next=...`, then returned to the workspace and normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the Timeline toolbar direct controls are now only two children: `Timeline 生成设置` and collapsed `视图缩放`. The reset action is inside `data-timeline-view-panel="compact"` with `data-timeline-reset-placement="view-panel"` and is not a separate visible toolbar button.
+  - Verified the primary Timeline remains present with 40 Timeline items and 16 video items, and the selected clip production actions remain visible in the first viewport.
+  - Verified whole-scene grid actions and unmatched-scene warnings remain absent.
+  - Browser console warn/error count was 0 and failed responses were 0. The only failed requests were aborted `_rsc` navigations during URL normalization.
+- Latest validation after Timeline toolbar view-menu polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/TimelineToolbar.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 185 and 2251 lines respectively.
+- Plain Timeline title evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-plain-timeline-title-pw-072/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the unauthenticated stale deep link first reached `/login?next=...`, then returned to the workspace and normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the Timeline module label still reads `全片时间轴`, remains the heading for the primary Timeline, and now renders as transparent background, 12px semibold text, `text-slate-950`, and a 2px left rule instead of `bg-slate-900` / `text-white`.
+  - Verified the primary Timeline remains present with 40 Timeline items and 16 video items, and the selected clip production actions remain visible in the first viewport.
+  - Verified whole-scene grid actions and unmatched-scene warnings remain absent.
+  - Browser console warn/error count was 0 and failed responses were 0. The only failed request was an aborted `_rsc` navigation during URL normalization.
+- Latest validation after plain Timeline title polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/TimelineToolbar.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 190 and 2258 lines respectively.
+- Inline selected-clip context evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-inline-selected-context-pw-073/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the unauthenticated stale deep link first reached `/login?next=...`, then returned to the workspace and normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the Timeline selected context now uses `data-timeline-selected-context-style="inline"`, transparent background, no border, `text-slate-500`, and compact visible text `当前视频 1·00:00-00:03`.
+  - Verified the selected context `title` still carries the precise range `视频轨 · 视频 1 · 00:00-00:03.320`.
+  - Verified the primary Timeline remains present with 40 Timeline items and 16 video items, and the selected clip production actions remain visible in the first viewport.
+  - Verified whole-scene grid actions and unmatched-scene warnings remain absent.
+  - Browser console warn/error count was 0 and failed responses were 0. The only failed requests were aborted `_rsc` navigations during URL normalization.
+- Latest validation after inline selected-clip context polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/TimelineSelectedContext.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 50 and 2267 lines respectively.
+- Muted support-track marker evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-muted-support-track-markers-pw-074/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the unauthenticated stale deep link first reached `/login?next=...`, then returned to the workspace and normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the primary video track marker remains a 10x10 colored circle with inline track color, while all three support track markers render as 8x1 `bg-slate-300` lines with no inline color style.
+  - Verified the primary Timeline remains present with 40 Timeline items and 16 video items, and the selected clip production actions remain visible in the first viewport.
+  - Verified whole-scene grid actions and unmatched-scene warnings remain absent.
+  - Browser console warn/error count was 0 and failed responses were 0. The only failed requests were aborted `_rsc` navigations during URL normalization.
+- Latest validation after muted support-track marker polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 67 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/Timeline/TimelineGrid.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 184 and 2282 lines respectively.
+- Timeline visibility anchor evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-timeline-anchor-pw-078/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Browser reproduction before the patch saved evidence under `artifacts/runs/2026-06-13T-episode-workspace-timeline-missing-pw-076/` and showed the primary Timeline was present at `top=123`, `height=325`, before the selected-clip production panel.
+  - Verified the unauthenticated stale deep link returned to the workspace and normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the primary Timeline panel now has `id="episode-timeline-canvas"` and `data-timeline-selection-visibility="anchor"`, remains visible in the 1280x720 first viewport at `top=123`, `height=325`, and renders before the selected-clip production panel at `top=452`.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, while `生成宫格分镜图`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console warn/error count was 0 and failed responses were 0.
+- Latest validation after Timeline visibility anchor:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 30 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 68 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/useTimelineSelectionVisibility.ts ai-pic-frontend/src/components/features/episode/EpisodeTimelineWorkspace.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineMainPanel.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineCanvasPanel.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 25, 236, 110, 200, and 2352 lines respectively.
+- Inline output missing-action evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-inline-missing-action-pw-079/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the unauthenticated stale deep link returned to the workspace and normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `data-timeline-render-missing-action="inline-link"` is present and the old `data-timeline-render-missing-action="compact"` button marker is absent.
+  - Verified the output strip `查看缺失` action renders with transparent background, `borderWidth=0px`, `borderRadius=0px`, and `text-amber-700`, while still expanding the collapsed missing-clip details through the summary row.
+  - Verified the primary Timeline remains in the first viewport at `top=123`, `height=325`, before the selected-clip production panel at `top=452`.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, while `生成宫格分镜图`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console warn/error count was 0 and failed responses were 0.
+- Latest validation after inline output missing-action polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 30 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 68 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineRenderPanel.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 175 and 2357 lines respectively.
+- Inline header missing-action evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-inline-header-missing-action-pw-081/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the unauthenticated stale deep link returned to the workspace and normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the Timeline header `处理缺失片段` action has `data-workspace-primary-action="open-clip"` and `data-workspace-primary-action-emphasis="inline-warning"`.
+  - Verified the header action keeps its visible label but now renders with transparent background, `borderWidth=0px`, text warning tone, and no amber button border/background.
+  - Verified the primary Timeline remains in the first viewport at `top=123`, `height=325`, before the selected-clip production panel at `top=452`.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, while `生成宫格分镜图`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console warn/error count was 0 and failed responses were 0.
+- Latest validation after inline header missing-action polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 30 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 68 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceTimelineHeader.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 167 and 2366 lines respectively.
+- Neutral selected-clip type badge evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-neutral-clip-type-badge-pw-082/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the unauthenticated stale deep link returned to the workspace and normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `data-clip-type-badge="neutral"` renders `视频` with transparent background, `borderWidth=0px 0px 0px 1px`, `borderRadius=0px`, `border-slate-300`, and `text-slate-600`, with no green success pill styling.
+  - Verified the selected clip video status still renders as inline amber `缺视频`, preserving the actual missing-video state.
+  - Verified the primary Timeline remains in the first viewport at `top=123`, `height=325`, before the selected-clip production panel at `top=452`.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, while `生成宫格分镜图`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console warn/error count was 0 and failed responses were 0.
+- Latest validation after neutral selected-clip type badge polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 30 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 68 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 118 and 2378 lines respectively.
+- Micro parameter-trigger evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-micro-parameter-triggers-pw-083/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the unauthenticated stale deep link returned to the workspace and normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified both compact parameter summaries have `data-clip-parameter-trigger-shape="micro-more"`, render as 24x24 controls, contain three SVG circles and no paths, and have empty visible text.
+  - Verified the trigger color is low-contrast `text-slate-300` with transparent background and border.
+  - Verified the primary Timeline remains in the first viewport at `top=123`, `height=325`, before the selected-clip production panel at `top=452`.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, while `生成宫格分镜图`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console warn/error count was 0 and failed responses were 0.
+- Latest validation after micro parameter-trigger polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 30 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 68 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `wc -l ai-pic-frontend/src/components/features/episode/CompactProductionDetails.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` reported 81 and 2381 lines respectively.
+- Soft selected Timeline clip evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-soft-selected-timeline-clip-pw-084/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the primary Timeline is present in the first viewport at `top=123`, `height=325`, before the selected-clip production panel at `top=452`.
+  - Verified the selected video clip renders as a lower-weight locator: `borderWidth=1px`, `borderColor=rgb(147, 197, 253)`, `backgroundColor=rgb(238, 244, 255)`, `ring-blue-300/45`, and no `shadow-sm`.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, while `生成宫格分镜图`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console warn/error count was 0. The only failed requests were two aborted `_rsc` navigations during URL normalization; no API 500s were observed.
+- Latest validation after soft selected Timeline clip polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 30 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 68 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Neutral Timeline frame evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-neutral-timeline-frame-pw-085/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the primary Timeline remains present in the first viewport at `top=123`, `height=325`, before the selected-clip production panel at `top=452`.
+  - Verified the Timeline container, toolbar separator, viewport separator, and overview rail use neutral `border-slate-200` styling instead of the previous stronger frame, while preserving `shadow-none` and the selected video clip locator state.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, while `生成宫格分镜图`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console warn/error count was 0. The only failed requests were two aborted `_rsc` navigations during URL normalization; no API 500s were observed.
+- Latest validation after neutral Timeline frame polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 30 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 68 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Compact output status evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-compact-output-status-pw-086/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the primary Timeline remains present in the first viewport at `top=123`, `height=325`, before the selected-clip production panel at `top=452`.
+  - Verified the blocked render summary now uses `data-timeline-render-summary-layout="compact-inline"`, is 215px wide instead of spanning the full strip, and has no progress bar.
+  - Verified the render readiness count is a plain text `0/16 就绪` inline meter with no child elements, while `查看缺失` remains available and expands the missing-clip details.
+  - Verified the render strip separator is reduced to `border-slate-100`, and `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible.
+  - Verified `生成宫格分镜图`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console warn/error count was 0. The only failed requests were two aborted `_rsc` navigations during URL normalization; no API 500s were observed.
+- Latest validation after compact output status polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 30 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 68 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Inline environment choice evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-inline-environment-choice-pw-087/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the primary Timeline remains present in the first viewport at `top=123`, `height=325`, before the selected-clip production panel at `top=452`.
+  - Verified `选择环境` now sits inline next to `场景 1 · 开场钩子`, with `marginLeft=0px`, 6px distance from the scene chip, and 1085px remaining to the summary right edge instead of floating at the far right.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, while `生成宫格分镜图`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console warn/error count was 0. The only failed requests were two aborted `_rsc` navigations during URL normalization; no API 500s were observed.
+- Latest validation after inline environment choice polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 30 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 68 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Compact action widths evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-compact-action-widths-pw-088/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the primary Timeline remains present in the first viewport at `top=123`, `height=325`, before the selected-clip production panel at `top=452`.
+  - Verified the command rail now reports `data-clip-command-layout="compact-video-primary"` and uses content-width columns: `max-content max-content minmax(17rem,20rem)` with `justify-end`.
+  - Verified action widths are compact rather than full-row: `生成片段分镜图` is 184px, `生成首尾帧` is 168px, and `生成/重做此片段视频` is 288px.
+  - Verified the storyboard and video action groups use `w-auto` instead of `w-full`, and the three action buttons no longer include `flex-1`.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, while `生成宫格分镜图`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console warn/error count was 0. The only failed requests were aborted `_rsc` navigations during login/deep-link URL normalization; no API 500s were observed.
+- Latest validation after compact action widths polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 30 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 68 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Inline video-status evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-inline-video-status-pw-089/`:
+  - Browser plugin bootstrap was attempted first and failed because `browser.documentation is not a function`; Chrome DevTools was then attempted and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found. This run used Playwright with the system Chrome executable fallback.
+  - Verified the primary Timeline remains present in the first viewport at `top=123`, `height=325`, before the selected-clip production panel at `top=452`.
+  - Verified `缺视频` is now inside `data-clip-production-meta="true"` beside the clip timing/status text instead of sitting in a detached summary grid column.
+  - Verified the inline video status keeps `title="缺少视频素材"`, `data-clip-video-state="missing"`, and the amber text state without adding a pill border/background.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, while `生成宫格分镜图`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console warn/error count was 0. The only failed requests were two aborted `_rsc` navigations during URL normalization; no API 500s were observed.
+- Latest validation after inline video-status polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 30 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 68 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Compact production-row evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-compact-production-row-pw-090/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the primary Timeline remains present in the first viewport at `top=123`, `height=325`, before the selected-clip production panel at `top=452`.
+  - Verified the selected-clip identity column and command rail now sit adjacent, with only 8px between `data-clip-current-bar="identity"` and `data-clip-command-rail="compact"`.
+  - Verified the production top row uses `minmax(18rem,30rem)_max-content` instead of the previous `0.72fr/1.28fr` proportional layout that left a large blank gap.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, while `生成宫格分镜图`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console warn/error count was 0. The only failed requests were aborted `_rsc` navigations during login/deep-link URL normalization; no API 500s were observed.
+- Latest validation after compact production-row polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 30 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 68 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Timeline visibility follow-up evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-timeline-visible-pw-093/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the primary Timeline remains present in the first viewport at `top=123`, `height=325`, before the selected-clip production panel at `top=452`.
+  - Verified the toolbar now exposes a visible `Timeline` identity badge and the URL stale clip id syncs to `clipId=video_scene_580_beat_3923_001`.
+  - Verified video clips remain blue-gray primary blocks, while dialogue, subtitle, and storyboard support clips render neutral `rgb(248, 250, 252)` fills with `rgb(226, 232, 240)` borders.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, while `生成宫格分镜图`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console error count was 0. The only failed requests were two aborted `_rsc` navigations during URL normalization; no API 500s were observed.
+- Latest validation after Timeline visibility follow-up:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 30 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 68 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Compact support-more evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-compact-support-more-pw-094/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the primary Timeline remains present in the first viewport at `top=123`, `height=325`, before the selected-clip production panel at `top=452`.
+  - Verified the selected-clip production panel height dropped to `98.65625px` and its inner wrapper now uses `space-y-1 px-3 py-1.5`.
+  - Verified the support overflow trigger in the scene-environment row has empty visible text, a 24px box, transparent border/background, and a `data-clip-support-more-icon="dots"` icon.
+  - Verified the visible `更多` text count is 0, while `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible.
+  - Verified `生成宫格分镜图`, `宫格图生成成片`, and `未匹配规范化场景` remain absent. Browser console warn/error count was 0; the only failed requests were aborted `_rsc` navigations during URL normalization.
+- Latest validation after compact support-more polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 30 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 68 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Localized Timeline badge evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-localized-timeline-badge-pw-095/`:
+  - Browser plugin bootstrap was attempted first and failed because `browser.documentation is not a function`; Chrome DevTools was then attempted and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found. This run used Playwright with the system Chrome executable fallback.
+  - Verified the primary Timeline remains present in the first viewport at `top=123`, `height=325`, before the selected-clip production panel at `top=452`.
+  - Verified the Timeline identity badge now reads `时间轴`, has an axis icon, uses `border-slate-300 bg-slate-50 text-slate-700`, and no longer matches the old dark debug tag styling.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible, while `生成宫格分镜图`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console warn/error count was 0. The only failed requests were aborted `_rsc` navigations during login/deep-link URL normalization.
+- Latest validation after localized Timeline badge polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 30 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 68 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Merged Timeline heading evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-merged-timeline-heading-pw-096/`:
+  - Browser plugin bootstrap was attempted first and failed because `browser.documentation is not a function`; Chrome DevTools was then attempted and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found. This run used Playwright with the system Chrome executable fallback.
+  - Verified the primary Timeline remains present in the first viewport at `top=123`, `height=325`, before the selected-clip production panel at `top=452`.
+  - Verified there is exactly one `data-timeline-identity-badge="primary"` element, it is the `全片时间轴` heading with `data-timeline-identity-style="merged-heading"`, and it has no axis icon.
+  - Verified the toolbar no longer contains `时间轴全片时间轴` or `Timeline全片时间轴`, while the clip production actions remain visible.
+  - Verified `生成宫格分镜图`, `宫格图生成成片`, and `未匹配规范化场景` remain absent. Browser console warn/error count was 0; the only failed requests were aborted `_rsc` navigations during URL normalization.
+- Latest validation after merged Timeline heading polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 30 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 68 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Full-episode Timeline fit evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-timeline-visibility-pw-097/`:
+  - Browser plugin bootstrap was attempted first and failed because `browser.documentation is not a function`; Chrome DevTools was then attempted and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found. This run used Playwright with the system Chrome executable fallback.
+  - Before the fix, the Timeline viewport only exposed the first 3 video blocks of the 02:32 episode; after the fix, Playwright metrics reported `videoItemCount=16` and `allVideoItemsInsideViewport=true`.
+  - Verified the primary Timeline remains present in the first viewport at `top=123`, `height=325`, before the selected-clip production panel at `top=452`.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible around `top=465`.
+  - Verified `生成宫格分镜图`, `场景宫格分镜`, and `未匹配规范化场景` remain absent. Browser console warn/error count was 0; observed failed requests were aborted `_rsc` navigations only.
+- Latest validation after full-episode Timeline fit:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 30 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 68 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Short fitted video label evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-short-labels-pw-098/`:
+  - Browser plugin bootstrap was attempted first and failed because `browser.documentation is not a function`; Chrome DevTools was then attempted and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found. This run used Playwright with the system Chrome executable fallback.
+  - Verified the Timeline resolves stale `clipId=video_scene_580_beat_3911_001` to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `videoItemCount=16`, `blankVideoLabels=0`, and all video items remain inside the Timeline viewport.
+  - Verified compact labels render as `5`, `9`, `13` with `tabular-nums` and without `truncate`.
+  - Verified `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` remain visible at `top=465.328125`.
+  - Verified `生成宫格分镜图`, `场景宫格分镜`, and `未匹配规范化场景` remain absent. Browser console warn/error count was 0; observed failed requests were aborted `_rsc` navigations only.
+- Latest validation after short fitted video labels:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 31 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 69 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Auxiliary support-lane evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-support-lanes-pw-099/`:
+  - Browser plugin bootstrap was attempted first and failed because `browser.documentation is not a function`; Chrome DevTools was then attempted and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found. This run used Playwright with the system Chrome executable fallback.
+  - Verified the Timeline resolves stale `clipId=video_scene_580_beat_3911_001` to `clipId=video_scene_580_beat_3923_001`.
+  - Verified Timeline height reduced to `303px`, selected-clip production panel starts at `top=430`, and the three generation actions start at `top=443.328125`.
+  - Verified video track remains about `89px` tall while dialogue, subtitle, and storyboard support rows are about `29px` each.
+  - Verified `supportContextCount=24` and all support-context clip heights are `8px`.
+  - Verified `blankVideoLabels=0`, `生成宫格分镜图`, `场景宫格分镜`, and `未匹配规范化场景` remain absent. Browser console warn/error count was 0; observed failed requests were aborted `_rsc` navigations only.
+- Latest validation after auxiliary support-lane polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 31 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 69 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Compact command-bar evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-command-bar-pw-100/`:
+  - Browser plugin bootstrap was attempted first and failed because `browser.documentation is not a function`; Chrome DevTools was then attempted and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found. This run used Playwright with the system Chrome executable fallback.
+  - Verified the Timeline resolves stale `clipId=video_scene_580_beat_3911_001` to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the three selected-clip actions remain visible with heights `32px`: `生成片段分镜图` width `168`, `生成首尾帧` width `152`, and `生成/重做此片段视频` width `264`.
+  - Verified the video generation button has `shadow-none` and no blue shadow class.
+  - Verified `生成宫格分镜图`, `场景宫格分镜`, and `未匹配规范化场景` remain absent. Browser console warn/error count was 0; observed failed requests were aborted `_rsc` navigations only.
+- Latest validation after compact command-bar polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 31 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 69 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` first failed on a transient Google font fetch for `fonts.gstatic.com` / `Geist Mono`; rerunning the same command passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Timeline visibility restoration evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-timeline-restored-pw-105/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the primary Timeline remains in the first viewport at `top=123`, `height=303`, with `data-timeline-visibility-contract="first-screen-primary"`.
+  - Verified the Timeline root now uses `border-slate-300`, the overview visibly reads `全片总览`, and the video track is visible before the selected-clip production row at `top=441`.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `生成宫格分镜图`, `场景宫格分镜`, and `未匹配规范化场景` remain absent. Browser console error count was 0; observed failed requests were aborted `_rsc` navigations only.
+- Latest validation after Timeline visibility restoration:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 31 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 69 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Command toolbar polish evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-command-rail-toolbar-pw-107/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the primary Timeline remains in the first viewport at `top=123`, `height=303`, before the selected-clip production panel at `top=430`.
+  - Verified the selected-clip command surface uses `data-clip-command-surface-style="single-toolbar"` with `border-slate-200 bg-slate-50/80 p-0.5`, while avoiding shadow/card nesting.
+  - Verified the three generation buttons remain 32px tall; `生成/重做此片段视频` remains the only `bg-blue-600` primary action.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `生成宫格分镜图`, `场景宫格分镜`, and `未匹配规范化场景` remain absent. Browser console error count was 0; observed failed requests were aborted `_rsc` navigations only.
+- Latest validation after command toolbar polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 31 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 69 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Responsive header polish evidence saved under:
+  - `artifacts/runs/2026-06-13T-episode-workspace-responsive-header-pw-109/`
+  - `artifacts/runs/2026-06-13T-episode-workspace-responsive-header-desktop-pw-110/`
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; these runs used Playwright with the system Chrome executable fallback.
+  - Before the fix, 390px viewport evidence showed `document.scrollWidth=882` with the header action group pushed to `left=728`.
+  - After the fix, 390px viewport evidence showed `documentScrollWidth=390` and `bodyScrollWidth=390`; header controls stayed within `left=20/right=370`.
+  - Verified on 390px that Timeline remains visible, the three generation actions remain visible in the first viewport, and render/output remains below them.
+  - Verified on 1440px that the desktop header remains 39px tall, Timeline remains at `top=123`, selected-clip actions remain at `top=445.328125`, and the only strong blue action is `生成/重做此片段视频`.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `生成宫格分镜图`, `场景宫格分镜`, and `未匹配规范化场景` remain absent. Browser console error count was 0; observed failed requests were aborted `_rsc` navigations only.
+- Latest validation after responsive header polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 31 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 69 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Compact mobile header evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-compact-mobile-header-pw-111/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified on 390px viewport that the header height dropped from the prior `143px` responsive-header state to `77px`, while `documentScrollWidth=390` and `bodyScrollWidth=390` stayed clean.
+  - Verified the mobile Timeline moved back up from `top=227` to `top=161`; the selected-clip generation actions stayed visible in the first viewport.
+  - Verified on 1440px viewport that desktop header height remained `39px`, Timeline remained at `top=123`, and the selected-clip actions remained at `top=445.328125`.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `生成宫格分镜图`, `场景宫格分镜`, and `未匹配规范化场景` remain absent. Browser console error count was 0; observed failed requests were aborted `_rsc` navigations only.
+- Latest validation after compact mobile header polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 31 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 69 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Production rail polish evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-production-rail-polish-pw-112/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified a fresh browser context first redirected the deep link to `/login?next=...`, then login returned to the workspace and normalized stale `clipId=video_scene_580_beat_3911_001` to `clipId=video_scene_580_beat_3923_001`.
+  - Verified on 390px viewport that `documentScrollWidth=390` and `bodyScrollWidth=390`, the primary Timeline remains at `top=161` with `height=303`, and the selected-clip production panel remains below it at `top=468`.
+  - Verified the mobile production panel height is `192.65625px`; the command surface uses a two-column rail with the video action spanning both columns, and the visible secondary labels are shortened to `分镜图` and `首尾帧` while preserving full button aria labels.
+  - Verified both parameter triggers are explicit `参数` controls with `shape=label`, `height=32`, `width=58`; the video parameter trigger uses the primary blue tone.
+  - Verified on 1440px viewport that the Timeline remains at `top=123`, the production panel remains at `top=430`, and the command surface remains one compact row at `top=443`, `height=42`.
+  - Verified `生成/重做此片段视频` remains the only `bg-blue-600` primary action; `生成宫格分镜图`, `场景宫格分镜`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console error count was 0; `/episodes/172/characters` 500 count was 0. Observed failed requests were aborted `_rsc` navigations only.
+- Latest validation after production rail polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 31 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 69 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard | grep -v '^artifacts/')` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Compact mobile Timeline density evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-compact-timeline-density-pw-113/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified on 390px viewport that the Timeline switches to `data-timeline-responsive-density="compact"` and height drops from the prior `303px` to `253px`.
+  - Verified on 390px viewport that the selected-clip production panel moves up from `top=468` to `top=418`, while all three generation actions remain visible in the first viewport.
+  - Verified compact row metrics on 390px: video track `minHeight=74px`, support tracks `minHeight=20px`, and track gaps `0px`.
+  - Verified on 1440px viewport that desktop stays `data-timeline-responsive-density="regular"` with Timeline height `303px`, video track `88px`, support tracks `28px`, and production panel `top=430`.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `生成/重做此片段视频` remains the only `bg-blue-600` primary action; `生成宫格分镜图`, `场景宫格分镜`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console error count was 0; `/episodes/172/characters` 500 count was 0. Observed failed requests were aborted `_rsc` navigations only.
+- Latest validation after compact mobile Timeline density:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 49 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 70 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard | grep -v '^artifacts/')` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Compact mobile overview rail evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-compact-overview-rail-pw-114/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified on 390px viewport that the Timeline remains `data-timeline-responsive-density="compact"` while the overview switches to `data-timeline-overview-responsive-density="compact"`.
+  - Verified the mobile overview row drops to `20px` with a `12px` locator rail and the visible `全片总览` label is removed into `sr-only`.
+  - Verified the mobile Timeline height drops again from `253px` to `244px`, the selected-clip production panel moves up from `top=418` to `top=409`, and all three generation actions remain visible in the first viewport.
+  - Verified on 1440px viewport that desktop remains `data-timeline-responsive-density="regular"` and `data-timeline-overview-responsive-density="regular"` with Timeline height `303px`, overview row `29px`, and production panel `top=430`.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `生成/重做此片段视频` remains the only `bg-blue-600` primary action; `生成宫格分镜图`, `场景宫格分镜`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console error count was 0; `/episodes/172/characters` 500 count was 0. Observed failed requests were aborted `_rsc` navigations only.
+- Latest validation after compact mobile overview rail:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 49 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 70 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only --diff-filter=ACMRT HEAD) $(git ls-files --others --exclude-standard | grep -v '^artifacts/')` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Readable working Timeline evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-readable-timeline-pw-003/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Before the fix, browser reproduction under `artifacts/runs/2026-06-13T-episode-workspace-timeline-missing-repro-pw-001/` and `...-pw-002-mobile/` showed the Timeline existed but was visually compressed by full-episode fit: the mobile Timeline was `244px` tall while the selected video block was one of many tiny fitted clips.
+  - Verified after the fix that the primary Timeline now uses `data-timeline-fit-to-width="false"` and keeps the full-episode overview rail while making the detailed lanes horizontally scrollable.
+  - Verified on 1280px viewport that the lane viewport has `clientWidth=1178` and `scrollWidth=7696`, the video track width is `7696`, the selected video clip is `166px` wide, and visible video clips read `视频 1`, `视频 2`, and `视频 3` instead of dense numeric markers.
+  - Verified on 390px viewport that `documentScrollWidth=390`, the lane viewport has `clientWidth=352` and `scrollWidth=7672`, the selected video clip is `166px` wide, and the three clip generation actions remain visible in the first viewport.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `生成/重做此片段视频` remains the only `bg-blue-600` primary action; `生成宫格分镜图`, `场景宫格分镜`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console error count was 0; `/episodes/172/characters` 500 count was 0.
+- Latest validation after restoring readable working Timeline lanes:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 49 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 70 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff <changed files excluding artifacts>` initially failed because zsh passed the newline file list as one long path; rerunning the same check with `xargs -0` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Parameter affordance polish evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-parameter-affordance-pw-117/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified on 1280px viewport that the Timeline remains at `top=123`, selected-clip production remains at `top=430`, command tray remains `42px` high, and the command tray width dropped from the current-audit `724px` to `690px`.
+  - Verified on 390px viewport that `documentScrollWidth=390`, Timeline remains at `top=161`, selected-clip production remains at `top=409`, and command tray remains `80px` high with all generation actions visible.
+  - Verified storyboard/video parameter controls now have `data-clip-parameter-trigger-shape="micro-more"`, `width=24`, `height=24`, empty visible text, three-dot icons, `aria-label` / `title` values, and neutral `data-clip-parameter-tone="default"`.
+  - Verified visible `参数` text count is 0 and `生成/重做此片段视频` remains the only `bg-blue-600` primary action.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `生成宫格分镜图`, `场景宫格分镜`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console error count was 0; `/episodes/172/characters` 500 count was 0.
+- Latest validation after parameter affordance polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/timelineClipReworkControls.test.ts` passed: 45 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 70 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff <changed files excluding artifacts>` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Command label cleanup evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-command-short-label-pw-119/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified on 390px viewport that `documentScrollWidth=390`, Timeline remains at `top=161`, selected-clip production remains at `top=409`, and the command tray remains `80px` high with all generation actions visible.
+  - Verified the storyboard action has visible text `分镜图`, `aria-label="生成片段分镜图"`, `title="生成片段分镜图"`, and no duplicated `分镜图分镜图` text.
+  - Verified the keyframe action has visible text `生成首尾帧`; duplicated `生成首尾帧首尾帧` text is absent.
+  - Verified visible `参数` text count remains 0 and the two parameter controls remain 24px micro-more controls.
+  - Verified `生成/重做此片段视频` remains the only `bg-blue-600` primary action.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `生成宫格分镜图`, `场景宫格分镜`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console error count was 0; `/episodes/172/characters` 500 count was 0.
+- Timeline visual restoration evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-timeline-visible-pw-120/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified on 1280px viewport that the primary Timeline remains in the first viewport at `top=123`, `height=303`, before selected-clip production at `top=430`.
+  - Verified on 390px viewport that `documentScrollWidth=390`, Timeline remains at `top=161`, `height=244`, and selected-clip production starts at `top=409`.
+  - Verified the Timeline root uses `rounded-lg`, `border-slate-300`, `shadow-[0_8px_22px...]`, and `ring-slate-100/90`; the ruler is a visible `时间尺` axis band; the video track carries `data-timeline-primary-lane="video-production"`.
+  - Verified the selected video clip uses `ring-2 ring-blue-500/75`, `borderColor=rgb(37, 99, 235)`, and `backgroundColor=rgb(219, 234, 254)`, making the active clip visually recoverable.
+  - Verified 40 Timeline selection buttons are present, stale `clipId=video_scene_580_beat_3911_001` normalizes to `clipId=video_scene_580_beat_3923_001`, and all three selected-clip generation actions remain visible in the first viewport.
+  - Verified `生成宫格分镜图`, `场景宫格分镜`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console error count was 0; `/episodes/172/characters` 500 count was 0.
+- Latest validation after Timeline visual restoration:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 70 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff <changed files excluding artifacts>` passed. The first attempt used a bad newline argument wrapper and failed as a command invocation issue; rerunning with `xargs -0` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - Timeline component file sizes after this pass: `Timeline.tsx` 198 lines, `TimelineGrid.tsx` 198 lines, `TimelineItemButton.tsx` 200 lines, `TimelineOverview.tsx` 131 lines.
+- Flat command toolbar evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-command-toolbar-flat-pw-122/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified on 1280px viewport that the Timeline remains at `top=123`, `height=303`, and selected-clip production remains at `top=430`.
+  - Verified the selected-clip command surface changed to `rounded-md bg-slate-50/60 p-0.5 shadow-none` with no inner card border/shadow; desktop width is now `588px`.
+  - Verified on 390px viewport that `documentScrollWidth=390`, Timeline remains at `top=161`, selected-clip production remains at `top=409`, command surface height is `74px`, and all generation actions remain visible in the first viewport.
+  - Verified storyboard action remains visible as `分镜图` with `aria-label="生成片段分镜图"` / `title="生成片段分镜图"`, keyframe remains `生成首尾帧`, and `生成/重做此片段视频` remains the only `bg-blue-600` primary action.
+  - Verified both parameter triggers remain 24px `micro-more` controls with empty visible text and `visibleParameterTextCount=0`.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `生成宫格分镜图`, `场景宫格分镜`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console error count was 0; `/episodes/172/characters` 500 count was 0.
+- Latest validation after flat command toolbar polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/timelineClipReworkControls.test.ts` passed: 45 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 70 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff <changed files excluding artifacts>` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - `TimelineClipProviderReworkCards.tsx` was kept at 200 lines after a final whitespace-only trim; the affected 45-test target was rerun and passed.
+- Identity/action alignment evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-identity-action-gap-pw-123/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified on 1280px viewport that the Timeline remains at `top=123`, `height=303`, and selected-clip production remains at `top=430`.
+  - Verified the desktop selected-clip identity row is `320px` wide and the command toolbar starts at `left=420`, leaving only an `8px` horizontal gap between identity and actions.
+  - Verified the command toolbar shifted from the previous `left=470` position to `left=420`, while keeping all three generation actions in the first viewport.
+  - Verified on 390px viewport that `documentScrollWidth=390`, Timeline remains at `top=161`, selected-clip production remains at `top=409`, and production panel height is `184.65625px`.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `生成/重做此片段视频` remains the only `bg-blue-600` primary action; `生成宫格分镜图`, `场景宫格分镜`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console error count was 0; `/episodes/172/characters` 500 count was 0.
+- Latest validation after identity/action alignment:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 31 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 70 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff <changed files excluding artifacts>` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - File-size check: `EpisodeTimelineClipProductionPanel.tsx` is 175 lines and `TimelineClipProviderReworkCards.tsx` is 200 lines.
+- Timeline fit-to-width restoration evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-timeline-fit-pw-130/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Pre-fix reproduction under `artifacts/runs/2026-06-13T-episode-workspace-timeline-visibility-pw-129/` showed the Timeline DOM was visible at `top=123`, `height=303`, but the video row was `7696px` wide, exposing only the first few video blocks in the first viewport.
+  - Verified after the fix that the Timeline root uses `data-timeline-fit-to-width="true"`, the lane viewport has `scrollWidth=1178` and `clientWidth=1178`, the video row is `1178px` wide, and all 16 video clips are visible on the 1280px desktop viewport.
+  - Verified desktop still keeps the Timeline first at `top=123`, `height=303`, before selected-clip production, with stale `clipId=video_scene_580_beat_3911_001` normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Verified mobile at 390px has no page-level horizontal overflow (`documentScrollWidth=390`, `bodyScrollWidth=390`), keeps the Timeline visible at `top=161`, `width=354`, `height=244`, and shows a fitted primary axis with 14 visible video buttons plus lane-local scroll for the remaining edge content.
+  - Verified `生成/重做此片段视频` remains the only `bg-blue-600` primary action; `生成宫格分镜图`, `场景宫格分镜`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console error count was 0 and API responses had no 4xx/5xx failures.
+- Latest validation after Timeline fit-to-width restoration:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 31 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 70 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff <changed files excluding artifacts>` passed after rerunning with `xargs -0`; the first attempt used macOS `bash` without `mapfile` and skipped diff-sensitive checks.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Timeline compact-label polish evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-timeline-label-pills-pw-131/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified on 1280px viewport that the primary Timeline remains first at `top=123`, `height=303`, uses `data-timeline-fit-to-width="true"`, and still shows the selected video clip production panel and render strip below it.
+  - Verified the video lane now has 11 compact numeric labels and 5 full labels. Medium-short clips render as independent white numeric badges such as `2`, `4`, `5`, `6`, `8`, `9`, `10`, `12`, `13`, `14`, and `16` instead of mixed strings like `视频 45`, `视频 89`, or `视频 1213`.
+  - Verified compact labels keep full `aria-label` values such as `在时间轴中选择 视频 2`, and all full timeline clip selection buttons remain present.
+  - Verified mobile at 390px has no page-level horizontal overflow (`documentScrollWidth=390`, `bodyScrollWidth=390`), keeps the Timeline visible at `top=161`, and renders 13 compact video labels in the fitted lane.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `生成/重做此片段视频` remains the only `bg-blue-600` primary action; `生成宫格分镜图`, `场景宫格分镜`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console error count was 0 and API responses had no 4xx/5xx failures.
+- Latest validation after Timeline compact-label polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 31 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 70 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff <changed files excluding artifacts>` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - File-size check: `TimelineItemButton.tsx` is 200 lines and `EpisodeTimelineCanvasPanel.tsx` is 200 lines.
+- Selected-clip identity/action balance evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-action-gap-balanced-pw-133/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - A first tighter variant under `artifacts/runs/2026-06-13T-episode-workspace-action-gap-tight-pw-132/` reduced the desktop identity column to `256px`, but the screenshot showed the current clip title truncating; that variant was rejected.
+  - Verified the final desktop layout uses `min-[1040px]:grid-cols-[minmax(13rem,18rem)_max-content]`, keeps the identity column at `288px`, keeps the command toolbar adjacent with `identityToCommandGap=6`, and keeps the title untruncated (`clientWidth=224`, `scrollWidth=224`).
+  - Verified the Timeline remains first and stable, stale `clipId=video_scene_580_beat_3911_001` normalizes to `clipId=video_scene_580_beat_3923_001`, and the mobile layout remains free of page-level horizontal overflow (`documentScrollWidth=390`, `bodyScrollWidth=390`).
+  - Verified `生成/重做此片段视频` remains the only `bg-blue-600` primary action; `生成宫格分镜图`, `场景宫格分镜`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console error count was 0 and API responses had no 4xx/5xx failures.
+- Latest validation after selected-clip identity/action balance:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 31 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 70 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff <changed files excluding artifacts>` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - File-size check: `EpisodeTimelineClipProductionPanel.tsx` is 175 lines, `TimelineItemButton.tsx` is 200 lines, and `EpisodeTimelineCanvasPanel.tsx` is 200 lines.
+- Output status-footer evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-output-status-footer-pw-134/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified on 1280px viewport that the output strip uses `data-episode-render-strip-surface="status-footer"`, `border-slate-200`, and `bg-slate-50/60` while remaining compact at `height=33`.
+  - Verified the collapsed render summary still uses the compact inline grid at `width=214.859375`, `height=28`, and continues to expose `输出`, `0/16 就绪`, and `查看缺失`.
+  - Verified mobile at 390px has no page-level horizontal overflow (`documentScrollWidth=390`, `bodyScrollWidth=390`) and keeps the output status footer at `top=597.65625`, `height=33`.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `生成/重做此片段视频` remains the only `bg-blue-600` primary action; `生成宫格分镜图`, `场景宫格分镜`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console error count was 0 and API responses had no 4xx/5xx failures.
+- Latest validation after output status-footer polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 31 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 70 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff <changed files excluding artifacts>` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - File-size check: `EpisodeTimelineMainPanel.tsx` is 110 lines, `EpisodeTimelineClipProductionPanel.tsx` is 175 lines, `TimelineItemButton.tsx` is 200 lines, and `EpisodeTimelineCanvasPanel.tsx` is 200 lines.
+- Output progress-meter evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-output-progress-meter-pw-135/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified on 1280px viewport that the collapsed output summary remains compact at `width=235.796875`, `height=28`, with a 40px readiness track and `fillStyleWidth=0%` for the current `0/16` state.
+  - Verified the readiness meter carries `title="0/16 个片段就绪"`, shows the visible count `0/16`, and keeps the footer action limited to `查看缺失`.
+  - Verified mobile at 390px has no page-level horizontal overflow (`documentScrollWidth=390`, `bodyScrollWidth=390`), keeps the output footer at `top=597.65625`, `height=33`, and keeps the readiness meter compact at `width=67.4375`.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `生成/重做此片段视频` remains the only `bg-blue-600` primary action; `生成宫格分镜图`, `场景宫格分镜`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console error count was 0 and API responses had no 4xx/5xx failures.
+- Latest validation after output progress-meter polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 31 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 70 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff <changed files excluding artifacts>` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - File-size check: `EpisodeTimelineRenderPanel.tsx` is 180 lines, `EpisodeTimelineRenderPanelParts.tsx` is 195 lines, and `EpisodeTimelineMainPanel.tsx` is 110 lines.
+- Timeline axis restoration evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-timeline-axis-restored-pw-138/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified on 1280px viewport that the Timeline is present in the first viewport at `top=123`, `height=307`, uses `data-timeline-presence="explicit-production-time-axis"`, and renders 16 video clips before the selected clip production panel.
+  - Verified the video production lane uses the strengthened blue axis surface, selected video clip state is visible (`background=rgb(191, 219, 254)`, `borderColor=rgb(29, 78, 216)`), and the selected cursor is present.
+  - Verified mobile at 390px has no page-level horizontal overflow (`documentScrollWidth=390`, `bodyScrollWidth=390`), keeps the Timeline visible at `top=161`, and renders 16 video items.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `生成宫格分镜图`, `场景宫格分镜`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console error count was 0 and API responses had no 4xx/5xx failures.
+- Latest validation after Timeline axis restoration:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 32 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 71 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff <changed files excluding artifacts>` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - File-size check: `Timeline.tsx` is 198 lines, `TimelineGrid.tsx` is 198 lines, `TimelineItemButton.tsx` is 200 lines, `TimelineOverview.tsx` is 131 lines, `TimelineToolbar.tsx` is 194 lines, and `useTimelineSelectionVisibility.ts` is 32 lines.
+- Attached parameter split-button evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-attached-parameter-buttons-pw-139/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified on 1280px viewport that two parameter triggers render as `data-clip-parameter-trigger-shape="attached-more"` and no `micro-more` triggers remain in the selected-clip command row.
+  - Verified the storyboard parameter trigger attaches to the storyboard button at `left=530`, `width=28`, and keeps `aria-label="展开分镜参数与参考"`.
+  - Verified the video parameter trigger attaches to the blue video generation button at `left=942`, `width=28`, with `aria-label="展开视频绑定与参数"`.
+  - Verified mobile at 390px has no page-level horizontal overflow (`documentScrollWidth=390`, `bodyScrollWidth=390`) and both attached parameter triggers remain 28x32 controls.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `生成宫格分镜图`, `场景宫格分镜`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console error count was 0 and API responses had no 4xx/5xx failures.
+- Latest validation after attached parameter split-button polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 32 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 71 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff <changed files excluding artifacts>` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - File-size check: `CompactProductionDetails.tsx` is 119 lines, `TimelineClipStoryboardReferenceCard.tsx` is 196 lines, and `TimelineClipVideoReworkCard.tsx` is 189 lines.
+- Clip identity kicker evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-clip-summary-kicker-pw-140/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified on 1280px viewport that the selected clip summary shows `当前视频` plus inline `缺视频` above the title, and that `缺视频` carries `title="缺少视频素材"`.
+  - Verified the old gray `bg-slate-100` clip-type badge is absent and video readiness no longer lives inside the lower metadata row.
+  - Verified mobile at 390px has no page-level horizontal overflow (`documentScrollWidth=390`, `bodyScrollWidth=390`) and keeps the new summary at `width=308`.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified `生成宫格分镜图`, `场景宫格分镜`, `宫格图生成成片`, `未匹配规范化场景`, and the old visible `视频片段` label remain absent.
+  - Browser console error count was 0 and API responses had no 4xx/5xx failures.
+- Latest validation after clip identity kicker polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 32 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 71 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff <changed files excluding artifacts>` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+  - File-size check: `EpisodeTimelineClipProductionSections.tsx` is 134 lines, `CompactProductionDetails.tsx` is 119 lines, `TimelineClipStoryboardReferenceCard.tsx` is 196 lines, and `TimelineClipVideoReworkCard.tsx` is 189 lines.
+- Follow-up validation after latest user report `没有时间轴了`:
+  - Built-in browser connection was attempted first, but the `iab` browser handle was disconnected (`browser.newContext: Target page, context or browser has been closed`). This run used Playwright with the system Chrome executable fallback.
+  - Initial fallback run stopped on `/login?next=...` because client-side redirect happened after the first page-state check; evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-timeline-missing-repro-pw-142/`.
+  - Re-ran the same deep link through the login form. Login succeeded and returned to the workspace; stale `clipId=video_scene_580_beat_3911_001` normalized to `clipId=video_scene_580_beat_3923_001`.
+  - Real browser evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-timeline-visible-repro-pw-144/`.
+  - Verified the primary Timeline is present in the 1280x720 first viewport: `data-timeline-canvas-panel="primary"` at `top=123`, `height=307`; `data-timeline-canvas` count is 1; `data-timeline-track-row="video"` count is 1; the video track is visible at `top=239`, `height=90`.
+  - Verified the selected clip production panel starts after the Timeline at `top=434`, so the Timeline is before production controls in the first viewport.
+  - Verified `生成宫格分镜图`, `场景宫格分镜`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console error count was 0 and API responses had no 4xx/5xx failures.
+- Latest validation after environment inline-ribbon polish and Timeline visibility recheck:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 71 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff <changed files excluding artifacts>` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Muted video clip evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-muted-video-clips-pw-146/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified desktop first viewport keeps the Timeline before production (`Timeline top=123`, `height=307`; production panel `top=434`) and keeps the video primary action visible at `top=458.65625`.
+  - Verified the selected Timeline video clip remains emphasized with `data-timeline-item-tone="primary-selected"`, `backgroundColor=rgb(191, 219, 254)`, `borderColor=rgb(29, 78, 216)`, and ring shadow.
+  - Verified unselected Timeline video clips use the muted treatment with `data-timeline-item-tone="primary-muted"`, `backgroundColor=rgb(248, 250, 252)`, `borderColor=rgb(191, 219, 254)`, and inset shadow; desktop and mobile both show 1 selected tone and 15 muted tones.
+  - Verified mobile has no page-level horizontal overflow (`documentScrollWidth=390`, `bodyScrollWidth=390`).
+  - Verified `生成宫格分镜图`, `场景宫格分镜`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console error count was 0 and API responses had no 4xx/5xx failures.
+- Latest validation after muted video clip polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 32 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 71 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff <changed files excluding artifacts>` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Transparent command rail evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-transparent-command-rail-pw-148/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the primary Timeline remains before production (`Timeline top=123`, `height=307`; production panel `top=434`), and the selected-clip command surface starts at `top=458.65625`.
+  - Verified the command surface is transparent (`backgroundColor=rgba(0, 0, 0, 0)`, `className="w-full bg-transparent p-0 shadow-none min-[720px]:w-auto"`) while the storyboard/keyframe/video buttons keep their action semantics.
+  - Verified mobile has no page-level horizontal overflow (`documentScrollWidth=390`, `bodyScrollWidth=390`) and the production panel remains compact at `height=187.3125`.
+  - Verified `data-timeline-item-tone` still reports 1 selected video clip and 15 muted video clips.
+  - Verified `生成宫格分镜图`, `场景宫格分镜`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console error count was 0 and API responses had no 4xx/5xx failures.
+- Latest validation after transparent command rail polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 32 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 71 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff <changed files excluding artifacts>` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Muted output strip evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-muted-output-strip-pw-149/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` normalizes to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the primary Timeline remains before production (`Timeline top=123`, `height=307`; production panel `top=434`) and the render strip remains compact at `height=33`.
+  - Verified `data-timeline-render-label="secondary"` uses `text-xs font-semibold text-slate-700`.
+  - Verified blocked readiness and missing action are muted (`text-slate-500` and `text-slate-600`) instead of amber text; the readiness meter remains visible.
+  - Verified mobile has no page-level horizontal overflow (`documentScrollWidth=390`, `bodyScrollWidth=390`).
+  - Verified `data-timeline-item-tone` still reports 1 selected video clip and 15 muted video clips.
+  - Verified `生成宫格分镜图`, `场景宫格分镜`, `宫格图生成成片`, and `未匹配规范化场景` remain absent.
+  - Browser console error count was 0 and API responses had no 4xx/5xx failures.
+- Latest validation after muted output strip polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 32 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 71 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff <changed files excluding artifacts>` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Storyboard support Timeline restoration evidence:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Baseline evidence under `artifacts/runs/2026-06-13T-storyboard-support-missing-timeline-pw-153/` showed `tab=storyboard&scriptId=143` had no `[data-timeline="workspace"]`, no `[data-storyboard-support-timeline]`, and no `[data-timeline-overview]`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-storyboard-support-timeline-top-pw-155/`.
+  - Verified `tab=storyboard&scriptId=143` now renders the shared Timeline in the first viewport (`Timeline top=372`, `bottom=679` in a 1280x720 viewport), with `全片时间轴`, `全片总览`, visible video lane, and detailed time ruler.
+  - Verified `生成宫格分镜图`, `场景宫格分镜`, and `宫格图生成成片` remain absent; browser console error count was 0 and failed request count was 0.
+- Latest validation after Storyboard support Timeline restoration:
+  - `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx` passed: 4 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 71 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardTabContent.tsx ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardTimelinePanel.tsx ai-pic-frontend/tests/workspaceStoryboardTabContent.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Compact support-tab header evidence saved under `artifacts/runs/2026-06-13T-episode-workspace-compact-support-header-pw-157/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified `tab=storyboard&scriptId=143` uses the compact workspace header at `top=72`, `height=39`, with no legacy `IP 剧集工作台` or `Timeline-first 生产控制台` text.
+  - Verified the Storyboard support Timeline moved from the prior `top=372` to `top=203` in the 1280x720 first viewport while preserving the full `307px` Timeline canvas.
+  - Verified the Timeline tab remains unchanged at `Timeline top=123`, `height=307`, and selected clip production still starts at `top=434`.
+  - Verified `生成宫格分镜图`, `场景宫格分镜`, and `宫格图生成成片` remain absent; browser console error count was 0, failed request count was 0 on the Storyboard route, and API responses had no 4xx/5xx failures.
+- Latest validation after compact support-tab header polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 33 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 72 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceHeader.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardTabContent.tsx ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardTimelinePanel.tsx ai-pic-frontend/tests/workspaceStoryboardTabContent.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Storyboard legacy sync de-noise evidence saved under `artifacts/runs/2026-06-13T-storyboard-hide-legacy-sync-pw-158/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified `tab=storyboard&scriptId=143` now has `syncButtonCount=0` for visible `同步分镜占位`, while preserving `firstClipLinkCount=1` for `进入第一个片段分镜`.
+  - Verified the Storyboard support Timeline remains in the first viewport at `top=203`, `bottom=510`, `height=307`.
+  - Verified no page-level horizontal overflow, no grid storyboard entry, console error count 0, failed request count 0, and no 4xx/5xx API responses.
+- Latest validation after Storyboard legacy sync de-noise:
+  - `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx` passed: 4 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 72 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardActions.tsx ai-pic-frontend/tests/workspaceStoryboardTabContent.test.tsx ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceHeader.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardTabContent.tsx ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardTimelinePanel.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Storyboard compact audio-summary evidence saved under `artifacts/runs/2026-06-13T-storyboard-compact-audio-summary-pw-159/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the Storyboard support Timeline remains in the first viewport at `top=203`, `bottom=510`, `height=307`.
+  - Verified the support timeline panel height reduced to `360px` and the metadata summary is a compact `41px` strip.
+  - Verified the audio disclosure is collapsed by default (`audioDetailsOpen=false`), while the `音轨` affordance remains available.
+  - Verified no page-level horizontal overflow, no grid storyboard entry, console error count 0, failed request count 0, and no 4xx/5xx API responses.
+- Latest validation after Storyboard compact audio-summary polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx` passed: 4 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 72 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardTimelinePanel.tsx ai-pic-frontend/tests/workspaceStoryboardTabContent.test.tsx ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardActions.tsx ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceHeader.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardTabContent.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Timeline empty-state fallback evidence saved under `artifacts/runs/2026-06-13T-timeline-empty-fallback-pw-161/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified the Timeline tab at `tab=timeline&scriptId=143&clipId=video_scene_580_beat_3911_001` normalizes to `clipId=video_scene_580_beat_3923_001` and renders one visible `[data-timeline="workspace"]` at `top=123`, `bottom=430`, `height=307`, with one visible video track.
+  - Verified the Storyboard support tab at `tab=storyboard&scriptId=143` renders one visible shared Timeline at `top=203`, `bottom=510`, `height=307`, with one visible video track.
+  - Verified `生成宫格分镜图` and `宫格图生成成片` remain absent.
+- Latest validation after Timeline empty-state fallback:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 73 tests.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/episode/EpisodeTimelineCanvasPanel.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineWorkspace.tsx ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardSupportModel.ts ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardTimelineOverviewModel.ts ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardTimelinePanel.tsx ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardTabContent.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx ai-pic-frontend/tests/workspaceStoryboardTabContent.test.tsx ai-pic-frontend/tests/timelineWorkspaceHelpers.test.ts` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Storyboard support context-strip evidence saved under `artifacts/runs/2026-06-13T-storyboard-context-strip-pw-162/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified `tab=storyboard&scriptId=143` keeps the shared Timeline visible at `top=203`, `bottom=510`, `height=307`.
+  - Verified the old context-card labels are absent (`时间轴来源=false`, `关键帧 / 视频=false`) and the new `[data-storyboard-support-context-strip="inline"]` renders as a 29px inline strip at `top=571`, `bottom=600`.
+  - Verified `contextCardCount=0`, no horizontal overflow, and no `生成宫格分镜图` / `宫格图生成成片` entry.
+- Latest validation after Storyboard support context-strip polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx` passed: 4 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 73 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardTabContent.tsx ai-pic-frontend/tests/workspaceStoryboardTabContent.test.tsx ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardTimelinePanel.tsx ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardTimelineOverviewModel.ts ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardSupportModel.ts ai-pic-frontend/src/components/features/episode/EpisodeTimelineCanvasPanel.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineWorkspace.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx ai-pic-frontend/tests/timelineWorkspaceHelpers.test.ts` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Storyboard entry priority evidence saved under `artifacts/runs/2026-06-13T-storyboard-entry-secondary-pw-164/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified `tab=storyboard&scriptId=143` renders `进入第一个片段分镜` as `border border-gray-200 bg-white text-gray-700` at `top=139`, `height=32`, with no blue controls in the support header.
+  - Verified the shared Timeline remains visible at `top=203`, `bottom=510`, `height=307`; the inline context strip remains at `top=571`, `height=29`.
+  - Verified no horizontal overflow and no `生成宫格分镜图` / `宫格图生成成片` entry.
+- Latest validation after Storyboard entry priority polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx` passed: 4 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 73 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardActions.tsx ai-pic-frontend/tests/workspaceStoryboardTabContent.test.tsx ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardTabContent.tsx ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardTimelinePanel.tsx ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardTimelineOverviewModel.ts ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardSupportModel.ts ai-pic-frontend/src/components/features/episode/EpisodeTimelineCanvasPanel.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineWorkspace.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx ai-pic-frontend/tests/timelineWorkspaceHelpers.test.ts` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Storyboard unframed support shell evidence saved under `artifacts/runs/2026-06-13T-storyboard-unframed-support-shell-pw-166/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified `tab=storyboard&scriptId=143` renders `[data-storyboard-support-shell="unframed"]` as `border-b border-slate-200 bg-white` with no rounded class.
+  - Verified the shared Timeline remains visible at `top=202`, `bottom=509`, `height=307`, and the context strip remains compact at `top=570`, `height=29`.
+  - Verified `片段分镜管理` starts at `top=629`, no horizontal overflow, and no `生成宫格分镜图` / `宫格图生成成片` entry.
+- Latest validation after Storyboard unframed support shell polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx` passed: 4 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/authReturnPath.test.ts tests/timelineClipReworkControls.test.ts tests/operatorShellNavIcon.test.tsx` passed: 73 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardTabContent.tsx ai-pic-frontend/tests/workspaceStoryboardTabContent.test.tsx ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardActions.tsx ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardTimelinePanel.tsx ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardTimelineOverviewModel.ts ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardSupportModel.ts ai-pic-frontend/src/components/features/episode/EpisodeTimelineCanvasPanel.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineWorkspace.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx ai-pic-frontend/tests/timelineWorkspaceHelpers.test.ts` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Storyboard row-link priority evidence saved under `artifacts/runs/2026-06-13T-storyboard-row-links-secondary-pw-168/`:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Verified `tab=storyboard&scriptId=143` keeps the shared Timeline visible at `top=202`, `bottom=509`, `height=307`.
+  - Verified `blueClipManagementLinks=0`, `secondaryClipManagementLinks=16`, `totalClipManagementLinks=16`, no horizontal overflow, and no `生成宫格分镜图` / `宫格图生成成片` entry.
+- Latest validation after Storyboard row-link priority polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx` passed: 4 tests.
+- Timeline production-first restoration evidence:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Reproduction evidence under `artifacts/runs/2026-06-13T-missing-timeline-repro-pw-169/` showed `tab=timeline&scriptId=143&clipId=video_scene_580_beat_3911_001` normalized to `clipId=video_scene_580_beat_3923_001` and had a visible Timeline (`top=123`, `bottom=430`, `height=307`, `timelineItemsCount=40`), but the page order was Timeline before selected clip production.
+  - Storyboard cross-check evidence under `artifacts/runs/2026-06-13T-missing-storyboard-timeline-repro-pw-170/` showed `tab=storyboard&scriptId=143` still had a visible shared Timeline (`top=202`, `bottom=509`, `height=307`) and no grid storyboard entry.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-production-first-timeline-visible-pw-171/`.
+  - Verified `data-episode-timeline-main-layout="production-first-with-timeline"` renders children in order: selected clip production (`top=123`, `bottom=234`), full Timeline (`top=238`, `bottom=545`, `height=307`, `timelineItemsCount=40`), then render/export strip (`top=549`, `bottom=582`).
+  - Verified `productionBeforeTimeline=true`, `timelineBeforeRender=true`, first-viewport Timeline visibility is true, no horizontal overflow, no console errors, and no `生成宫格分镜图` / `宫格图生成成片` entry.
+- Latest validation after Timeline production-first restoration:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` was started but hung after reporting the first 17 subtests passed; the process was killed and is not counted as passed.
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "keeps selected clip production first while preserving the Timeline canvas" tests/timelineWorkspaceLayout.test.tsx` was also started but hung in the same file; the process was killed and is not counted as passed.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/episode/EpisodeTimelineMainPanel.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/episode/EpisodeTimelineMainPanel.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- Mobile command-rail compacting evidence:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; these runs used Playwright with the system Chrome executable fallback.
+  - Audit evidence under `artifacts/runs/2026-06-13T-continue-ugly-audit-pw-172/` showed mobile production height `185px` with the Timeline starting at about `top=353`.
+  - First compacting evidence under `artifacts/runs/2026-06-13T-mobile-command-rail-compact-pw-173/` reduced mobile production height to `149px` and moved the Timeline to `top=314`, but the screenshot showed `分镜图` wrapping vertically and the video action wrapping.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-mobile-command-nowrap-pw-174/`.
+  - Verified mobile `390x844` has one-row action labels `分镜图`, `首尾帧`, `生成视频`; `textWrapped=false`, no horizontal overflow, Timeline remains visible at `top=314`, `bottom=586`, and no `生成宫格分镜图` / `宫格图生成成片` entry.
+- Latest validation after mobile command-rail compacting:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts` passed: 14 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkCards.tsx ai-pic-frontend/src/components/features/episode/ClipProductionActionShell.tsx ai-pic-frontend/src/components/features/episode/TimelineClipKeyframeCard.tsx ai-pic-frontend/src/components/features/episode/TimelineClipVideoReworkCard.tsx ai-pic-frontend/src/components/features/episode/TimelineClipStoryboardReferenceCard.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkCards.tsx ai-pic-frontend/src/components/features/episode/ClipProductionActionShell.tsx ai-pic-frontend/src/components/features/episode/TimelineClipKeyframeCard.tsx ai-pic-frontend/src/components/features/episode/TimelineClipVideoReworkCard.tsx ai-pic-frontend/src/components/features/episode/TimelineClipStoryboardReferenceCard.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- Mobile workbar compacting evidence:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; these runs used Playwright with the system Chrome executable fallback.
+  - Audit evidence under `artifacts/runs/2026-06-13T-workbar-spacing-audit-pw-175/` showed the mobile workbar at `height=77`, selected production at `top=161`, and Timeline at `top=314`.
+  - First fixed evidence under `artifacts/runs/2026-06-13T-mobile-workbar-compact-pw-176/` reduced workbar height to `73`, but button/select defaults still rendered at 32px.
+  - Final fixed evidence saved under `artifacts/runs/2026-06-13T-mobile-workbar-important-height-pw-177/`.
+  - Verified mobile workbar height is now `66`, script select / missing-clips action / support trigger render at `28px`, selected production starts at `top=150`, Timeline starts at `top=303`, `buttonWrapped=false`, no horizontal overflow, and no `生成宫格分镜图` / `宫格图生成成片` entry.
+- Latest validation after mobile workbar compacting:
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceTimelineHeader.tsx ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceTimelineHeaderSupportMenu.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceTimelineHeader.tsx ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceTimelineHeaderSupportMenu.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- Mobile selected-summary compacting evidence:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; these runs used Playwright with the system Chrome executable fallback.
+  - Audit evidence under `artifacts/runs/2026-06-13T-timeline-missing-audit-pw-179/` showed the Timeline DOM was present and visible at `top=303`, `bottom=575`, `height=272`, but the selected production panel was still `149px` tall.
+  - Desktop cross-check evidence under `artifacts/runs/2026-06-13T-timeline-missing-audit-desktop-pw-180/` showed the Timeline visible at `top=236`, `bottom=543`, `height=307`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-mobile-summary-compact-timeline-pw-181/`.
+  - Verified mobile `390x844` selected production height reduced from `149px` to `113px`, Timeline moved from `top=303` to `top=267`, no horizontal overflow, no console errors, and no `生成宫格分镜图` / `宫格图生成成片` entry.
+- Latest validation after mobile selected-summary compacting:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern 'shows the selected clip summary before production commands' tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- Mobile Timeline toolbar compacting evidence:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; these runs used Playwright with the system Chrome executable fallback.
+  - Audit evidence under `artifacts/runs/2026-06-13T-continued-ugly-audit-pw-182/` showed mobile Timeline toolbar height `71px`, causing the Timeline controls to wrap into a separate row.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-mobile-timeline-toolbar-compact-pw-183/`.
+  - Verified mobile `390x844` Timeline toolbar height reduced from `71px` to `39px`, toolbar display is `grid`, controls remain on the top row, selected context is `max-[560px]:sr-only`, render strip moved from `top=543` to `top=511`, no horizontal overflow, no console errors, and no `生成宫格分镜图` / `宫格图生成成片` entry.
+- Latest validation after mobile Timeline toolbar compacting:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern 'keeps Timeline generation controls behind a compact setup affordance|honors a clip deep link when opening the Timeline workspace' tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/Timeline/TimelineToolbar.tsx ai-pic-frontend/src/components/features/Timeline/TimelineSelectedContext.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/Timeline/TimelineToolbar.tsx ai-pic-frontend/src/components/features/Timeline/TimelineSelectedContext.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- Mobile selected-clip label restoration evidence:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; these runs used Playwright with the system Chrome executable fallback.
+  - Audit evidence under `artifacts/runs/2026-06-13T-continued-polish-audit-pw-184/` showed the mobile selected-clip production summary only exposed `当前视频 / 缺视频 / 00:00-00:03` visually.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-mobile-clip-label-restored-pw-185/`.
+  - Verified mobile `390x844` summary now shows `视频 1` on the same row, `sameLine=true`, summary height remains `15px`, production panel remains `113px`, Timeline remains at `top=267`, no horizontal overflow, no console errors, and no `生成宫格分镜图` / `宫格图生成成片` entry.
+- Latest validation after mobile selected-clip label restoration:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern 'shows the selected clip summary before production commands' tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- Timeline main-axis restoration evidence:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Reproduction evidence under `artifacts/runs/2026-06-13T-missing-timeline-repro-pw-187/` and desktop cross-check under `artifacts/runs/2026-06-13T-missing-timeline-desktop-check-pw-188/` showed the Timeline DOM and video lane were present, but still visually weak.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-timeline-main-axis-restored-pw-189/`.
+  - Verified mobile `390x844` Timeline canvas now has `data-timeline-visual-priority="main-time-axis"`, height `275px`, overview height `25px`, video row height `88px`, video-axis height `6px`, primary action text `处理缺失片段`, no horizontal overflow, no console errors, and no `生成宫格分镜图` / `宫格图生成成片` entry.
+  - Verified desktop `1440x900` Timeline canvas height `347px`, overview height `41px`, video row height `102px`, all 16 video clips visible, primary action text `处理缺失片段`, no horizontal overflow, no console errors, and no grid storyboard entry.
+- Latest validation after Timeline main-axis restoration:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts tests/timelineWorkspaceLayout.test.tsx` passed: 52 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/Timeline/timelineLayout.ts ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/src/components/features/Timeline/TimelineOverview.tsx ai-pic-frontend/src/components/features/Timeline/TimelineGrid.tsx ai-pic-frontend/src/components/features/Timeline/TimelineItemButton.tsx ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceTimelineHeader.tsx ai-pic-frontend/tests/timelineWorkspaceHelpers.test.ts ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/Timeline/timelineLayout.ts ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/src/components/features/Timeline/TimelineOverview.tsx ai-pic-frontend/src/components/features/Timeline/TimelineGrid.tsx ai-pic-frontend/src/components/features/Timeline/TimelineItemButton.tsx ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceTimelineHeader.tsx ai-pic-frontend/tests/timelineWorkspaceHelpers.test.ts ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- Compact shell chrome evidence:
+  - Chrome DevTools was attempted first and failed because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Audit evidence under `artifacts/runs/2026-06-13T-continued-ugly-audit-pw-190/` showed the mobile shell header at `56px`, workbar `top=72`, production `top=150`, Timeline `top=267`, and render footer `top=546`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-compact-shell-chrome-pw-191/`.
+  - Verified mobile `390x844` shell header `48px`, workbar `top=56`, production `top=134`, Timeline `top=251`, render footer `top=530`, primary action text `处理缺失片段`, no horizontal overflow, no console errors, and no `生成宫格分镜图` / `宫格图生成成片` entry.
+  - Verified desktop `1440x900` shell header `48px`, workbar `top=60`, production `top=109`, Timeline `top=224`, render footer `top=575`, no horizontal overflow, no console errors, and no grid storyboard entry.
+- Latest validation after compact shell chrome:
+  - `cd ai-pic-frontend && npx tsx --test tests/operatorShellLayout.test.ts tests/timelineWorkspaceLayout.test.tsx` passed: 36 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/shared/operator/OperatorShell.tsx ai-pic-frontend/src/components/shared/operator/OperatorShellLayout.ts ai-pic-frontend/tests/operatorShellLayout.test.ts ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/shared/operator/OperatorShell.tsx ai-pic-frontend/src/components/shared/operator/OperatorShellLayout.ts ai-pic-frontend/tests/operatorShellLayout.test.ts ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- Timeline-first restoration evidence:
+  - Chrome DevTools was attempted first and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Reproduction evidence saved under `artifacts/runs/2026-06-13T-timeline-missing-repro-pw-193/` showed the Timeline existed at mobile `top=251`, `bottom=526`, but selected clip production rendered above it.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-timeline-first-restored-pw-194/`.
+  - Verified mobile `390x844` order is Timeline `top=134`, selected clip production `top=413`, render/export `top=530`; `timelineBeforeProduction=true`, production buttons `分镜图`, `首尾帧`, and `生成视频` are still visible in the first viewport, no console errors, and no `生成宫格分镜图` / `宫格图生成成片` entry.
+  - Verified desktop `1440x960` order is Timeline `top=109`, selected clip production `top=460`, render/export `top=575`, with the same first-viewport production actions and no console errors.
+- Latest validation after Timeline-first restoration:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` passed: 34 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/episode/EpisodeTimelineMainPanel.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/episode/EpisodeTimelineMainPanel.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- Compact shell utility-strip evidence:
+  - Chrome DevTools was attempted first and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Audit evidence saved under `artifacts/runs/2026-06-13T-shell-utility-audit-pw-195/` showed mobile shell header `48px`, workbar `top=56`, Timeline `top=134`, selected production `top=413`, and render footer `top=530`.
+  - Intermediate evidence saved under `artifacts/runs/2026-06-13T-shell-utility-strip-pw-196/` showed mobile shell header `40px`, duplicate breadcrumb visually hidden, and Timeline `top=126`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-mobile-shell-32px-pw-197/`.
+  - Verified mobile `390x844` shell header `32px`, shell actions `24px`, duplicate breadcrumb `1px` / sr-only, workbar `top=40`, Timeline `top=118`, selected production `top=397`, render footer `top=514`, no horizontal overflow, no console errors, and no `生成宫格分镜图` / `宫格图生成成片` entry.
+  - Verified desktop `1440x960` shell header remains `40px`, breadcrumb remains visible, Timeline `top=101`, selected production `top=452`, render footer `top=567`, no horizontal overflow, no console errors, and no grid storyboard entry.
+- Latest validation after compact shell utility-strip polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/operatorShellLayout.test.ts tests/timelineWorkspaceLayout.test.tsx` passed: 36 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/shared/operator/OperatorShell.tsx ai-pic-frontend/src/components/shared/operator/OperatorShellLayout.ts ai-pic-frontend/tests/operatorShellLayout.test.ts ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineMainPanel.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/shared/operator/OperatorShell.tsx ai-pic-frontend/src/components/shared/operator/OperatorShellLayout.ts ai-pic-frontend/tests/operatorShellLayout.test.ts ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineMainPanel.tsx agent_chats/2026/06/12/2026-06-12T03-05-14Z-episode-workspace-main-path-ux.md` passed.
+- Timeline surface refinement evidence:
+  - Chrome DevTools was attempted first and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-timeline-surface-refined-pw-198/`.
+  - Verified mobile `390x844` keeps Timeline first at `top=118`, selected production at `top=395`, render footer at `top=512`; Timeline root uses `border-l-4 border-l-blue-500` and a neutral shadow instead of `border-2`/`ring-2`; video lane remains visible as `bg-blue-50/70`; selected clip keeps `ring-blue-500/70`; muted clips use `rgb(248, 250, 252)`.
+  - Verified desktop `1440x960` keeps Timeline first at `top=101`, selected production at `top=450`, render footer at `top=565`, with the same neutral Timeline surface and visible selected clip state.
+  - Verified no horizontal overflow, no console errors, visible `分镜图` / `首尾帧` / `生成视频` actions, and no `生成宫格分镜图` / `宫格图生成成片` entry.
+- Latest validation after Timeline surface refinement:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts tests/timelineWorkspaceLayout.test.tsx` passed: 52 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/src/components/features/Timeline/TimelineToolbar.tsx ai-pic-frontend/src/components/features/Timeline/TimelineOverview.tsx ai-pic-frontend/src/components/features/Timeline/TimelineGrid.tsx ai-pic-frontend/src/components/features/Timeline/TimelineItemButton.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx ai-pic-frontend/tests/timelineWorkspaceHelpers.test.ts` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/src/components/features/Timeline/TimelineToolbar.tsx ai-pic-frontend/src/components/features/Timeline/TimelineOverview.tsx ai-pic-frontend/src/components/features/Timeline/TimelineGrid.tsx ai-pic-frontend/src/components/features/Timeline/TimelineItemButton.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx ai-pic-frontend/tests/timelineWorkspaceHelpers.test.ts agent_chats/2026/06/12/2026-06-12T03-05-14Z-episode-workspace-main-path-ux.md` passed.
+- Clip command toolbar evidence:
+  - Chrome DevTools was attempted first and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-clip-command-segmented-toolbar-pw-199/`.
+  - Verified mobile `390x844` keeps Timeline first at `top=118`, selected production at `top=395`, and render footer at `top=513`; command surface renders `data-clip-command-surface-style="segmented-toolbar"` with `data-clip-command-density="tight"`; visible storyboard/keyframe/video buttons are `28px` high, parameter summaries are `24px` wide, and no horizontal overflow occurs.
+  - Verified desktop `1440x960` keeps Timeline first at `top=101`, selected production at `top=450`, and render footer at `top=565`; command toolbar width is `538px`, storyboard/keyframe buttons are `128px`, video button is `220px`, and all actions remain visible.
+  - Verified no console errors and no `生成宫格分镜图` / `宫格图生成成片` entry.
+- Latest validation after clip command toolbar polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts tests/timelineWorkspaceLayout.test.tsx` passed: 48 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkCards.tsx ai-pic-frontend/src/components/features/episode/CompactProductionDetails.tsx ai-pic-frontend/src/components/features/episode/TimelineClipStoryboardReferenceCard.tsx ai-pic-frontend/src/components/features/episode/TimelineClipKeyframeCard.tsx ai-pic-frontend/src/components/features/episode/TimelineClipVideoReworkCard.tsx ai-pic-frontend/tests/timelineClipReworkControls.test.ts ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkCards.tsx ai-pic-frontend/src/components/features/episode/CompactProductionDetails.tsx ai-pic-frontend/src/components/features/episode/TimelineClipStoryboardReferenceCard.tsx ai-pic-frontend/src/components/features/episode/TimelineClipKeyframeCard.tsx ai-pic-frontend/src/components/features/episode/TimelineClipVideoReworkCard.tsx ai-pic-frontend/tests/timelineClipReworkControls.test.ts ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx agent_chats/2026/06/12/2026-06-12T03-05-14Z-episode-workspace-main-path-ux.md` passed.
+- Timeline visible-primary evidence after latest `没有时间轴了` report:
+  - Chrome DevTools remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-timeline-visible-pw-201/`.
+  - Verified mobile `390x844` Timeline is first at `top=109`, `height=277`, before selected production at `top=390`; root surface is `data-timeline-surface="dominant-workspace-axis"`, overview is `full-episode-filmstrip`, video lane is `video-production`, no horizontal overflow, no console errors, and no `生成宫格分镜图` / `宫格图生成成片` entry.
+  - Verified desktop `1440x960` Timeline is first at `top=99`, `height=349`, before selected production at `top=452`; all 16 video clips remain visible, generation buttons remain visible, no console errors, and no grid storyboard entry.
+- Latest validation after Timeline visible-primary polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern 'keeps the primary Timeline first|shows a full-episode overview|emphasizes the video track|keeps an explicit Timeline frame|defaults the Timeline lanes' tests/timelineWorkspaceLayout.test.tsx` passed: 5 matching tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/src/components/features/Timeline/TimelineOverview.tsx ai-pic-frontend/src/components/features/Timeline/TimelineGrid.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/src/components/features/Timeline/TimelineOverview.tsx ai-pic-frontend/src/components/features/Timeline/TimelineGrid.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- Selected-clip inline work-strip evidence:
+  - Chrome DevTools was attempted first and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Audit evidence under `artifacts/runs/2026-06-13T-continued-ugly-audit-pw-202/` showed desktop selected production height `111px`, command surface as a gray bordered `segmented-toolbar`, and the environment row below the main actions with large unused space to the right.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-production-strip-inline-pw-203/`.
+  - Verified desktop `1440x960` selected production height reduced to `81px`, render footer moved from `top=567` to `top=537`, command surface is `data-clip-command-surface-style="inline-action-group"`, the support panel is a child of `data-clip-production-top-row="action-dock"`, no horizontal overflow, no console errors, and no grid storyboard entry.
+  - Verified mobile `390x844` keeps Timeline first at `top=109`, selected production at `top=390`, primary actions stay on one row, command surface is transparent, no horizontal overflow, no console errors, and no `生成宫格分镜图` / `宫格图生成成片` entry.
+- Latest validation after selected-clip inline work-strip polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern 'shows the selected clip summary before production commands|keeps environment support actions visually secondary|keeps scene environment save hidden|shows scene environment save immediately' tests/timelineWorkspaceLayout.test.tsx` passed: 4 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts` passed: 14 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionPanel.tsx ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkCards.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipSupportPanel.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionPanel.tsx ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkCards.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipSupportPanel.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- Selected-clip inline identity evidence:
+  - Chrome DevTools was attempted first and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Intermediate evidence under `artifacts/runs/2026-06-13T-inline-identity-strip-pw-204/` showed the desktop production strip height reduced to `55px`, but the selected clip title width collapsed to `28px`, so the grid column was widened before accepting the change.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-inline-identity-readable-pw-205/`.
+  - Verified desktop `1440x960` production strip remains `55px`, top row `37px`, title width improves to `188px`, render footer remains at `top=511`, no horizontal overflow, no console errors, and no grid storyboard entry.
+  - Verified mobile `390x844` keeps Timeline first at `top=109`, selected production at `top=390`, command actions on one row, no horizontal overflow, no console errors, and no `生成宫格分镜图` / `宫格图生成成片` entry.
+- Latest validation after selected-clip inline identity polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern 'shows the selected clip summary before production commands' tests/timelineWorkspaceLayout.test.tsx` passed: 1 matching test.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts` passed: 14 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionPanel.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkCards.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionPanel.tsx ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkCards.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- Timeline visual repair evidence after latest `没有时间轴了` report:
+  - Chrome DevTools was attempted first and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Audit evidence saved under `artifacts/runs/2026-06-13T-no-timeline-audit-pw-210/` confirmed the Timeline DOM was present: desktop Timeline `top=99`, `height=349`, video lane present, no console errors, and no failed `/characters` or `/resolved-videos` requests.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-timeline-visual-repair-pw-211/`.
+  - Verified desktop `1440x960` Timeline remains first at `top=99`, `height=349`, video lane uses `bg-slate-100`, dark axis `bg-slate-800/80`, first video clip has `data-timeline-video-clip-frame="filmstrip"`, selected production starts at `top=452`, render footer starts at `top=511`, no `无视频轨`, no console errors, no failed requests, and no grid storyboard entry.
+  - Verified mobile `390x844` Timeline remains first at `top=109`, `height=277`, video lane uses the same dark production rail, first video clip has filmstrip styling, selected production starts at `top=390`, render footer starts at `top=505`, no `无视频轨`, no console errors, no failed requests, and no `生成宫格分镜图` / `宫格图生成成片` entry.
+- Latest validation after Timeline visual repair:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/timelineClipReworkControls.test.ts` passed: 71 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/episode/EpisodeTimelineWorkspace.tsx ai-pic-frontend/src/components/features/Timeline/TimelineGrid.tsx ai-pic-frontend/src/components/features/Timeline/TimelineItemButton.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/episode/EpisodeTimelineWorkspace.tsx ai-pic-frontend/src/components/features/Timeline/TimelineGrid.tsx ai-pic-frontend/src/components/features/Timeline/TimelineItemButton.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- Mobile Timeline label declutter evidence:
+  - Chrome DevTools was attempted first and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Audit evidence saved under `artifacts/runs/2026-06-13T-continued-ugly-audit-pw-212/` showed the mobile fitted video lane still displayed dense adjacent numeric labels such as `5 6` / `9 10`, creating a crowded clip strip.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-mobile-timeline-label-declutter-pw-213/`.
+  - Verified mobile `390x844` Timeline remains first at `top=109`, selected production remains at `top=390`, render footer remains at `top=505`, visible video labels drop from 15-ish crowded labels to 11 readable labels, three cramped clips are rendered as narrow unlabeled rhythm blocks, no horizontal overflow, no `无视频轨`, no unmatched scene warning, no grid storyboard entry, no console errors, and no failed requests.
+  - Verified desktop `1440x960` keeps all 16 video labels visible, Timeline remains first at `top=99`, selected production remains at `top=452`, render footer remains at `top=511`, no horizontal overflow, no console errors, and no failed requests.
+- Latest validation after mobile Timeline label declutter:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/timelineClipReworkControls.test.ts` passed: 72 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/Timeline/TimelineItemButton.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/Timeline/TimelineItemButton.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- Compact overview rail evidence:
+  - Chrome DevTools was attempted first and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Chrome executable fallback.
+  - Audit evidence saved under `artifacts/runs/2026-06-13T-continued-ux-audit-pw-214/` showed mobile `全片总览` and `02:32 · 16 段` still consumed visible overview width.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-compact-overview-rail-pw-215/`.
+  - Verified mobile `390x844` overview rail width increased to `333px`, overview label and range are `sr-only`, Timeline remains first at `top=109`, selected production remains at `top=390`, render footer remains at `top=505`, no horizontal overflow, no `无视频轨`, no unmatched scene warning, no grid storyboard entry, no console errors, and no failed requests.
+  - Verified desktop `1440x960` keeps the visible `全片总览` label and `02:32 · 16 段` range, Timeline remains first at `top=99`, selected production remains at `top=452`, render footer remains at `top=511`, no horizontal overflow, no console errors, and no failed requests.
+- Latest validation after compact overview rail polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/timelineClipReworkControls.test.ts` passed: 73 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/Timeline/TimelineOverview.tsx ai-pic-frontend/src/components/features/Timeline/TimelineItemButton.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/Timeline/TimelineOverview.tsx ai-pic-frontend/src/components/features/Timeline/TimelineItemButton.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- Readable main Timeline evidence after latest `没有时间轴了` report:
+  - Chrome DevTools was attempted first and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Google Chrome executable fallback.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-readable-timeline-pw-217/`.
+  - Verified login deep link preservation on `http://localhost:8090`: unauthenticated workspace URL redirected to `/login?next=%2Fepisodes%2F12c6eb572eda47138a5fc821c225a1af%2Fworkspace%3Ftab%3Dtimeline%26scriptId%3D143%26clipId%3Dvideo_scene_580_beat_3911_001`, then returned to the same workspace path after login.
+  - Verified desktop `1440x960` Timeline exists at `top=99`, `height=349`, `data-timeline-scale-mode="readable-window"`, `data-timeline-scroll-mode="scrollable-readable-lanes"`, Timeline content width `1472px`, first selected video clip width `54px`, selected production starts at `top=452`, no horizontal overflow, no `无视频轨`, no grid storyboard entry, no console errors, and no failed requests.
+  - Verified mobile `390x844` Timeline exists at `top=109`, `height=277`, `data-timeline-scale-mode="readable-window"`, `data-timeline-scroll-mode="scrollable-readable-lanes"`, Timeline content width `1448px`, first selected video clip width `54px`, selected production starts at `top=390`, no horizontal overflow, no `无视频轨`, no `生成宫格分镜图` / `宫格图生成成片`, no console errors, and no failed requests.
+- Latest validation after readable main Timeline repair:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "Timeline generation controls|primary Timeline|full-episode overview|readable|blank blocks|distant support|compact Timeline overview|emphasizes the video track|compact video labels|selected clip summary" tests/timelineWorkspaceLayout.test.tsx` passed: 13 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/timelineClipReworkControls.test.ts` passed: 36 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx` was attempted twice and hung after subtest 23; narrowed runs showed subtests 23, 24, and 26 pass individually, while `--test-name-pattern "promotes asset audit"` hangs. This appears isolated to the existing asset-audit test path and is not part of the Timeline scaling change.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed after adding the explicit `TimelineFitMode` union type.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/Timeline/useTimelineFitZoom.ts ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/src/components/features/Timeline/TimelineToolbar.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/Timeline/useTimelineFitZoom.ts ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/src/components/features/Timeline/TimelineToolbar.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- Mobile workspace header declutter evidence:
+  - Chrome DevTools was attempted first and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Google Chrome executable fallback.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-mobile-header-short-action-pw-218/`.
+  - Verified login deep link preservation on `http://localhost:8090`: unauthenticated workspace URL redirected to `/login?next=%2Fepisodes%2F12c6eb572eda47138a5fc821c225a1af%2Fworkspace%3Ftab%3Dtimeline%26scriptId%3D143%26clipId%3Dvideo_scene_580_beat_3911_001`, then returned to the same workspace path after login.
+  - Verified mobile `390x844` header primary action keeps `aria-label="处理缺失片段"` and `title="处理缺失片段"`, while the visible short label is `缺片段` with width `33px`; Timeline remains `data-timeline-scale-mode="readable-window"`, no horizontal overflow, no `无视频轨`, no `生成宫格分镜图` / `宫格图生成成片`, no console errors, and no failed requests.
+  - Verified desktop `1440x960` keeps the visible full label `处理缺失片段`, preserves the hidden mobile short label for responsive use, keeps Timeline `data-timeline-scale-mode="readable-window"`, no horizontal overflow, no grid storyboard entry, no console errors, and no failed requests.
+- Latest validation after mobile workspace header declutter:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "compact production path header|compact workspace header|header primary action" tests/timelineWorkspaceLayout.test.tsx` passed: 3 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/timelineClipReworkControls.test.ts` passed: 36 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceTimelineHeader.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceTimelineHeader.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- Keyframe action button visual evidence:
+  - Chrome DevTools was attempted first and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Google Chrome executable fallback.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-keyframe-action-button-pw-219/`.
+  - Verified mobile `390x844` renders `首尾帧` as a real neutral button with `1px` border, width `86.625px`, `rgb(255, 255, 255)` background, no horizontal overflow, no `无视频轨`, no grid storyboard entry, no console errors, and no failed requests.
+  - Verified desktop `1440x960` renders the same keyframe action as a bordered `128px` button between `分镜图` and `生成视频`; production strip remains `55px` high, no horizontal overflow, no console errors, and no failed requests.
+- Latest validation after keyframe action button polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "selected clip summary|video clip generation" tests/timelineWorkspaceLayout.test.tsx` passed: 2 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts` passed: 14 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/episode/TimelineClipKeyframeCard.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/episode/TimelineClipKeyframeCard.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- Mobile selected-clip identity declutter evidence:
+  - Chrome DevTools was attempted first and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Google Chrome executable fallback.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-mobile-clip-identity-declutter-pw-221/`.
+  - Verified login deep link preservation on `http://localhost:8090`: unauthenticated workspace URL redirected to `/login?next=%2Fepisodes%2F12c6eb572eda47138a5fc821c225a1af%2Fworkspace%3Ftab%3Dtimeline%26scriptId%3D143%26clipId%3Dvideo_scene_580_beat_3911_001`, then returned to the workspace path after login.
+  - Verified mobile `390x844` keeps the full multi-track Timeline visible first (`top=109`, `height=277`) and the selected production strip immediately below it (`top=390`).
+  - Verified the mobile selected-clip identity row no longer visibly repeats `当前视频`: the type badge is screen-reader-only at `1px`, while the visible row is `视频 1`, `缺视频`, and `00:00-00:03`.
+  - Verified desktop `1440x960` still shows the visible `当前视频` label, preserving the full desktop identity line.
+  - Verified no `生成宫格分镜图`, no `宫格图生成成片`, no `无视频轨`, no horizontal overflow, no console warnings/errors, and no 4xx/5xx responses. The only request failures were two non-material aborted Next `_rsc` requests during page close/prefetch.
+- Latest validation after mobile selected-clip identity declutter:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "selected clip summary|video clip generation" tests/timelineWorkspaceLayout.test.tsx` passed: 2 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 36 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- Timeline narrow-label declutter evidence:
+  - Chrome DevTools was attempted first and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Google Chrome executable fallback.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-timeline-narrow-label-declutter-pw-222/`.
+  - Verified login deep link preservation on `http://localhost:8090`: unauthenticated workspace URL redirected to `/login?next=%2Fepisodes%2F12c6eb572eda47138a5fc821c225a1af%2Fworkspace%3Ftab%3Dtimeline%26scriptId%3D143%26clipId%3Dvideo_scene_580_beat_3911_001`, then returned to the workspace path after login.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified desktop `1440x960` keeps the Timeline first at `top=99`, selected production at `top=452`, and hides 3 cramped video labels while preserving aria labels and titles for the hidden clips. The visible video labels no longer concatenate into runs like `视频 45`, `789`, or `111213`.
+  - Verified mobile `390x844` keeps the Timeline first at `top=109`, selected production at `top=390`, no horizontal overflow, and hidden video labels remain accessible through aria labels and titles.
+  - Verified no `生成宫格分镜图`, no `宫格图生成成片`, no `无视频轨`, no console warnings/errors, and no 4xx/5xx responses. The only request failures were non-material aborted Next `_rsc` requests during navigation/close.
+- Latest validation after Timeline narrow-label declutter:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "fitted video labels|cramped mobile fitted video labels|primary Timeline|selected clip summary" tests/timelineWorkspaceLayout.test.tsx` passed: 6 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 36 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/Timeline/TimelineItemButton.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/Timeline/TimelineItemButton.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- File-size follow-up after Timeline label declutter:
+  - Initial contract check caught `TimelineItemButton.tsx` at 256 lines after the visual label logic landed.
+  - Split Timeline item calculations into `TimelineItemButtonModel.ts` and pure visual helpers into `TimelineItemButtonVisualModel.ts`, leaving the files at 149, 198, and 80 lines respectively.
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "fitted video labels|cramped mobile fitted video labels|primary Timeline|selected clip summary" tests/timelineWorkspaceLayout.test.tsx` passed: 6 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 36 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/Timeline/TimelineItemButton.tsx ai-pic-frontend/src/components/features/Timeline/TimelineItemButtonModel.ts ai-pic-frontend/src/components/features/Timeline/TimelineItemButtonVisualModel.ts ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/Timeline/TimelineItemButton.tsx ai-pic-frontend/src/components/features/Timeline/TimelineItemButtonModel.ts ai-pic-frontend/src/components/features/Timeline/TimelineItemButtonVisualModel.ts ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx agent_chats/2026/06/12/2026-06-12T03-05-14Z-episode-workspace-main-path-ux.md` passed.
+- Timeline overview support-rail evidence:
+  - Chrome DevTools was attempted first and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Google Chrome executable fallback.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-timeline-overview-support-rail-pw-223/`.
+  - Verified login deep link preservation on `http://localhost:8090`: unauthenticated workspace URL redirected to `/login?next=%2Fepisodes%2F12c6eb572eda47138a5fc821c225a1af%2Fworkspace%3Ftab%3Dtimeline%26scriptId%3D143%26clipId%3Dvideo_scene_580_beat_3911_001`, then returned to the workspace path after login.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the full-episode overview now reports `data-timeline-overview-density="support-navigation"` and `data-timeline-overview-role="context-navigation"` instead of competing as another main time axis.
+  - Verified desktop `1440x960` keeps the Timeline first at `top=99`, reduces the overview rail to `24px` high, and moves selected production up to `top=440`.
+  - Verified mobile `390x844` keeps the Timeline first at `top=109`, reduces the overview rail to `16px` high, and moves selected production up to `top=382`.
+  - Verified no `生成宫格分镜图`, no `宫格图生成成片`, no `无视频轨`, no horizontal overflow, no console warnings/errors, and no 4xx/5xx responses. The only request failure was a non-material aborted Next `_rsc` request during navigation/close.
+- Latest validation after Timeline overview support-rail polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "full-episode overview|compact Timeline overview|primary Timeline|fitted video labels" tests/timelineWorkspaceLayout.test.tsx` passed: 7 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 36 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/Timeline/TimelineOverview.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/Timeline/TimelineOverview.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- Timeline axis label calm evidence:
+  - Chrome DevTools was attempted first and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Google Chrome executable fallback.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-timeline-axis-label-calm-pw-224/`.
+  - Verified login deep link preservation on `http://localhost:8090`: unauthenticated workspace URL redirected to `/login?next=%2Fepisodes%2F12c6eb572eda47138a5fc821c225a1af%2Fworkspace%3Ftab%3Dtimeline%26scriptId%3D143%26clipId%3Dvideo_scene_580_beat_3911_001`, then returned to the workspace path after login.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified desktop and mobile Timeline left-axis labels changed from black blocks to white/slate labels: `时间尺` uses `bg-white text-slate-600`, the video track label uses `bg-white/95 text-slate-700`, and the video axis line uses `bg-slate-500/45`.
+  - Verified desktop `1440x960` keeps the Timeline first at `top=99` and selected production at `top=440`; mobile `390x844` keeps the Timeline first at `top=109` and selected production at `top=382`.
+  - Verified no `生成宫格分镜图`, no `宫格图生成成片`, no `无视频轨`, no horizontal overflow, no console warnings/errors, and no 4xx/5xx responses. The only request failures were non-material aborted Next `_rsc` requests during navigation/close.
+- Latest validation after Timeline axis label calm polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "primary Timeline|support track clips|full-episode overview|fitted video labels" tests/timelineWorkspaceLayout.test.tsx` passed: 7 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 36 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/Timeline/TimelineGrid.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/Timeline/TimelineGrid.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- Timeline video rail muting evidence:
+  - Chrome DevTools was attempted first and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Google Chrome executable fallback.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-timeline-video-rail-muted-pw-225/`.
+  - Verified login deep link preservation on `http://localhost:8090`: unauthenticated workspace URL redirected to `/login?next=%2Fepisodes%2F12c6eb572eda47138a5fc821c225a1af%2Fworkspace%3Ftab%3Dtimeline%26scriptId%3D143%26clipId%3Dvideo_scene_580_beat_3911_001`, then returned to the workspace path after login.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified desktop and mobile video clip rails now distinguish the selected clip from the rest: one selected rail uses `data-timeline-video-clip-rail-tone="selected"` and `bg-blue-700/70`, while 15 unselected rails use `data-timeline-video-clip-rail-tone="muted"` and `bg-slate-500/35`.
+  - Verified desktop `1440x960` keeps the Timeline first at `top=99` and selected production at `top=440`; mobile `390x844` keeps the Timeline first at `top=109` and selected production at `top=382`.
+  - Verified no `生成宫格分镜图`, no `宫格图生成成片`, no `无视频轨`, no horizontal overflow, no console warnings/errors, and no 4xx/5xx responses. The only request failures were non-material aborted Next `_rsc` requests during navigation/close.
+- Latest validation after Timeline video rail muting:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "primary Timeline|support track clips|fitted video labels|cramped mobile" tests/timelineWorkspaceLayout.test.tsx` passed: 6 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 36 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/Timeline/TimelineItemButton.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/Timeline/TimelineItemButton.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- Timeline surface calm evidence:
+  - Chrome DevTools was attempted first and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Google Chrome executable fallback.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-timeline-surface-calm-pw-226/`.
+  - Verified login deep link preservation on `http://localhost:8090`: unauthenticated workspace URL redirected to `/login?next=%2Fepisodes%2F12c6eb572eda47138a5fc821c225a1af%2Fworkspace%3Ftab%3Dtimeline%26scriptId%3D143%26clipId%3Dvideo_scene_580_beat_3911_001`, then returned to the workspace path after login.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified the Timeline surface keeps `data-timeline-visibility-contract="first-screen-primary"` while changing the outer frame from heavy blue chrome to `border-l-2 border-slate-200 border-l-blue-500`, light slate ring, and `0 8px 18px` neutral shadow.
+  - Verified desktop `1440x960` keeps the Timeline first at `top=99`, selected production at `top=440`, and selected video clip `data-timeline-item-tone="primary-selected"`; mobile `390x844` keeps the Timeline first at `top=109` and selected production at `top=382`.
+  - Verified no `生成宫格分镜图`, no `宫格图生成成片`, no `无视频轨`, no horizontal overflow, no console warnings/errors, and no 4xx/5xx responses. The only request failures were non-material aborted Next `_rsc` requests during navigation/close.
+- Latest validation after Timeline surface calm polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "primary Timeline|full-episode overview|support track clips|fitted video labels" tests/timelineWorkspaceLayout.test.tsx` passed: 7 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 36 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/Timeline/Timeline.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- Timeline explicit-axis evidence after latest `没有时间轴了` report:
+  - Chrome DevTools was attempted first and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Google Chrome executable fallback.
+  - Fixed evidence saved under `artifacts/runs/2026-06-13T-timeline-axis-visible-pw-228/`.
+  - Verified the existing `http://localhost:8089` instance, not only the scratch 8090 dev server.
+  - Verified stale `clipId=video_scene_580_beat_3911_001` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified desktop `1440x900` keeps the Timeline first at `top=99`, `height=337`, selected production at `top=440`, video/dialogue/subtitle/storyboard rows present, selected video item tone `primary-selected`, and no whole-scene/whole-episode grid generation entry.
+  - Verified mobile `390x844` keeps the Timeline first at `top=109`, `height=269`, selected production at `top=382`, and no horizontal overflow.
+  - Changed the visible ruler origin from `时间尺` to direct `时间轴` with hidden `片段轨` context; browser evidence confirms `hasOldRulerText=false`.
+  - Verified no console errors and no 4xx/5xx responses.
+- Latest validation after Timeline explicit-axis label:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "keeps the primary Timeline first|keeps Timeline generation visible|keeps an explicit Timeline frame|defaults to the first video clip" tests/timelineWorkspaceLayout.test.tsx` passed: 4 matching tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/Timeline/TimelineGrid.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/Timeline/TimelineGrid.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+- Timeline video-label cleanup evidence for continued `太丑，继续优化` pass:
+  - Chrome DevTools was attempted first and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Google Chrome executable fallback.
+  - Visual audit evidence saved under `artifacts/runs/2026-06-14T-episode-workspace-visual-audit-pw-001/`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-video-label-full-pw-003/`.
+  - Verified the existing `http://localhost:8089` instance with deep link `/episodes/12c6eb572eda47138a5fc821c225a1af/workspace?tab=timeline&scriptId=143&clipId=video_scene_580_beat_3911_001`.
+  - Browser reproduction showed the Timeline was present, but fitted video labels compressed some clips to bare numbers, producing visible runs like `视频 78` and `1112`.
+  - Timeline video clip labels now either render full `视频 N` labels when wide enough or hide while preserving aria labels/titles; no unselected video clip renders a bare numeric label.
+  - Verified desktop `1440x900` keeps Timeline first at `top=99`, `height=337`, selected production at `top=440`, with `hasBareNumericVideoLabels=false` and `hasConcatenatedRuns=false`.
+  - Verified mobile `390x844` keeps Timeline first at `top=109`, `height=269`, selected production at `top=382`, no horizontal overflow, `hasBareNumericVideoLabels=false`, `hasConcatenatedRuns=false`, no grid-generation entry, and no `无视频轨`.
+- Latest validation after Timeline video-label cleanup:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "fitted video labels|cramped mobile|primary Timeline" tests/timelineWorkspaceLayout.test.tsx` passed: 5 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 36 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/Timeline/TimelineItemButtonModel.ts ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/Timeline/TimelineItemButtonModel.ts ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx agent_chats/2026/06/12/2026-06-12T03-05-14Z-episode-workspace-main-path-ux.md` passed.
+  - Post-cleanup rerun after simplifying the fitted-label threshold constant: `cd ai-pic-frontend && npx tsx --test --test-name-pattern "fitted video labels|cramped mobile" tests/timelineWorkspaceLayout.test.tsx` passed: 2 matching tests; `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/Timeline/TimelineItemButtonModel.ts ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` and the same `git diff --check` passed again.
+- Clip command parameter icon polish evidence for continued `太丑，继续优化` pass:
+  - Chrome DevTools was attempted first and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Google Chrome executable fallback.
+  - Visual audit evidence saved under `artifacts/runs/2026-06-14T-episode-workspace-polish-audit-pw-004/`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-clip-parameter-icon-polish-pw-005/`.
+  - Browser audit showed the storyboard and video parameter tails were still rendered as empty three-dot micro-buttons attached to the command row.
+  - Replaced those three-dot parameter tails with the existing compact slider/control icon while keeping width, aria-labels, titles, tones, and attached split-button layout unchanged.
+  - Verified desktop `1440x900` keeps Timeline first at `top=99`, `height=337`, selected production at `top=440`, and both parameter summaries expose `data-clip-parameter-icon="controls"` with no circle glyphs.
+  - Verified mobile `390x844` keeps Timeline first at `top=109`, selected production at `top=382`, both parameter summaries expose `data-clip-parameter-icon="controls"`, and no grid-generation entry, `无视频轨`, or old `时间尺` label appears.
+- Latest validation after clip command parameter icon polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "command rail|selected clip summary|video clip generation" tests/timelineWorkspaceLayout.test.tsx` passed: 2 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 36 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/episode/CompactProductionDetails.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check -- ai-pic-frontend/src/components/features/episode/CompactProductionDetails.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx agent_chats/2026/06/12/2026-06-12T03-05-14Z-episode-workspace-main-path-ux.md` passed.
+  - Post-cleanup rerun after formatting the touched details tag: `cd ai-pic-frontend && npx tsx --test --test-name-pattern "selected clip summary" tests/timelineWorkspaceLayout.test.tsx`, `python scripts/check_repo_contracts.py --mode diff ai-pic-frontend/src/components/features/episode/CompactProductionDetails.tsx ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx`, and the same `git diff --check` passed.
+- Compact Timeline restoration evidence for latest `没有时间轴了` report:
+  - Chrome DevTools was attempted first and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Google Chrome executable fallback.
+  - Pre-fix audit evidence saved under `artifacts/runs/2026-06-14T-timeline-presence-after-login-pw-009/`; it showed the Timeline DOM existed but compact mobile dimensions were only `timeline.height=269`, `viewport.height=207`, `ruler.height=34`, `videoRow.height=88`, and the visible track label was `视频`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-compact-restored-pw-014/`.
+  - Verified the existing `http://localhost:8089` instance with deep link `/episodes/12c6eb572eda47138a5fc821c225a1af/workspace?tab=timeline&scriptId=143&clipId=video_scene_580_beat_3911_001`.
+  - Verified login token seeding with the same form-encoded auth API contract as the frontend login client, then verified stale `clipId` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified mobile `390x844` keeps the Timeline first at `top=109`, `height=329`; detailed lanes are `height=267`, ruler `height=40`, video row `height=114`, video track label `height=112`, and visible label text is `视频轨`.
+  - Verified `生成视频` remains in the first viewport (`top=481`, `height=28`), no horizontal overflow, no whole-scene/whole-episode grid generation entry, no console errors, and no backend 4xx/5xx responses except benign aborted Next RSC requests during navigation.
+- Latest validation after compact Timeline restoration:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts` passed: 18 tests.
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "compact Timeline dimensions|primary Timeline first|full-episode overview|video track as the primary|long episode Timeline lanes|fitted video labels|storyboard support|clip-scoped" tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/timelineClipReworkControls.test.ts` passed: 14 matching tests, 60 skipped.
+  - `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx` passed: 4 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts` passed: 14 tests.
+  - Attempted full `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx`; the first 24 subtests passed, then the process produced no output and was killed as a test-runner hang before the later asset-audit area completed.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Render/export footer polish evidence for continued `太丑，继续优化` pass:
+  - Chrome DevTools was attempted first and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Google Chrome executable fallback.
+  - Pre-fix audit evidence saved under `artifacts/runs/2026-06-14T-workspace-next-ux-audit-pw-015/`; it showed the footer text as `输出 / 渲染/导出 / 渲染输出 / 缺 16 个片段 / 0/16 就绪 / 查看缺失`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-render-footer-status-polish-pw-016/`.
+  - Verified the existing `http://localhost:8089` instance with deep link `/episodes/12c6eb572eda47138a5fc821c225a1af/workspace?tab=timeline&scriptId=143&clipId=video_scene_580_beat_3911_001`.
+  - Verified stale `clipId` synced to `clipId=video_scene_580_beat_3923_001`, Timeline remains first, and `生成视频` remains in the first viewport.
+  - Verified desktop `1440x900` footer text is now `导出状态 / 待补 16 段 / 0/16 已备 / 查看`, `hasOldVisibleFooterCopy=false`, `hasNewFooterCopy=true`, Timeline `top=99 height=337`, selected production `top=440 height=54`, and no grid storyboard entry or `无视频轨`.
+  - Verified mobile `390x844` footer text is now `导出状态 / 待补 16 段 / 0/16 已备 / 查看`, `hasOldVisibleFooterCopy=false`, `hasNewFooterCopy=true`, Timeline `top=109 height=329`, selected production `top=442 height=110`, `生成视频` remains visible at `top=481`, no horizontal overflow, no grid storyboard entry, and no `无视频轨`.
+- Latest validation after render/export footer polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "missing render actions|resolved videos are loading|primary Timeline first" tests/timelineWorkspaceLayout.test.tsx` passed: 3 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx tests/timelineClipReworkControls.test.ts` passed: 36 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Timeline visible-summary evidence for latest `没有时间轴了` report:
+  - Chrome DevTools was previously attempted and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Google Chrome executable fallback.
+  - Pre-change audit evidence saved under `artifacts/runs/2026-06-14T-timeline-missing-current-pw-018/`; it showed `timelineExists=true`, mobile Timeline `top=109 height=329`, selected production `top=442`, and `生成视频` visible, but the visible toolbar summary was only the duration.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-visible-summary-pw-019/`.
+  - Verified the existing `http://localhost:8089` instance with deep link `/episodes/12c6eb572eda47138a5fc821c225a1af/workspace?tab=timeline&scriptId=143&clipId=video_scene_580_beat_3911_001`.
+  - Verified stale `clipId` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified mobile `390x844` keeps Timeline first at `top=109 height=329`, selected production at `top=442`, `生成视频` visible at `top=481`, and visible Timeline summary `16 段 · 02:32`.
+  - Verified desktop `1280x900` keeps Timeline first at `top=99 height=337`, selected production below it, and the same visible Timeline summary.
+  - Verified no whole-scene/whole-episode grid generation entry and no `无视频轨`.
+- Latest validation after Timeline visible-summary polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "compact Timeline dimensions|primary Timeline first|compact production path header|Timeline generation controls" tests/timelineWorkspaceLayout.test.tsx` passed: 4 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx tests/timelineClipReworkControls.test.ts` passed: 74 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Production-row tightening evidence for continued `太丑，继续优化` pass:
+  - Chrome DevTools was attempted first and remained unavailable because `127.0.0.1:9222/json/version` returned HTTP Not Found; this run used Playwright with the system Google Chrome executable fallback.
+  - Pre-change audit evidence saved under `artifacts/runs/2026-06-14T-next-visual-audit-pw-020/`; it showed the desktop action buttons visually starting from the middle of the production strip.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-production-row-tighten-pw-021/`.
+  - Verified the existing `http://localhost:8089` instance with deep link `/episodes/12c6eb572eda47138a5fc821c225a1af/workspace?tab=timeline&scriptId=143&clipId=video_scene_580_beat_3911_001`.
+  - Verified stale `clipId` synced to `clipId=video_scene_580_beat_3923_001`.
+  - Verified desktop `1280x900` keeps Timeline first at `top=99 height=337`, production strip at `top=440 height=54`, current identity to command rail gap `6px`, command rail to support gap `6px`, no horizontal overflow, and no grid storyboard entry or `无视频轨`.
+  - Verified mobile `390x844` keeps Timeline first at `top=109 height=329`, production strip at `top=442 height=110`, `生成视频` visible at `top=481`, no horizontal overflow, and no grid storyboard entry or `无视频轨`.
+- Latest validation after production-row tightening:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "selected clip summary|primary Timeline first" tests/timelineWorkspaceLayout.test.tsx` passed: 2 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx tests/timelineClipReworkControls.test.ts` passed: 74 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Timeline navigation visibility evidence for latest `没有时间轴了` report:
+  - Built-in browser was used first: login deep link preserved `next`, login returned to the workspace, and DOM audit found one `[data-timeline="workspace"]` with `全片时间轴`, `视频轨`, time ticks, and `生成视频` present.
+  - Built-in browser screenshot export timed out, so visual evidence used Playwright with the system Google Chrome executable fallback.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-visible-pw-026/`.
+  - Verified desktop `1280x900`: `timelineCount=1`, `navLabelText=时间轴导航`, `headingText=时间轴导航 · 全片时间轴`, Timeline `top=99 height=337`, production strip `top=440`, `timelineBeforeProduction=true`, `hasTimeTicks=true`, `hasVideoTrack=true`, `hasGenerateVideo=true`, `hasGridGeneration=false`, no horizontal overflow, no console messages, and no failed requests.
+  - Verified mobile `390x844`: `timelineCount=1`, `navLabelText=时间轴导航`, Timeline `top=109 height=329`, production strip `top=442`, `timelineBeforeProduction=true`, `hasTimeTicks=true`, `hasVideoTrack=true`, `hasGenerateVideo=true`, `hasGridGeneration=false`, no horizontal overflow, no console messages, and no failed requests.
+- Latest validation after Timeline navigation visibility fix:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "Timeline generation controls|production lane|Timeline canvas" tests/timelineWorkspaceLayout.test.tsx` passed: 2 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "stale clip|dialogue-only|provider generation hidden|legacy id" tests/timelineWorkspaceLayout.test.tsx` passed: 3 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx tests/timelineClipReworkControls.test.ts` passed: 74 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard)` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+- Timeline title polish evidence:
+  - Visual evidence saved under `artifacts/runs/2026-06-14T-timeline-title-polish-pw-027/`.
+  - Verified desktop `1280x900`: `visibleTitle=全片时间轴`, `hiddenNavLabel=时间轴导航`, `hasPatchyTitleText=false`, Timeline `top=99 height=337`, production strip `top=440`, `timelineBeforeProduction=true`, `hasTimeTicks=true`, `hasVideoTrack=true`, `hasGenerateVideo=true`, `hasGridGeneration=false`, no horizontal overflow, no console messages, and no failed requests.
+  - Verified mobile `390x844`: `visibleTitle=全片时间轴`, `hiddenNavLabel=时间轴导航`, Timeline `top=109 height=329`, production strip `top=442`, `timelineBeforeProduction=true`, `hasTimeTicks=true`, `hasVideoTrack=true`, `hasGenerateVideo=true`, `hasGridGeneration=false`, no horizontal overflow, no console messages, and no failed requests.
+- Latest validation after Timeline title polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "Timeline generation controls|primary Timeline first|Timeline canvas" tests/timelineWorkspaceLayout.test.tsx` passed: 2 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx tests/timelineClipReworkControls.test.ts` passed: 74 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Production action bar polish evidence:
+  - Visual evidence saved under `artifacts/runs/2026-06-14T-production-action-bar-pw-028/`.
+  - Chrome DevTools MCP was attempted first and failed with `127.0.0.1:9222/json/version returned HTTP Not Found`; used Playwright with the system Google Chrome executable as fallback.
+  - Focused UI validation used an API login token injected into `localStorage` after confirming the login storage contract; this kept the evidence focused on the workspace UI path.
+  - Verified desktop `1280x900`: Timeline `top=99 height=337`, production strip `top=440 height=56`, `timelineBeforeProduction=true`, command surface `connected-action-bar`, `commandDensity=connected`, `commandCards=[storyboard,keyframes,video]`, action texts `分镜图 / 首尾帧 / 生成视频`, `parameterCount=2`, `hasTimelineTitle=true`, `hasTimeTicks=true`, `hasVideoTrack=true`, `hasGenerateVideo=true`, `hasGridGeneration=false`, no horizontal overflow, no console messages, and no material failed requests. Only Next RSC navigation aborts were observed.
+  - Verified mobile `390x844`: Timeline `top=109 height=329`, production strip `top=442 height=112`, command surface `connected-action-bar`, `commandDensity=connected`, action texts `分镜图 / 首尾帧 / 生成视频`, `parameterCount=2`, `hasTimelineTitle=true`, `hasTimeTicks=true`, `hasVideoTrack=true`, `hasGenerateVideo=true`, `hasGridGeneration=false`, no horizontal overflow, no console messages, and no material failed requests. Only Next RSC navigation aborts were observed.
+- Latest validation after production action bar polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "production|Timeline generation controls|primary Timeline first" tests/timelineWorkspaceLayout.test.tsx` passed: 6 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx tests/timelineClipReworkControls.test.ts` passed: 74 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Production identity title-first evidence:
+  - Visual evidence saved under `artifacts/runs/2026-06-14T-production-identity-title-first-pw-029/`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version returned HTTP Not Found`; used Playwright with the system Google Chrome executable as fallback.
+  - Focused UI validation used an API login token injected into `localStorage`, matching the existing login storage contract.
+  - Verified desktop `1280x900`: Timeline `top=99 height=337`, production strip `top=440 height=56`, `timelineBeforeProduction=true`, identity layout `title-first`, `clipTypeBadgeVisibility=sr-only`, visible title `视频 1`, status `缺视频`, `titleBeforeStatus=true`, `hasVisibleCurrentVideoBadge=false`, command surface `connected-action-bar`, `hasTimelineTitle=true`, `hasTimeTicks=true`, `hasVideoTrack=true`, `hasGenerateVideo=true`, `hasGridGeneration=false`, no horizontal overflow, no console messages, and no material failed requests. Only Next RSC navigation aborts were observed.
+  - Verified mobile `390x844`: Timeline `top=109 height=329`, production strip `top=442 height=112`, identity layout `title-first`, `clipTypeBadgeVisibility=sr-only`, visible title `视频 1`, status `缺视频`, `titleBeforeStatus=true`, `hasVisibleCurrentVideoBadge=false`, command surface `connected-action-bar`, `hasTimelineTitle=true`, `hasTimeTicks=true`, `hasVideoTrack=true`, `hasGenerateVideo=true`, `hasGridGeneration=false`, no horizontal overflow, no console messages, and no material failed requests. Only Next RSC navigation aborts were observed.
+- Latest validation after production identity title-first polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "selected clip summary|production|primary Timeline first" tests/timelineWorkspaceLayout.test.tsx` passed: 5 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx tests/timelineClipReworkControls.test.ts` passed: 74 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Follow-up after latest user report `没有时间轴了`: real browser reproduction showed the primary Timeline DOM was present in desktop and mobile first viewports (`data-timeline="workspace"`, 4 track rows, 40 detailed clip buttons, 16 overview clips), but the title/axis still read too much like a generic table. The Timeline toolbar now renders a visible `时间轴 / 全片` identity, and the ruler origin now visibly shows `时间轴 / 片段轨` instead of hiding the track context in screen-reader-only text.
+- Timeline visible-label evidence:
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version returned HTTP Not Found`; used Playwright with system Google Chrome fallback.
+  - Pre-fix reproduction evidence saved under `artifacts/runs/2026-06-14T-timeline-missing-repro-pw-030/` and `artifacts/runs/2026-06-14T-timeline-missing-mobile-pw-031/`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-visible-labels-pw-032/`.
+  - Verified desktop `1280x900`: Timeline `top=99 height=337`, visible header kind `时间轴`, visible header scope `全片`, visible ruler labels `时间轴` and `片段轨`, 4 track rows, 40 detailed clip buttons, 16 overview items, and no material failed requests. Only Next RSC navigation aborts were observed.
+  - Verified mobile `390x844`: Timeline `top=109 height=329`, visible header kind `时间轴`, visible header scope `全片`, visible ruler labels `时间轴` and `片段轨`, 4 track rows, 40 detailed clip buttons, 16 overview items, and no material failed requests. Only Next RSC navigation aborts were observed.
+- Latest validation after Timeline visible-label polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "Timeline generation controls|primary Timeline first" tests/timelineWorkspaceLayout.test.tsx` passed: 2 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx tests/timelineClipReworkControls.test.ts` passed: 74 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Continued polish pass for `太丑，继续优化`: reduced repeated Timeline overview copy. The full-episode overview rail no longer shows a separate visible `全片` label next to the toolbar's `时间轴 / 全片` identity; the `总览` / `全片概览` wording remains as screen-reader context and in clip-selection aria labels, while the overview rail uses the available width as the primary visual.
+- Timeline overview-label evidence:
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version returned HTTP Not Found`; used Playwright with system Google Chrome fallback.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-overview-labels-pw-033/`.
+  - Verified desktop `1280x900`: Timeline `top=99 height=337`, overview label visibility `sr-only`, overview rail `width=1085.1875`, range text `02:32 · 16 段`, 4 track rows, 40 detailed clip buttons, 16 overview items, and no material failed requests. Only Next RSC navigation aborts were observed.
+  - Verified mobile `390x844`: Timeline `top=109 height=329`, overview label visibility `sr-only`, overview rail `width=333`, 4 track rows, 40 detailed clip buttons, 16 overview items, and no material failed requests. Only Next RSC navigation aborts were observed.
+- Latest validation after Timeline overview-label polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "Timeline generation controls|primary Timeline first|full-episode overview|compact Timeline overview" tests/timelineWorkspaceLayout.test.tsx` passed: 4 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "shows the selected clip summary before production commands|keeps engineering clip ids out of the default asset audit header" tests/timelineWorkspaceLayout.test.tsx` passed: 2 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts` passed: 18 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx` passed: 4 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts` passed: 14 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+  - The combined command `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx tests/timelineClipReworkControls.test.ts` was attempted twice and hung after `timelineWorkspaceLayout.test.tsx` subtest 24 (`shows the selected clip summary before production commands`). The hung runners were killed; targeted reruns of the changed Timeline overview coverage and the adjacent subtest 24/25 pair passed.
+- Continued polish pass for `太丑，继续优化`: simplified the collapsed render/export footer copy. The footer now reads as a production status line (`成片 · 待补 N 段 · 0/N · 缺失明细`) instead of the more debug-like `导出状态 / 已备 / 查看` wording. The label keeps `title="导出状态"` and the collapsed details behavior is unchanged.
+- Render footer copy evidence:
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version returned HTTP Not Found`; used Playwright with system Google Chrome fallback.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-render-footer-copy-pw-034/`.
+  - Verified desktop `1280x900`: Timeline `top=99 height=337`, render strip `top=500 height=33`, render label `成片`, title `导出状态`, meter `0/16`, action `缺失明细`, no visible old `导出状态`, no visible old `已备`, no old `查看` action, 4 track rows, 40 detailed clip buttons, 16 overview items, and no material failed requests. Only Next RSC navigation aborts were observed.
+  - Verified mobile `390x844`: Timeline `top=109 height=329`, render strip `top=558 height=33`, render label `成片`, title `导出状态`, meter `0/16`, action `缺失明细`, no visible old `导出状态`, no visible old `已备`, no old `查看` action, 4 track rows, 40 detailed clip buttons, 16 overview items, and no material failed requests. Only Next RSC navigation aborts were observed.
+- Latest validation after render footer copy polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "missing render actions|falls back to the Timeline spec" tests/timelineWorkspaceLayout.test.tsx` passed: 2 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts` passed: 18 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx` passed: 4 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts` passed: 14 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Follow-up for latest user report `没有时间轴了`: reproduced the complaint against the real deep link. The Timeline DOM was present, but the visual hierarchy still read like a pale table/navigation strip. The primary video lane is now visually dominant: desktop video track height is 144px, mobile video track height is 132px, the left lane label visibly reads `视频轨 / 主时间轴`, the primary lane uses a teal production surface, and non-selected video clips render as stronger teal filmstrip blocks while the selected clip remains blue.
+- Timeline primary-axis evidence:
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version returned HTTP Not Found`; used Playwright with system Google Chrome fallback.
+  - Pre-change reproduction evidence saved under `artifacts/runs/2026-06-14T-timeline-missing-pw-036/`; it showed Timeline existed at desktop `height=337` but the video lane was too visually weak.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-primary-axis-pw-037/`.
+  - Verified desktop `1440x1100`: Timeline `height=413`, video track `height=146`, video track `minHeight=144px`, visible primary lane label `主时间轴`, selected clip background `rgb(191, 219, 254)`, muted video clip background `rgb(204, 251, 241)`, no whole-scene grid generation entry, no console errors, and only Next RSC navigation aborts as failed requests.
+  - Verified mobile `390x844`: Timeline `height=369`, video track `height=134`, video track `minHeight=132px`, visible primary lane label `主时间轴`, selected clip background `rgb(191, 219, 254)`, muted video clip background `rgb(204, 251, 241)`, no whole-scene grid generation entry, no console errors, and only Next RSC navigation aborts as failed requests.
+- Latest validation after Timeline primary-axis fix:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "primary Timeline first|compact Timeline dimensions|emphasizes the video track|fitted whole-episode Timeline" tests/timelineWorkspaceLayout.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 3 matching layout tests plus skipped non-matching tests.
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "shows the selected clip summary before production commands" tests/timelineWorkspaceLayout.test.tsx` passed: 1 matching test.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts` passed: 18 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx` passed: 4 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts` passed: 14 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Continued polish pass for `太丑，继续优化`: reduced the large green wash introduced while making the Timeline more visible. The primary video lane now uses a neutral white workspace surface, while the left lane label remains a dark `视频轨 / 主时间轴` anchor and the actual video clips remain teal filmstrip blocks. This keeps the Timeline obvious without making the whole first viewport read as one saturated color bar.
+- Timeline neutral-lane evidence:
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version returned HTTP Not Found`; used Playwright with system Google Chrome fallback.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-neutral-lane-pw-038/`.
+  - Verified desktop `1440x1100`: Timeline `height=413`, video track background `rgb(255, 255, 255)`, visible primary lane label `主时间轴`, selected clip background `rgb(191, 219, 254)`, muted video clip background `rgb(204, 251, 241)`, no whole-scene grid generation entry, no console errors, and only Next RSC navigation aborts as failed requests.
+  - Verified mobile `390x844`: Timeline `height=369`, video track background `rgb(255, 255, 255)`, visible primary lane label `主时间轴`, selected clip background `rgb(191, 219, 254)`, muted video clip background `rgb(204, 251, 241)`, no whole-scene grid generation entry, no console errors, and only Next RSC navigation aborts as failed requests.
+- Latest validation after Timeline neutral-lane polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "primary Timeline first|emphasizes the video track|compact Timeline dimensions" tests/timelineWorkspaceLayout.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 3 matching layout tests plus skipped non-matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts` passed: 18 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx` passed: 4 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts` passed: 14 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Continued polish pass for `太丑，继续优化`: reduced the saturation of non-selected video clip blocks. The Timeline still keeps the selected clip in blue and the primary lane label visible, but muted clips now use a lighter `rgb(240, 253, 250)` surface with `rgb(45, 212, 191)` borders and a softer teal rail, so the editor reads less like a row of colored placeholders.
+- Timeline clip-desaturation evidence:
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version returned HTTP Not Found`; used Playwright with system Google Chrome fallback.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-clip-desaturate-pw-039/`.
+  - Verified desktop `1440x1100`: Timeline `height=413`, video track background `rgb(255, 255, 255)`, visible primary lane label `主时间轴`, selected clip background `rgb(191, 219, 254)`, muted clip background `rgb(240, 253, 250)`, muted clip border `rgb(45, 212, 191)`, no whole-scene grid generation entry, no console errors, and only Next RSC navigation aborts as failed requests.
+  - Verified mobile `390x844`: Timeline `height=369`, video track background `rgb(255, 255, 255)`, visible primary lane label `主时间轴`, selected clip background `rgb(191, 219, 254)`, muted clip background `rgb(240, 253, 250)`, muted clip border `rgb(45, 212, 191)`, no whole-scene grid generation entry, no console errors, and only Next RSC navigation aborts as failed requests.
+- Latest validation after Timeline clip-desaturation polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "long fitted video labels|primary Timeline first|emphasizes the video track" tests/timelineWorkspaceLayout.test.tsx` passed: 3 matching layout tests plus skipped non-matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts` passed: 18 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx` passed: 4 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts` passed: 14 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Continued polish pass for `太丑，继续优化`: turned the selected-clip production strip into a clearer toolbar surface. The production dock now uses a subtle slate workspace background, the top row is a white `toolbar-grid` surface, and the selected clip identity is an `identity-pill` instead of a bare left-border line. The connected storyboard/keyframe/video action group remains visible and `生成视频` stays in the first viewport.
+- Production toolbar evidence:
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version returned HTTP Not Found`; used Playwright with system Google Chrome fallback.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-production-toolbar-pw-040/`.
+  - Verified desktop `1440x1100`: Timeline `height=413`, production strip `top=516 height=62`, production strip background `oklab(... / 0.8)`, top row layout `toolbar-grid`, selected identity layout `identity-pill`, `生成视频` visible, no whole-scene grid generation entry, no console errors, and only Next RSC navigation aborts as failed requests.
+  - Verified mobile `390x844`: Timeline `height=369`, production strip `top=482 height=128`, top row layout `toolbar-grid`, selected identity layout `identity-pill`, `生成视频` visible, no whole-scene grid generation entry, no console errors, and only Next RSC navigation aborts as failed requests.
+- Latest validation after production toolbar polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "selected clip summary|primary Timeline first|production" tests/timelineWorkspaceLayout.test.tsx` passed: 5 matching layout tests plus skipped non-matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts` passed: 18 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx` passed: 4 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineClipReworkControls.test.ts` passed: 14 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard)` passed.
+  - `git diff --check` passed.
+- Selected-clip priority action tray evidence:
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback.
+  - Pre-change audit evidence saved under `artifacts/runs/2026-06-14T-current-ux-audit-pw-073/`; it showed the selected production controls were visible as short `分镜图 / 首尾帧 / 生成视频` labels.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-action-tray-pw-074/`, including `mobile-after.png`, `desktop-after.png`, and `evidence-after.json`.
+  - Verified mobile `390x844`: action surface `priority-action-tray`, density `readable`, video button `top=482 left=31 width=296 height=32`, storyboard button `top=518 width=132`, keyframe button `top=518 width=160`, full visible text includes `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频`, no whole-scene grid generation entry, no unmatched-scene warning, no material failed requests, and only Next/RSC navigation aborts.
+  - Verified desktop `1440x900`: action surface `priority-action-tray`, density `readable`, full labels visible inline, production strip `top=468 height=56`, no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no failed requests.
+- Latest validation after selected-clip priority action tray polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "shows the selected clip summary before production commands|keeps selected clip production controls compact" tests/timelineWorkspaceLayout.test.tsx` passed the matching selected-summary test.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 60 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg '^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/')` passed.
+  - `git diff --check` passed.
+- Render/export footer copy evidence:
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback.
+  - Pre-change audit evidence saved under `artifacts/runs/2026-06-14T-next-ux-audit-pw-075/`; it showed the footer still surfaced `导出状态` and `查看缺失`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-render-footer-humanize-pw-076/`, including `mobile-after.png`, `desktop-after.png`, and `evidence-after.json`.
+  - Verified mobile `390x844`: footer label `成片`, title `渲染/导出状态`, action `缺失片段`, old visible `导出状态=false`, old visible `查看缺失=false`, render summary text `成片渲染/导出待补 16 段0/16 已备缺失片段`, no whole-scene grid generation entry, no unmatched-scene warning, no material failed requests, and only Next/RSC navigation aborts.
+  - Verified desktop `1440x900`: footer label `成片`, action `缺失片段`, old visible `导出状态=false`, old visible `查看缺失=false`, Timeline remains first (`top=99 height=365`), production strip remains below it (`top=468 height=56`), no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no material failed requests.
+- Latest validation after render/export footer copy polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "missing render actions|falls back to the Timeline spec" tests/timelineWorkspaceLayout.test.tsx` passed: 2 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 60 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg '^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/')` passed.
+  - `git diff --check` passed.
+- Environment context ribbon evidence:
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback.
+  - Pre-change audit evidence saved under `artifacts/runs/2026-06-14T-next-ux-audit-pw-077/`; it showed the visible environment row still included `场景 1 · 开场钩子`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-environment-ribbon-humanize-pw-078/`, including `mobile-after.png`, `desktop-after.png`, and `evidence-after.json`.
+  - Verified mobile `390x844`: environment visible scene text `开场钩子`, full title `场景 1 · 开场钩子`, hidden accessibility text `场景 1 · 开场钩子`, Timeline remains first (`top=109 height=331`), production strip remains below it (`top=444 height=148`), no whole-scene grid generation entry, no unmatched-scene warning, no material failed requests, and only Next/RSC navigation aborts.
+  - Verified desktop `1440x900`: environment visible scene text `开场钩子`, full title `场景 1 · 开场钩子`, Timeline remains first (`top=99 height=365`), production strip remains below it (`top=468 height=56`), no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no material failed requests.
+- Latest validation after environment context ribbon polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "scene_id against normalized scene ids|scene environment save hidden|environment support actions visually secondary|environment binding available" tests/timelineWorkspaceLayout.test.tsx` passed: 4 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 60 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg '^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/')` passed.
+  - `git diff --check` passed.
+- Timeline overview label evidence:
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback.
+  - Pre-change audit evidence saved under `artifacts/runs/2026-06-14T-next-ux-audit-pw-079/`; it showed the Timeline header and overview both repeating full-axis wording (`时间轴`, `全片`, `全片轴`).
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-overview-label-humanize-pw-080/`, including `mobile-after.png`, `desktop-after.png`, and `evidence-after.json`.
+  - Verified mobile `390x844`: overview visible label `总览`, old visible `全片轴=false`, title `全片时间轴 · 视频`, Timeline remains first (`top=109 height=331`), production strip remains below it (`top=444 height=148`), no whole-scene grid generation entry, no unmatched-scene warning, no material failed requests, and only Next/RSC navigation aborts.
+  - Verified desktop `1440x900`: overview visible label `总览`, old visible `全片轴=false`, title `全片时间轴 · 视频`, Timeline remains first (`top=99 height=365`), production strip remains below it (`top=468 height=56`), no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no material failed requests.
+- Latest validation after Timeline overview label polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "full-episode overview|compact Timeline overview|primary Timeline first|Timeline generation controls" tests/timelineWorkspaceLayout.test.tsx` passed: 4 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 60 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg '^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/')` passed.
+  - `git diff --check` passed.
+- Timeline identity restoration after user reported `没有时间轴了`:
+  - Reproduced the current deep link with Playwright fallback. The first unauthenticated pass correctly stopped at `/login?next=...`; the authenticated pass showed the Timeline DOM and video row were present, but the visible heading still read like weak segmented labels.
+  - Updated the Timeline toolbar heading order so the visible title reads as `全片 / 时间轴`, while the accessible heading remains `全片时间轴`. This preserves the compact layout but makes the first viewport read as a real Timeline, not just production controls.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-identity-restored-pw-087/`, including `mobile.png`, `desktop.png`, and `evidence.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified mobile `390x844`: Timeline header `全片时间轴`, Timeline canvas `top=109 height=331`, video row visible, selected clip production below it, no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no failed API responses.
+  - Verified desktop `1440x900`: Timeline header `全片时间轴`, Timeline canvas `top=99 height=365`, video row visible, selected clip production below it, no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no failed API responses. One Next RSC navigation abort was observed and treated as non-blocking.
+- Latest validation after Timeline identity restoration:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "Timeline generation controls|primary Timeline first|full-episode overview|compact Timeline dimensions" tests/timelineWorkspaceLayout.test.tsx` passed: 4 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "Timeline generation controls|primary Timeline first|full-episode overview|compact Timeline dimensions|emphasizes the video track" tests/timelineWorkspaceLayout.test.tsx` passed: 5 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 22 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts` was attempted, but the combined runner hung in `timelineWorkspaceLayout.test.tsx` after more than three minutes; the process was stopped and the same affected surfaces were validated by the focused layout run plus the two non-layout target files above.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg '^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/')` passed.
+  - `git diff --check` passed.
+- Compact support-lane polish:
+  - Pre-change audit evidence saved under `artifacts/runs/2026-06-14T-next-ux-audit-pw-088/`; it showed the Timeline was visible but the support tracks (`对白` / `字幕` / `分镜`) consumed about 75px on mobile while acting as thin reference rows.
+  - Reduced secondary Timeline lanes from `22px/24px` to `16px/18px` and tightened support-row gaps from `2px/3px` to `1px/2px`. The primary video lane height stays unchanged so the Timeline still reads as the main canvas.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-support-lanes-compact-pw-089/`, including `mobile.png`, `desktop.png`, and `evidence.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified mobile `390x844`: Timeline header `全片时间轴`, Timeline canvas reduced from `331px` to `309px`, production panel moved from `top=444` to `top=422`, support rows use `16px` height and `1px` gap, video row remains visible, no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no failed API responses.
+  - Verified desktop `1440x900`: Timeline canvas reduced from `365px` to `343px`, production panel moved from `top=468` to `top=446`, support rows use `18px` height and `2px` gap, video row remains visible, no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no failed API responses. Next RSC navigation aborts were observed and treated as non-blocking.
+- Latest validation after compact support-lane polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "compact Timeline dimensions|primary Timeline first|emphasizes the video track|distant support track clips|compact Timeline overview" tests/timelineWorkspaceLayout.test.tsx` passed: 5 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "compact Timeline layout" tests/timelineWorkspaceHelpers.test.ts` passed: 1 matching test.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 22 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg '^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/')` passed.
+  - `git diff --check` passed.
+- Connected action-strip polish:
+  - Pre-change audit evidence saved under `artifacts/runs/2026-06-14T-next-ux-audit-pw-090/`; it showed the production action group still read like a nested white card inside the selected-clip strip.
+  - Changed the action surface from `priority-action-tray` to `connected-action-strip`, using a shallow `bg-slate-50/80`, `p-0.5`, `rounded-md`, and `shadow-none`. The video generation action remains the first mobile row and primary blue button.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-action-strip-lighten-pw-091/`, including `mobile.png`, `desktop.png`, and `evidence.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified mobile `390x844`: Timeline header `全片时间轴`, action surface style `connected-action-strip`, surface has no shadow, video button remains full-width primary (`width=300 height=32`), storyboard/keyframe actions remain visible below it, no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no failed API responses.
+  - Verified desktop `1440x900`: action surface style `connected-action-strip`, surface has no shadow, video/storyboard/keyframe actions stay inline, production strip height reduced from `56px` to `52px`, no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no failed API responses. Next RSC navigation aborts were observed and treated as non-blocking.
+- Latest validation after connected action-strip polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "selected clip summary|production commands|video clip generation" tests/timelineWorkspaceLayout.test.tsx` passed: 2 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 22 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg '^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/')` passed.
+  - `git diff --check` passed.
+- Environment label softening:
+  - Pre-change audit evidence saved under `artifacts/runs/2026-06-14T-next-ux-audit-pw-092/`; it showed the environment row still used a visible `环境` label before the scene context and selection control.
+  - Changed the visible environment label to sr-only, leaving the row visually as `开场钩子` plus `选择环境`. The accessible `场景环境` and `环境` semantics remain available.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-environment-label-soften-pw-093/`, including `mobile.png`, `desktop.png`, and `evidence.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified mobile `390x844`: Timeline header `全片时间轴`, visible environment scene `开场钩子`, environment kind class `sr-only`, choice control remains `选择环境`, no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no failed API responses.
+  - Verified desktop `1440x900`: visible environment scene `开场钩子`, environment kind class `sr-only`, choice control remains `选择环境`, no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no failed API responses. Next RSC navigation aborts were observed and treated as non-blocking.
+- Latest validation after environment label softening:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "scene environment save hidden|environment support actions visually secondary|scene_id against normalized scene ids|environment binding available" tests/timelineWorkspaceLayout.test.tsx` passed: 4 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 22 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg '^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/')` passed.
+  - `git diff --check` passed.
+- Timeline title restoration follow-up after user reported `没有时间轴了` again:
+  - Pre-change evidence from `artifacts/runs/2026-06-14T-next-ux-audit-pw-094/` showed the Timeline canvas was present on both mobile and desktop, with video row and selected clip visible, but the visible heading still read as weak segmented labels.
+  - Changed the Timeline toolbar visible title order to `时间轴 | 全片`, while keeping the accessible heading as `全片时间轴`. The goal is to make the canvas read as the primary Timeline first, not as an unlabeled strip of clips.
+  - Split `TimelineToolbarIcon` into `ai-pic-frontend/src/components/features/Timeline/TimelineToolbarIcon.tsx` after the diff contract caught `TimelineToolbar.tsx` at 260 lines; the toolbar file is now 202 lines.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-title-restored-pw-096/`, including `mobile-after.png`, `desktop-after.png`, and `evidence-after.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified mobile `390x844`: Timeline title visible as `时间轴` with scope `全片`, Timeline canvas `top=109 height=309`, video row and video item visible, no whole-scene grid generation entry, no console warnings/errors, no failed responses, and no network failures.
+  - Verified desktop `1492x900`: Timeline title visible as `时间轴` with scope `全片`, Timeline canvas `top=99 height=343`, video row and video item visible, no whole-scene grid generation entry, no console warnings/errors, no failed responses, and no network failures.
+- Latest validation after Timeline title restoration:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "Timeline generation controls|primary Timeline first" tests/timelineWorkspaceLayout.test.tsx` passed: 2 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 22 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg '^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/')` passed after the icon split.
+  - `git diff --check` passed.
+- Selected clip rail polish:
+  - Pre-change audit evidence saved under `artifacts/runs/2026-06-14T-next-ux-audit-pw-097/`; it showed the Timeline and actions were functional, but the selected clip production area still read like loose buttons attached below the Timeline.
+  - Changed the production panel surface from `unified` to `selected-clip-rail`, using a shallow `bg-slate-50/70` outer rail, a white `selected-clip-workrail`, and an `identity-chip` for the current clip summary. The video generation button remains first on mobile and primary blue.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-selected-clip-rail-pw-098/`, including `mobile-after.png`, `desktop-after.png`, and `evidence-after.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified mobile `390x844`: Timeline title `时间轴`, selected clip rail `top=422 height=158`, workrail layout `selected-clip-workrail`, current bar layout `identity-chip`, video button remains first and primary, no whole-scene grid generation entry, no unmatched-scene warning, no console warnings/errors, no failed responses, and no network failures.
+  - Verified desktop `1492x900`: Timeline title `时间轴`, selected clip rail `top=446 height=62`, workrail layout `selected-clip-workrail`, current bar layout `identity-chip`, video/storyboard/keyframe commands remain inline, no whole-scene grid generation entry, no unmatched-scene warning, no console warnings/errors, no failed responses, and no network failures.
+- Latest validation after selected clip rail polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "selected clip summary|production commands|video clip generation" tests/timelineWorkspaceLayout.test.tsx` passed: 2 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 22 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg '^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/')` passed.
+  - `git diff --check` passed.
+- Timeline selection visual softening:
+  - Pre-change visual review showed the selected clip cursor still used a high-saturation full-height blue line plus thick selected-video emphasis, competing with the primary video lane.
+  - Softened the selected range to `border-blue-400/35 bg-blue-50/25`, changed the cursor to a 1px `bg-blue-500/45` hairline, reduced the selected video ring to `ring-1 ring-blue-500/55`, and reduced selected clip rail/spine opacity. The selected clip remains visually identifiable and still reports `data-timeline-item-tone="primary-selected"`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-selection-soften-pw-099/`, including `mobile-after.png`, `desktop-after.png`, and `evidence-after.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified mobile `390x844`: Timeline canvas remains visible, selected cursor is 1px wide with `bg-blue-500/45`, selected clip remains `primary-selected`, video generation button remains visible and primary, no whole-scene grid generation entry, no unmatched-scene warning, no console warnings/errors, no failed responses, and no network failures.
+  - Verified desktop `1492x900`: selected range and selected clip remain visible but softer, video track and selected video item remain visible, production rail remains below the Timeline, no whole-scene grid generation entry, no unmatched-scene warning, no console warnings/errors, no failed responses, and no network failures.
+- Latest validation after Timeline selection softening:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "primary Timeline first|emphasizes the video track|compact Timeline dimensions|long episode Timeline lanes" tests/timelineWorkspaceLayout.test.tsx` passed: 4 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 22 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg '^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/')` passed.
+  - `git diff --check` passed.
+- Timeline axis softening:
+  - Pre-change review of `artifacts/runs/2026-06-14T-timeline-selection-soften-pw-099/desktop-after.png` showed the Timeline was restored and readable, but the main axis baseline still used a saturated 3px blue line that competed with the selected clip.
+  - Changed the Timeline axis line from `border-b-[3px] border-blue-500/75 shadow-[0_1px_0_rgba(15,23,42,0.14)]` to `border-b border-blue-300/45 shadow-none`, and softened tick dividers from `border-blue-300/65` to `border-slate-300/70`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-axis-soften-pw-100/`, including `mobile-after.png`, `desktop-after.png`, and `evidence-after.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - The first Playwright form-login attempt stayed on `/login?next=...`, so the final browser check authenticated through the same `/api/v1/auth/login` endpoint and injected the returned token into localStorage before loading the deep link.
+  - Verified desktop `1440x950`: deep link automatically synchronized from stale `clipId=video_scene_580_beat_3911_001` to valid `clipId=video_scene_580_beat_3923_001`; Timeline title, axis, video track, and selected `视频 1` clip are visible; primary actions `生成片段分镜图`, `生成首尾帧`, and `生成/重做此片段视频` are visible; no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no relevant network failures. One Next RSC `_rsc` request was aborted during URL synchronization and treated as non-blocking.
+  - Verified mobile `390x844`: Timeline title, overview, time ruler, video track, selected `视频 1`, and the three clip-scoped production actions are all visible in the first viewport; no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no relevant network failures.
+- Latest validation after Timeline axis softening:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "primary Timeline first|compact Timeline dimensions|full-episode overview" tests/timelineWorkspaceLayout.test.tsx` passed: 3 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 22 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg '^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/')` passed.
+  - `git diff --check` passed.
+- Timeline frame softening:
+  - Pre-change review of `artifacts/runs/2026-06-14T-timeline-axis-soften-pw-100/mobile-after.png` showed the Timeline was visible, but the outer surface still stacked a heavy `border-l-4 border-l-blue-600` frame and blue-tinted shadow on top of the toolbar, overview, ruler, selected range, and action button.
+  - Changed the Timeline canvas frame to `border-slate-200 border-l-2 border-l-blue-500/70 shadow-sm shadow-slate-200/70`, keeping the explicit `data-timeline-surface="dominant-workspace-axis"` and visible `时间轴 | 全片` identity while reducing the blue frame weight.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-frame-soften-pw-101/`, including `mobile-after.png`, `desktop-after.png`, and `evidence-after.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified desktop `1440x950`: Timeline frame uses the softened slate border and 2px low-saturation blue left marker; Timeline title, axis, overview, video track, selected `视频 1`, and three clip-scoped production actions remain visible; no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no relevant network failures.
+  - Verified mobile `390x844`: first viewport still shows Timeline title, overview, time ruler, video track, selected `视频 1`, and the three clip-scoped production actions; softened frame assertions passed; no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no relevant network failures.
+- Latest validation after Timeline frame softening:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "primary Timeline first|compact Timeline dimensions|full-episode overview" tests/timelineWorkspaceLayout.test.tsx` passed: 3 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 22 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg '^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/')` passed.
+  - `git diff --check` passed.
+- Timeline overview neutralization:
+  - Pre-change review of `artifacts/runs/2026-06-14T-timeline-frame-soften-pw-101/mobile-after.png` showed the full-episode overview still used a blue-tinted band, adding another large blue surface above the selected range and primary video button.
+  - Changed the overview container from `border-blue-200 bg-blue-50/...` to `border-slate-200 bg-slate-50/...`. The overview rail remains visible and keeps `border-blue-300`, so the full-episode navigation affordance is still identifiable without adding another blue panel.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-overview-neutral-pw-102/`, including `mobile-after.png`, `desktop-after.png`, and `evidence-after.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified desktop `1440x950`: Timeline remains visible, overview container is neutral slate, overview rail is still visible and blue-bordered, video track and selected `视频 1` remain visible, three clip-scoped production actions remain visible, no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no relevant network failures.
+  - Verified mobile `390x844`: first viewport still shows Timeline title, neutral overview band, time ruler, video track, selected `视频 1`, and the three clip-scoped production actions; no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no relevant network failures.
+- Latest validation after Timeline overview neutralization:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "primary Timeline first|full-episode overview|compact Timeline overview" tests/timelineWorkspaceLayout.test.tsx` passed: 3 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 22 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg '^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/')` passed.
+  - `git diff --check` passed.
+- Timeline overview rail softening:
+  - Pre-change review of `artifacts/runs/2026-06-14T-timeline-overview-neutral-pw-102/mobile-after.png` showed the overview container was neutral, but the rail itself still used `border-blue-300` and `shadow-blue-100/80`, leaving another blue-framed control above the primary video lane.
+  - Changed the overview rail to `border-slate-300 shadow-slate-200/80` while keeping the selected overview item and marker colored, so the full-episode scrubber remains visible but no longer adds a separate blue frame.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-overview-rail-soften-pw-103/`, including `mobile-after.png`, `desktop-after.png`, and `evidence-after.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified desktop `1440x950`: Timeline remains visible, overview rail uses slate border and slate shadow, selected overview affordance remains present, video track and selected `视频 1` remain visible, three clip-scoped production actions remain visible, no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no relevant network failures.
+  - Verified mobile `390x844`: first viewport still shows Timeline title, neutral overview rail, time ruler, video track, selected `视频 1`, and the three clip-scoped production actions; no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no relevant network failures.
+- Latest validation after Timeline overview rail softening:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "primary Timeline first|full-episode overview|compact Timeline overview" tests/timelineWorkspaceLayout.test.tsx` passed: 3 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 22 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg '^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/')` passed.
+  - `git diff --check` passed.
+- Timeline ruler label softening:
+  - Pre-change review of `artifacts/runs/2026-06-14T-timeline-overview-rail-soften-pw-103/mobile-after.png` showed the left ruler origin still repeated `时间轴 / 片段轨` in strong blue. The top toolbar already establishes the Timeline identity, so the secondary label read as engineering noise.
+  - Kept the primary `时间轴` label visible, changed the secondary label from `片段轨` to `刻度`, and softened its class from `text-blue-600` to `text-slate-500`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-ruler-label-soften-pw-104/`, including `mobile-after.png`, `desktop-after.png`, and `evidence-after.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified desktop `1440x950`: Timeline remains visible, ruler primary label remains `时间轴`, secondary label is now `刻度` with `text-slate-500`, video track and selected `视频 1` remain visible, three clip-scoped production actions remain visible, no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no relevant network failures.
+  - Verified mobile `390x844`: first viewport still shows Timeline title, overview, time ruler, video track, selected `视频 1`, and the three clip-scoped production actions; the ruler secondary label is now `刻度`, no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no relevant network failures.
+- Latest validation after Timeline ruler label softening:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "primary Timeline first|full-episode overview|compact Timeline overview" tests/timelineWorkspaceLayout.test.tsx` passed: 3 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 22 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg '^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/')` passed.
+  - `git diff --check` passed.
+- Video track label compaction:
+  - Pre-change review of `artifacts/runs/2026-06-14T-timeline-ruler-label-soften-pw-104/mobile-after.png` showed the primary video lane label still rendered as `视频轨 / 主时间轴`, repeating the Timeline identity that is already visible in the toolbar and ruler.
+  - Changed the visible primary lane label to `视频` only, while keeping `主时间轴` and `主线` as sr-only labels for semantics and accessibility.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-video-track-label-compact-pw-105/`, including `mobile-after.png`, `desktop-after.png`, and `evidence-after.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - The first Playwright assertion included sr-only text in `innerText`; evidence was rerun with sr-only nodes excluded from the visible-label calculation. The final evidence passed with visible label `视频` and sr-only labels `主时间轴` / `主线`.
+  - Verified desktop `1440x950`: Timeline remains visible, video track label is compact, video track and selected `视频 1` remain visible, three clip-scoped production actions remain visible, no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no relevant network failures.
+  - Verified mobile `390x844`: first viewport still shows Timeline title, overview, time ruler, compact `视频` lane label, selected `视频 1`, and the three clip-scoped production actions; no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no relevant network failures.
+- Latest validation after video track label compaction:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "primary Timeline first|emphasizes the video track|full-episode overview" tests/timelineWorkspaceLayout.test.tsx` passed: 3 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 22 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg '^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/')` passed.
+  - `git diff --check` passed.
+- Muted video clip softening:
+  - Pre-change review of `artifacts/runs/2026-06-14T-video-track-label-compact-pw-105/mobile-after.png` showed the Timeline identity was clear, but the unselected video clips and overview blocks still formed a saturated teal strip across the first viewport.
+  - Changed unselected primary video clip fill from `#f0fdfa` to `#f8fafc`, border from `#2dd4bf` to `#5eead4`, reduced filmstrip/rail/spine teal opacity, and changed overview unselected items to `border-teal-300/70 bg-teal-100/70`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-video-clip-muted-pw-106/`, including `mobile-after.png`, `desktop-after.png`, and `evidence-after.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified desktop `1440x950`: Timeline remains visible, muted video clips use the softened RGB values, selected `视频 1` remains primary blue, overview muted items are softened, three clip-scoped production actions remain visible, no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no relevant network failures.
+  - Verified mobile `390x844`: first viewport still shows Timeline title, overview, time ruler, selected `视频 1`, muted video clips with lighter fill/rails, and the three clip-scoped production actions; no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no relevant network failures.
+- Latest validation after muted video clip softening:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "primary Timeline first|emphasizes the video track|full-episode overview|long episode Timeline lanes" tests/timelineWorkspaceLayout.test.tsx` passed: 4 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 22 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg '^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/')` passed.
+  - `git diff --check` passed.
+- Timeline scope label neutralization:
+  - Pre-change review of `artifacts/runs/2026-06-14T-video-clip-muted-pw-106/mobile-after.png` showed the Timeline identity was clear, but the `全片` scope chip still used `bg-blue-50 text-blue-700` next to the main `时间轴` label, making the toolbar read like two blue controls.
+  - Kept the outer Timeline badge blue-framed, but changed the scope chip to `bg-slate-100 text-slate-600 font-semibold` and the separator to `bg-slate-200`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-scope-neutral-pw-107/`, including `mobile-after.png`, `desktop-after.png`, and `evidence-after.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified desktop `1440x950`: Timeline remains visible, visible kind label remains `时间轴`, scope label remains `全片` but uses neutral slate styling, video track and selected `视频 1` remain visible, three clip-scoped production actions remain visible, no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no relevant network failures.
+  - Verified mobile `390x844`: first viewport still shows Timeline title, neutral `全片` scope, overview, time ruler, selected `视频 1`, and the three clip-scoped production actions; no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no relevant network failures.
+- Latest validation after Timeline scope label neutralization:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "Timeline generation controls|primary Timeline first|full-episode overview" tests/timelineWorkspaceLayout.test.tsx` passed: 3 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceHelpers.test.ts tests/workspaceStoryboardTabContent.test.tsx` passed: 22 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg '^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/')` passed.
+  - `git diff --check` passed.
+- Timeline axis visibility restoration:
+  - Reproduced the latest `没有时间轴了` report against `http://localhost:8089/episodes/12c6eb572eda47138a5fc821c225a1af/workspace?tab=timeline&scriptId=143&clipId=video_scene_580_beat_3911_001`.
+  - Pre-fix evidence saved under `artifacts/runs/2026-06-14T-timeline-missing-repro-pw-109/`; it showed 1 Timeline DOM surface, 4 track rows, and 1 video lane in the first viewport, so the issue was visual semantics rather than missing data.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-axis-restored-pw-110/`, including `desktop-after.png`, `mobile-after.png`, `evidence-after.json`, and `chrome-devtools-snapshot.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified desktop `1440x950` and mobile `390x844`: Timeline remains first-screen visible, root frame uses the restored blue left axis, ruler axis uses the stronger blue line, video track exposes visible `主时间轴`, muted video clips use readable teal bars, three clip-scoped production actions remain visible, no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no relevant network failures.
+- Latest validation after Timeline axis visibility restoration:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "primary Timeline first|long episode Timeline lanes|video track as the primary production lane|compact Timeline dimensions" tests/timelineWorkspaceLayout.test.tsx` passed: 4 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 60 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `bash -lc 'python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg "^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/" || true)'` passed. A first zsh attempt passed the newline-separated file list as one argument and failed with `OSError: [Errno 63] File name too long`; rerun with `bash -lc` used independent file arguments.
+  - `git diff --check` passed.
+- Selected-clip production band flattening:
+  - Pre-change audit evidence saved under `artifacts/runs/2026-06-14T-next-ux-audit-pw-111/`; it showed the Timeline was visible but the selected-clip production row still had a nested white-card shell under the primary Timeline.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-production-band-flatten-pw-112/`, including `desktop-after.png`, `mobile-after.png`, `evidence-after.json`, and `chrome-devtools-snapshot.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified desktop `1440x950` and mobile `390x844`: Timeline remains first-screen visible, selected-clip production surface is `inline-workflow-band`, the top production row has no `rounded-md` / `bg-white/95` / `border-slate-200` card shell, current clip identity is transparent, three clip-scoped production actions remain visible, no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no relevant network failures.
+- Latest validation after selected-clip production band flattening:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "selected clip summary|primary Timeline first" tests/timelineWorkspaceLayout.test.tsx` passed: 2 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 60 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+- Environment/render status line polish:
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-env-render-line-polish-pw-113/`, including `desktop-after.png`, `mobile-after.png`, and `evidence-after.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified desktop and mobile: Timeline remains visible in the first viewport, environment kind is visible instead of sr-only, environment choice renders as a text link instead of another bordered button, the render status footer is a single flex status line with `查看`, the three clip-scoped production actions remain visible, no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no relevant network failures.
+  - Focused tests passed:
+    - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "keeps missing render actions collapsed until clips are ready" tests/timelineWorkspaceLayout.test.tsx`
+    - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "keeps scene environment save hidden until an environment is selected" tests/timelineWorkspaceLayout.test.tsx`
+    - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "keeps the primary Timeline first while preserving selected clip production" tests/timelineWorkspaceLayout.test.tsx`
+  - A broader pattern-only command (`missing render actions|environment support actions|scene environment|primary Timeline first`) exposed a JSDOM wait flake, then a rerun hung and was killed manually; the exact focused tests above and the full target suite below passed.
+- Latest validation after environment/render status line polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 60 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `bash -lc 'python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg "^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/" || true)'` passed.
+  - `git diff --check` passed.
+- Timeline grid and scrollbar polish:
+  - Pre-change audit evidence saved under `artifacts/runs/2026-06-14T-next-ux-audit-pw-114/`; it showed the Timeline, production strip, and render status were present, but the detailed lane area still read like a sparse table and used a heavier default-like horizontal scrollbar.
+  - First fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-grid-fade-pw-115/`; final fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-grid-scrollbar-polish-pw-116/`, including `desktop-after.png`, `mobile-after.png`, `evidence-after.json`, and `chrome-devtools-snapshot.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified desktop and mobile: Timeline remains visible in the first viewport, selected clip production strip and render footer remain visible, grid lines use `data-timeline-grid-line-depth="ruler-fade"` with a `to-transparent` gradient, Timeline lane viewport uses `data-timeline-scrollbar="subtle"` with a 6px light scrollbar, three clip-scoped production actions remain visible, no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no relevant network failures.
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "primary Timeline first|video track as the primary production lane|compact Timeline dimensions|full-episode overview" tests/timelineWorkspaceLayout.test.tsx` passed: 4 matching tests.
+- Latest validation after Timeline grid and scrollbar polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 60 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+- Muted video color polish:
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-muted-video-color-polish-pw-117/`, including `desktop-after.png`, `mobile-after.png`, `evidence-after.json`, and `chrome-devtools-snapshot.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified desktop and mobile: Timeline remains visible in the first viewport, selected clip production strip and render footer remain visible, muted video clips use `rgb(240, 253, 250)` background and `rgb(94, 234, 212)` border with softer rails, selected video remains blue, three clip-scoped production actions remain visible, no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no relevant network failures.
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "full-episode overview|long episode Timeline lanes|emphasizes the video track|primary Timeline first" tests/timelineWorkspaceLayout.test.tsx` passed: 4 matching tests.
+- Latest validation after muted video color polish:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 60 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+- Support label muting:
+  - Initial fixed evidence saved under `artifacts/runs/2026-06-14T-support-label-muted-pw-118/`; it showed the support label class had `text-[10px]` but still computed to 12px because the shared base class also included `text-[12px]`.
+  - Final fixed evidence saved under `artifacts/runs/2026-06-14T-support-label-muted-pw-119/`, including `desktop-after.png`, `mobile-after.png`, `evidence-after.json`, and `chrome-devtools-snapshot.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified desktop and mobile: Timeline remains visible in the first viewport, selected clip production strip and render footer remain visible, support labels use `data-timeline-track-label-visual="support-muted"` with transparent background/border and computed `font-size: 10px`, the video label remains `primary-axis` at 12px bold, three clip-scoped production actions remain visible, no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no relevant network failures.
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "emphasizes the video track|primary Timeline first|support track clips|compact Timeline dimensions" tests/timelineWorkspaceLayout.test.tsx` passed: 4 matching tests.
+- Latest validation after support label muting:
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 60 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+- Toolbar ghost controls:
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-toolbar-ghost-controls-pw-121/`, including `desktop-after.png`, `mobile-after.png`, `evidence-after.json`, and `chrome-devtools-snapshot.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - The first Playwright fallback script at `artifacts/runs/2026-06-14T-toolbar-ghost-controls-pw-120/` failed because `getByLabel("视图缩放")` matched both the summary and range input. The final run clicked `[data-timeline-view-summary="compact"]` explicitly.
+  - Verified desktop and mobile: Timeline remains visible in the first viewport, selected clip production strip and render footer remain visible, toolbar controls use `data-timeline-toolbar-controls-surface="ghost-icons"` with transparent background and no shadow, both view panel and Timeline generation settings still open, three clip-scoped production actions remain visible, no whole-scene grid generation entry, no unmatched-scene warning, no console errors, and no relevant network failures.
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "Timeline generation controls|primary Timeline first|compact Timeline dimensions|video track as the primary production lane" tests/timelineWorkspaceLayout.test.tsx` passed: 4 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 22 tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts` hung after printing pass output through the selected clip summary test; it was killed manually and is not counted as passed for this polish pass.
+- Latest validation after toolbar ghost controls:
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+- Flat selected-clip action cluster:
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-command-strip-flat-pw-122/`, including `desktop-after.png`, `mobile-after.png`, and `browser-evidence.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified desktop `1440x900`: the deep link resolved to valid `clipId=video_scene_580_beat_3923_001`, Timeline remains visible above the production strip, the selected-clip command surface uses `data-clip-command-surface-style="flat-action-cluster"` with `bg-transparent p-0 shadow-none`, all three clip-scoped production actions remain visible, no whole-scene grid generation entry appears, and console error count is 0.
+  - Verified mobile `392x844`: Timeline remains visible above the production strip, the video generation action stays visible, and the command surface keeps the same flat transparent style without pushing the Timeline out of the first viewport.
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "selected clip summary|primary Timeline first" tests/timelineWorkspaceLayout.test.tsx` passed: 2 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 22 tests.
+- Latest validation after flat selected-clip action cluster:
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `bash -lc 'python scripts/check_repo_contracts.py --mode diff $(git diff --name-only) $(git ls-files --others --exclude-standard | rg "^(agent_chats|ai-pic-frontend/src|ai-pic-frontend/tests|ai-pic-backend|scripts|docs)/" || true)'` passed.
+  - `git diff --check` passed.
+- Timeline ruler height polish:
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-ruler-height-polish-pw-123/`, including `desktop-after.png`, `mobile-after.png`, and `browser-evidence.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified desktop `1440x900`: Timeline remains first-screen visible, ruler height is `44px`, video track starts directly at the ruler bottom with `videoTopMinusRulerBottom=0`, production panel remains directly below the Timeline, all three clip-scoped production actions remain visible, no whole-scene grid generation entry appears, and console error count is 0.
+  - Verified mobile `392x844`: Timeline remains first-screen visible, ruler height is `44px`, video track starts directly at the ruler bottom, and the video generation action remains visible below the Timeline.
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "primary Timeline first|compact Timeline dimensions|video track as the primary production lane|full-episode overview" tests/timelineWorkspaceLayout.test.tsx` passed: 4 matching tests.
+  - First rerun of `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts` failed because `timelineWorkspaceHelpers.test.ts` still expected the old compact/regular ruler heights. The helper expectation was updated to the new shared `44px` contract, then the command passed: 22 tests.
+- Latest validation after Timeline ruler height polish:
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+- Environment summary label polish:
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-environment-summary-label-polish-pw-124/`, including `desktop-after.png`, `mobile-after.png`, and `browser-evidence.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified desktop `1440x900`: Timeline remains first-screen visible, production strip remains directly below the Timeline, environment summary now renders `未设置` plus action `更换`, old visible `选择环境` text is absent, all three clip-scoped production actions remain visible, no whole-scene grid generation entry appears, and console error count is 0.
+  - Verified mobile `392x844`: Timeline remains first-screen visible, environment summary stays on one compact line with `未设置 更换`, and the video generation action remains visible below the Timeline.
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "shows scene environment save immediately for clips with a saved environment|selected clip summary|primary Timeline first" tests/timelineWorkspaceLayout.test.tsx` passed: 3 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 22 tests.
+  - A narrower `cd ai-pic-frontend && npx tsx --test --test-name-pattern "keeps scene environment save hidden until an environment is selected" tests/timelineWorkspaceLayout.test.tsx` command hung after printing skipped tests through the storyboard-support selection test and was killed manually; it is not counted as passed for this polish pass. Browser evidence above covers the visible environment summary change.
+- Latest validation after environment summary label polish:
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+- Render footer status clustering:
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-render-footer-cluster-pw-125/`, including `desktop-after.png`, `mobile-after.png`, and `browser-evidence.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified desktop `1440x900`: Timeline remains first-screen visible, render summary now uses `data-timeline-render-summary-layout="clustered-status-strip"`, the readiness meter sits 12px after the render header instead of being pushed to the far right, all three clip-scoped production actions remain visible, no whole-scene grid generation entry appears, and console error count is 0.
+  - Verified mobile `392x844`: Timeline remains first-screen visible, render footer stays on one compact line, and the video generation action remains visible above it.
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "keeps missing render actions collapsed until clips are ready|primary Timeline first" tests/timelineWorkspaceLayout.test.tsx` passed: 2 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 22 tests.
+- Latest validation after render footer status clustering:
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+- Header production rail segments:
+  - Changed the workspace production path rail from visible text pills into compact segmented progress bars, keeping `aria-label="生产主线"` and per-step accessible labels/titles.
+  - Updated `timelineWorkspaceLayout.test.tsx` to assert `data-production-step-rail-layout="segments"`, empty visual segment text, compact segment sizing, ready `bg-emerald-500`, and pending `bg-slate-200`.
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "compact production path header|keeps the primary Timeline first|keeps an explicit Timeline frame" tests/timelineWorkspaceLayout.test.tsx` passed: 3 matching tests.
+- Timeline visible-frame restoration after `没有时间轴了`:
+  - Rechecked Chrome DevTools MCP first; it still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found, so browser validation used Playwright with system Google Chrome fallback.
+  - Pre-fix evidence saved under `artifacts/runs/2026-06-14T-timeline-missing-regression-pw-127/`; desktop and logged-in narrow viewport both had a Timeline DOM surface in the first viewport, so the failure was treated as a visual discoverability regression rather than missing data.
+  - Added `data-timeline-canvas-presence-frame="restored-visible-axis"` to the primary Timeline canvas panel and wrapped it in a subtle blue axis frame.
+  - Strengthened the Timeline root from a light `border-l-4` / slate shadow to `border-l-8 border-l-blue-600`, `shadow-md shadow-blue-100/80`, and `ring-1 ring-blue-100/80`.
+  - Updated `timelineWorkspaceLayout.test.tsx` to lock the restored visible-axis frame, stronger Timeline left axis, ring, and shadow contract.
+  - While rerunning the full target suite, fixed an environment-summary test expectation that still asserted `无可选` even though the mock supplies available environments and the current UI correctly shows `未设置 更换`.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-timeline-restored-frame-pw-128/`, including `desktop-after.png`, `mobile-after.png`, and `browser-evidence.json`.
+  - Verified desktop `1440x920`: Timeline is the first child of `timeline-first-with-production`, first-screen visible, uses `data-timeline-canvas-presence-frame="restored-visible-axis"`, has the stronger blue frame classes, keeps the video generation action visible, and has no whole-scene grid generation entry.
+  - Verified mobile `420x860`: Timeline remains first-screen visible with the restored frame and stronger blue axis; the clip-scoped video generation action remains visible below it.
+- Latest validation after Timeline visible-frame restoration:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "compact production path header|keeps the primary Timeline first|keeps an explicit Timeline frame" tests/timelineWorkspaceLayout.test.tsx` passed: 3 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 60 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `{ git diff --name-only -z; git ls-files --others --exclude-standard -z; } | sort -zu | xargs -0 python scripts/check_repo_contracts.py --mode diff` passed. A first zsh scalar file-list attempt failed with `OSError: [Errno 63] File name too long`; reran with null-separated args.
+  - `git diff --check` passed.
+- Selected-clip production dock polish:
+  - Audit evidence saved under `artifacts/runs/2026-06-14T-next-ux-audit-pw-129/`; Timeline and clip actions were visible, but the desktop selected-clip production row still read like a flat table toolbar.
+  - Changed the selected-clip production surface to `data-clip-production-surface-style="selected-clip-dock"` with a subtle `bg-slate-50/70` work band.
+  - Changed the production top-row layout to `selected-clip-production-dock`, widened the desktop command column to `minmax(30rem,max-content)`, and separated identity/actions/context with `gap-x-2 gap-y-1`.
+  - Kept mobile action priority intact while giving desktop `data-clip-command-surface="action-tray"` a light segmented rail at `min-[720px]`: rounded, `border-slate-200`, white background, `p-0.5`, and a small shadow.
+  - Updated `timelineWorkspaceLayout.test.tsx` so the dock and action rail contract allows the lightweight structure but still rejects thick card styling, divided tables, and heavy shadows.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-production-dock-polish-pw-130/`, including `desktop-after.png`, `mobile-after.png`, and `browser-evidence.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified desktop `1440x920`: Timeline remains first-screen visible, selected-clip production surface uses `selected-clip-dock`, action tray uses the lightweight white segmented rail, all three clip-scoped actions remain visible, and no whole-scene grid generation entry appears.
+  - Verified mobile `420x860`: Timeline remains first-screen visible, the video generation action remains first and full-width, the two support actions remain below, and no whole-scene grid generation entry appears.
+- Latest validation after selected-clip production dock polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "selected clip summary|primary Timeline first|puts video clip generation" tests/timelineWorkspaceLayout.test.tsx` passed: 3 matching tests.
+  - `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts` passed: 60 tests.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `{ git diff --name-only -z; git ls-files --others --exclude-standard -z; } | sort -zu | xargs -0 python scripts/check_repo_contracts.py --mode diff` passed.
+  - `git diff --check` passed.
+- Render footer dock polish:
+  - Audit evidence saved under `artifacts/runs/2026-06-14T-next-ux-audit-pw-131/`; Timeline and selected-clip production were visible, but the render/export footer still appeared as a disconnected pure-white table row below the selected-clip dock.
+  - Changed the render strip to `data-episode-render-strip-style="selected-clip-footer-dock"` with the same subtle `bg-slate-50/70` surface as the selected-clip production dock.
+  - Updated `timelineWorkspaceLayout.test.tsx` so the render footer contract requires the new dock style and rejects returning to a standalone pure-white strip.
+  - Fixed evidence saved under `artifacts/runs/2026-06-14T-render-footer-dock-pw-132/`, including `desktop-after.png`, `mobile-after.png`, and `browser-evidence.json`.
+  - Chrome DevTools MCP was attempted first and still failed with `127.0.0.1:9222/json/version` returning HTTP Not Found; used Playwright with system Google Chrome fallback and recorded the fallback in evidence.
+  - Verified desktop `1440x920`: Timeline remains first-screen visible, selected-clip dock and render footer now share the same muted work-surface treatment, all three clip-scoped actions remain visible, and no whole-scene grid generation entry appears.
+  - Verified mobile `420x860`: Timeline remains first-screen visible, render footer uses the same selected-clip footer dock styling, video generation remains visible above it, and no whole-scene grid generation entry appears.
+- Latest validation after render footer dock polish:
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "missing render actions|primary Timeline first|selected clip summary" tests/timelineWorkspaceLayout.test.tsx` passed: 3 matching tests.
+- File-size contract cleanup before commit:
+  - Extracted `EpisodeTimelineWorkspacePanels.tsx` and `EpisodeTimelineWorkspaceProps.ts` so `EpisodeTimelineWorkspace.tsx` stays under the 200-line contract while preserving the restored Timeline and selected-clip production path.
+  - Removed unused normalized-scene loading/error props from the workspace page/tab chain.
+- Final validation before commit:
+  - `{ git diff --name-only -z; git ls-files --others --exclude-standard -z; } | sort -zu | xargs -0 python scripts/check_repo_contracts.py --mode diff` passed.
+  - `cd ai-pic-frontend && npx tsx --test --test-name-pattern "Timeline first|selected clip summary|fallback video clips|scene_id|storyboard support clicks|full-episode overview|missing render actions" tests/timelineWorkspaceLayout.test.tsx` passed: 7 matching tests.
+  - A full `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/workspaceStoryboardTabContent.test.tsx tests/timelineWorkspaceHelpers.test.ts` rerun printed passing output through the selected-clip summary test but did not exit; it was killed manually and is not counted as passed for this final commit pass.
+  - `cd ai-pic-frontend && npm run lint` passed with the existing 3 warnings only.
+  - `cd ai-pic-frontend && npm run build` passed.
+  - `python scripts/check_repo_docs.py` passed.
+  - `git diff --check` passed.
+
+## Next Steps
+
+- Commit together with this ledger when ready.
+- No backend API changes were made in this turn.
+
+## Linked Commits
+
+- Not committed in this turn.

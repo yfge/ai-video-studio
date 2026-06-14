@@ -132,10 +132,7 @@ export function TimelineClipReworkControls({
   };
 
   return (
-    <form
-      className="mt-3 border-t border-gray-100 pt-3"
-      onSubmit={handleSubmit}
-    >
+    <form className="mt-2" onSubmit={handleSubmit}>
       <div className="grid gap-2">
         <select
           value={action}

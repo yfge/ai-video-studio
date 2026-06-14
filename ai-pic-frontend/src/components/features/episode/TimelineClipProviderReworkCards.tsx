@@ -6,12 +6,21 @@ import type {
   TimelineClipVideoReworkAction,
 } from "@/utils/api/types";
 import { TimelineClipKeyframeCard } from "./TimelineClipKeyframeCard";
-import { StoryboardReferenceCard } from "./TimelineClipProviderReworkCardSections";
+import { StoryboardReferenceCard } from "./TimelineClipStoryboardReferenceCard";
 import { TimelineClipVideoReworkCard } from "./TimelineClipVideoReworkCard";
 import type { TimelineVideoReferenceChoice } from "./TimelineClipProviderReworkModel";
 import type { TimelineClipStoryboardReferenceSelection } from "./useTimelineClipStoryboardReferenceSelection";
 import type { ClipGenerationTaskMap } from "./useTimelineClipGenerationTaskTracker";
 import type { VideoModelOption } from "./TimelineClipProviderReworkControlsTypes";
+
+const COMMAND_SURFACE_CLASS = [
+  "w-full bg-transparent p-0 shadow-none",
+  "min-[720px]:w-auto min-[720px]:rounded-md min-[720px]:border min-[720px]:border-slate-200 min-[720px]:bg-white min-[720px]:p-0.5 min-[720px]:shadow-[0_1px_2px_rgba(15,23,42,0.05)]",
+].join(" ");
+const COMMAND_GRID_CLASS = [
+  "grid grid-cols-2 items-stretch gap-1",
+  "min-[720px]:grid-cols-[max-content_max-content_minmax(15rem,17rem)] min-[720px]:justify-start min-[720px]:gap-0.5",
+].join(" ");
 
 export function TimelineClipProviderReworkCards({
   action,
@@ -109,72 +118,83 @@ export function TimelineClipProviderReworkCards({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   return (
-    <form className="mt-3 border-t border-gray-100 pt-3" onSubmit={onSubmit}>
-      <div className="grid gap-3">
-        <StoryboardReferenceCard
-          referenceImagesInput={referenceImagesInput}
-          storyboardStyle={storyboardStyle}
-          storyboardPanelCount={storyboardPanelCount}
-          storyboardSheetUrl={storyboardSheetUrl}
-          episodeCharacters={episodeCharacters}
-          episodeCharactersLoading={episodeCharactersLoading}
-          episodeCharactersError={episodeCharactersError}
-          onNavigateToCharacters={onNavigateToCharacters}
-          selectedCharacterVirtualIpIds={selectedStoryboardVirtualIpIds}
-          storyboardReferenceSelection={storyboardReferenceSelection}
-          generatingStoryboard={generatingStoryboard}
-          canGenerateStoryboard={canGenerateStoryboard}
-          storyboardTask={generationTasks?.storyboard}
-          currentClipId={currentClipId ?? null}
-          onReferenceImagesInputChange={onReferenceImagesInputChange}
-          onStoryboardStyleChange={onStoryboardStyleChange}
-          onStoryboardPanelCountChange={onStoryboardPanelCountChange}
-          onCharacterVirtualIpToggle={onStoryboardVirtualIpToggle}
-          onGenerateStoryboard={onGenerateStoryboard}
-        />
+    <form
+      data-clip-command-rail="compact"
+      data-clip-command-layout="compact-video-primary"
+      className="px-0.5 py-0"
+      onSubmit={onSubmit}
+    >
+      <div
+        data-clip-command-surface="action-tray"
+        data-clip-command-surface-style="flat-action-cluster"
+        data-clip-command-density="readable"
+        className={COMMAND_SURFACE_CLASS}
+      >
+        <div className={COMMAND_GRID_CLASS}>
+          <StoryboardReferenceCard
+            referenceImagesInput={referenceImagesInput}
+            storyboardStyle={storyboardStyle}
+            storyboardPanelCount={storyboardPanelCount}
+            storyboardSheetUrl={storyboardSheetUrl}
+            episodeCharacters={episodeCharacters}
+            episodeCharactersLoading={episodeCharactersLoading}
+            episodeCharactersError={episodeCharactersError}
+            onNavigateToCharacters={onNavigateToCharacters}
+            selectedCharacterVirtualIpIds={selectedStoryboardVirtualIpIds}
+            storyboardReferenceSelection={storyboardReferenceSelection}
+            generatingStoryboard={generatingStoryboard}
+            canGenerateStoryboard={canGenerateStoryboard}
+            storyboardTask={generationTasks?.storyboard}
+            currentClipId={currentClipId ?? null}
+            onReferenceImagesInputChange={onReferenceImagesInputChange}
+            onStoryboardStyleChange={onStoryboardStyleChange}
+            onStoryboardPanelCountChange={onStoryboardPanelCountChange}
+            onCharacterVirtualIpToggle={onStoryboardVirtualIpToggle}
+            onGenerateStoryboard={onGenerateStoryboard}
+          />
+          <TimelineClipKeyframeCard
+            generating={generatingKeyframes}
+            canGenerate={canGenerateKeyframes}
+            keyframesTask={generationTasks?.keyframes}
+            currentClipId={currentClipId ?? null}
+            onGenerate={onGenerateKeyframes}
+          />
 
-        <TimelineClipKeyframeCard
-          generating={generatingKeyframes}
-          canGenerate={canGenerateKeyframes}
-          keyframesTask={generationTasks?.keyframes}
-          currentClipId={currentClipId ?? null}
-          onGenerate={onGenerateKeyframes}
-        />
-
-        <TimelineClipVideoReworkCard
-          action={action}
-          prompt={prompt}
-          model={model}
-          duration={duration}
-          resolution={resolution}
-          ratio={ratio}
-          reason={reason}
-          videoReferenceChoice={videoReferenceChoice}
-          storyboardPanelIndex={storyboardPanelIndex}
-          episodeCharacters={episodeCharacters}
-          selectedCharacterVirtualIpIds={selectedStoryboardVirtualIpIds}
-          selectedCharacterReferenceUrls={
-            storyboardReferenceSelection.selectedStoryboardCharacterReferenceImages
-          }
-          selectedEnvironmentReferenceUrls={
-            storyboardReferenceSelection.selectedStoryboardEnvironmentReferenceImages
-          }
-          submitting={submitting}
-          submitError={submitError}
-          canSubmit={canSubmit}
-          videoTask={generationTasks?.video}
-          currentClipId={currentClipId ?? null}
-          videoModels={videoModels}
-          videoModelsLoading={videoModelsLoading}
-          onActionChange={onActionChange}
-          onPromptChange={onPromptChange}
-          onModelChange={onModelChange}
-          onDurationChange={onDurationChange}
-          onResolutionChange={onResolutionChange}
-          onRatioChange={onRatioChange}
-          onReasonChange={onReasonChange}
-          onVideoReferenceChoiceChange={onVideoReferenceChoiceChange}
-        />
+          <TimelineClipVideoReworkCard
+            action={action}
+            prompt={prompt}
+            model={model}
+            duration={duration}
+            resolution={resolution}
+            ratio={ratio}
+            reason={reason}
+            videoReferenceChoice={videoReferenceChoice}
+            storyboardPanelIndex={storyboardPanelIndex}
+            episodeCharacters={episodeCharacters}
+            selectedCharacterVirtualIpIds={selectedStoryboardVirtualIpIds}
+            selectedCharacterReferenceUrls={
+              storyboardReferenceSelection.selectedStoryboardCharacterReferenceImages
+            }
+            selectedEnvironmentReferenceUrls={
+              storyboardReferenceSelection.selectedStoryboardEnvironmentReferenceImages
+            }
+            submitting={submitting}
+            submitError={submitError}
+            canSubmit={canSubmit}
+            videoTask={generationTasks?.video}
+            currentClipId={currentClipId ?? null}
+            videoModels={videoModels}
+            videoModelsLoading={videoModelsLoading}
+            onActionChange={onActionChange}
+            onPromptChange={onPromptChange}
+            onModelChange={onModelChange}
+            onDurationChange={onDurationChange}
+            onResolutionChange={onResolutionChange}
+            onRatioChange={onRatioChange}
+            onReasonChange={onReasonChange}
+            onVideoReferenceChoiceChange={onVideoReferenceChoiceChange}
+          />
+        </div>
       </div>
     </form>
   );
