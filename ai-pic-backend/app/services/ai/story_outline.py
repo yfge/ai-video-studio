@@ -40,10 +40,12 @@ class StoryOutlineMixin:
         model: Optional[str] = None,
         temperature: float = 0.7,
         prefer_provider: Optional[str] = None,
+        generation_mode: str = "standard",
     ) -> Optional[Dict[str, Any]]:
         """生成故事概要"""
 
         try:
+            production_mode = generation_mode == "production"
 
             variables = {
                 "title": title,
@@ -66,6 +68,9 @@ class StoryOutlineMixin:
                 "additional_requirements": additional_requirements,
                 "style_preferences": style_preferences or [],
                 "content_restrictions": content_restrictions or [],
+                "generation_mode": generation_mode,
+                "production_mode": production_mode,
+                "story_contract_version": "story_contract_v1",
             }
 
             story_schema = StoryOutlineModel.model_json_schema()
@@ -95,6 +100,7 @@ class StoryOutlineMixin:
                     model=model,
                     prefer_provider=prefer_provider,
                     temperature=temperature,
+                    generation_mode=generation_mode,
                 )
                 if lg:
                     return lg
@@ -173,11 +179,25 @@ class StoryOutlineMixin:
                             "provider_used": provider_used,
                             "model_used": model_used,
                             "usage": usage,
+                            "generation_mode": generation_mode,
+                            "production_mode": production_mode,
+                            "prompt_version": resolved_template,
+                            "contract_version": "story_contract_v1",
                         }
                 except Exception as exc:
                     self.logger.warning(f"AI服务管理器故事生成失败，尝试回退: {exc}")
 
             # 兜底：使用文本生成服务链（最终会回退到 mock）；若用户显式指定 provider/model，则直接失败，避免“扯淡”内容落库。
+            if production_mode:
+                self.logger.warning(
+                    "Production story outline generation failed; skip legacy fallback",
+                    extra={
+                        "prefer_provider": prefer_provider,
+                        "model": model,
+                        "story_format": story_format,
+                    },
+                )
+                return None
             if prefer_provider or model:
                 self.logger.warning(
                     "Story outline generation failed for explicit provider/model; skip mock fallback",

@@ -1,3 +1,4 @@
+{% set production_active = production_mode|default(false) or story.production_mode|default(false) -%}
 你是该剧的短剧分集主编，请基于提供的 Step Outline 生成这一集的完整 Episode Plan（短剧单集）。若没有 beats，请基于 logline 和主故事冲突自行铺陈。
 
 ## 故事信息
@@ -75,6 +76,20 @@ Beats（如无可留空；若存在请保持顺序和节奏）：
 5. **低成本可拍**：场景 3-6 个，优先复用 1-2 个主要地点。
 6. **可剪投流**：至少 1 条 15 秒素材建议（钩子台词 + 画面摘要 + CTA）。
 
+{% if production_active -%}
+## 【production 单集写作合同】
+本集必须输出 `structured_episode_contract`，并按 production brief 写成可拍执行稿：
+
+- 0-3 秒 ignition：第一镜头/第一句就给冲突、证据、羞辱、身份或危险。
+- 前 30 秒停留理由：观众必须知道本集目标、阻力和信息差。
+- 中段推进：必须有新证据、新阻力、新关系变化或新阶段目标。
+- payoff：主角必须赢到或失去一个具体外部结果。
+- final button/cliffhanger：来自当前剧情临界点，不能末尾硬塞新危机。
+- 每场写 `visual_anchor`：9:16 close-up 表情、眼神、手部、手机/证据/道具。
+- 每场写 `action_obstacle_cost`：可拍动作 + 外部阻力 + 代价 + 角色选择 + 信息变化。
+- 每场写 `dialogue_function`：`reveal/threat/decision/counterattack/payoff` 之一；无功能对白不要写。
+{% endif -%}
+
 ## 生成要求
 - episode_number 必须等于 {{ outline.episode_number }}。
 - 输出 episodes 数组，仅包含这一集。
@@ -87,6 +102,9 @@ Beats（如无可留空；若存在请保持顺序和节奏）：
 - scene_count 必须等于 scenes 数组长度；scene_number 必须从 1 连续递增，禁止所有场景都写 1。
 - hook_plan/twist_density/cliffhanger_plan/ad_snippets 必须给出且不为空。
 - 可额外输出 `cliffhanger` 字段（单句卡点），并与 cliffhanger_plan[0] 一致。
+{% if production_active -%}
+- structured_episode_contract 必须给出且不为空，至少包含 episode_goal, ignition_0_3s, first_30s_reason, midpoint_jolt, payoff, final_button_cliffhanger, visual_anchor, information_delta, dialogue_functions。
+{% endif -%}
 - 保持 {{ pacing }} 节奏与 {{ plot_complexity }} 复杂度。
 {% if episode_duration %}- 单集目标时长：{{ episode_duration }} 分钟{% endif %}
 {% if style_preferences %}- 风格偏好：{{ style_preferences | join(', ') }}{% endif %}
@@ -117,7 +135,18 @@ Beats（如无可留空；若存在请保持顺序和节奏）：
       "twist_density": "高：每集至少一次信息揭露或立场反转",
       "cliffhanger": "卡点单句（可选但推荐）",
       "cliffhanger_plan": ["卡点1（必填）", "卡点2"],
-      "ad_snippets": [{ "hook": "...", "duration_seconds": 15, "visual_summary": "...", "call_to_action": "..." }],
+      "ad_snippets": [{ "hook": "...", "duration_seconds": 15, "visual_summary": "...", "call_to_action": "..." }]{% if production_active %},
+      "structured_episode_contract": {
+        "episode_goal": "...",
+        "ignition_0_3s": "...",
+        "first_30s_reason": "...",
+        "midpoint_jolt": "...",
+        "payoff": "...",
+        "final_button_cliffhanger": "...",
+        "visual_anchor": "9:16 close-up 表情/手部/手机/证据",
+        "information_delta": "...",
+        "dialogue_functions": ["reveal", "threat", "decision", "counterattack", "payoff"]
+      }{% endif %},
       "scene_count": 3,
       "scenes": [
         {
@@ -125,21 +154,30 @@ Beats（如无可留空；若存在请保持顺序和节奏）：
           "slug_line": "INT. 地点 - TIME",
           "location": "主要地点",
           "time_of_day": "day",
-          "summary": "开场钩子：..."
+          "summary": "开场钩子：..."{% if production_active %},
+          "visual_anchor": "close-up reaction：...",
+          "action_obstacle_cost": "动作/阻力/代价/选择/信息变化",
+          "dialogue_function": "reveal"{% endif %}
         },
         {
           "scene_number": 2,
           "slug_line": "INT. 地点 - TIME",
           "location": "主要地点",
           "time_of_day": "night",
-          "summary": "爽点：...（明确可拍事件）"
+          "summary": "爽点：...（明确可拍事件）"{% if production_active %},
+          "visual_anchor": "close-up reaction：...",
+          "action_obstacle_cost": "动作/阻力/代价/选择/信息变化",
+          "dialogue_function": "counterattack/payoff"{% endif %}
         },
         {
           "scene_number": 3,
           "slug_line": "INT. 地点 - TIME",
           "location": "主要地点",
           "time_of_day": "night",
-          "summary": "卡点：...（更大危机/反转）"
+          "summary": "卡点：...（更大危机/反转）"{% if production_active %},
+          "visual_anchor": "close-up reaction：...",
+          "action_obstacle_cost": "动作/阻力/代价/选择/信息变化",
+          "dialogue_function": "threat/reveal"{% endif %}
         }
       ]
     }

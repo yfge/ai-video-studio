@@ -73,6 +73,7 @@ class EpisodeLangGraphAgent:
         prefer_provider: Optional[str],
         temperature: float,
         callbacks: EpisodeGenerationCallbacks | None = None,
+        generation_mode: str = "standard",
     ) -> Optional[Dict[str, Any]]:
         if not LANGGRAPH_AVAILABLE or not getattr(self.service, "ai_manager", None):
             return None
@@ -94,6 +95,7 @@ class EpisodeLangGraphAgent:
             prefer_provider=prefer_provider,
             temperature=temperature,
             progress=_progress,
+            generation_mode=generation_mode,
         )
 
         reasoning = outline_result.reasoning
@@ -114,6 +116,9 @@ class EpisodeLangGraphAgent:
                 "usage": outline_result.usage,
                 "reasoning": reasoning,
                 "generation_method": "langgraph_episode_step_outline",
+                "generation_mode": generation_mode,
+                "production_mode": generation_mode == "production",
+                "contract_version": "episode_contract_v1",
             },
         )
 
@@ -144,6 +149,7 @@ class EpisodeLangGraphAgent:
             initial_provider=outline_result.provider,
             initial_model=outline_result.model,
             initial_usage=outline_result.usage,
+            generation_mode=generation_mode,
         )
 
         # Run character consistency validation
@@ -182,6 +188,10 @@ class EpisodeLangGraphAgent:
             "provider_used": episode_result.provider,
             "model_used": episode_result.model,
             "usage": episode_result.usage,
+            "generation_mode": generation_mode,
+            "production_mode": generation_mode == "production",
+            "prompt_version": PromptTemplate.EPISODE_FROM_OUTLINE.value,
+            "contract_version": "episode_contract_v1",
             "reasoning": episode_result.reasoning + ["episodes_done"],
             **char_validation,
             **quality_validation,

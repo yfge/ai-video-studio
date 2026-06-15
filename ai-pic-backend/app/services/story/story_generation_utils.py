@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional, Tuple
 
 _EXTRA_METADATA_EXCLUDE = {
     "premise",
@@ -18,6 +18,16 @@ def build_extra_metadata(ai_content: Dict[str, Any]) -> Dict[str, Any]:
     return {k: v for k, v in ai_content.items() if k not in _EXTRA_METADATA_EXCLUDE}
 
 
+def resolve_model_provider(
+    model_id: Optional[str],
+) -> Tuple[Optional[str], Optional[str]]:
+    prefer_provider = None
+    resolved_model = model_id
+    if model_id and ":" in model_id:
+        prefer_provider, resolved_model = model_id.split(":", 1)
+    return prefer_provider, resolved_model
+
+
 def build_agent_run(result: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(result, dict):
         return {}
@@ -28,6 +38,10 @@ def build_agent_run(result: Dict[str, Any]) -> Dict[str, Any]:
         "model_used": result.get("model_used"),
         "usage": result.get("usage"),
         "reasoning": result.get("reasoning"),
+        "generation_mode": result.get("generation_mode"),
+        "production_mode": result.get("production_mode"),
+        "prompt_version": result.get("prompt_version"),
+        "contract_version": result.get("contract_version"),
     }
     for key in (
         "character_validation_passed",
@@ -56,5 +70,8 @@ def build_agent_run(result: Dict[str, Any]) -> Dict[str, Any]:
     first_attempt = result.get("first_attempt")
     if first_attempt:
         payload["first_attempt"] = first_attempt
+    quality_gate = result.get("quality_gate")
+    if quality_gate:
+        payload["quality_gate"] = quality_gate
 
     return {k: v for k, v in payload.items() if v is not None}

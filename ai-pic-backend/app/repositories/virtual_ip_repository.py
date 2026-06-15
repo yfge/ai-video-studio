@@ -42,3 +42,20 @@ class VirtualIPRepository(BaseRepository[VirtualIP]):
         if not ip:
             raise NotFoundError.virtual_ip(business_id)
         return ip
+
+    def find_accessible_by_id(
+        self,
+        ip_id: int,
+        *,
+        user: User | None = None,
+        user_id: int | None = None,
+    ) -> VirtualIP | None:
+        query = self.session.query(self.model).filter(
+            self.model.id == ip_id,
+            self.model.is_deleted.is_(False),
+        )
+        if user is not None and not user.is_admin and not user.is_superuser:
+            query = query.filter(self.model.user_id == user.id)
+        elif user_id is not None:
+            query = query.filter(self.model.user_id == user_id)
+        return query.first()

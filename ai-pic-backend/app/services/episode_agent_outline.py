@@ -64,8 +64,10 @@ async def generate_step_outlines(
     prefer_provider: Optional[str],
     temperature: float,
     progress: Callable[[str], Awaitable[None]],
+    generation_mode: str = "standard",
 ) -> OutlineGenerationResult:
     outline_schema = EpisodeStepOutlineModel.model_json_schema()
+    production_mode = generation_mode == "production"
 
     outline_variables = {
         "story": story,
@@ -76,6 +78,9 @@ async def generate_step_outlines(
         "pacing": pacing,
         "additional_requirements": additional_requirements,
         "style_preferences": style_preferences,
+        "generation_mode": generation_mode,
+        "production_mode": production_mode,
+        "episode_contract_version": "episode_contract_v1",
     }
 
     await progress("剧集大纲：调用模型")
@@ -118,7 +123,7 @@ async def generate_step_outlines(
                 filtered = [
                     ep
                     for ep in outlines.get("episodes", [])
-                    if (ep.get("logline") or "").strip()
+                    if _outline_episode_usable(ep, production_mode=production_mode)
                 ]
                 if len(filtered) >= episode_count:
                     outlines["episodes"] = filtered[:episode_count]
@@ -201,3 +206,13 @@ async def generate_step_outlines(
         usage=usage,
         reasoning=reasoning,
     )
+
+
+def _outline_episode_usable(episode: dict[str, Any], *, production_mode: bool) -> bool:
+    if not (episode.get("logline") or "").strip():
+        return False
+    if not production_mode:
+        return True
+    beats = episode.get("beats")
+    contract = episode.get("structured_episode_contract")
+    return bool(beats) and isinstance(contract, dict) and bool(contract)

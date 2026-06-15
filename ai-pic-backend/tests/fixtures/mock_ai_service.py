@@ -5,7 +5,12 @@ from uuid import uuid4
 
 import pytest
 from app.core.config import settings
-from tests.fixtures.mock_ai_text_payloads import mock_generate_text_payload
+from tests.fixtures.mock_ai_text_payloads import (
+    mock_generate_text_payload,
+    mock_passing_episode_plan_payload,
+    mock_passing_script_payload,
+    mock_passing_story_outline_payload,
+)
 
 
 @pytest.fixture
@@ -136,44 +141,14 @@ def mock_ai_service(monkeypatch):
             }
 
         async def generate_story_outline(self, **_: str) -> dict:
-            normalized = {
-                "premise": "Mock premise",
-                "synopsis": "Mock synopsis",
-                "main_conflict": "Mock conflict",
-                "resolution": "Mock resolution",
-                "main_characters": [
-                    {"name": "Hero", "role": "protagonist"},
-                    {"name": "Guide", "role": "mentor"},
-                ],
-                "character_relationships": {"Hero": {"Guide": "mentor"}},
-            }
             return {
-                "normalized": normalized,
+                "normalized": mock_passing_story_outline_payload(),
                 "prompt": "mock-story-prompt",
                 "generation_method": "mock-provider:story",
             }
 
         async def generate_episodes(self, episode_count: int = 1, **_: str) -> dict:
-            episodes_payload = {
-                "episodes": [
-                    {
-                        "episode_number": idx + 1,
-                        "title": f"Mock Episode {idx + 1}",
-                        "summary": "Mock summary",
-                        "plot_points": [{"order": 1, "description": "Mock plot"}],
-                        "character_arcs": {"Hero": "Learns trust"},
-                        "conflicts": [
-                            {
-                                "type": "mock",
-                                "description": "Mock conflict",
-                                "intensity": "medium",
-                            }
-                        ],
-                        "scene_count": 3,
-                    }
-                    for idx in range(episode_count or 1)
-                ]
-            }
+            episodes_payload = mock_passing_episode_plan_payload(episode_count)
             return {
                 "content": json.dumps(episodes_payload, ensure_ascii=False),
                 "prompt": "mock-episode-prompt",
@@ -181,42 +156,8 @@ def mock_ai_service(monkeypatch):
             }
 
         async def generate_script(self, **_: Any) -> dict:
-            character_name = "旁白"
-
-            script_payload = {
-                "content": (
-                    "【音效】砰！画面直接切入冲突现场。\n"
-                    "# screenplay (zh-CN)\n"
-                    "## 场景\n"
-                    f"- [场景 1] Scene 1: {character_name} finds the hidden key.\n"
-                    f"【快】【情绪目的：推进冲突】{character_name} grabs the key before the door opens.\n"
-                    "\n## 对白\n"
-                    f"[场景 1] {character_name}: Stop now?\n"
-                    "\n## 舞台指示\n"
-                    f"[场景 1][mid] {character_name} hides the key under the lamp.\n"
-                    "【慢】【情绪目的：留下悬念】Which door does the key open?"
-                ),
-                "scenes": [
-                    {
-                        "scene_number": 1,
-                        "location": "Room",
-                        "time": "Day",
-                        "description": "Mock scene description",
-                    }
-                ],
-                "dialogues": [
-                    {
-                        "scene_number": 1,
-                        "character": character_name,
-                        "content": "Stop now?",
-                    }
-                ],
-                "stage_directions": [
-                    {"scene_number": 1, "direction": "Camera pans across the room."}
-                ],
-            }
             return {
-                "content": script_payload,
+                "content": mock_passing_script_payload(),
                 "prompt": "mock-script-prompt",
                 "generation_method": "mock-provider:scripts",
             }

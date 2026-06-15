@@ -4,14 +4,16 @@ import json
 from copy import deepcopy
 from typing import Any, Dict, Optional
 
-from pydantic import ValidationError
-
 from app.schemas.generation import EpisodePlanItem, EpisodePlanModel
 from app.services.episode.episode_generation_utils import is_episode_payload_valid
 from app.services.episode.episode_scene_normalization import ensure_scenes
 from app.services.episode_agent_validation import (
     validate_episode_characters,
     validate_episode_quality,
+)
+from app.services.episode_contract_quality import (
+    episode_contract_quality_check,
+    required_episode_contract_check,
 )
 from app.services.narrative_context import extract_story_characters
 from app.services.quality_gate_core import (
@@ -23,6 +25,7 @@ from app.services.quality_gate_core import (
 )
 from app.services.quality_gate_repair import repair_quality_gate_payload
 from app.utils.json_utils import extract_json_block
+from pydantic import ValidationError
 
 
 def _episode_result_payload(result: Dict[str, Any]) -> Dict[str, Any]:
@@ -41,6 +44,7 @@ def evaluate_episode_quality_gate(
     episode_count: int,
     continuity_ledger: Optional[Dict[str, Any]] = None,
     repair_attempts: Optional[list[Dict[str, Any]]] = None,
+    require_episode_contract: bool = False,
 ) -> Dict[str, Any]:
     checks: list[Dict[str, Any]] = [
         make_quality_check(
@@ -135,6 +139,11 @@ def evaluate_episode_quality_gate(
             details={"errors": ledger_errors},
         )
     )
+    if require_episode_contract:
+        checks.append(required_episode_contract_check(episodes))
+    contract_quality = episode_contract_quality_check(episodes)
+    if contract_quality:
+        checks.append(contract_quality)
     return build_quality_gate_report(
         kind="episode", checks=checks, repair_attempts=repair_attempts
     )
@@ -160,6 +169,7 @@ async def enforce_episode_quality_gate_with_repair(
     prefer_provider: Optional[str] = None,
     temperature: float = 0.3,
     max_repairs: int = MAX_QUALITY_GATE_REPAIRS,
+    require_episode_contract: bool = False,
 ) -> Dict[str, Any]:
     payload = _episode_result_payload(result)
     episodes = payload.get("episodes") or []
@@ -173,6 +183,7 @@ async def enforce_episode_quality_gate_with_repair(
             if isinstance(result.get("continuity_ledger"), dict)
             else story.get("continuity_ledger")
         ),
+        require_episode_contract=require_episode_contract,
     )
     if gate["passed"]:
         return _with_episode_gate(result, episodes, gate)
@@ -215,6 +226,7 @@ async def enforce_episode_quality_gate_with_repair(
                 else story.get("continuity_ledger")
             ),
             repair_attempts=deepcopy(attempts),
+            require_episode_contract=require_episode_contract,
         )
         attempts[-1]["output_gate"] = quality_gate_attempt_snapshot(gate)
         if gate["passed"]:

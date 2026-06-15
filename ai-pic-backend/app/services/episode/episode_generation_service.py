@@ -4,18 +4,20 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from app.models.script import Episode, Story
 from app.models.user import User
-from app.models.virtual_ip import VirtualIP
-from app.prompts.manager import PromptManager
-from app.prompts.templates import PromptTemplate
+from app.repositories.script_repository import StoryRepository
+from app.repositories.virtual_ip_repository import VirtualIPRepository
 from app.schemas.generation_requests import EpisodeGenerationRequest
 from app.services import ai_service as ai_service_module
+from app.services.episode.episode_generation_context import (
+    build_preview_prompt,
+    build_story_data,
+)
 from app.services.narrative_quality_gate import (
     NarrativeQualityGateError,
     enforce_episode_quality_gate_with_repair,
 )
-from app.services.script.script_utils import build_character_profiles
 from app.utils.json_utils import extract_json_block
-from app.utils.marketing_meta import apply_marketing_overrides, merge_marketing_meta
+from app.utils.marketing_meta import apply_marketing_overrides
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -32,23 +34,24 @@ class EpisodeGenerationService:
         self.current_user = current_user
 
     def _get_story(self, story_id: int) -> Story:
-        query = utils.not_deleted(self.db.query(Story), Story).filter(
-            Story.id == story_id
+        owner_id = (
+            None
+            if self.current_user.is_admin or self.current_user.is_superuser
+            else self.current_user.id
         )
-        if not self.current_user.is_admin and not self.current_user.is_superuser:
-            query = query.filter(Story.user_id == self.current_user.id)
-        story = query.first()
+        story = StoryRepository(self.db).get_by_user(story_id, user_id=owner_id)
         if not story:
             raise HTTPException(status_code=404, detail="故事不存在")
         return story
 
     def _get_focus_characters(self, character_ids: List[int]) -> List[Dict[str, Any]]:
         focus_characters: list[Dict[str, Any]] = []
+        virtual_ip_repo = VirtualIPRepository(self.db)
         for char_id in character_ids or []:
-            vip_query = self.db.query(VirtualIP).filter(VirtualIP.id == char_id)
-            if not self.current_user.is_admin and not self.current_user.is_superuser:
-                vip_query = vip_query.filter(VirtualIP.user_id == self.current_user.id)
-            virtual_ip = vip_query.first()
+            virtual_ip = virtual_ip_repo.find_accessible_by_id(
+                char_id,
+                user=self.current_user,
+            )
             if virtual_ip:
                 focus_characters.append(
                     {
@@ -59,40 +62,6 @@ class EpisodeGenerationService:
                 )
         return focus_characters
 
-    def _build_story_data(self, story: Story) -> Dict[str, Any]:
-        extra_meta = (
-            story.extra_metadata if isinstance(story.extra_metadata, dict) else {}
-        )
-        marketing_meta = merge_marketing_meta(
-            extra_meta,
-            (
-                story.generation_params
-                if isinstance(story.generation_params, dict)
-                else {}
-            ),
-        )
-        return {
-            "title": story.title,
-            "story_format": getattr(story, "story_format", None),
-            "genre": story.genre,
-            "theme": story.theme,
-            "synopsis": story.synopsis,
-            "main_conflict": story.main_conflict,
-            "resolution": story.resolution,
-            "character_profiles": build_character_profiles(story),
-            "main_characters": story.main_characters,
-            "character_relationships": story.character_relationships,
-            "world_building": story.world_building,
-            "setting_time": story.setting_time,
-            "setting_location": story.setting_location,
-            "continuity_ledger": (
-                extra_meta.get("continuity_ledger")
-                if isinstance(extra_meta.get("continuity_ledger"), dict)
-                else None
-            ),
-            **marketing_meta,
-        }
-
     @staticmethod
     def _split_model(model_id: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
         if model_id and ":" in model_id:
@@ -102,7 +71,7 @@ class EpisodeGenerationService:
 
     def build_preview_prompt(self, request: EpisodeGenerationRequest) -> str:
         story = self._get_story(request.story_id)
-        story_data = self._build_story_data(story)
+        story_data = build_story_data(story)
         hook_plan_payload = (
             request.hook_plan.model_dump() if request.hook_plan else None
         )
@@ -123,18 +92,10 @@ class EpisodeGenerationService:
             },
         )
         focus_characters = self._get_focus_characters(request.focus_characters)
-        variables = {
-            "story": story_data,
-            "episode_count": request.episode_count,
-            "episode_duration": request.episode_duration,
-            "focus_characters": focus_characters,
-            "plot_complexity": request.plot_complexity,
-            "pacing": request.pacing,
-            "additional_requirements": request.additional_requirements,
-            "style_preferences": request.style_preferences or [],
-        }
-        return PromptManager().render_prompt(
-            PromptTemplate.EPISODE_GENERATION.value, variables
+        return build_preview_prompt(
+            request=request,
+            story_data=story_data,
+            focus_characters=focus_characters,
         )
 
     async def generate_episodes(
@@ -142,7 +103,7 @@ class EpisodeGenerationService:
     ) -> List[Episode]:
         story = self._get_story(request.story_id)
         focus_characters = self._get_focus_characters(request.focus_characters)
-        story_data = self._build_story_data(story)
+        story_data = build_story_data(story)
         hook_plan_payload = (
             request.hook_plan.model_dump() if request.hook_plan else None
         )
@@ -178,6 +139,7 @@ class EpisodeGenerationService:
                 model=model_id,
                 prefer_provider=prefer_provider,
                 temperature=request.temperature or 0.7,
+                generation_mode=request.generation_mode,
             )
         except NarrativeQualityGateError as exc:
             raise HTTPException(
@@ -225,6 +187,7 @@ class EpisodeGenerationService:
                     model=model_id,
                     prefer_provider=prefer_provider,
                     temperature=request.temperature or 0.7,
+                    require_episode_contract=request.generation_mode == "production",
                 )
             except NarrativeQualityGateError as exc:
                 raise HTTPException(

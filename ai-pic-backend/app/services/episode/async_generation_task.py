@@ -161,6 +161,7 @@ async def _generate_episodes(
         prefer_provider=prefer_provider,
         temperature=request.temperature or 0.7,
         callbacks=callbacks,
+        generation_mode=request.generation_mode,
     )
 
 

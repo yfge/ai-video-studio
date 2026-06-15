@@ -135,6 +135,47 @@ async def test_outline_logline_only(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_production_outline_logline_only_fails(monkeypatch):
+    monkeypatch.setattr("app.services.episode_agent.LANGGRAPH_AVAILABLE", True)
+    monkeypatch.setattr("app.services.episode_agent.StateGraph", FakeGraph)
+    monkeypatch.setattr("app.services.episode_agent.END", "END")
+
+    outline = {"episodes": [{"episode_number": 1, "title": "E1", "logline": "钩子"}]}
+    ai_manager = FakeAIManager(
+        [
+            make_response(json.dumps(outline)),
+            make_response(json.dumps(outline)),
+            make_response(json.dumps(outline)),
+        ]
+    )
+
+    class Svc:
+        def __init__(self):
+            self.ai_manager = ai_manager
+
+    agent = EpisodeLangGraphAgent(Svc())
+    result = await agent.generate(
+        story={"title": "T", "genre": "drama", "story_format": "short_drama"},
+        episode_count=1,
+        episode_duration=None,
+        focus_characters=None,
+        plot_complexity="medium",
+        pacing="medium",
+        additional_requirements=None,
+        style_preferences=None,
+        model=None,
+        prefer_provider=None,
+        temperature=0.7,
+        generation_mode="production",
+    )
+
+    assert result is not None
+    assert result["error"] == "outline_invalid"
+    assert "outline_too_short" in result["reasoning"]
+    assert ai_manager._responses == []
+
+
+@pytest.mark.asyncio
 async def test_outline_missing_logline_triggers_repair(monkeypatch):
     monkeypatch.setattr("app.services.episode_agent.LANGGRAPH_AVAILABLE", True)
     monkeypatch.setattr("app.services.episode_agent.StateGraph", FakeGraph)

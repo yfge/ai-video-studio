@@ -17,6 +17,7 @@ from app.services.script_quality_gate import (
     enforce_script_quality_gate_with_repair,
     evaluate_script_quality_gate,
 )
+from app.services.story_quality_gate import evaluate_story_quality_gate
 
 __all__ = [
     "MAX_QUALITY_GATE_REPAIRS",
@@ -28,6 +29,7 @@ __all__ = [
     "enforce_script_quality_gate_with_repair",
     "evaluate_episode_quality_gate",
     "evaluate_script_quality_gate",
+    "evaluate_story_quality_gate",
     "make_quality_check",
     "quality_gate_attempt_snapshot",
 ]

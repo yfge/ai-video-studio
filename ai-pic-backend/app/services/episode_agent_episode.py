@@ -41,6 +41,7 @@ async def generate_episodes_from_outlines(
     initial_provider: str | None,
     initial_model: str | None,
     initial_usage: dict | None,
+    generation_mode: str = "standard",
 ) -> EpisodeGenerationResult:
     provider_used = initial_provider
     model_used = initial_model
@@ -55,11 +56,19 @@ async def generate_episodes_from_outlines(
     )
     if not continuity_ledger:
         continuity_ledger = init_continuity_ledger_from_story(story)
+    story_for_generation = dict(story or {})
+    story_for_generation.update(
+        {
+            "generation_mode": generation_mode,
+            "production_mode": generation_mode == "production",
+            "episode_contract_version": "episode_contract_v1",
+        }
+    )
 
     for outline in outline_episodes[:episode_count]:
         output = await generate_episode_with_continuity_react(
             ai_manager=ai_manager,
-            story=story,
+            story=story_for_generation,
             outline=outline,
             outline_episodes=[o for o in outline_episodes if isinstance(o, dict)],
             continuity_ledger=continuity_ledger,
@@ -95,6 +104,9 @@ async def generate_episodes_from_outlines(
                 "react_attempts": output.react_attempts,
                 "duration_accepted": output.duration_accepted,
                 "continuity_snapshot": output.episode.get("continuity_snapshot"),
+                "generation_mode": generation_mode,
+                "production_mode": generation_mode == "production",
+                "contract_version": "episode_contract_v1",
             },
         )
 

@@ -126,6 +126,9 @@ def build_outline_agent_run(
         "usage": meta.get("usage"),
         "reasoning": meta.get("reasoning"),
         "normalized": outlines,
+        "generation_mode": meta.get("generation_mode"),
+        "production_mode": meta.get("production_mode"),
+        "contract_version": meta.get("contract_version"),
     }
     raw = meta.get("raw")
     if isinstance(raw, str) and raw.strip():
@@ -168,6 +171,9 @@ def build_episode_result_meta(meta: Dict[str, Any]) -> Dict[str, Any]:
         "provider_used": meta.get("provider"),
         "model_used": meta.get("model"),
         "usage": meta.get("usage"),
+        "generation_mode": meta.get("generation_mode"),
+        "production_mode": meta.get("production_mode"),
+        "contract_version": meta.get("contract_version"),
     }
 
 

@@ -69,6 +69,7 @@ def test_story_episode_script_generate_async_persists_task_agent_run(
 
     assert delay_calls.get("story", (None, None, None))[0] == story_task_id
     story_task_id, story_payload, story_user_id = delay_calls["story"]
+    assert story_payload["generation_mode"] == "production"
     task_worker_module.story_generate_task.run(
         story_task_id, story_payload, story_user_id
     )
@@ -101,6 +102,7 @@ def test_story_episode_script_generate_async_persists_task_agent_run(
 
     assert delay_calls.get("episode", (None, None, None))[0] == episode_task_id
     episode_task_id, episode_payload, episode_user_id = delay_calls["episode"]
+    assert episode_payload["generation_mode"] == "production"
     task_worker_module.episode_generate_task.run(
         episode_task_id, episode_payload, episode_user_id
     )

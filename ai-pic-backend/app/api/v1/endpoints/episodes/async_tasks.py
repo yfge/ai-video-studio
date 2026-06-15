@@ -23,17 +23,20 @@ async def generate_episodes_async(
     db: Session = Depends(get_db),
 ):
     """Generate episodes asynchronously via Celery worker."""
+    payload = request.model_dump()
+    payload["generation_mode"] = "production"
+    payload["production_mode"] = True
     task = Task(
         title=f"生成剧集 - 故事{request.story_id}",
         description="异步剧集生成",
         task_type=TaskType.EPISODE_GENERATION,
         prompt=f"Episode plan for story {request.story_id}",
-        parameters=json.dumps(request.dict(), ensure_ascii=False),
+        parameters=json.dumps(payload, ensure_ascii=False),
         user_id=current_user.id,
     )
     db.add(task)
     db.commit()
     db.refresh(task)
 
-    episode_generate_task.delay(task.id, request.dict(), current_user.id)
+    episode_generate_task.delay(task.id, payload, current_user.id)
     return {"success": True, "data": {"task_id": task.id, "status": task.status}}

@@ -91,6 +91,19 @@
 5. **低成本可拍**：每集 3-6 场景为宜，优先复用 1-2 个主要地点。
 6. **可剪投流**：每集提供至少 1 条 15 秒投流素材建议（钩子台词 + 画面摘要）。
 
+{% if production_mode -%}
+## 【production episode writing brief】研究映射后的单集合同
+你要写的是可拍、可剪、可质检的竖屏短剧 Episode Plan，不是剧情梗概。
+
+- 每集必须输出 `structured_episode_contract`。
+- 0-3 秒 ignition：第一镜头/第一句就给冲突、证据、羞辱、身份或危险；前 30 秒必须给停留理由。
+- 每场必须包含：可拍动作、外部阻力、外部代价、主角选择、信息变化。
+- 对白必须带 `dialogue_function`，只允许使用 `reveal/threat/decision/counterattack/payoff`；无功能对白视为质量风险。
+- 强制 9:16 close-up：写出表情、眼神、手部、手机/证据/道具等视觉锚点。
+- 卡点必须来自当前剧情临界点，不能末尾硬塞新危机。
+- 中段不能闲聊或空泛抒情；必须交付新证据、新阻力、新关系变化或新阶段目标。
+{% endif -%}
+
 ## 输出格式
 请以JSON格式返回，包含episodes数组，每集必须包含：
 
@@ -109,6 +122,9 @@
 13. **ad_snippets**: 本集投流素材建议（至少 1 条，含 hook 与 visual_summary）
 14. **scenes**: 场景列表（数组），每个包含 scene_number, slug_line, location, time_of_day, summary；其中爽点场景的 summary 必须以“爽点：...”开头，最后一个场景 summary 必须以“卡点：...”开头
 15. **scene_count 与 scenes 一致**: scene_count 必须等于 scenes 数组长度；scene_number 必须从 1 连续递增，禁止所有场景都写 1
+{% if production_mode -%}
+16. **structured_episode_contract**: 必填，包含 episode_goal, ignition_0_3s, first_30s_reason, midpoint_jolt, payoff, final_button_cliffhanger, visual_anchor, information_delta, dialogue_functions
+{% endif -%}
 
 {
     "episodes": [
@@ -134,28 +150,48 @@
             "cliffhanger_plan": ["...", "..."],
             "ad_snippets": [
                 { "duration_seconds": 15, "hook": "...", "visual_summary": "...", "call_to_action": "..." }
-            ],
+            ]{% if production_mode %},
+            "structured_episode_contract": {
+                "episode_goal": "...",
+                "ignition_0_3s": "...",
+                "first_30s_reason": "...",
+                "midpoint_jolt": "...",
+                "payoff": "...",
+                "final_button_cliffhanger": "...",
+                "visual_anchor": "9:16 close-up 表情/手部/手机/证据",
+                "information_delta": "...",
+                "dialogue_functions": ["reveal", "threat", "decision", "counterattack", "payoff"]
+            }{% endif %},
             "scenes": [
                 {
                     "scene_number": 1,
                     "slug_line": "INT. ... - 日",
                     "location": "...",
                     "time_of_day": "day",
-                    "summary": "开场钩子：..."
+                    "summary": "开场钩子：..."{% if production_mode %},
+                    "visual_anchor": "close-up reaction：...",
+                    "action_obstacle_cost": "动作/阻力/代价/选择/信息变化",
+                    "dialogue_function": "reveal"{% endif %}
                 },
                 {
                     "scene_number": 2,
                     "slug_line": "INT. ... - 夜",
                     "location": "...",
                     "time_of_day": "night",
-                    "summary": "爽点：...（明确事件）"
+                    "summary": "爽点：...（明确事件）"{% if production_mode %},
+                    "visual_anchor": "close-up reaction：...",
+                    "action_obstacle_cost": "动作/阻力/代价/选择/信息变化",
+                    "dialogue_function": "counterattack/payoff"{% endif %}
                 },
                 {
                     "scene_number": 3,
                     "slug_line": "INT. ... - 夜",
                     "location": "...",
                     "time_of_day": "night",
-                    "summary": "卡点：...（更大危机/反转）"
+                    "summary": "卡点：...（更大危机/反转）"{% if production_mode %},
+                    "visual_anchor": "close-up reaction：...",
+                    "action_obstacle_cost": "动作/阻力/代价/选择/信息变化",
+                    "dialogue_function": "threat/reveal"{% endif %}
                 }
             ]
         }

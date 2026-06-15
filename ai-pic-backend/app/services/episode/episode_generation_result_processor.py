@@ -150,4 +150,5 @@ async def _run_quality_gate(
         model=model_id,
         prefer_provider=prefer_provider,
         temperature=request.temperature or 0.3,
+        require_episode_contract=request.generation_mode == "production",
     )

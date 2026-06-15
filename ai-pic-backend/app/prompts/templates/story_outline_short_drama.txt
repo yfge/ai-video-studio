@@ -89,6 +89,26 @@
 3. **结尾卡点**：每集结尾留下更大的悬念或危机升级，强驱动下一集。
 4. **可剪性**：爽点与卡点应能拆成 15/30/60 秒投流素材（台词钩子 + 画面动作 + CTA）。
 
+{% if production_mode -%}
+## 【production story-room brief】研究映射后的生产合同
+你不是在写“故事简介”，而是在给后续分集、剧本、投流剪辑交付一份可执行的短剧 story-room brief。必须返回 `structured_story_contract`，并满足：
+
+1. **大期待**：最晚第二集让观众知道主角到底要完成什么，目标必须具体，不要让观众猜。
+2. **小期待阶梯**：把大目标拆成阶段任务，至少覆盖前三集、第8-12集、第20-30集的阶段目标或高潮。
+3. **信息差设计**：说明观众、主角、对手分别知道什么；信息差必须服务悬念，不能强行反转。
+4. **前三集立主线**：前三集内交代背景、主角身份、核心冲突、观众期待。
+5. **结构性冲突**：冲突必须内置在设定和人物关系中，不靠临时误会续命。
+6. **可拍性**：少写心理，多写行为；每个关键爽点都要能被镜头拍出来。
+7. **9:16 近景意识**：设计表情、眼神、手部、手机/证据/道具等 close-up reaction 视觉锚点。
+8. **合规底线**：标记可能的价值观、法律、尺度风险；有实质风险时不要美化或绕过。
+
+### 好/坏例
+- 好 beat：`林雪当众播放录音，陈默伸手抢手机失败；她付出被停职代价，换来董事会重新调查。`
+- 坏 beat：`情绪升级，剧情推进，巨大反转。`
+
+禁止只写“情绪升级、推进剧情、巨大反转”。每个爽点必须写成：谁做了什么、遇到什么阻力、付出什么代价、获得什么结果、观众得到什么信息变化。
+{% endif -%}
+
 ## 生成内容
 请创作一个完整的短剧故事概要，以JSON格式返回，包含以下内容：
 
@@ -106,6 +126,9 @@
 12. **反转密度** (twist_density): 目标反转密度（文本即可）
 13. **悬念卡点** (cliffhanger_plan): 关键卡点/悬念列表（至少 6 条）
 14. **投流素材** (ad_snippets): 15/30/60 秒素材的钩子、画面摘要、CTA 建议（至少 3 条）
+{% if production_mode -%}
+15. **生产故事合同** (structured_story_contract): 必填，包含 target_audience, core_emotional_pain, big_expectation, small_expectation_ladder, protagonist_goal, structural_conflict, information_gap, first_three_episode_spine, stage_highs, shootability, compliance_risks, traffic_hooks
+{% endif -%}
 
 ## 输出格式
 {
@@ -145,5 +168,19 @@
             "visual_summary": "...",
             "call_to_action": "..."
         }
-    ]
+    ]{% if production_mode %},
+    "structured_story_contract": {
+        "target_audience": "...",
+        "core_emotional_pain": "...",
+        "big_expectation": "...",
+        "small_expectation_ladder": ["前三集...", "第8-12集...", "第20-30集..."],
+        "protagonist_goal": "...",
+        "structural_conflict": "...",
+        "information_gap": "...",
+        "first_three_episode_spine": "...",
+        "stage_highs": ["..."],
+        "shootability": "低成本可拍场景/动作/道具说明",
+        "compliance_risks": [],
+        "traffic_hooks": ["..."]
+    }{% endif %}
 }

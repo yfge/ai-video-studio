@@ -1,4 +1,9 @@
-你是一名剧集主编，先帮我把故事拆成「Step Outline」，**每集只需要一句话 logline**（对齐主故事线），后续细节留到剧集生成阶段。
+你是一名剧集主编，先帮我把故事拆成「Step Outline」。
+{% if production_mode -%}
+production 模式下，每集必须同时交付 logline、beat skeleton 和 `structured_episode_contract`，用于后续剧集生成与质量门。
+{% else -%}
+standard 模式下，每集只需要一句话 logline（对齐主故事线），后续细节留到剧集生成阶段。
+{% endif -%}
 
 ## 故事信息
 标题：{{ story.title }}
@@ -33,9 +38,16 @@
 ## 生成要求
 - 总集数：{{ episode_count }} 集{% if episode_duration %}，每集约 {{ episode_duration }} 分钟{% endif %}
 - 情节复杂度：{{ plot_complexity }}；节奏：{{ pacing }}
+{% if production_mode -%}
+- production 不接受 logline-only；每集必须有 beats 和 `structured_episode_contract`。
+- 每集按 60-120 秒微故事设计，必须包含 0-3 秒 ignition、前 30 秒停留理由、中段信息/冲突推进、payoff、最后 30 秒自然卡点。
+- 每集必须写清 episode_goal、information_delta、emotional_turn、visual_anchor、next_tap_reason。
+- beats 至少 5 个：ignition / first_30s_reason / midpoint_jolt / protagonist_choice / payoff / final_button_cliffhanger（可多不可少）。
+{% else -%}
 - 每集只需要 1 句 logline（不要分段/换行），需与主线一致；建议在同一句话里包含「起承转合 + 钩子」（可用分号/顿号分隔）。
 - 若提供爽点/卡点/投流素材，需要在 logline 中体现节奏与钩子。
 - beats/详细节点此阶段可以省略（如果提供也可，但非必填）。
+{% endif -%}
 {% if additional_requirements -%}
 - 额外要求：{{ additional_requirements }}
 {% endif -%}
@@ -44,13 +56,60 @@
 {% endif -%}
 
 ## 输出格式
+{% if production_mode -%}
+仅返回 JSON，无需代码块，符合 EpisodeStepOutlineModel；production 模式 beats 与 structured_episode_contract 必填：
+{% else -%}
 仅返回 JSON，无需代码块，符合 EpisodeStepOutlineModel（beats 可省略或留空）：
+{% endif -%}
 {
   "episodes": [
     {
       "episode_number": 1,
       "title": "第1集标题",
-      "logline": "起：…；承：…；转：…；合：…；钩子：…"
+      "logline": "起：…；承：…；转：…；合：…；钩子：…"{% if production_mode %},
+      "beats": [
+        {
+          "sequence_number": 1,
+          "beat_title": "0-3 秒 ignition",
+          "beat_summary": "可见动作/冲突爆点",
+          "act_label": "ignition",
+          "dramatic_question": "观众为什么停下",
+          "characters_involved": ["..."],
+          "location_hint": "低成本可拍地点",
+          "duration_estimate_minutes": 0.1
+        },
+        {
+          "sequence_number": 2,
+          "beat_title": "前 30 秒停留理由",
+          "beat_summary": "目标、困境、信息差同时抛出",
+          "act_label": "first_30s_reason"
+        },
+        {
+          "sequence_number": 3,
+          "beat_title": "中段推进",
+          "beat_summary": "不是闲聊，必须带来新信息或新阻力",
+          "act_label": "midpoint_jolt"
+        },
+        {
+          "sequence_number": 4,
+          "beat_title": "主角选择",
+          "beat_summary": "主角主动选择并付出外部代价",
+          "act_label": "protagonist_choice"
+        },
+        {
+          "sequence_number": 5,
+          "beat_title": "payoff + final button/cliffhanger",
+          "beat_summary": "具体爽点落地，并从当前临界点自然卡住",
+          "act_label": "payoff_cliffhanger"
+        }
+      ],
+      "structured_episode_contract": {
+        "episode_goal": "...",
+        "information_delta": "...",
+        "emotional_turn": "...",
+        "visual_anchor": "9:16 close-up 表情/手部/手机/证据",
+        "next_tap_reason": "..."
+      }{% endif %}
     }
   ]
 }

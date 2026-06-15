@@ -5,6 +5,10 @@ from pydantic import BaseModel, Field
 
 
 class StoryGenerationRequest(BaseModel):
+    generation_mode: Literal["standard", "production"] = Field(
+        "standard",
+        description="生成链路：standard（同步/调试）/ production（异步生产质量门）",
+    )
     # 基本信息
     title: str = Field(..., max_length=255)
     story_format: Literal["short_drama", "tv_series", "film"] = Field(
@@ -66,6 +70,10 @@ class StoryGenerationRequest(BaseModel):
 
 
 class EpisodeGenerationRequest(BaseModel):
+    generation_mode: Literal["standard", "production"] = Field(
+        "standard",
+        description="生成链路：standard（同步/调试）/ production（异步生产质量门）",
+    )
     story_id: int
     episode_count: int = Field(..., ge=1, le=100, description="要生成的剧集数量")
     episode_duration: Optional[int] = Field(None, ge=1, description="每集时长（分钟）")

@@ -25,6 +25,10 @@ def build_agent_run_info(result: Dict[str, Any]) -> Dict[str, Any]:
         "model_used": result.get("model_used"),
         "usage": result.get("usage"),
         "reasoning": result.get("reasoning"),
+        "generation_mode": result.get("generation_mode"),
+        "production_mode": result.get("production_mode"),
+        "prompt_version": result.get("prompt_version"),
+        "contract_version": result.get("contract_version"),
     }
 
     raw_content = result.get("content")

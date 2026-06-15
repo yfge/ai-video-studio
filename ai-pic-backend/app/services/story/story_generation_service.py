@@ -1,17 +1,20 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from app.models.script import Story, StoryCharacter
 from app.models.user import User
-from app.models.virtual_ip import VirtualIP
+from app.repositories.virtual_ip_repository import VirtualIPRepository
 from app.schemas.generation_requests import StoryGenerationRequest
 from app.services.ai_service import ai_service
+from app.services.quality_gate_core import NarrativeQualityGateError
 from app.services.story.story_generation_utils import (
     build_agent_run,
     build_extra_metadata,
+    resolve_model_provider,
 )
 from app.services.story.story_outline_normalizer import normalize_story_outline_strict
+from app.services.story_quality_gate import evaluate_story_quality_gate
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -21,33 +24,17 @@ class StoryGenerationService:
         self.db = db
         self.current_user = current_user
 
-    def _not_deleted(self, query, model):
-        return query.filter(model.is_deleted.is_(False))
-
-    def _resolve_model(
-        self, model_id: Optional[str]
-    ) -> Tuple[Optional[str], Optional[str]]:
-        prefer_provider = None
-        resolved_model = model_id
-        if model_id and ":" in model_id:
-            prefer_provider, resolved_model = model_id.split(":", 1)
-        return prefer_provider, resolved_model
-
     def _build_characters(
         self, character_ids: List[int], user_id: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         characters = []
+        virtual_ip_repo = VirtualIPRepository(self.db)
         for char_id in character_ids:
-            query = self._not_deleted(self.db.query(VirtualIP), VirtualIP).filter(
-                VirtualIP.id == char_id
+            virtual_ip = virtual_ip_repo.find_accessible_by_id(
+                char_id,
+                user=self.current_user,
+                user_id=user_id,
             )
-            if user_id is not None:
-                query = query.filter(VirtualIP.user_id == user_id)
-            elif self.current_user and not (
-                self.current_user.is_admin or self.current_user.is_superuser
-            ):
-                query = query.filter(VirtualIP.user_id == self.current_user.id)
-            virtual_ip = query.first()
             if not virtual_ip:
                 raise HTTPException(status_code=404, detail=f"虚拟IP {char_id} 不存在")
 
@@ -67,7 +54,7 @@ class StoryGenerationService:
         request: StoryGenerationRequest,
         characters: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
-        prefer_provider, model_id = self._resolve_model(request.model)
+        prefer_provider, model_id = resolve_model_provider(request.model)
         hook_plan_payload = (
             request.hook_plan.model_dump() if request.hook_plan else None
         )
@@ -100,10 +87,35 @@ class StoryGenerationService:
             model=model_id,
             temperature=request.temperature or 0.7,
             prefer_provider=prefer_provider,
+            generation_mode=request.generation_mode,
         )
         if not result:
             raise HTTPException(status_code=500, detail="AI故事生成失败")
         return result
+
+    def _enforce_story_quality_gate(
+        self,
+        request: StoryGenerationRequest,
+        result: Dict[str, Any],
+        ai_content: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        if request.generation_mode != "production":
+            return result
+        gate = evaluate_story_quality_gate(
+            story=ai_content,
+            hook_plan=request.hook_plan.model_dump() if request.hook_plan else None,
+            content_restrictions=request.content_restrictions,
+            require_story_contract=True,
+        )
+        if not gate.get("passed"):
+            raise NarrativeQualityGateError("story", gate)
+        return {
+            **result,
+            "quality_gate": gate,
+            "generation_mode": request.generation_mode,
+            "production_mode": True,
+            "contract_version": "story_contract_v1",
+        }
 
     def _persist_story(
         self, story_data: Dict[str, Any], character_ids: List[int]
@@ -182,6 +194,7 @@ class StoryGenerationService:
             ),
             "generation_params": {
                 "character_ids": request.character_ids,
+                "generation_mode": request.generation_mode,
                 "story_format": request.story_format,
                 "default_aspect_ratio": request.default_aspect_ratio,
                 "market_region": request.market_region,
@@ -215,6 +228,7 @@ class StoryGenerationService:
         characters = self._build_characters(request.character_ids)
         result = await self._run_story_outline(request, characters)
         ai_content = normalize_story_outline_strict(result)
+        result = self._enforce_story_quality_gate(request, result, ai_content)
         agent_run = build_agent_run(result)
         story_data = self._build_story_data(
             request, ai_content, result, agent_run, self.current_user.id
@@ -228,6 +242,7 @@ class StoryGenerationService:
         characters = self._build_characters(request.character_ids, user_id=user_id)
         result = await self._run_story_outline(request, characters)
         ai_content = normalize_story_outline_strict(result)
+        result = self._enforce_story_quality_gate(request, result, ai_content)
         agent_run = build_agent_run(result)
         story_data = self._build_story_data(
             request, ai_content, result, agent_run, user_id

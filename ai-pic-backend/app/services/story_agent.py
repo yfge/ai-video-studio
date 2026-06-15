@@ -74,10 +74,12 @@ class StoryLangGraphAgent:
         model: Optional[str],
         prefer_provider: Optional[str],
         temperature: float,
+        generation_mode: str = "standard",
     ) -> Optional[Dict[str, Any]]:
         if not LANGGRAPH_AVAILABLE or not getattr(self.service, "ai_manager", None):
             return None
 
+        production_mode = generation_mode == "production"
         schema = StoryOutlineModel.model_json_schema()
         variables = {
             "title": title,
@@ -100,6 +102,9 @@ class StoryLangGraphAgent:
             "additional_requirements": additional_requirements,
             "style_preferences": style_preferences or [],
             "content_restrictions": content_restrictions or [],
+            "generation_mode": generation_mode,
+            "production_mode": production_mode,
+            "story_contract_version": "story_contract_v1",
         }
         resolved_template = resolve_template_name(
             PromptTemplate.STORY_OUTLINE.value, variables, prompt_manager.prompts_dir
@@ -132,14 +137,12 @@ class StoryLangGraphAgent:
         try:
             if parsed:
                 StoryOutlineModel.model_validate(parsed)
-                # Run character consistency validation
                 char_validation = validate_story_outline_characters(parsed, characters)
                 if char_validation["character_warnings"]:
                     logger.warning(
                         "Story character validation warnings",
                         extra={"warnings": char_validation["character_warnings"]},
                     )
-                # Run story quality validation
                 quality_validation = validate_story_outline_quality(
                     parsed, hook_plan, content_restrictions
                 )
@@ -160,6 +163,10 @@ class StoryLangGraphAgent:
                         "model_used": model_used,
                         "usage": usage,
                         "prompt": prompt,
+                        "generation_mode": generation_mode,
+                        "production_mode": production_mode,
+                        "prompt_version": resolved_template,
+                        "contract_version": "story_contract_v1",
                         "reasoning": reasoning + ["validated"],
                         **char_validation,
                         **quality_validation,
@@ -172,7 +179,6 @@ class StoryLangGraphAgent:
             if parsed:
                 try:
                     StoryOutlineModel.model_validate(parsed)
-                    # Run character consistency validation
                     char_validation = validate_story_outline_characters(
                         parsed, characters
                     )
@@ -181,7 +187,6 @@ class StoryLangGraphAgent:
                             "Story character validation warnings (repair attempt)",
                             extra={"warnings": char_validation["character_warnings"]},
                         )
-                    # Run story quality validation
                     quality_validation = validate_story_outline_quality(
                         parsed, hook_plan, content_restrictions
                     )
@@ -204,6 +209,10 @@ class StoryLangGraphAgent:
                             "model_used": model_used,
                             "usage": usage,
                             "prompt": prompt,
+                            "generation_mode": generation_mode,
+                            "production_mode": production_mode,
+                            "prompt_version": resolved_template,
+                            "contract_version": "story_contract_v1",
                             "reasoning": reasoning + [f"validated_attempt_{attempt}"],
                             **char_validation,
                             **quality_validation,
