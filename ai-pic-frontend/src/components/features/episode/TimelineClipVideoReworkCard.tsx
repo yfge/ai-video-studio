@@ -114,19 +114,6 @@ export function TimelineClipVideoReworkCard({
           attached
         >
           <div className="grid gap-2">
-            <TimelineClipVideoBindingSummary
-              episodeCharacters={episodeCharacters}
-              selectedCharacterVirtualIpIds={selectedCharacterVirtualIpIds}
-              selectedCharacterReferenceUrls={selectedCharacterReferenceUrls}
-              selectedEnvironmentReferenceUrls={
-                selectedEnvironmentReferenceUrls
-              }
-            />
-            <VideoReferenceSelect
-              value={videoReferenceChoice}
-              storyboardPanelIndex={storyboardPanelIndex}
-              onChange={onVideoReferenceChoiceChange}
-            />
             <VideoActionSelect value={action} onChange={onActionChange} />
             <label className={VIDEO_LABEL_CLASS}>
               <span>生成提示词</span>
@@ -177,6 +164,22 @@ export function TimelineClipVideoReworkCard({
             </label>
           </div>
         </CompactProductionDetails>
+      </div>
+      <div
+        data-clip-reference-controls="video"
+        className="mt-2 grid min-w-0 gap-2 rounded-md border border-blue-100 bg-white p-2"
+      >
+        <TimelineClipVideoBindingSummary
+          episodeCharacters={episodeCharacters}
+          selectedCharacterVirtualIpIds={selectedCharacterVirtualIpIds}
+          selectedCharacterReferenceUrls={selectedCharacterReferenceUrls}
+          selectedEnvironmentReferenceUrls={selectedEnvironmentReferenceUrls}
+        />
+        <VideoReferenceSelect
+          value={videoReferenceChoice}
+          storyboardPanelIndex={storyboardPanelIndex}
+          onChange={onVideoReferenceChoiceChange}
+        />
       </div>
       <div className="grid gap-2">
         {submitError ? (

@@ -367,6 +367,48 @@ describe("timeline clip rework controls", () => {
     );
   });
 
+  it("keeps reference image controls visible outside collapsed parameter menus", async () => {
+    const utils = render(
+      React.createElement(TimelineClipProviderReworkControls, {
+        timelineId: 8,
+        timelineVersion: 3,
+        clipId: "video_scene_1_beat_1_001",
+        item: videoClipWithStoryboardPanel(),
+        episodeCharacters: [episodeCharacter("快递员", 32)],
+        storyboardCharacterImageOptions: {
+          32: [
+            {
+              url: "https://cdn.example/courier-pose.png",
+              label: "快递员 正面",
+            },
+          ],
+        },
+        storyboardEnvironmentImageOptions: [
+          {
+            url: "https://cdn.example/interior-env.png",
+            label: "室内环境",
+          },
+        ],
+      }),
+      { container: dom.window.document.body },
+    );
+
+    await waitFor(() =>
+      assert.ok(utils.getByLabelText("选择 IP 图 快递员 正面")),
+    );
+
+    const referenceControls = [
+      utils.getByLabelText("选择 IP 图 快递员 正面"),
+      utils.getByLabelText("选择环境图 室内环境"),
+      utils.getByLabelText("附加参考图 URL"),
+      utils.getByLabelText("视频参考来源"),
+    ];
+
+    for (const control of referenceControls) {
+      assert.equal(control.closest("[data-clip-parameter-details]"), null);
+    }
+  });
+
   it("deselects default thumbnails and clears selections on demand", async () => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
     globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {

@@ -121,64 +121,69 @@ export function StoryboardReferenceCard({
               </select>
             </label>
           </div>
-          <label className="mt-2 grid gap-1 text-xs text-gray-700">
-            <span>附加参考图 URL（可选，一行一个）</span>
-            <textarea
-              value={referenceImagesInput}
-              onChange={(event) =>
-                onReferenceImagesInputChange(event.currentTarget.value)
-              }
-              onInput={(event) =>
-                onReferenceImagesInputChange(event.currentTarget.value)
-              }
-              aria-label="附加参考图 URL"
-              placeholder="https://..."
-              rows={2}
-              className={`resize-none ${FIELD_CLASS}`}
-            />
-          </label>
-          <StoryboardCharacterIpSelector
-            characters={episodeCharacters}
-            loading={episodeCharactersLoading}
-            error={episodeCharactersError}
-            onNavigateToCharacters={onNavigateToCharacters}
-            selectedVirtualIpIds={selectedCharacterVirtualIpIds}
-            onToggle={onCharacterVirtualIpToggle}
-          />
-          <StoryboardReferenceImageSelectors
-            characterImageOptions={
-              storyboardReferenceSelection.characterImageOptions
-            }
-            environmentImageOptions={
-              storyboardReferenceSelection.environmentImageOptions
-            }
-            selectedVirtualIpIds={selectedCharacterVirtualIpIds}
-            selectedCharacterUrls={
-              storyboardReferenceSelection.selectedStoryboardCharacterReferenceImages
-            }
-            selectedEnvironmentUrls={
-              storyboardReferenceSelection.selectedStoryboardEnvironmentReferenceImages
-            }
-            characterImagesLoading={
-              storyboardReferenceSelection.characterImagesLoading
-            }
-            characterImagesError={
-              storyboardReferenceSelection.characterImagesError
-            }
-            onCharacterImageToggle={
-              storyboardReferenceSelection.handleStoryboardCharacterReferenceImageToggle
-            }
-            onEnvironmentImageToggle={
-              storyboardReferenceSelection.handleStoryboardEnvironmentReferenceImageToggle
-            }
-            onCharacterImagesReplace={
-              storyboardReferenceSelection.handleStoryboardCharacterReferenceImagesReplace
-            }
-            onEnvironmentImagesReplace={
-              storyboardReferenceSelection.handleStoryboardEnvironmentReferenceImagesReplace
-            }
-          />
         </CompactProductionDetails>
+      </div>
+      <div
+        data-clip-reference-controls="storyboard"
+        className="mt-2 grid min-w-0 gap-2 rounded-md border border-slate-200 bg-white p-2"
+      >
+        <label className="grid gap-1 text-xs text-gray-700">
+          <span>附加参考图 URL（可选，一行一个）</span>
+          <textarea
+            value={referenceImagesInput}
+            onChange={(event) =>
+              onReferenceImagesInputChange(event.currentTarget.value)
+            }
+            onInput={(event) =>
+              onReferenceImagesInputChange(event.currentTarget.value)
+            }
+            aria-label="附加参考图 URL"
+            placeholder="https://..."
+            rows={2}
+            className={`resize-none ${FIELD_CLASS}`}
+          />
+        </label>
+        <StoryboardCharacterIpSelector
+          characters={episodeCharacters}
+          loading={episodeCharactersLoading}
+          error={episodeCharactersError}
+          onNavigateToCharacters={onNavigateToCharacters}
+          selectedVirtualIpIds={selectedCharacterVirtualIpIds}
+          onToggle={onCharacterVirtualIpToggle}
+        />
+        <StoryboardReferenceImageSelectors
+          characterImageOptions={
+            storyboardReferenceSelection.characterImageOptions
+          }
+          environmentImageOptions={
+            storyboardReferenceSelection.environmentImageOptions
+          }
+          selectedVirtualIpIds={selectedCharacterVirtualIpIds}
+          selectedCharacterUrls={
+            storyboardReferenceSelection.selectedStoryboardCharacterReferenceImages
+          }
+          selectedEnvironmentUrls={
+            storyboardReferenceSelection.selectedStoryboardEnvironmentReferenceImages
+          }
+          characterImagesLoading={
+            storyboardReferenceSelection.characterImagesLoading
+          }
+          characterImagesError={
+            storyboardReferenceSelection.characterImagesError
+          }
+          onCharacterImageToggle={
+            storyboardReferenceSelection.handleStoryboardCharacterReferenceImageToggle
+          }
+          onEnvironmentImageToggle={
+            storyboardReferenceSelection.handleStoryboardEnvironmentReferenceImageToggle
+          }
+          onCharacterImagesReplace={
+            storyboardReferenceSelection.handleStoryboardCharacterReferenceImagesReplace
+          }
+          onEnvironmentImagesReplace={
+            storyboardReferenceSelection.handleStoryboardEnvironmentReferenceImagesReplace
+          }
+        />
       </div>
       <TimelineClipTaskStatusLine
         kind="storyboard"
