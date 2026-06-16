@@ -4,13 +4,6 @@ from app.models.script import Episode, Script, Story
 from app.models.task import Task
 from app.models.timeline import MediaAsset
 from app.models.user import User
-from app.models.video_generation_task import (
-    VideoGenerationTask,
-    VideoGenerationTaskStatus,
-)
-from app.services.video.video_task_timeline_rework_updater import (
-    apply_timeline_rework_result,
-)
 from sqlalchemy.orm import Session
 
 
@@ -96,6 +89,18 @@ def _append_video_clip(
         "source_refs": {
             "scene_beat_id": "beat_001",
             "audio_timeline_version": 1,
+            "timeline_shot_plan": {
+                "visual_prompt": "A rainy close-up of the lead character in a car.",
+                "video_prompt": (
+                    "The camera slowly pushes in while rain slides down the window."
+                ),
+                "camera_movement": "slow push-in",
+                "motion_timeline": [
+                    {"at_ms": 0, "action": "the lead looks down at a phone"},
+                    {"at_ms": 1200, "action": "the lead looks up toward the rain"},
+                ],
+                "emotional_landing": "quiet suspicion",
+            },
         },
         "text": "A rainy close-up of the lead character.",
     }
@@ -203,6 +208,8 @@ def test_timeline_clip_video_rework_queues_provider_task(
     assert params["clip_id"] == clip_id
     assert params["image_url"] == "https://example.com/start.png"
     assert params["asset_role"] == "generated_video"
+    assert params["motion_prompt_source"] == "operator_override"
+    assert params["prompt"] == "Regenerate the rainy close-up with steadier motion."
     assert params["auto_render"] is True
     assert params["render_type"] == "final"
     assert params["render_preset"] == {"fps": 24, "resolution": "1080x1920"}
@@ -210,33 +217,26 @@ def test_timeline_clip_video_rework_queues_provider_task(
     assert dispatched["payload"]["clip_id"] == clip_id
 
 
-def test_timeline_clip_video_rework_rejects_non_video_clip(client, db_session):
-    ep, script = _bootstrap_episode(db_session)
-    timeline = _create_timeline(client, ep, script, _timeline_spec(ep, script))
+def test_timeline_clip_video_rework_uses_shared_motion_prompt_without_override(
+    client, db_session, monkeypatch
+):
+    dispatched = {}
 
-    response = client.post(
-        f"/api/v1/timelines/{timeline['id']}/clips/"
-        "dialogue_scene_001_beat_001_001/rework/video",
-        json={
-            "expected_version": timeline["version"],
-            "action": "re_cut",
-            "prompt": "Regenerate as video.",
-        },
+    def fake_dispatch(task, payload, current_user):
+        dispatched["payload"] = payload
+
+    monkeypatch.setattr(
+        "app.services.timeline_clip_video_rework_queue_service."
+        "dispatch_timeline_clip_video_rework_task",
+        fake_dispatch,
     )
-
-    assert response.status_code == 400
-    assert response.json()["detail"] == "video rework requires a video clip"
-
-
-def test_video_task_success_records_provider_rework_lineage(client, db_session):
-    user = db_session.query(User).filter(User.username == "test_admin").one()
     episode, script = _bootstrap_episode(db_session)
-    original_video = _media_asset(
+    start_asset = _media_asset(
         db_session,
-        asset_type="video",
+        asset_type="image",
         origin="upload",
-        file_url="https://example.com/generated-v1.mp4",
-        mime_type="video/mp4",
+        file_url="https://example.com/start.png",
+        mime_type="image/png",
     )
     clip_id = "video_scene_001_beat_001_001"
     timeline = _create_timeline(
@@ -246,55 +246,26 @@ def test_video_task_success_records_provider_rework_lineage(client, db_session):
         _append_video_clip(
             _timeline_spec(episode, script),
             clip_id=clip_id,
-            video_asset=original_video,
+            start_asset=start_asset,
         ),
     )
-    original_link = client.get(
-        f"/api/v1/timelines/{timeline['id']}/clip-assets",
-        params={"clip_id": clip_id},
-    ).json()["items"][0]
-    params = {
-        "timeline_rework": {
-            "timeline_id": timeline["id"],
-            "timeline_version": timeline["version"],
-            "clip_id": clip_id,
+
+    response = client.post(
+        f"/api/v1/timelines/{timeline['id']}/clips/{clip_id}/rework/video",
+        json={
+            "expected_version": timeline["version"],
             "action": "re_cut",
-            "asset_role": "generated_video",
-            "reason": "steadier motion",
-        }
-    }
-    video_task = VideoGenerationTask(
-        task_id=None,
-        script_id=None,
-        frame_index=None,
-        user_id=user.id,
-        provider="mock-provider",
-        provider_task_id="provider-task-1",
-        model="mock-video",
-        model_type="image_to_video",
-        prompt="Regenerate the clip",
-        parameters=json.dumps(params),
-        status=VideoGenerationTaskStatus.SUCCEEDED,
-    )
-    db_session.add(video_task)
-    db_session.commit()
-    db_session.refresh(video_task)
-
-    apply_timeline_rework_result(
-        db_session,
-        video_task,
-        {"video_url": "https://example.com/generated-v2.mp4", "duration": 1.2},
-        params,
+            "resolution": "720p",
+        },
     )
 
-    lineage = client.get(
-        f"/api/v1/timelines/{timeline['id']}/clip-assets",
-        params={"clip_id": clip_id},
-    ).json()["items"]
-    replacement = [item for item in lineage if item["source"] == "provider_rework"][0]
-    assert replacement["clip_id"] == clip_id
-    assert replacement["asset_role"] == "generated_video"
-    assert replacement["replacement_of_id"] == original_link["id"]
-    media_url = replacement["media_asset"]["file_url"]
-    assert media_url == "https://example.com/generated-v2.mp4"
-    assert replacement["source_ref"]["preserves_clip_id"] is True
+    assert response.status_code == 200, response.text
+    task = db_session.get(Task, response.json()["task_id"])
+    assert task is not None
+    params = json.loads(task.parameters)
+    assert params["prompt_contract_version"] == "timeline_clip_visual_prompt_v1"
+    assert params["motion_prompt_source"] == "timeline_shot_plan.video_prompt"
+    assert "Generate only the selected Timeline clip" in params["prompt"]
+    assert "the lead looks down at a phone" in params["prompt"]
+    assert "the lead looks up toward the rain" in params["prompt"]
+    assert dispatched["payload"]["prompt"] == params["prompt"]

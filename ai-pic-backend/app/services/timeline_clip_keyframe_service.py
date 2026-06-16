@@ -21,10 +21,11 @@ from app.services.timeline_clip_keyframe_dispatch import (
     dispatch_timeline_clip_keyframe_task,
 )
 from app.services.timeline_clip_video_rework_helpers import (
-    clip_prompt,
     dedupe_strings,
     story_owner_filter,
-    string_value,
+)
+from app.services.timeline_clip_visual_prompt_builder import (
+    build_timeline_clip_keyframe_frames,
 )
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -79,7 +80,11 @@ class TimelineClipKeyframeService:
         clip: dict[str, Any],
         payload: TimelineClipKeyframeGenerateRequest,
     ) -> dict[str, Any]:
-        prompt = _clip_keyframe_prompt(clip, payload.prompt)
+        frames, prompt_metadata = build_timeline_clip_keyframe_frames(
+            clip,
+            payload.prompt,
+        )
+        prompt = frames[0]["prompt"] if frames else None
         if not prompt:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -96,7 +101,6 @@ class TimelineClipKeyframeService:
             request_environment_reference_images=payload.environment_reference_images
             or [],
         )
-        frames = _keyframe_prompts(prompt)
         return {
             "kind": "timeline_clip_keyframes",
             "timeline_id": timeline.id,
@@ -124,6 +128,7 @@ class TimelineClipKeyframeService:
             "bound_context": context.bound_context,
             "keyframe_roles": [frame["role"] for frame in frames],
             "frames": frames,
+            **prompt_metadata,
         }
 
     def _get_timeline_or_404(self, timeline_id: int, current_user: User) -> Timeline:
@@ -155,41 +160,6 @@ class TimelineClipKeyframeService:
             status_code=status.HTTP_404_NOT_FOUND,
             detail="timeline clip not found",
         )
-
-
-def _clip_keyframe_prompt(clip: dict[str, Any], override: str | None) -> str | None:
-    prompt = clip_prompt(clip, override)
-    if prompt:
-        return prompt
-    source_refs = (
-        clip.get("source_refs") if isinstance(clip.get("source_refs"), dict) else {}
-    )
-    shot_plan = source_refs.get("timeline_shot_plan")
-    if isinstance(shot_plan, dict):
-        for key in ("visual_prompt", "video_prompt", "storyboard_panel_prompt"):
-            value = string_value(shot_plan.get(key))
-            if value:
-                return value
-    return None
-
-
-def _keyframe_prompts(prompt: str) -> list[dict[str, str]]:
-    return [
-        {
-            "role": "start_frame",
-            "prompt": (
-                "Opening keyframe for this video clip. Keep characters, "
-                f"environment, wardrobe, and lighting consistent. {prompt}"
-            ),
-        },
-        {
-            "role": "end_frame",
-            "prompt": (
-                "Ending keyframe for this video clip. Preserve the same IP "
-                f"and environment continuity while landing the motion. {prompt}"
-            ),
-        },
-    ]
 
 
 def _dedupe_ints(values: list[int]) -> list[int]:

@@ -16,6 +16,9 @@ This directory holds design notes, API references, and testing guides. Keep this
   commercial-specificity gate for beat-level short-drama scripts.
 - `docs/exec-plans/active/grid-storyboard-mode.md` — optional grid-storyboard
   support mode from Timeline clips to storyboard sheet to clip video references.
+- `docs/exec-plans/active/storyboard-keyframe-video-generation.md` — implementation
+  plan for selected-clip storyboard, start/end keyframe, video generation
+  interaction, and shared prompt contract improvements.
 - `docs/exec-plans/completed/` — completed execution plans and archived implementation outlines.
 
 ## Agent System Of Record
@@ -47,6 +50,7 @@ Keep durable engineering rules in repository docs like the files above. Do not t
 - `docs/design/image-generation-unification.md` — 图像生成统一化设计（Virtual IP / Environment / Storyboard）
 - `docs/design/story-episode-generation-quality.md` — story/episode generation quality (strict validation + repair, audit trail)
 - `docs/design/script-beat-contract.md` — script beat contract design for product generation and provider-chain quality proof.
+- `docs/design/storyboard-keyframe-video-generation.md` — selected-clip storyboard, start/end keyframe, video generation interaction and prompt contract design.
 - `docs/image-gen-provider-matrix.md` — provider×mode 参数矩阵与提示词语义（provider-aware）
 
 ## Market Insights

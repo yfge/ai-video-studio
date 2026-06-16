@@ -34,6 +34,8 @@ export function TimelineClipVideoReworkCard({
   reason,
   videoReferenceChoice,
   storyboardPanelIndex,
+  startEndReferenceAvailable,
+  manualReferenceAvailable,
   episodeCharacters,
   selectedCharacterVirtualIpIds,
   selectedCharacterReferenceUrls,
@@ -63,6 +65,8 @@ export function TimelineClipVideoReworkCard({
   reason: string;
   videoReferenceChoice: TimelineVideoReferenceChoice;
   storyboardPanelIndex?: number | null;
+  startEndReferenceAvailable: boolean;
+  manualReferenceAvailable: boolean;
   episodeCharacters: EpisodeCharacter[];
   selectedCharacterVirtualIpIds: number[];
   selectedCharacterReferenceUrls: string[];
@@ -116,14 +120,18 @@ export function TimelineClipVideoReworkCard({
           <div className="grid gap-2">
             <VideoActionSelect value={action} onChange={onActionChange} />
             <label className={VIDEO_LABEL_CLASS}>
-              <span>生成提示词</span>
+              <span>运动提示词覆盖</span>
               <textarea
+                aria-label="运动提示词覆盖"
                 value={prompt}
                 onChange={(event) => onPromptChange(event.target.value)}
-                placeholder="留空则使用分镜规划的视频提示词"
+                placeholder="留空则使用 Timeline 镜头运动规划"
                 rows={3}
                 className={`resize-none ${VIDEO_FIELD_CLASS}`}
               />
+              <span className="text-[11px] text-slate-400">
+                留空则使用 Timeline 镜头运动规划
+              </span>
             </label>
             <div className={VIDEO_FIELD_GRID_CLASS}>
               <VideoModelSelect
@@ -178,6 +186,8 @@ export function TimelineClipVideoReworkCard({
         <VideoReferenceSelect
           value={videoReferenceChoice}
           storyboardPanelIndex={storyboardPanelIndex}
+          startEndAvailable={startEndReferenceAvailable}
+          manualRefsAvailable={manualReferenceAvailable}
           onChange={onVideoReferenceChoiceChange}
         />
       </div>

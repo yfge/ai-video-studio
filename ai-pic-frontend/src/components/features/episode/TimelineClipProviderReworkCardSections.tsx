@@ -13,10 +13,14 @@ const VIDEO_REFERENCE_HINTS: Record<TimelineVideoReferenceChoice, string> = {
 export function VideoReferenceSelect({
   value,
   storyboardPanelIndex,
+  startEndAvailable,
+  manualRefsAvailable,
   onChange,
 }: {
   value: TimelineVideoReferenceChoice;
   storyboardPanelIndex?: number | null;
+  startEndAvailable: boolean;
+  manualRefsAvailable: boolean;
   onChange: (value: TimelineVideoReferenceChoice) => void;
 }) {
   return (
@@ -30,13 +34,17 @@ export function VideoReferenceSelect({
         }
         className={operatorSelectClass("w-full")}
       >
-        <option value="start_end">首尾帧</option>
+        <option value="start_end" disabled={!startEndAvailable}>
+          {startEndAvailable ? "首尾帧" : "首尾帧（需先生成）"}
+        </option>
         <option value="clip_storyboard_panel" disabled={!storyboardPanelIndex}>
           {storyboardPanelIndex
             ? `分镜 Panel ${storyboardPanelIndex}`
             : "分镜 Panel（需先生成片段分镜）"}
         </option>
-        <option value="manual_refs">手动参考图</option>
+        <option value="manual_refs" disabled={!manualRefsAvailable}>
+          手动/共享参考图
+        </option>
       </select>
       <span className="text-[11px] text-gray-400">
         {VIDEO_REFERENCE_HINTS[value]}

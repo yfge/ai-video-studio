@@ -14,12 +14,9 @@ import { TimelineClipTaskStatusLine } from "./TimelineClipTaskStatusLine";
 import type { TimelineClipStoryboardReferenceSelection } from "./useTimelineClipStoryboardReferenceSelection";
 import type { TrackedClipGenerationTask } from "./useTimelineClipGenerationTaskTracker";
 
-const FIELD_CLASS =
-  "rounded-md border border-gray-200 px-2 py-1.5 text-xs outline-none focus:border-gray-400";
 const FIELD_GRID_CLASS = "grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2";
 
 export function StoryboardReferenceCard({
-  referenceImagesInput,
   storyboardStyle,
   storyboardPanelCount,
   storyboardSheetUrl,
@@ -33,13 +30,11 @@ export function StoryboardReferenceCard({
   canGenerateStoryboard,
   storyboardTask,
   currentClipId,
-  onReferenceImagesInputChange,
   onStoryboardStyleChange,
   onStoryboardPanelCountChange,
   onCharacterVirtualIpToggle,
   onGenerateStoryboard,
 }: {
-  referenceImagesInput: string;
   storyboardStyle: TimelineClipStoryboardStyle;
   storyboardPanelCount: string;
   storyboardSheetUrl?: string | null;
@@ -53,7 +48,6 @@ export function StoryboardReferenceCard({
   canGenerateStoryboard: boolean;
   storyboardTask?: TrackedClipGenerationTask;
   currentClipId?: string | null;
-  onReferenceImagesInputChange: (value: string) => void;
   onStoryboardStyleChange: (value: TimelineClipStoryboardStyle) => void;
   onStoryboardPanelCountChange: (value: string) => void;
   onCharacterVirtualIpToggle: (virtualIpId: number, checked: boolean) => void;
@@ -127,22 +121,6 @@ export function StoryboardReferenceCard({
         data-clip-reference-controls="storyboard"
         className="mt-2 grid min-w-0 gap-2 rounded-md border border-slate-200 bg-white p-2"
       >
-        <label className="grid gap-1 text-xs text-gray-700">
-          <span>附加参考图 URL（可选，一行一个）</span>
-          <textarea
-            value={referenceImagesInput}
-            onChange={(event) =>
-              onReferenceImagesInputChange(event.currentTarget.value)
-            }
-            onInput={(event) =>
-              onReferenceImagesInputChange(event.currentTarget.value)
-            }
-            aria-label="附加参考图 URL"
-            placeholder="https://..."
-            rows={2}
-            className={`resize-none ${FIELD_CLASS}`}
-          />
-        </label>
         <StoryboardCharacterIpSelector
           characters={episodeCharacters}
           loading={episodeCharactersLoading}

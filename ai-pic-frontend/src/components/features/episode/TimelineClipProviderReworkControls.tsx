@@ -12,9 +12,11 @@ import type {
 import { TimelineClipProviderReworkCards } from "./TimelineClipProviderReworkCards";
 import {
   buildTimelineClipVideoReworkTaskPayload,
+  hasTimelineClipReferenceImages,
   isTimelineVideoClip,
   parseReferenceImagesInput,
   parseOptionalNumber,
+  timelineClipStartEndFrameStatus,
   timelineClipStoryboardPanelIndex,
   timelineClipStoryboardSheetUrl,
   type TimelineVideoReferenceChoice,
@@ -66,6 +68,7 @@ export function TimelineClipProviderReworkControls({
   const isVideoClip = isTimelineVideoClip(item);
   const storyboardPanelIndex = timelineClipStoryboardPanelIndex(item);
   const storyboardSheetUrl = timelineClipStoryboardSheetUrl(item);
+  const keyframeStatus = timelineClipStartEndFrameStatus(item);
   const parsedDuration = parseOptionalNumber(duration);
   const referenceImages = parseReferenceImagesInput(referenceImagesInput);
   const { selectedStoryboardVirtualIpIds, handleStoryboardVirtualIpToggle } =
@@ -87,6 +90,11 @@ export function TimelineClipProviderReworkControls({
     storyboardReferenceSelection.selectedStoryboardCharacterReferenceImages;
   const selectedEnvironmentReferenceImages =
     storyboardReferenceSelection.selectedStoryboardEnvironmentReferenceImages;
+  const hasManualOrSharedReferences = hasTimelineClipReferenceImages({
+    manualReferenceImages: referenceImages,
+    characterReferenceImages: selectedCharacterReferenceImages,
+    environmentReferenceImages: selectedEnvironmentReferenceImages,
+  });
   const taskTracker = useTimelineClipGenerationTaskTracker({
     onCompleted: async () => {
       await onGenerationCompleted?.();
@@ -110,10 +118,20 @@ export function TimelineClipProviderReworkControls({
       taskTracker.track(kind, taskId, clipId ?? null),
     onNotify,
   });
-  const effectiveReferenceChoice =
-    videoReferenceChoice === "clip_storyboard_panel" && !storyboardPanelIndex
-      ? "start_end"
-      : videoReferenceChoice;
+  let effectiveReferenceChoice = videoReferenceChoice;
+  if (
+    effectiveReferenceChoice === "clip_storyboard_panel" &&
+    !storyboardPanelIndex
+  ) {
+    effectiveReferenceChoice = "start_end";
+  }
+  if (
+    effectiveReferenceChoice === "start_end" &&
+    !keyframeStatus.startReady &&
+    hasManualOrSharedReferences
+  ) {
+    effectiveReferenceChoice = "manual_refs";
+  }
   const canSubmit = Boolean(
     timelineId && timelineVersion && clipId && !submitting,
   );
@@ -187,6 +205,8 @@ export function TimelineClipProviderReworkControls({
       reason={reason}
       videoReferenceChoice={videoReferenceChoice}
       referenceImagesInput={referenceImagesInput}
+      keyframeStatus={keyframeStatus}
+      manualReferenceAvailable
       storyboardStyle={storyboardStyle}
       storyboardPanelCount={storyboardPanelCount}
       storyboardPanelIndex={storyboardPanelIndex}

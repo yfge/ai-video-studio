@@ -37,6 +37,9 @@ from app.services.timeline_clip_video_rework_helpers import (
     story_owner_filter,
     string_value,
 )
+from app.services.timeline_clip_visual_prompt_builder import (
+    build_timeline_clip_video_motion_prompt,
+)
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -80,12 +83,9 @@ class TimelineClipVideoReworkQueueService:
         self.db.commit()
         self.db.refresh(task)
         dispatch_timeline_clip_video_rework_task(task, task_payload, current_user)
-        return TimelineClipVideoReworkTaskResponse(
-            task_id=task.id,
-            status=str(
-                task.status.value if hasattr(task.status, "value") else task.status
-            ),
-        )
+        status_value = getattr(task.status, "value", task.status)
+        response = TimelineClipVideoReworkTaskResponse
+        return response(task_id=task.id, status=str(status_value))
 
     def _task_payload(
         self,
@@ -104,6 +104,7 @@ class TimelineClipVideoReworkQueueService:
             payload=payload,
         )
         if payload.use_clip_storyboard or reference_mode == "clip_storyboard_panel":
+            prompt_metadata = {}
             reference_mode = "clip_storyboard_panel"
             clip_storyboard_payload = build_clip_storyboard_rework_payload(
                 timeline,
@@ -117,6 +118,7 @@ class TimelineClipVideoReworkQueueService:
             start_url = None
             end_url = None
         elif payload.use_storyboard_grid or reference_mode == "storyboard_grid_panel":
+            prompt_metadata = {}
             reference_mode = "storyboard_grid_panel"
             grid_payload = build_grid_storyboard_rework_payload(
                 timeline,
@@ -130,7 +132,10 @@ class TimelineClipVideoReworkQueueService:
             start_url = None
             end_url = None
         else:
-            prompt = clip_prompt(clip, payload.prompt)
+            prompt, prompt_metadata = build_timeline_clip_video_motion_prompt(
+                clip,
+                payload.prompt,
+            )
             start_url = self._start_frame_url(clip)
             end_url = self._end_frame_url(clip) if payload.use_end_frame else None
 
@@ -159,6 +164,7 @@ class TimelineClipVideoReworkQueueService:
             "auto_render": True,
             "render_type": "final",
             "render_preset": render_preset(timeline),
+            **prompt_metadata,
         }
         if clip_storyboard_payload:
             task_payload.update(

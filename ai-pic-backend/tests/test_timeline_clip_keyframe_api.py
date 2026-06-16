@@ -27,12 +27,21 @@ def test_timeline_clip_keyframes_creates_generation_task_for_selected_clip(
         fake_dispatch,
     )
     _, episode, script = _bootstrap_episode(db_session)
-    timeline = _create_timeline(
-        client,
-        episode,
-        script,
-        _append_video_clips(_timeline_spec(episode, script)),
-    )
+    spec = _append_video_clips(_timeline_spec(episode, script))
+    video_clip = spec["tracks"][1]["clips"][1]
+    video_clip["source_refs"] = {
+        "timeline_shot_plan": {
+            "visual_prompt": "陈哲坐在雨夜车内，手机屏幕冷光照亮侧脸",
+            "video_prompt": "镜头缓慢推近，雨水沿车窗滑落",
+            "camera_movement": "slow push-in",
+            "motion_timeline": [
+                {"at_ms": 0, "action": "他低头盯着手机屏幕"},
+                {"at_ms": 1200, "action": "他抬眼看向雨中的车窗"},
+            ],
+            "emotional_landing": "克制的怀疑落点",
+        }
+    }
+    timeline = _create_timeline(client, episode, script, spec)
 
     response = client.post(
         "/api/v1/timelines/"
@@ -74,6 +83,12 @@ def test_timeline_clip_keyframes_creates_generation_task_for_selected_clip(
         "start_frame",
         "end_frame",
     ]
+    assert params["prompt_contract_version"] == "timeline_clip_visual_prompt_v1"
+    assert params["visual_prompt_source"] == "timeline_shot_plan.visual_prompt"
+    assert params["motion_prompt_source"] == "operator_override"
+    assert "他低头盯着手机屏幕" in params["frames"][0]["prompt"]
+    assert "他抬眼看向雨中的车窗" in params["frames"][1]["prompt"]
+    assert params["frames"][0]["prompt"] != params["frames"][1]["prompt"]
     assert "Opening keyframe" in params["frames"][0]["prompt"]
     assert "Ending keyframe" in params["frames"][1]["prompt"]
     assert dispatched["task_id"] == task_id

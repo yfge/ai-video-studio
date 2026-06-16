@@ -6,6 +6,7 @@ import type {
   TimelineClipVideoReworkAction,
 } from "@/utils/api/types";
 import { TimelineClipKeyframeCard } from "./TimelineClipKeyframeCard";
+import { TimelineClipSharedReferenceContext } from "./TimelineClipSharedReferenceContext";
 import { StoryboardReferenceCard } from "./TimelineClipStoryboardReferenceCard";
 import { TimelineClipVideoReworkCard } from "./TimelineClipVideoReworkCard";
 import type { TimelineVideoReferenceChoice } from "./TimelineClipProviderReworkModel";
@@ -32,6 +33,8 @@ export function TimelineClipProviderReworkCards({
   reason,
   videoReferenceChoice,
   referenceImagesInput,
+  keyframeStatus,
+  manualReferenceAvailable,
   storyboardStyle,
   storyboardPanelCount,
   storyboardPanelIndex,
@@ -78,6 +81,8 @@ export function TimelineClipProviderReworkCards({
   reason: string;
   videoReferenceChoice: TimelineVideoReferenceChoice;
   referenceImagesInput: string;
+  keyframeStatus: { startReady: boolean; endReady: boolean; label: string };
+  manualReferenceAvailable: boolean;
   storyboardStyle: "2d_cartoon" | "3d_cartoon" | "live_action";
   storyboardPanelCount: string;
   storyboardPanelIndex?: number | null;
@@ -124,6 +129,18 @@ export function TimelineClipProviderReworkCards({
       className="px-0.5 py-0"
       onSubmit={onSubmit}
     >
+      <TimelineClipSharedReferenceContext
+        episodeCharacters={episodeCharacters}
+        selectedCharacterVirtualIpIds={selectedStoryboardVirtualIpIds}
+        selectedCharacterReferenceUrls={
+          storyboardReferenceSelection.selectedStoryboardCharacterReferenceImages
+        }
+        selectedEnvironmentReferenceUrls={
+          storyboardReferenceSelection.selectedStoryboardEnvironmentReferenceImages
+        }
+        manualReferenceImages={referenceImagesInput}
+        onManualReferenceImagesChange={onReferenceImagesInputChange}
+      />
       <div
         data-clip-command-surface="action-tray"
         data-clip-command-surface-style="flat-action-cluster"
@@ -132,7 +149,6 @@ export function TimelineClipProviderReworkCards({
       >
         <div className={COMMAND_GRID_CLASS}>
           <StoryboardReferenceCard
-            referenceImagesInput={referenceImagesInput}
             storyboardStyle={storyboardStyle}
             storyboardPanelCount={storyboardPanelCount}
             storyboardSheetUrl={storyboardSheetUrl}
@@ -146,7 +162,6 @@ export function TimelineClipProviderReworkCards({
             canGenerateStoryboard={canGenerateStoryboard}
             storyboardTask={generationTasks?.storyboard}
             currentClipId={currentClipId ?? null}
-            onReferenceImagesInputChange={onReferenceImagesInputChange}
             onStoryboardStyleChange={onStoryboardStyleChange}
             onStoryboardPanelCountChange={onStoryboardPanelCountChange}
             onCharacterVirtualIpToggle={onStoryboardVirtualIpToggle}
@@ -155,6 +170,7 @@ export function TimelineClipProviderReworkCards({
           <TimelineClipKeyframeCard
             generating={generatingKeyframes}
             canGenerate={canGenerateKeyframes}
+            keyframeStatus={keyframeStatus}
             keyframesTask={generationTasks?.keyframes}
             currentClipId={currentClipId ?? null}
             onGenerate={onGenerateKeyframes}
@@ -170,6 +186,8 @@ export function TimelineClipProviderReworkCards({
             reason={reason}
             videoReferenceChoice={videoReferenceChoice}
             storyboardPanelIndex={storyboardPanelIndex}
+            startEndReferenceAvailable={keyframeStatus.startReady}
+            manualReferenceAvailable={manualReferenceAvailable}
             episodeCharacters={episodeCharacters}
             selectedCharacterVirtualIpIds={selectedStoryboardVirtualIpIds}
             selectedCharacterReferenceUrls={

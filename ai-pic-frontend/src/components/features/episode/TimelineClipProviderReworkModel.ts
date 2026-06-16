@@ -122,6 +122,38 @@ export function timelineClipStoryboardSheetUrl(item: TimelineItem | null) {
   );
 }
 
+export function timelineClipStartEndFrameStatus(item: TimelineItem | null) {
+  const meta = timelineItemMeta(item);
+  const startReady =
+    hasAssetLocator(meta.start_frame_asset_ref) ||
+    Boolean(getString(meta.start_frame_url));
+  const endReady =
+    hasAssetLocator(meta.end_frame_asset_ref) ||
+    Boolean(getString(meta.end_frame_url));
+  if (startReady && endReady) {
+    return { startReady, endReady, label: "首尾帧已生成" };
+  }
+  if (startReady) return { startReady, endReady, label: "已有首帧" };
+  if (endReady) return { startReady, endReady, label: "已有尾帧" };
+  return { startReady, endReady, label: "首尾帧待生成" };
+}
+
+export function hasTimelineClipReferenceImages({
+  manualReferenceImages,
+  characterReferenceImages,
+  environmentReferenceImages,
+}: {
+  manualReferenceImages: string[];
+  characterReferenceImages: string[];
+  environmentReferenceImages: string[];
+}) {
+  return (
+    manualReferenceImages.length > 0 ||
+    characterReferenceImages.length > 0 ||
+    environmentReferenceImages.length > 0
+  );
+}
+
 export function timelineClipCharacterVirtualIpIds(item: TimelineItem | null) {
   const meta = timelineItemMeta(item);
   const sourceRefs = asRecord(meta.source_refs);
@@ -169,6 +201,19 @@ function dedupeReferenceImages(
     deduped.push(cleaned);
   }
   return deduped;
+}
+
+function hasAssetLocator(value: unknown) {
+  if (typeof value === "string" && value.trim()) return true;
+  const record = asRecord(value);
+  return Boolean(
+    getString(record?.file_url) ||
+      getString(record?.url) ||
+      getString(record?.image_url) ||
+      getString(record?.file_path) ||
+      typeof record?.media_asset_id === "number" ||
+      getString(record?.media_asset_id),
+  );
 }
 
 function extractNumberValues(value: unknown): number[] {

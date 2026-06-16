@@ -1,12 +1,19 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
 import React from "react";
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { JSDOM } from "jsdom";
 
 import {
   buildTimelineClipVideoReworkTaskPayload,
   isTimelineVideoClip,
+  timelineClipStartEndFrameStatus,
   timelineClipStoryboardPanelIndex,
   timelineClipStoryboardSheetUrl,
 } from "../src/components/features/episode/TimelineClipProviderReworkModel";
@@ -158,6 +165,30 @@ describe("timeline clip rework controls", () => {
     );
   });
 
+  it("reports selected clip start and end keyframe readiness", () => {
+    assert.deepEqual(timelineClipStartEndFrameStatus(null), {
+      startReady: false,
+      endReady: false,
+      label: "首尾帧待生成",
+    });
+    assert.deepEqual(
+      timelineClipStartEndFrameStatus(videoClipWithStoryboardPanel()),
+      {
+        startReady: true,
+        endReady: true,
+        label: "首尾帧已生成",
+      },
+    );
+    assert.deepEqual(
+      timelineClipStartEndFrameStatus(videoClipWithoutStartEndFrames()),
+      {
+        startReady: false,
+        endReady: false,
+        label: "首尾帧待生成",
+      },
+    );
+  });
+
   it("renders storyboard reference and clip video as two separate cards", () => {
     const utils = render(
       React.createElement(TimelineClipProviderReworkControls, {
@@ -191,6 +222,59 @@ describe("timeline clip rework controls", () => {
     assert.ok(utils.getByLabelText("画面比例"));
     assert.ok(utils.getByRole("option", { name: "9:16" }));
     assert.ok(utils.getByLabelText("重做动作"));
+    assert.ok(utils.getByLabelText("运动提示词覆盖"));
+    assert.ok(utils.getByText("留空则使用 Timeline 镜头运动规划"));
+  });
+
+  it("shows shared references as a visible clip production context", async () => {
+    const utils = render(
+      React.createElement(TimelineClipProviderReworkControls, {
+        timelineId: 8,
+        timelineVersion: 3,
+        clipId: "video_scene_1_beat_1_001",
+        item: videoClipWithStoryboardPanel(),
+        episodeCharacters: [episodeCharacter("快递员", 32)],
+        storyboardCharacterImageOptions: {
+          32: [
+            {
+              url: "https://cdn.example/courier-pose.png",
+              label: "快递员 正面",
+            },
+          ],
+        },
+        storyboardEnvironmentImageOptions: [
+          { url: "https://cdn.example/interior-env.png", label: "室内环境" },
+        ],
+      }),
+      { container: dom.window.document.body },
+    );
+
+    await waitFor(() => assert.ok(utils.getByLabelText("片段共享参考上下文")));
+    const sharedContext = utils.getByLabelText("片段共享参考上下文");
+    assert.equal(sharedContext.closest("[data-clip-parameter-details]"), null);
+    assert.ok(within(sharedContext).getByText("会用于分镜、首尾帧和视频任务"));
+    assert.ok(within(sharedContext).getByText("角色 IP：快递员"));
+    assert.ok(within(sharedContext).getByText("IP 图：1 张"));
+    assert.ok(within(sharedContext).getByText("环境图：1 张"));
+  });
+
+  it("disables start-end video reference when keyframes are missing", () => {
+    const utils = render(
+      React.createElement(TimelineClipProviderReworkControls, {
+        timelineId: 8,
+        timelineVersion: 3,
+        clipId: "video_scene_1_beat_1_001",
+        item: videoClipWithoutStartEndFrames(),
+      }),
+      { container: dom.window.document.body },
+    );
+
+    assert.ok(utils.getByText("首尾帧待生成"));
+    assert.equal(
+      (utils.getByRole("option", { name: /首尾帧/ }) as HTMLOptionElement)
+        .disabled,
+      true,
+    );
   });
 
   it("keeps storyboard and video submit paths clip-scoped from the two-step controls", async () => {
@@ -519,13 +603,16 @@ describe("timeline clip rework controls", () => {
       ),
     );
 
-    assert.ok(utils.getByLabelText("视频生成绑定上下文"));
-    assert.ok(utils.getByText("视频生成绑定上下文"));
-    assert.ok(utils.getByText("已携带绑定"));
-    assert.ok(utils.getByText("角色 IP：快递员"));
-    assert.ok(utils.getByText("IP 图：1 张"));
-    assert.ok(utils.getByText("环境图：1 张"));
-    assert.ok(utils.getByText("视频任务会携带上方已选 IP 和环境图。"));
+    const videoBinding = utils.getByLabelText("视频生成绑定上下文");
+    assert.ok(videoBinding);
+    assert.ok(within(videoBinding).getByText("视频生成绑定上下文"));
+    assert.ok(within(videoBinding).getByText("已携带绑定"));
+    assert.ok(within(videoBinding).getByText("角色 IP：快递员"));
+    assert.ok(within(videoBinding).getByText("IP 图：1 张"));
+    assert.ok(within(videoBinding).getByText("环境图：1 张"));
+    assert.ok(
+      within(videoBinding).getByText("视频任务会携带上方已选 IP 和环境图。"),
+    );
 
     fireEvent.click(utils.getByRole("button", { name: "生成/重做此片段视频" }));
     await waitFor(() => assert.equal(calls.length, 1));
@@ -762,6 +849,26 @@ function videoClipWithStoryboardPanel() {
       clip_storyboard_sheet_asset_ref: {
         file_url: "https://cdn.example/clip-storyboard.png",
       },
+      start_frame_asset_ref: {
+        file_url: "https://cdn.example/start-frame.png",
+      },
+      end_frame_asset_ref: {
+        file_url: "https://cdn.example/end-frame.png",
+      },
+    },
+  };
+}
+
+function videoClipWithoutStartEndFrames() {
+  const clip = videoClipWithStoryboardPanel();
+  return {
+    ...clip,
+    meta: {
+      ...clip.meta,
+      start_frame_asset_ref: undefined,
+      end_frame_asset_ref: undefined,
+      start_frame_url: undefined,
+      end_frame_url: undefined,
     },
   };
 }

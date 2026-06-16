@@ -9,12 +9,14 @@ import type { TrackedClipGenerationTask } from "./useTimelineClipGenerationTaskT
 export function TimelineClipKeyframeCard({
   generating,
   canGenerate,
+  keyframeStatus,
   keyframesTask,
   currentClipId,
   onGenerate,
 }: {
   generating: boolean;
   canGenerate: boolean;
+  keyframeStatus: { startReady: boolean; endReady: boolean; label: string };
   keyframesTask?: TrackedClipGenerationTask;
   currentClipId?: string | null;
   onGenerate: () => void;
@@ -38,6 +40,10 @@ export function TimelineClipKeyframeCard({
           <ClipProductionActionIcon kind="keyframes" />
           <span>{generating ? "提交中..." : "生成首尾帧"}</span>
         </button>
+      </div>
+      <div className="mt-2 rounded-md bg-slate-50 px-2 py-1.5 text-[11px] text-slate-600">
+        <span>{keyframeStatus.label}</span>
+        <span> · 推荐作为视频生成的首尾帧控制</span>
       </div>
       <TimelineClipTaskStatusLine
         kind="keyframes"
