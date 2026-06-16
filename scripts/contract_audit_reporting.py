@@ -22,6 +22,11 @@ from scripts.contract_audit_core import (
     relative,
     summarize,
 )
+from scripts.standard_engine import (
+    annotate_violation_map,
+    standard_catalog_payload,
+    standard_for_category,
+)
 
 
 def utc_now() -> str:
@@ -37,18 +42,27 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
 
 
 def build_report(mode: str, paths: list[Path], *, fail_on_violations: bool) -> dict[str, Any]:
+    raw_violations = {
+        "oversized_files": collect_oversized_files(paths, mode=mode),
+        "route_handlers": collect_route_handlers(paths, mode=mode),
+        "direct_queries": collect_direct_queries(paths, mode=mode),
+        "legacy_references": collect_legacy_references(paths),
+    }
+    docs_standard = standard_for_category("docs_drift")
     report = {
         "mode": mode,
         "generated_at": utc_now(),
         "checked_files": len(paths),
         "checked_paths": [relative(path) for path in paths] if mode == "diff" else [],
-        "docs_drift": {"errors": collect_doc_errors()},
-        "violations": {
-            "oversized_files": collect_oversized_files(paths, mode=mode),
-            "route_handlers": collect_route_handlers(paths, mode=mode),
-            "direct_queries": collect_direct_queries(paths, mode=mode),
-            "legacy_references": collect_legacy_references(paths),
+        "standard_catalog": standard_catalog_payload(),
+        "docs_drift": {
+            "standard_id": docs_standard.id,
+            "standard_title": docs_standard.title,
+            "standard_doc": docs_standard.owner_doc,
+            "suggested_direction": docs_standard.suggested_direction,
+            "errors": collect_doc_errors(),
         },
+        "violations": annotate_violation_map(raw_violations),
     }
     report["summary"] = summarize(report)
     report["exit_on_violation"] = mode == "diff" or fail_on_violations
@@ -77,6 +91,11 @@ def render_markdown(report: dict[str, Any]) -> str:
     ]
     if docs_errors:
         lines.extend(["## Docs Drift", ""])
+        docs_standard = report["docs_drift"]
+        lines.append(
+            f"- Standard: `{docs_standard['standard_id']}` "
+            f"{docs_standard['standard_title']}"
+        )
         lines.extend(f"- {error}" for error in docs_errors[:10])
         lines.append("")
     for title, items, metric_key in (
@@ -91,7 +110,8 @@ def render_markdown(report: dict[str, Any]) -> str:
         for item in items[:10]:
             metric = f" `{item[metric_key]}`" if metric_key else ""
             baseline = " (baseline exemption)" if item.get("baseline_exemption") else ""
-            lines.append(f"- `{item['path']}`{metric}{baseline}")
+            standard = f"`{item['standard_id']}` {item['standard_title']}"
+            lines.append(f"- `{item['path']}`{metric}{baseline} - {standard}")
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 
@@ -125,7 +145,8 @@ def should_fail(report: dict[str, Any]) -> bool:
 
 def print_failures(report: dict[str, Any]) -> None:
     for error in report["docs_drift"]["errors"]:
-        print(f"[check_repo_contracts] {error}", file=sys.stderr)
+        standard_id = report["docs_drift"]["standard_id"]
+        print(f"[check_repo_contracts] {standard_id}: {error}", file=sys.stderr)
     for key, label, metric_key in (
         ("oversized_files", "oversized", "line_count"),
         ("route_handlers", "route handler", "handler_lines"),
@@ -134,4 +155,8 @@ def print_failures(report: dict[str, Any]) -> None:
     ):
         for item in report["violations"][key]:
             detail = f" ({metric_key}={item[metric_key]})" if metric_key else ""
-            print(f"[check_repo_contracts] {label}: {item['path']}{detail}", file=sys.stderr)
+            print(
+                f"[check_repo_contracts] {item['standard_id']} {label}: "
+                f"{item['path']}{detail}",
+                file=sys.stderr,
+            )

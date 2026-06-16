@@ -8,6 +8,9 @@ from scripts.harness.production_quality_script import (
     QUALITY_PASS_THRESHOLD,
     STRUCTURED_SCORE_PASS,
 )
+from scripts.standard_engine import standard_reference
+
+TIMELINE_STANDARD_ID = "STD-TIMELINE-001"
 
 
 def aggregate_quality_report(
@@ -45,6 +48,8 @@ def aggregate_quality_report(
     if provider_billing_errors:
         verdict = "provider_blocked_not_evaluable"
     return {
+        **standard_reference(TIMELINE_STANDARD_ID),
+        "covered_standard_ids": [TIMELINE_STANDARD_ID, "STD-SCRIPT-001"],
         "verdict": verdict,
         "checks": checks,
         "expected_sample_count": expected_sample_count,

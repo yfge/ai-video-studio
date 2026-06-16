@@ -40,6 +40,10 @@ The report must track:
 - legacy choke-point imports or references
 - docs drift
 
+Every mechanical violation should carry a `standard_id`, `standard_title`,
+`standard_doc`, evidence fields, and a suggested repair direction from the
+standard engine catalog in `docs/standards/`.
+
 ## Choke-Point Policy
 
 Remaining legacy hotspots are tolerated as debt, not as expansion points:
@@ -61,6 +65,7 @@ The JSON report should be stable enough for scripts to consume. At minimum it mu
 
 - `mode`
 - `generated_at`
+- `standard_catalog`
 - `summary`
 - `violations`
 - `docs_drift`

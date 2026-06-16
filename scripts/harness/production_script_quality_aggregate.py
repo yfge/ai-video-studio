@@ -10,6 +10,9 @@ from scripts.harness.production_quality_script import (
     SCRIPT_SCORE_PASS,
     STRUCTURED_SCORE_PASS,
 )
+from scripts.standard_engine import standard_reference
+
+SCRIPT_STANDARD_ID = "STD-SCRIPT-001"
 
 
 def aggregate_script_quality_report(
@@ -37,6 +40,7 @@ def aggregate_script_quality_report(
     if provider_errors:
         verdict = "provider_blocked_not_evaluable"
     return {
+        **standard_reference(SCRIPT_STANDARD_ID),
         "verdict": verdict,
         "checks": checks,
         "expected_sample_count": expected_sample_count,

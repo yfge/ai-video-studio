@@ -19,6 +19,8 @@ def test_script_quality_aggregate_requires_10_sample_stability() -> None:
     report = aggregate_script_quality_report(samples, expected_sample_count=10)
 
     assert report["verdict"] == "script_quality_not_proven"
+    assert report["standard_id"] == "STD-SCRIPT-001"
+    assert report["standard_doc"] == "docs/standards/STD-SCRIPT-001.md"
     assert report["checks"]["sample_count_matches"] is False
     assert report["retry_adjusted_success_count"] == 9
 

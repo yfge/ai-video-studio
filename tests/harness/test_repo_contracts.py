@@ -13,7 +13,21 @@ def _load_contract_audit_core():
     return module
 
 
+def _load_contract_audit_reporting():
+    module_path = (
+        Path(__file__).resolve().parents[2] / "scripts" / "contract_audit_reporting.py"
+    )
+    spec = importlib.util.spec_from_file_location(
+        "contract_audit_reporting", module_path
+    )
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 contract_audit_core = _load_contract_audit_core()
+contract_audit_reporting = _load_contract_audit_reporting()
 
 
 def test_longest_route_handler_counts_route_body_lines() -> None:
@@ -101,6 +115,87 @@ def test_diff_collectors_allow_legacy_baseline_debt(tmp_path, monkeypatch) -> No
             "allowed_limit": 1,
         }
     ]
+
+
+def test_contract_report_attaches_standard_metadata(monkeypatch) -> None:
+    monkeypatch.setattr(contract_audit_reporting, "collect_doc_errors", lambda: [])
+    monkeypatch.setattr(
+        contract_audit_reporting,
+        "collect_oversized_files",
+        lambda paths, mode: [],
+    )
+    monkeypatch.setattr(
+        contract_audit_reporting,
+        "collect_route_handlers",
+        lambda paths, mode: [],
+    )
+    monkeypatch.setattr(
+        contract_audit_reporting,
+        "collect_direct_queries",
+        lambda paths, mode: [
+            {
+                "path": "ai-pic-backend/app/services/demo.py",
+                "query_hits": 1,
+                "baseline_exemption": False,
+                "allowed_limit": None,
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        contract_audit_reporting,
+        "collect_legacy_references",
+        lambda paths: [],
+    )
+
+    report = contract_audit_reporting.build_report(
+        "diff",
+        [],
+        fail_on_violations=False,
+    )
+
+    violation = report["violations"]["direct_queries"][0]
+    assert violation["standard_id"] == "STD-DATA-001"
+    assert violation["standard_doc"] == "docs/standards/STD-DATA-001.md"
+    assert "STD-DATA-001" in report["standard_catalog"]
+
+
+def test_contract_report_attaches_docs_standard_metadata(monkeypatch) -> None:
+    monkeypatch.setattr(
+        contract_audit_reporting,
+        "collect_doc_errors",
+        lambda: ["docs/README.md must index docs/standards/README.md"],
+    )
+    monkeypatch.setattr(
+        contract_audit_reporting,
+        "collect_oversized_files",
+        lambda paths, mode: [],
+    )
+    monkeypatch.setattr(
+        contract_audit_reporting,
+        "collect_route_handlers",
+        lambda paths, mode: [],
+    )
+    monkeypatch.setattr(
+        contract_audit_reporting,
+        "collect_direct_queries",
+        lambda paths, mode: [],
+    )
+    monkeypatch.setattr(
+        contract_audit_reporting,
+        "collect_legacy_references",
+        lambda paths: [],
+    )
+
+    report = contract_audit_reporting.build_report(
+        "diff",
+        [],
+        fail_on_violations=False,
+    )
+
+    assert report["docs_drift"]["standard_id"] == "STD-DOCS-001"
+    assert report["docs_drift"]["standard_doc"] == (
+        "docs/standards/STD-DOCS-001.md"
+    )
 
 
 def _write_source(repo_root: Path, rel: str, lines: list[str]) -> Path:

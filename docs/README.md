@@ -27,6 +27,15 @@ This directory holds design notes, API references, and testing guides. Keep this
 - `docs/architecture/file-size-limits.md` — file-size thresholds, refactor triggers, and layering constraints.
 - `docs/architecture/testing-policy.md` — validation matrix, browser policy, and pre-commit expectations.
 - `docs/architecture/agent-workflow.md` — ledger format, commit discipline, and evidence recording rules.
+- `docs/standards/README.md` — standard engine catalog, standard object shape, and runtime entry points.
+- `docs/standards/STD-ARCH-001.md` — source files stay below size limits.
+- `docs/standards/STD-ARCH-002.md` — API route handlers stay thin.
+- `docs/standards/STD-DATA-001.md` — SQLAlchemy queries stay inside repositories.
+- `docs/standards/STD-ARCH-003.md` — legacy choke points are not expansion points.
+- `docs/standards/STD-DOCS-001.md` — repository docs and agent mirrors stay synchronized.
+- `docs/standards/STD-EVIDENCE-001.md` — agent changes include durable validation evidence.
+- `docs/standards/STD-SCRIPT-001.md` — production scripts satisfy beat-level quality gates.
+- `docs/standards/STD-TIMELINE-001.md` — Timeline-first provider chains preserve media lineage.
 
 Keep durable engineering rules in repository docs like the files above. Do not treat chat transcripts or temporary notes as authoritative process documentation.
 

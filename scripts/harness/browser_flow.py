@@ -15,7 +15,12 @@ from shutil import copyfile
 if __package__ in {None, ""}:
     sys.path.append(str(Path(__file__).resolve().parents[2]))
 
-from scripts.harness._common import ensure_run_dir, update_summary, write_json
+from scripts.harness._common import (
+    ensure_run_dir,
+    standard_fields,
+    update_summary,
+    write_json,
+)
 from scripts.harness.scenarios import BROWSER_SCENARIOS
 
 PLACEHOLDER_PNG = base64.b64decode(
@@ -186,6 +191,7 @@ def main() -> int:
         else "failed"
     )
     evidence = {
+        **standard_fields("STD-EVIDENCE-001"),
         "contract_version": 2,
         "scenario": args.scenario,
         "url": url,
@@ -215,6 +221,7 @@ def main() -> int:
     write_json(run_dir / f"network.{args.scenario}.json", evidence["network_evidence"])
     update_summary(
         run_dir,
+        **standard_fields("STD-EVIDENCE-001"),
         browser_scenario=args.scenario,
         browser_status=browser_status,
         browser_engine=selected.get("engine"),

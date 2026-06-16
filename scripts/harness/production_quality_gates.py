@@ -10,8 +10,10 @@ from scripts.harness.production_quality_script import (
     structured_script_score,
 )
 from scripts.harness.provider_chain_payloads import SEEDANCE_CANONICAL
+from scripts.standard_engine import standard_reference
 
 CHARACTER_SCORE_PASS = 3.5
+TIMELINE_STANDARD_ID = "STD-TIMELINE-001"
 
 def evaluate_provider_chain_sample(
     payload: dict[str, Any],
@@ -45,6 +47,8 @@ def evaluate_provider_chain_sample(
         hard_failures.append("provider_chain")
     script_failures = _script_failures(lint, score, structured)
     return {
+        **standard_reference(TIMELINE_STANDARD_ID),
+        "covered_standard_ids": [TIMELINE_STANDARD_ID, "STD-SCRIPT-001"],
         "sample_id": sample_id,
         "attempt": attempt,
         "provider_chain_artifact": provider_chain_artifact,
@@ -92,6 +96,7 @@ def evaluate_timeline_order(payload: dict[str, Any]) -> dict[str, Any]:
         and int(timeline.get("version") or 0) >= 3
     )
     return {
+        **standard_reference(TIMELINE_STANDARD_ID),
         "passed": bool(ordered and version_ok),
         "required_labels": required,
         "positions": positions,
@@ -106,6 +111,7 @@ def evaluate_render_structure(payload: dict[str, Any]) -> dict[str, Any]:
     checks = probe.get("checks") if isinstance(probe.get("checks"), dict) else {}
     passed = bool(probe.get("ok")) and all(bool(value) for value in checks.values())
     return {
+        **standard_reference(TIMELINE_STANDARD_ID),
         "passed": passed,
         "expected_duration_seconds": probe.get("expected_duration_seconds"),
         "format_duration_seconds": probe.get("format_duration_seconds"),
@@ -127,6 +133,7 @@ def evaluate_character_consistency(
     hard_pass = bool(videos) and all(item["passed"] for item in clip_results)
     frame_pass = len(frame_artifacts) >= len(videos) * 3 if videos else False
     return {
+        **standard_reference(TIMELINE_STANDARD_ID),
         "passed": hard_pass and frame_pass,
         "auto_score": CHARACTER_SCORE_PASS if hard_pass and frame_pass else 0.0,
         "pass_threshold": CHARACTER_SCORE_PASS,

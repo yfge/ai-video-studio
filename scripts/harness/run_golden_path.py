@@ -17,7 +17,12 @@ if __package__ in {None, ""}:
 
     sys.path.append(str(Path(__file__).resolve().parents[2]))
 
-from scripts.harness._common import ensure_run_dir, update_summary, write_json
+from scripts.harness._common import (
+    ensure_run_dir,
+    standard_fields,
+    update_summary,
+    write_json,
+)
 from scripts.harness.scenarios import GOLDEN_PATH_SCENARIOS
 from scripts.harness.timeline_export_flow import run_timeline_export_flow
 
@@ -104,6 +109,7 @@ def run_scenario(args: argparse.Namespace) -> dict[str, Any]:
     request_chain: list[dict[str, Any]] = []
     failures: list[dict[str, Any]] = []
     payload: dict[str, Any] = {
+        **standard_fields("STD-EVIDENCE-001"),
         "contract_version": 2,
         "scenario": scenario.name,
         "description": scenario.description,
@@ -237,6 +243,7 @@ def main() -> int:
     write_json(run_dir / "golden_path.json", result)
     update_summary(
         run_dir,
+        **standard_fields("STD-EVIDENCE-001"),
         golden_path=result["scenario"],
         golden_path_status="passed" if result.get("ok") else "failed",
         task_id=((result.get("task") or {}).get("id") if result.get("task") else None),

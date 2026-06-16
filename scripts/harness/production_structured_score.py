@@ -15,9 +15,11 @@ from scripts.harness.production_hook_score import opening_hook_failed_checks
 from scripts.harness.production_progression_score import progression_failed_checks
 from scripts.harness.production_purpose_score import purpose_failed_checks
 from scripts.harness.production_script_payload import extract_script_payload
+from scripts.standard_engine import standard_reference
 
 STRUCTURED_SCORE_PASS = 3.5
 STRUCTURED_CORE_MIN = 3.0
+SCRIPT_STANDARD_ID = "STD-SCRIPT-001"
 
 
 def structured_script_score(payload: dict[str, Any]) -> dict[str, Any]:
@@ -52,6 +54,7 @@ def structured_script_score(payload: dict[str, Any]) -> dict[str, Any]:
     average = round(sum(values.values()) / len(values), 2) if values else 0.0
     core_min = min(values.values()) if values else 0.0
     return {
+        **standard_reference(SCRIPT_STANDARD_ID),
         "status": "completed",
         "scores": values,
         "average": average,

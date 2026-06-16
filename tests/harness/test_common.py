@@ -20,6 +20,15 @@ def test_update_summary_creates_run_artifacts(tmp_path, monkeypatch) -> None:
     assert _common.read_json(run_dir / "summary.json") == summary
 
 
+def test_standard_fields_returns_stable_standard_refs() -> None:
+    fields = _common.standard_fields("STD-EVIDENCE-001", "STD-EVIDENCE-001")
+
+    assert fields["standard_ids"] == ["STD-EVIDENCE-001"]
+    assert fields["standard_refs"][0]["standard_doc"] == (
+        "docs/standards/STD-EVIDENCE-001.md"
+    )
+
+
 def test_read_env_file_skips_comments(tmp_path) -> None:
     env_file = tmp_path / ".env"
     env_file.write_text(

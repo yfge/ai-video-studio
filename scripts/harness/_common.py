@@ -11,6 +11,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from scripts.standard_engine import standard_reference
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS_ROOT = REPO_ROOT / "artifacts" / "runs"
 LOG_FILE = REPO_ROOT / "logs" / "ai-video-studio.jsonl"
@@ -109,6 +111,14 @@ def update_summary(run_dir: Path, **fields: Any) -> dict[str, Any]:
     summary.update(fields)
     write_json(summary_path, summary)
     return summary
+
+
+def standard_fields(*standard_ids: str) -> dict[str, Any]:
+    ids = list(dict.fromkeys(standard_ids))
+    return {
+        "standard_ids": ids,
+        "standard_refs": [standard_reference(standard_id) for standard_id in ids],
+    }
 
 
 def find_jsonl_log() -> Path:

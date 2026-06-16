@@ -8,9 +8,11 @@ from typing import Any
 
 from scripts.harness.production_script_payload import extract_script_payload
 from scripts.harness.production_structured_score import (
+    STRUCTURED_SCORE_PASS,
     beat_action_lines,
     beat_dialogue_lines,
     scene_beats,
+    structured_script_score,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]

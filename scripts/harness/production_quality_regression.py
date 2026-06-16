@@ -55,6 +55,7 @@ def main() -> int:
         scenario="production_quality_regression",
         mode=args.mode,
         verdict=report.get("aggregate", {}).get("verdict"),
+        standard_ids=report.get("aggregate", {}).get("covered_standard_ids"),
         quality_report=str(run_dir / "quality_report.json"),
         samples_csv=str(run_dir / "samples.csv"),
         review_pack=str(run_dir / "review_pack.md"),
