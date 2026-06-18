@@ -18,6 +18,7 @@ const dom = new JSDOM("<!doctype html><html><body></body></html>", {
 
 const iconNames: OperatorNavIconName[] = [
   "workspace",
+  "canvas",
   "ip",
   "stories",
   "environments",

@@ -13,6 +13,7 @@ export * from "./admin.endpoints";
 // Task endpoints
 export * from "./task.endpoints";
 export * from "./workbench.endpoints";
+export * from "./production-canvas.endpoints";
 
 // Image generation profiles endpoints
 export * from "./image-gen.endpoints";

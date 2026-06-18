@@ -6,6 +6,7 @@ from app.api.v1.endpoints import (
     episodes,
     image_gen_profiles,
     migrations,
+    production_canvas,
     prompts,
     scoring,
     scripts,
@@ -85,6 +86,11 @@ api_router.include_router(tasks.router, prefix="/tasks", tags=["tasks"])
 
 # 工作台聚合路由
 api_router.include_router(workbench.router, prefix="/workbench", tags=["workbench"])
+api_router.include_router(
+    production_canvas.router,
+    prefix="/production-canvas",
+    tags=["production-canvas"],
+)
 
 # 剧本评分与投流表相关路由
 api_router.include_router(scoring.router, prefix="/scoring", tags=["scoring"])

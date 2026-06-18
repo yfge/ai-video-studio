@@ -2,6 +2,7 @@ import type { SVGProps } from "react";
 
 export type OperatorNavIconName =
   | "workspace"
+  | "canvas"
   | "ip"
   | "stories"
   | "environments"
@@ -33,6 +34,16 @@ export function OperatorShellNavIcon({
           <path d="M4 5.5h7v6H4z" />
           <path d="M13 5.5h7v13h-7z" />
           <path d="M4 13.5h7v5H4z" />
+        </svg>
+      );
+    case "canvas":
+      return (
+        <svg {...commonProps}>
+          <path d="M4 6.5h4.5v4.5H4z" />
+          <path d="M15.5 4.5H20V9h-4.5z" />
+          <path d="M15.5 15H20v4.5h-4.5z" />
+          <path d="M8.5 8.8h3.2c1.5 0 2.5-.7 3.4-2" />
+          <path d="M8.5 10.2h2.8c2.2 0 3.1 2.3 4.2 5.2" />
         </svg>
       );
     case "ip":

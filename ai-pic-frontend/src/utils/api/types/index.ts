@@ -14,6 +14,7 @@ export * from "./user.types";
 // Task management types
 export * from "./task.types";
 export * from "./workbench.types";
+export * from "./production-canvas.types";
 
 // Image and gallery types
 export * from "./image.types";

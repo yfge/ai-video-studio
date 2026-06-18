@@ -19,15 +19,16 @@ import {
   operatorShellUserClass,
 } from "./OperatorShellLayout";
 
-type OperatorNavItem = {
+export type OperatorNavItem = {
   href: string;
   label: string;
   icon: OperatorNavIconName;
 };
 type OperatorShellMode = "production" | "admin";
 
-const productionNavItems: OperatorNavItem[] = [
+export const productionNavItems: OperatorNavItem[] = [
   { href: "/", label: "工作台", icon: "workspace" },
+  { href: "/canvas", label: "创作画布", icon: "canvas" },
   { href: "/virtual-ip", label: "IP 项目", icon: "ip" },
   { href: "/stories", label: "故事生产", icon: "stories" },
   { href: "/environments", label: "环境资产", icon: "environments" },

@@ -34,3 +34,12 @@ class EnvironmentRepository(BaseRepository[Environment]):
         if not env:
             raise NotFoundError("环境", env_id)
         return env
+
+    def list_accessible(
+        self,
+        *,
+        user: User,
+        limit: int = 20,
+    ) -> list[Environment]:
+        """List environment assets visible to a user."""
+        return self._owned_query(user).order_by(self.model.id.desc()).limit(limit).all()

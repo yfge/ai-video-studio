@@ -4,18 +4,17 @@ import json
 
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
-from app.models.task import Task, TaskStatus, TaskType
+from app.models.task import Task, TaskStatus
 from app.models.user import User
 from app.repositories.task_repository import TaskRepository
 from app.repositories.user_repository import UserRepository
-from app.services.script.task_titles import friendly_task_title
+from app.services.script.timeline_pipeline_queue import queue_timeline_pipeline_task
 from app.services.script.timeline_storyboard_queue import (
     generate_storyboard_placeholders_and_queue_images,
 )
 from app.services.storyboard.storyboard_image_autogen import (
     storyboard_image_queue_progress_message,
 )
-from app.services.task_worker import timeline_pipeline_generate_task
 from app.services.timeline_pipeline_runner import run_timeline_main_chain
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -59,24 +58,15 @@ async def generate_timeline_pipeline_async(
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
 
-    story = script.episode.story if script.episode else None
-    episode = script.episode if script.episode else None
     params = body.model_dump()
     params["script_id"] = script_id
 
-    task = Task(
-        title=friendly_task_title("一键时间轴流水线", script, episode, story),
-        description="一键生成对白音轨、时间轴、分镜帧占位",
-        task_type=TaskType.TIMELINE_PIPELINE,
-        prompt=f"Timeline pipeline for script {script_id}",
-        parameters=json.dumps(params, ensure_ascii=False),
-        user_id=current_user.id,
+    task = queue_timeline_pipeline_task(
+        db,
+        current_user,
+        script,
+        params=params,
     )
-    db.add(task)
-    db.commit()
-    db.refresh(task)
-
-    timeline_pipeline_generate_task.delay(task.id, params, current_user.id)
     return {"success": True, "data": {"task_id": task.id, "status": task.status}}
 
 

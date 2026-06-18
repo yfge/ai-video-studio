@@ -59,3 +59,13 @@ class VirtualIPRepository(BaseRepository[VirtualIP]):
         elif user_id is not None:
             query = query.filter(self.model.user_id == user_id)
         return query.first()
+
+    def list_accessible(
+        self,
+        *,
+        user: User,
+        limit: int = 20,
+    ) -> list[VirtualIP]:
+        """List active Virtual IP assets visible to a user."""
+        query = self._owned_query(user).filter(self.model.is_active.is_(True))
+        return query.order_by(self.model.id.desc()).limit(limit).all()
