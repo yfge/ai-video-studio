@@ -1,6 +1,8 @@
-from fastapi import HTTPException
+import json
 
 from app.models.task import Task, TaskStatus
+from app.services.task_agent_run import persist_task_agent_run
+from fastapi import HTTPException
 from tests.integration.test_timeline_pipeline_import_api import (
     _create_script_with_scenes,
     _create_task,
@@ -60,6 +62,17 @@ def test_process_timeline_pipeline_persists_http_exception_detail(
             detail={
                 "message": "timeline shot plan JSON invalid",
                 "errors": [{"loc": ["shots", 1, "plot"], "msg": "too short"}],
+                "batch_index": 2,
+                "batch_count": 7,
+                "clip_ids": ["video_clip_009"],
+                "provider": "deepseek",
+                "model": "deepseek-v4-flash",
+                "usage": {"completion_tokens": 12003},
+                "finish_reason": "length",
+                "max_tokens": 12000,
+                "repair_attempts": 2,
+                "prompt": "must not be persisted",
+                "content": "must not be persisted",
             },
         )
 
@@ -86,11 +99,32 @@ def test_process_timeline_pipeline_persists_http_exception_detail(
 
     session = test_db()
     try:
+        persist_task_agent_run(
+            task_id=task.id,
+            user_id=user.id,
+            kind="timeline_pipeline",
+            db_session=session,
+        )
         refreshed = session.query(Task).filter(Task.id == task.id).first()
         assert refreshed is not None
         assert refreshed.status == TaskStatus.FAILED
         assert refreshed.error_message
         assert "timeline shot plan JSON invalid" in refreshed.error_message
         assert "流水线失败：timeline shot plan JSON invalid" in refreshed.description
+        params = json.loads(refreshed.parameters)
+        pipeline_error = params["pipeline_error"]
+        assert pipeline_error["message"] == "timeline shot plan JSON invalid"
+        assert pipeline_error["stage"] == "timeline_shot_plan"
+        assert pipeline_error["batch_index"] == 2
+        assert pipeline_error["clip_ids"] == ["video_clip_009"]
+        assert pipeline_error["usage"] == {"completion_tokens": 12003}
+        assert pipeline_error["finish_reason"] == "length"
+        assert "prompt" not in pipeline_error
+        assert "content" not in pipeline_error
+        agent_error = params["agent_run"]["error"]
+        assert agent_error["message"] == "timeline shot plan JSON invalid"
+        assert agent_error["batch_count"] == 7
+        assert agent_error["provider"] == "deepseek"
+        assert agent_error["max_tokens"] == 12000
     finally:
         session.close()

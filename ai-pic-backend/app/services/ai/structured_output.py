@@ -31,6 +31,10 @@ def parse_json_dict(payload: Any) -> Optional[Dict[str, Any]]:
     return None
 
 
+def _validation_errors_json_safe(exc: ValidationError) -> List[Dict[str, Any]]:
+    return exc.errors(include_context=False, include_input=False)
+
+
 def validate_payload(
     model: Type[TModel],
     payload: Any,
@@ -62,7 +66,7 @@ def validate_payload(
         parsed = model.model_validate(raw_json)
         return parsed.model_dump(), None, raw_json
     except ValidationError as exc:
-        return None, exc.errors(), raw_json
+        return None, _validation_errors_json_safe(exc), raw_json
 
 
 def build_repair_prompt(
@@ -73,7 +77,9 @@ def build_repair_prompt(
     validation_errors: Optional[List[Dict[str, Any]]],
 ) -> str:
     errors_text = (
-        json.dumps(validation_errors, ensure_ascii=False) if validation_errors else "[]"
+        json.dumps(validation_errors, ensure_ascii=False, default=str)
+        if validation_errors
+        else "[]"
     )
     prior = (prior_output or "").strip()
     if len(prior) > 12000:
@@ -114,6 +120,8 @@ async def generate_with_repair(
         Callable[[Dict[str, Any]], Optional[List[Dict[str, Any]]]]
     ] = None,
     max_repairs: int = 2,
+    max_tokens: int | None = None,
+    stream: bool = False,
 ) -> Dict[str, Any]:
     """
     Generate structured JSON using AI manager and repair invalid outputs.
@@ -133,6 +141,8 @@ async def generate_with_repair(
         prefer_provider=prefer_provider,
         json_schema={"name": schema_name, "schema": schema},
         system_prompt=system_prompt,
+        max_tokens=max_tokens,
+        stream=stream,
     )
     content_text = coerce_text(getattr(response, "data", None))
     normalized, errors, raw_json = validate_payload(
@@ -149,6 +159,7 @@ async def generate_with_repair(
         "provider_used": getattr(response, "provider", None),
         "model_used": getattr(response, "model", None),
         "usage": getattr(response, "usage", None),
+        "metadata": getattr(response, "metadata", None),
         "content": content_text,
         "normalized": normalized,
         "validation_errors": errors,
@@ -179,6 +190,8 @@ async def generate_with_repair(
             prefer_provider=prefer_provider,
             json_schema={"name": schema_name, "schema": schema},
             system_prompt=repair_system_prompt or system_prompt,
+            max_tokens=max_tokens,
+            stream=stream,
         )
         content_text = coerce_text(getattr(repair, "data", None))
         normalized, errors, raw_json = validate_payload(
@@ -195,6 +208,7 @@ async def generate_with_repair(
                 "provider_used": getattr(repair, "provider", None),
                 "model_used": getattr(repair, "model", None),
                 "usage": getattr(repair, "usage", None),
+                "metadata": getattr(repair, "metadata", None),
                 "prompt": repair_prompt,
                 "content": content_text,
                 "normalized": normalized,

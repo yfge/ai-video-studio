@@ -25,7 +25,8 @@ def persist_task_agent_run(
 ) -> None:
     """Persist agent_run into Task.parameters for a terminal task (completed/failed/cancelled)."""
 
-    from app.models.task import Task, TaskStatus
+    from app.models.task import TaskStatus
+    from app.repositories.task_repository import TaskRepository
 
     should_close = False
     if db_session is None:
@@ -36,7 +37,7 @@ def persist_task_agent_run(
     else:
         db = db_session
     try:
-        task: Task | None = db.query(Task).filter(Task.id == task_id).first()
+        task = TaskRepository(db).get_by_id(task_id)
         if not task:
             return
         terminal_statuses = {
@@ -87,10 +88,19 @@ def _enrich_with_failure_context(
     task, *, kind: str, agent_run: Dict[str, Any]
 ) -> Dict[str, Any]:
     enriched = _enrich_with_terminal_context(task, kind=kind, agent_run=agent_run)
+    params = loads_task_parameters(getattr(task, "parameters", None))
 
     error_message = getattr(task, "error_message", None)
+    existing_error = (
+        dict(enriched["error"]) if isinstance(enriched.get("error"), dict) else {}
+    )
+    pipeline_error = params.get("pipeline_error")
+    if isinstance(pipeline_error, dict):
+        existing_error.update(pipeline_error)
     if isinstance(error_message, str) and error_message.strip():
-        enriched["error"] = {"message": error_message.strip()}
+        existing_error["message"] = error_message.strip()
+    if existing_error:
+        enriched["error"] = existing_error
 
     return enriched
 

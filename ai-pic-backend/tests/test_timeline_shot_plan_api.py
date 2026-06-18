@@ -1,192 +1,20 @@
-import json
 from types import SimpleNamespace
 
-from app.models.script import Episode, Script, Story
 from app.models.timeline import Timeline, TimelineRevision
-from app.models.user import User
 from app.services.timeline_shot_plan_payloads import build_timeline_shot_plan_prompt
-from sqlalchemy.orm import Session
-
-
-class _FakeAIManager:
-    def __init__(self, shots: list[dict]):
-        self.shots = shots
-        self.calls: list[dict] = []
-
-    async def generate_text(self, **kwargs):
-        self.calls.append(kwargs)
-        return SimpleNamespace(
-            success=True,
-            data=json.dumps({"shots": self.shots}, ensure_ascii=False),
-            provider="deepseek",
-            model="deepseek-v4-flash",
-            usage={"total_tokens": 123},
-            error=None,
-        )
-
-
-def _bootstrap_episode(db: Session) -> tuple[Episode, Script]:
-    user = db.query(User).filter(User.username == "test_admin").one()
-    story = Story(title="Shot Plan Story", genre="short_drama", user_id=user.id)
-    episode = Episode(
-        story=story,
-        episode_number=1,
-        title="Shot Plan Pilot",
-        duration_minutes=3,
-    )
-    script = Script(
-        episode=episode,
-        title="Shot Plan Script",
-        content="机器人: 时间线先走。",
-        scenes=[{"scene_id": "scene_001", "title": "Opening"}],
-    )
-    db.add_all([story, episode, script])
-    db.commit()
-    db.refresh(episode)
-    db.refresh(script)
-    return episode, script
-
-
-def _timeline_spec(episode: Episode, script: Script) -> dict:
-    return {
-        "spec_version": "timeline.v1",
-        "episode_id": episode.id,
-        "script_id": script.id,
-        "version": 1,
-        "source_audio_timeline_version": 1,
-        "fps": 24,
-        "resolution": "1080x1920",
-        "duration_ms": 4000,
-        "source": {"type": "api_test"},
-        "tracks": [
-            {
-                "track_type": "dialogue",
-                "clips": [
-                    {
-                        "clip_id": "dialogue_scene_001_beat_001_001",
-                        "track_type": "dialogue",
-                        "scene_id": "scene_001",
-                        "beat_id": "beat_001",
-                        "ordinal": 1,
-                        "start_ms": 0,
-                        "end_ms": 4000,
-                        "duration_ms": 4000,
-                        "text": "机器人: 时间线先走。",
-                        "speaker_name": "机器人",
-                        "source": {
-                            "kind": "audio_timeline_beat",
-                            "scene_id": "scene_001",
-                            "beat_id": "beat_001",
-                            "audio_timeline_version": 1,
-                        },
-                        "source_refs": {
-                            "scene_beat_id": "beat_001",
-                            "audio_timeline_version": 1,
-                        },
-                    }
-                ],
-            },
-            {
-                "track_type": "video",
-                "clips": [
-                    {
-                        "clip_id": "video_scene_001_beat_001_001",
-                        "track_type": "video",
-                        "scene_id": "scene_001",
-                        "beat_id": "beat_001",
-                        "ordinal": 1,
-                        "start_ms": 0,
-                        "end_ms": 4000,
-                        "duration_ms": 4000,
-                        "text": "机器人检查时间轴上的第一颗光点。",
-                        "placeholder": True,
-                        "asset_ref": None,
-                        "source": {
-                            "kind": "audio_timeline_beat",
-                            "scene_id": "scene_001",
-                            "beat_id": "beat_001",
-                            "audio_timeline_version": 1,
-                        },
-                        "source_refs": {
-                            "scene_beat_id": "beat_001",
-                            "audio_timeline_version": 1,
-                        },
-                    }
-                ],
-            },
-            {
-                "track_type": "subtitle",
-                "clips": [
-                    {
-                        "clip_id": "subtitle_scene_001_beat_001_001",
-                        "track_type": "subtitle",
-                        "scene_id": "scene_001",
-                        "beat_id": "beat_001",
-                        "ordinal": 1,
-                        "start_ms": 0,
-                        "end_ms": 4000,
-                        "duration_ms": 4000,
-                        "text": "机器人: 时间线先走。",
-                        "source": {
-                            "kind": "audio_timeline_beat",
-                            "scene_id": "scene_001",
-                            "beat_id": "beat_001",
-                            "audio_timeline_version": 1,
-                        },
-                        "source_refs": {
-                            "scene_beat_id": "beat_001",
-                            "audio_timeline_version": 1,
-                        },
-                    }
-                ],
-            },
-        ],
-    }
-
-
-def _create_timeline(client, episode: Episode, script: Script) -> dict:
-    response = client.post(
-        f"/api/v1/episodes/{episode.id}/timelines",
-        json={
-            "script_id": script.id,
-            "title": "Shot Plan Timeline",
-            "spec": _timeline_spec(episode, script),
-            "source_audio_timeline_version": 1,
-        },
-    )
-    assert response.status_code == 200
-    return response.json()
-
-
-def _valid_shots() -> list[dict]:
-    return [
-        {
-            "clip_id": "video_scene_001_beat_001_001",
-            "duration_ms": 4000,
-            "plot": "机器人检查时间轴上的第一颗光点。",
-            "dialogue_source": "机器人: 时间线先走。",
-            "visual_prompt": "3D cartoon robot points at a glowing timeline bead",
-            "video_prompt": (
-                "3D cartoon robot points at a glowing timeline bead, dialogue: "
-                "机器人: 时间线先走。, clear camera push-in, 4 seconds"
-            ),
-            "character_anchor": "non-real blue robot with LED eyes",
-            "camera": "slow push-in",
-            "action": "points at the first glowing timeline bead",
-            "direction_anchor": "朝向孤独清道夫发现线索的冷幽默镜头",
-            "aesthetic_reference": "1960s atomic-punk, IMAX film, Panavision C lens",
-            "shot_type": "low angle medium close-up",
-            "camera_movement": "slow push-in",
-            "composition_geometry": "subject centered, glowing bead lower third",
-            "motion_timeline": [
-                {"at_ms": 0, "action": "robot leans into frame"},
-                {"at_ms": 1800, "action": "finger points at the bead"},
-                {"at_ms": 4000, "action": "LED eyes brighten"},
-            ],
-            "emotional_landing": "quiet discovery with lonely hero restraint",
-            "prompt_method": "direction_reference_geometry_timeline_emotion_v1",
-        }
-    ]
+from tests.timeline_shot_plan_batch_helpers import (
+    _BatchAIManager,
+    _clip_ids_from_prompt,
+    _create_timeline_with_spec,
+    _large_timeline_spec,
+)
+from tests.timeline_shot_plan_test_helpers import (
+    _bootstrap_episode,
+    _create_timeline,
+    _FakeAIManager,
+    _timeline_spec,
+    _valid_shots,
+)
 
 
 def test_timeline_shot_plan_api_updates_timeline_with_stable_clip_ids(
@@ -289,3 +117,89 @@ def test_timeline_shot_plan_prompt_includes_character_anchor_hint():
     assert "character_anchor_hint" in prompt
     assert "blue cartoon robot, orange scarf, LED eyes" in prompt
     assert "same protagonist anchor" in prompt
+
+
+def test_timeline_shot_plan_api_batches_large_timeline_without_truncation(
+    client,
+    db_session,
+    monkeypatch,
+):
+    episode, script = _bootstrap_episode(db_session)
+    spec = _large_timeline_spec(episode, script, clip_count=52)
+    fake_ai = _BatchAIManager(spec)
+    monkeypatch.setattr(
+        "app.services.timeline_shot_plan_service.ai_service.ai_manager",
+        fake_ai,
+    )
+    timeline = _create_timeline_with_spec(client, episode, script, spec)
+
+    response = client.post(
+        f"/api/v1/timelines/{timeline['id']}/shot-plan",
+        json={
+            "expected_version": timeline["version"],
+            "prefer_provider": "deepseek",
+            "model": "deepseek-v4-flash",
+            "style": "3d_cartoon",
+        },
+    )
+
+    assert response.status_code == 200
+    assert len(fake_ai.calls) == 7
+    assert [len(_clip_ids_from_prompt(call["prompt"])) for call in fake_ai.calls] == [
+        8,
+        8,
+        8,
+        8,
+        8,
+        8,
+        4,
+    ]
+    assert [call["max_tokens"] for call in fake_ai.calls] == [
+        9600,
+        9600,
+        9600,
+        9600,
+        9600,
+        9600,
+        4800,
+    ]
+    updated = response.json()
+    assert updated["version"] == 2
+    tracks = {track["track_type"]: track for track in updated["spec"]["tracks"]}
+    shot_refs = [
+        clip["source_refs"].get("timeline_shot_plan")
+        for clip in tracks["video"]["clips"]
+    ]
+    assert len(shot_refs) == 52
+    assert all(isinstance(ref, dict) for ref in shot_refs)
+    assert shot_refs[0]["clip_id"] == "video_clip_001"
+    assert shot_refs[-1]["clip_id"] == "video_clip_052"
+
+
+def test_timeline_shot_plan_api_repairs_invalid_batch_json(
+    client,
+    db_session,
+    monkeypatch,
+):
+    episode, script = _bootstrap_episode(db_session)
+    spec = _large_timeline_spec(episode, script, clip_count=1)
+    fake_ai = _BatchAIManager(spec, invalid_attempts=1)
+    monkeypatch.setattr(
+        "app.services.timeline_shot_plan_service.ai_service.ai_manager",
+        fake_ai,
+    )
+    timeline = _create_timeline_with_spec(client, episode, script, spec)
+
+    response = client.post(
+        f"/api/v1/timelines/{timeline['id']}/shot-plan",
+        json={"expected_version": timeline["version"]},
+    )
+
+    assert response.status_code == 200
+    assert len(fake_ai.calls) == 2
+    assert fake_ai.calls[0]["max_tokens"] == 4000
+    assert fake_ai.calls[1]["max_tokens"] == 4000
+    updated = response.json()
+    tracks = {track["track_type"]: track for track in updated["spec"]["tracks"]}
+    shot_plan = tracks["video"]["clips"][0]["source_refs"]["timeline_shot_plan"]
+    assert shot_plan["clip_id"] == "video_clip_001"

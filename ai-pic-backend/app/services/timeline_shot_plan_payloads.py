@@ -10,8 +10,13 @@ from app.services.timeline_shot_plan_styles import style_prompt_instruction
 SHOT_PLAN_SCHEMA = TimelineShotPlan.model_json_schema()
 
 
-def build_timeline_shot_plan_prompt(spec: dict[str, Any], *, style: str) -> str:
-    clips = _timeline_prompt_clips(spec)
+def build_timeline_shot_plan_prompt(
+    spec: dict[str, Any],
+    *,
+    style: str,
+    clip_ids: set[str] | None = None,
+) -> str:
+    clips = _timeline_prompt_clips(spec, clip_ids=clip_ids)
     return (
         "Return only valid JSON. Generate a Timeline-native shot plan for every "
         "video clip below. Do not change clip_id, timing, or duration_ms. Use only "
@@ -147,11 +152,17 @@ def clips_for_track(spec: dict[str, Any], track_type: str) -> list[dict[str, Any
     return []
 
 
-def _timeline_prompt_clips(spec: dict[str, Any]) -> list[dict[str, Any]]:
+def _timeline_prompt_clips(
+    spec: dict[str, Any],
+    *,
+    clip_ids: set[str] | None = None,
+) -> list[dict[str, Any]]:
     dialogue_by_key = _clips_by_scene_beat(spec, "dialogue")
     subtitle_by_key = _clips_by_scene_beat(spec, "subtitle")
     prompt_clips: list[dict[str, Any]] = []
     for clip in clips_for_track(spec, "video"):
+        if clip_ids is not None and str(clip.get("clip_id")) not in clip_ids:
+            continue
         key = _scene_beat_key(clip)
         dialogue_clip = dialogue_by_key.get(key) or {}
         subtitle_clip = subtitle_by_key.get(key) or {}

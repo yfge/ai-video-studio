@@ -232,4 +232,7 @@ def build_timeline_pipeline_agent_run(db, task, *, user_id: int) -> Dict[str, An
             **timeline_ref,
         },
     }
+    pipeline_error = safe_dict(params.get("pipeline_error"))
+    if pipeline_error:
+        payload["error"] = pipeline_error
     return payload

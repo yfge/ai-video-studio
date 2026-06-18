@@ -2,10 +2,6 @@ from __future__ import annotations
 
 import json
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
-
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.task import Task, TaskStatus, TaskType
@@ -21,6 +17,9 @@ from app.services.storyboard.storyboard_image_autogen import (
 )
 from app.services.task_worker import timeline_pipeline_generate_task
 from app.services.timeline_pipeline_runner import run_timeline_main_chain
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
 from .audio_pipeline_utils import (
     format_pipeline_error,
@@ -170,6 +169,67 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
             error_message = format_pipeline_error(exc)
             task.status = TaskStatus.FAILED
             task.error_message = error_message
+            if isinstance(exc, HTTPException):
+                _persist_pipeline_error_detail(task, exc.detail)
             update_task_progress(db, task, f"流水线失败：{error_message}")
     finally:
         db.close()
+
+
+def _persist_pipeline_error_detail(task: Task, detail: object) -> None:
+    if not isinstance(detail, dict):
+        return
+    sanitized = _sanitize_pipeline_error_detail(detail)
+    if not sanitized:
+        return
+    try:
+        params = json.loads(task.parameters) if task.parameters else {}
+    except Exception:
+        params = {}
+    if not isinstance(params, dict):
+        params = {}
+    params["pipeline_error"] = sanitized
+    task.parameters = json.dumps(params, ensure_ascii=False)
+
+
+def _sanitize_pipeline_error_detail(detail: dict) -> dict:
+    allowed = {
+        "message",
+        "errors",
+        "batch_index",
+        "batch_count",
+        "clip_ids",
+        "provider",
+        "model",
+        "usage",
+        "finish_reason",
+        "max_tokens",
+        "repair_attempts",
+    }
+    sanitized = {key: detail[key] for key in allowed if key in detail}
+    message = sanitized.get("message")
+    if isinstance(message, str) and "timeline shot plan" in message:
+        sanitized["stage"] = "timeline_shot_plan"
+    elif sanitized:
+        sanitized["stage"] = str(detail.get("stage") or "timeline_pipeline")
+    if "errors" in sanitized:
+        sanitized["errors"] = _sanitize_error_items(sanitized["errors"])
+    return sanitized
+
+
+def _sanitize_error_items(errors: object) -> list[dict]:
+    if not isinstance(errors, list):
+        return []
+    sanitized: list[dict] = []
+    for item in errors:
+        if not isinstance(item, dict):
+            sanitized.append({"msg": str(item)})
+            continue
+        sanitized.append(
+            {
+                key: value
+                for key, value in item.items()
+                if key not in {"input", "ctx", "url"}
+            }
+        )
+    return sanitized
