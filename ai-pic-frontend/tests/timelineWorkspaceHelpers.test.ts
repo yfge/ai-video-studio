@@ -223,6 +223,64 @@ describe("timeline workspace helpers", () => {
     assert.equal(result[0].items[0].label, "native dialogue");
   });
 
+  it("enriches native video clips from matching audio beats", () => {
+    const timeline = {
+      id: 3,
+      business_id: "timeline_3",
+      episode_id: 1,
+      script_id: 2,
+      title: "Timeline",
+      status: "draft",
+      version: 1,
+      created_at: "2026-05-12T00:00:00Z",
+      updated_at: "2026-05-12T00:00:00Z",
+      spec: {
+        spec_version: "timeline.v1",
+        episode_id: 1,
+        script_id: 2,
+        version: 1,
+        tracks: [
+          {
+            track_type: "video",
+            clips: [
+              {
+                clip_id: "video_scene_1_beat_1_001",
+                beat_id: 3991,
+                track_type: "video",
+                start_ms: 0,
+                end_ms: 1200,
+                text: "native video",
+              },
+            ],
+          },
+        ],
+      },
+    } satisfies TimelineResponse;
+
+    const result = buildEpisodeTimelineTracks(
+      timeline,
+      {
+        beats: [
+          {
+            beat_id: 3991,
+            speaker_name: "老拐",
+            characters_involved: ["老拐", "阿盖儿"],
+            dialogue_action: "打开手机",
+            dialogue_emotion: "confident",
+          },
+        ],
+      },
+      null,
+    );
+
+    const videoItem = result[0].items[0];
+    assert.equal(videoItem.type, "video");
+    assert.equal(videoItem.meta?.speaker_name, "老拐");
+    assert.deepEqual(videoItem.meta?.characters_involved, ["老拐", "阿盖儿"]);
+    assert.equal(videoItem.meta?.dialogue_action, "打开手机");
+    assert.equal(videoItem.meta?.dialogue_emotion, "confident");
+  });
+
   it("falls back to legacy audio timeline tracks when Timeline Spec is absent", () => {
     const result = buildEpisodeTimelineTracks(
       null,

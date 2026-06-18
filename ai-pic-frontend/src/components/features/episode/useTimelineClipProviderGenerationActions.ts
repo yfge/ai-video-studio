@@ -17,6 +17,7 @@ export function useTimelineClipProviderGenerationActions({
   clipId,
   prompt,
   model,
+  storyboardModel,
   storyboardStyle,
   storyboardPanelCount,
   referenceImages,
@@ -31,6 +32,7 @@ export function useTimelineClipProviderGenerationActions({
   clipId?: string | null;
   prompt: string;
   model: string;
+  storyboardModel: string;
   storyboardStyle: TimelineClipStoryboardStyle;
   storyboardPanelCount: string;
   referenceImages: string[];
@@ -65,6 +67,7 @@ export function useTimelineClipProviderGenerationActions({
           expectedVersion: timelineVersion,
           panelCount,
           style: storyboardStyle,
+          model: storyboardModel,
           referenceImages,
           characterVirtualIpIds: selectedVirtualIpIds,
           characterReferenceImages: selectedCharacterReferenceImages,

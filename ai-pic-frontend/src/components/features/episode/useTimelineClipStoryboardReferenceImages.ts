@@ -1,14 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { episodeCharacterAPI, storyStructureAPI } from "@/utils/api/endpoints";
+import {
+  episodeCharacterAPI,
+  storyStructureAPI,
+  virtualIPAPI,
+} from "@/utils/api/endpoints";
 import type { Environment, EpisodeCharacter } from "@/utils/api/types";
 import {
   buildCharacterImageOptions,
   buildEnvironmentImageOptions,
+  buildVirtualIPImageOptions,
   type StoryboardCharacterImageOptions,
   type StoryboardReferenceImageOption,
 } from "./TimelineClipStoryboardReferenceImagesModel";
+import { episodeCharacterDisplayName } from "./episodeCharacterDisplay";
 
 export function useTimelineClipStoryboardReferenceImages({
   episodeId,
@@ -36,7 +42,12 @@ export function useTimelineClipStoryboardReferenceImages({
   const characterFetchKey = useMemo(
     () =>
       episodeCharacters
-        .map((character) => `${character.id}:${character.virtual_ip_id}`)
+        .map(
+          (character) =>
+            `${character.id}:${character.virtual_ip_id}:${
+              character.extra_metadata?.source || ""
+            }`,
+        )
         .join("|"),
     [episodeCharacters],
   );
@@ -92,6 +103,9 @@ export function useTimelineClipStoryboardReferenceImages({
       !episodeCharacters.length
     ) {
       if (storyboardCharacterImageOptions) setCharacterImagesLoading(false);
+      if (!storyboardCharacterImageOptions && !episodeCharacters.length) {
+        setLoadedCharacterOptions({});
+      }
       return;
     }
     let cancelled = false;
@@ -100,6 +114,18 @@ export function useTimelineClipStoryboardReferenceImages({
     Promise.all(
       episodeCharacters.map(async (character) => {
         if (!character.id || !character.virtual_ip_id) return null;
+        if (isStoryCharacterFallback(character)) {
+          const response = await virtualIPAPI.getVirtualIP(
+            character.virtual_ip_id,
+          );
+          return [
+            character.virtual_ip_id,
+            buildVirtualIPImageOptions(
+              response.success ? response.data : null,
+              episodeCharacterDisplayName(character),
+            ),
+          ] as const;
+        }
         const resources =
           await episodeCharacterAPI.getEpisodeCharacterResources(
             episodeId,
@@ -146,4 +172,8 @@ export function useTimelineClipStoryboardReferenceImages({
     characterImagesError,
     environmentImageOptions,
   };
+}
+
+function isStoryCharacterFallback(character: EpisodeCharacter) {
+  return character.extra_metadata?.source === "story_character";
 }

@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Mapping, Optional
 
+from app.services.storyboard.clip_storyboard_panel_moments import (
+    clip_panel_fallback_layers,
+)
 from app.services.storyboard.grid_storyboard_layout import grid_layout
 from app.services.storyboard.grid_storyboard_prompt_layers import (
     build_panel_prompt,
@@ -112,6 +115,11 @@ def build_clip_storyboard_panels(
     for index in range(1, layout.panel_count + 1):
         row = ((index - 1) // layout.columns) + 1
         column = ((index - 1) % layout.columns) + 1
+        fallback_layers = clip_panel_fallback_layers(
+            clip,
+            panel_index=index,
+            panel_count=layout.panel_count,
+        )
         panel = {
             "panel_id": f"clip_storyboard_panel_{index:03d}",
             "panel_index": index,
@@ -123,10 +131,16 @@ def build_clip_storyboard_panels(
             "start_ms": clip.get("start_ms"),
             "end_ms": clip.get("end_ms"),
             "duration_ms": _duration_ms(clip),
-            "visual_prompt": _panel_visual_prompt(visual_prompt, motion, index),
+            "visual_prompt": _panel_visual_prompt(
+                visual_prompt,
+                motion,
+                index,
+                fallback_layers["panel_moment"],
+            ),
             "video_prompt": video_prompt,
             "source_refs": clip.get("source_refs") or {},
         }
+        panel.update(fallback_layers)
         panel.update(prompt_layers)
         panel["storyboard_panel_prompt"] = build_panel_prompt(panel)
         panels.append(panel)
@@ -165,6 +179,7 @@ def _panel_visual_prompt(
     visual_prompt: str,
     motion_timeline: Any,
     panel_index: int,
+    fallback_moment: str,
 ) -> str:
     if isinstance(motion_timeline, list) and motion_timeline:
         point = motion_timeline[min(panel_index - 1, len(motion_timeline) - 1)]
@@ -173,10 +188,10 @@ def _panel_visual_prompt(
             at_ms = point.get("at_ms")
             if isinstance(action, str) and action.strip():
                 return (
-                    f"{visual_prompt} Key moment {panel_index}"
+                    f"{visual_prompt} Moment {panel_index}"
                     f" at {at_ms}ms: {action.strip()}"
                 ).strip()
-    return f"{visual_prompt} Key moment {panel_index}".strip()
+    return f"{visual_prompt} {fallback_moment}".strip()
 
 
 def _first_text(*values: Any) -> str:

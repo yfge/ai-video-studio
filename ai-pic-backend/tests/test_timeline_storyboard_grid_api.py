@@ -261,5 +261,10 @@ def test_timeline_clip_storyboard_creates_generation_task_for_selected_clip_only
     assert {panel["clip_id"] for panel in params["panels"]} == {
         "video_scene_001_beat_002_001"
     }
+    visual_prompts = [panel["visual_prompt"] for panel in params["panels"]]
+    assert len(set(visual_prompts)) == 4
+    assert all("Key moment" not in prompt for prompt in visual_prompts)
+    assert "Opening frame" in visual_prompts[0]
+    assert "Closing frame" in visual_prompts[-1]
     assert dispatched["task_id"] == task_id
     assert dispatched["payload"]["clip_id"] == "video_scene_001_beat_002_001"

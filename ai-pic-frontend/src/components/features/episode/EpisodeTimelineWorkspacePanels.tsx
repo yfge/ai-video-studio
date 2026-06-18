@@ -58,6 +58,8 @@ interface EpisodeTimelineWorkspacePanelsProps {
   clipAssets: TimelineClipAssetResponse[];
   clipAssetsLoading: boolean;
   clipAssetsError: string | null;
+  imageModels: AIModel[];
+  imageModelsLoading: boolean;
   videoModels: AIModel[];
   videoModelsLoading: boolean;
   onEnvironmentChange: (environmentId: number | null) => void;
@@ -111,6 +113,8 @@ export function EpisodeTimelineWorkspacePanels({
   clipAssets,
   clipAssetsLoading,
   clipAssetsError,
+  imageModels,
+  imageModelsLoading,
   videoModels,
   videoModelsLoading,
   onEnvironmentChange,
@@ -168,6 +172,8 @@ export function EpisodeTimelineWorkspacePanels({
                 clipAssets={clipAssets}
                 clipAssetsLoading={clipAssetsLoading}
                 clipAssetsError={clipAssetsError}
+                imageModels={imageModels}
+                imageModelsLoading={imageModelsLoading}
                 videoModels={videoModels}
                 videoModelsLoading={videoModelsLoading}
                 onEnvironmentChange={onEnvironmentChange}

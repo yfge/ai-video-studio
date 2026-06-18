@@ -1,11 +1,22 @@
 "use client";
 
+import { useMemo, useState } from "react";
+import type { EpisodeCharacter } from "@/utils/api/types";
+import {
+  ReferenceImagePickerModal,
+  type ReferenceImagePickerGroup,
+} from "./TimelineClipReferenceImagePickerModal";
+import {
+  buildCharacterImageGroups,
+  buildEnvironmentImageGroups,
+} from "./TimelineClipReferenceImagePickerModel";
 import type {
   StoryboardCharacterImageOptions,
   StoryboardReferenceImageOption,
 } from "./TimelineClipStoryboardReferenceImagesModel";
 
 export function StoryboardReferenceImageSelectors({
+  episodeCharacters,
   characterImageOptions,
   environmentImageOptions,
   selectedVirtualIpIds,
@@ -13,11 +24,10 @@ export function StoryboardReferenceImageSelectors({
   selectedEnvironmentUrls,
   characterImagesLoading,
   characterImagesError,
-  onCharacterImageToggle,
-  onEnvironmentImageToggle,
   onCharacterImagesReplace,
   onEnvironmentImagesReplace,
 }: {
+  episodeCharacters: EpisodeCharacter[];
   characterImageOptions: StoryboardCharacterImageOptions;
   environmentImageOptions: StoryboardReferenceImageOption[];
   selectedVirtualIpIds: number[];
@@ -25,134 +35,165 @@ export function StoryboardReferenceImageSelectors({
   selectedEnvironmentUrls: string[];
   characterImagesLoading: boolean;
   characterImagesError: string | null;
-  onCharacterImageToggle: (url: string, checked: boolean) => void;
-  onEnvironmentImageToggle: (url: string, checked: boolean) => void;
   onCharacterImagesReplace?: (urls: string[]) => void;
   onEnvironmentImagesReplace?: (urls: string[]) => void;
 }) {
   const selectedCharacterOptions = selectedVirtualIpIds.flatMap(
     (virtualIpId) => characterImageOptions[virtualIpId] || [],
   );
+  const characterGroups = useMemo(
+    () =>
+      buildCharacterImageGroups(
+        selectedVirtualIpIds,
+        characterImageOptions,
+        episodeCharacters,
+      ),
+    [characterImageOptions, episodeCharacters, selectedVirtualIpIds],
+  );
+  const environmentGroups = useMemo(
+    () => buildEnvironmentImageGroups(environmentImageOptions),
+    [environmentImageOptions],
+  );
   return (
     <>
-      <ReferenceImageGrid
+      <ReferenceImageSummary
         title="IP 图"
         ariaPrefix="选择 IP 图"
         altPrefix="IP 图"
+        selectedAltPrefix="已选 IP 图"
         options={selectedCharacterOptions}
+        groups={characterGroups}
         selectedUrls={selectedCharacterUrls}
         loading={characterImagesLoading}
         error={characterImagesError}
         emptyText={
           selectedVirtualIpIds.length ? "暂无可选 IP 图" : "先绑定角色 IP"
         }
-        onToggle={onCharacterImageToggle}
         onReplace={onCharacterImagesReplace}
       />
-      <ReferenceImageGrid
+      <ReferenceImageSummary
         title="环境图"
         ariaPrefix="选择环境图"
         altPrefix="环境图"
+        selectedAltPrefix="已选环境图"
         options={environmentImageOptions}
+        groups={environmentGroups}
         selectedUrls={selectedEnvironmentUrls}
         emptyText="暂无可选环境图"
-        onToggle={onEnvironmentImageToggle}
         onReplace={onEnvironmentImagesReplace}
       />
     </>
   );
 }
 
-function ReferenceImageGrid({
+function ReferenceImageSummary({
   title,
   ariaPrefix,
   altPrefix,
+  selectedAltPrefix,
   options,
+  groups,
   selectedUrls,
   loading = false,
   error = null,
   emptyText,
-  onToggle,
   onReplace,
 }: {
   title: string;
   ariaPrefix: string;
   altPrefix: string;
+  selectedAltPrefix: string;
   options: StoryboardReferenceImageOption[];
+  groups: ReferenceImagePickerGroup[];
   selectedUrls: string[];
   loading?: boolean;
   error?: string | null;
   emptyText: string;
-  onToggle: (url: string, checked: boolean) => void;
   onReplace?: (urls: string[]) => void;
 }) {
+  const [pickerOpen, setPickerOpen] = useState(false);
   const selectedCount = options.filter((option) =>
     selectedUrls.includes(option.url),
   ).length;
+  const selectedOptions = options.filter((option) =>
+    selectedUrls.includes(option.url),
+  );
   return (
-    <fieldset className="mt-3 grid gap-2" aria-label={ariaPrefix}>
+    <fieldset
+      className="mt-3 grid gap-2 rounded-md border border-slate-100 bg-slate-50/50 p-2"
+      aria-label={ariaPrefix}
+    >
       <legend className="text-[11px] font-medium text-gray-700">{title}</legend>
-      {options.length && !loading && !error ? (
-        <div className="flex items-center justify-between text-[11px]">
-          <span className="text-gray-500">
-            已选 {selectedCount}/{options.length}，选中的图会作为生成参考
-          </span>
-          {onReplace ? (
-            <span className="flex gap-2">
-              <button
-                type="button"
-                aria-label={`${title}全选`}
-                className="text-blue-600 hover:underline"
-                onClick={() => onReplace(options.map((option) => option.url))}
-              >
-                全选
-              </button>
-              <button
-                type="button"
-                aria-label={`${title}清空`}
-                className="text-gray-500 hover:underline"
-                onClick={() => onReplace([])}
-              >
-                清空
-              </button>
-            </span>
-          ) : null}
-        </div>
-      ) : null}
       {loading ? (
         <div className="text-[11px] text-gray-500">图片加载中...</div>
       ) : error ? (
         <div className="text-[11px] text-red-600">图片加载失败：{error}</div>
       ) : options.length ? (
-        <div className="grid grid-cols-3 gap-2">
-          {options.map((option) => {
-            const selected = selectedUrls.includes(option.url);
-            return (
-              <button
-                key={option.url}
-                type="button"
-                aria-pressed={selected}
-                aria-label={`${ariaPrefix} ${option.label}`}
-                onClick={() => onToggle(option.url, !selected)}
-                className={[
-                  "overflow-hidden rounded-md border bg-white text-left",
-                  selected
-                    ? "border-blue-500 ring-2 ring-blue-100"
-                    : "border-gray-200",
-                ].join(" ")}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={option.url}
-                  alt={`${altPrefix} ${option.label}`}
-                  className="aspect-square w-full object-cover"
-                />
-                <span className="block truncate px-1.5 py-1 text-[10px] text-gray-600">
-                  {option.label}
+        <div className="grid gap-2">
+          <div className="flex items-center justify-between gap-2 text-[11px]">
+            <span className="truncate text-gray-500">
+              {title}：{selectedCount} 张
+            </span>
+            <span className="flex shrink-0 items-center gap-2">
+              <span className="text-gray-400">
+                已选 {selectedCount}/{options.length}
+              </span>
+              {onReplace && selectedCount > 0 ? (
+                <button
+                  type="button"
+                  aria-label={`${title}清空`}
+                  className="text-gray-500 hover:underline"
+                  onClick={() => onReplace([])}
+                >
+                  清空
+                </button>
+              ) : null}
+              {onReplace ? (
+                <button
+                  type="button"
+                  className="rounded border border-blue-200 bg-white px-2 py-1 font-medium text-blue-700 hover:bg-blue-50"
+                  onClick={() => setPickerOpen(true)}
+                >
+                  {ariaPrefix}
+                </button>
+              ) : null}
+            </span>
+          </div>
+          {selectedOptions.length ? (
+            <div className="flex min-w-0 items-center gap-1.5">
+              {selectedOptions.slice(0, 3).map((option) => (
+                <div
+                  key={option.url}
+                  className="h-11 w-11 overflow-hidden rounded border border-slate-200 bg-white"
+                  title={option.label}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={option.url}
+                    alt={`${selectedAltPrefix} ${option.label}`}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              ))}
+              {selectedOptions.length > 3 ? (
+                <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-500">
+                  +{selectedOptions.length - 3}
                 </span>
-              </button>
-            );
-          })}
+              ) : null}
+            </div>
+          ) : (
+            <div className="text-[11px] text-gray-500">未选择图片</div>
+          )}
+          <ReferenceImagePickerModal
+            title={ariaPrefix}
+            ariaPrefix={ariaPrefix}
+            altPrefix={altPrefix}
+            groups={groups}
+            selectedUrls={selectedUrls}
+            isOpen={pickerOpen}
+            onClose={() => setPickerOpen(false)}
+            onApply={(urls) => onReplace?.(urls)}
+          />
         </div>
       ) : (
         <div className="text-[11px] text-gray-500">{emptyText}</div>

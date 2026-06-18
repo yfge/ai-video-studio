@@ -40,6 +40,8 @@ export function TimelineClipProviderReworkControls({
   selectedEnvironmentId = null,
   storyboardCharacterImageOptions,
   storyboardEnvironmentImageOptions,
+  imageModels,
+  imageModelsLoading,
   videoModels,
   videoModelsLoading,
   onNavigateToCharacters,
@@ -57,6 +59,7 @@ export function TimelineClipProviderReworkControls({
   const [videoReferenceChoice, setVideoReferenceChoice] =
     useState<TimelineVideoReferenceChoice>("start_end");
   const [referenceImagesInput, setReferenceImagesInput] = useState("");
+  const [storyboardModel, setStoryboardModel] = useState("");
   const [storyboardStyle, setStoryboardStyle] =
     useState<TimelineClipStoryboardStyle>("live_action");
   const [storyboardPanelCount, setStoryboardPanelCount] = useState("4");
@@ -98,6 +101,7 @@ export function TimelineClipProviderReworkControls({
     clipId,
     prompt,
     model,
+    storyboardModel,
     storyboardStyle,
     storyboardPanelCount,
     referenceImages,
@@ -124,7 +128,6 @@ export function TimelineClipProviderReworkControls({
   );
 
   if (!isVideoClip) return null;
-
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!timelineId || !timelineVersion || !clipId) {
@@ -202,6 +205,7 @@ export function TimelineClipProviderReworkControls({
       referenceImagesInput={referenceImagesInput}
       productionReadiness={productionReadiness}
       manualReferenceAvailable
+      storyboardModel={storyboardModel}
       storyboardStyle={storyboardStyle}
       storyboardPanelCount={storyboardPanelCount}
       storyboardPanelIndex={productionReadiness.storyboardPanelIndex}
@@ -214,6 +218,8 @@ export function TimelineClipProviderReworkControls({
       storyboardReferenceSelection={storyboardReferenceSelection}
       generationTasks={taskTracker.tasks}
       currentClipId={clipId ?? null}
+      imageModels={imageModels}
+      imageModelsLoading={imageModelsLoading}
       videoModels={videoModels}
       videoModelsLoading={videoModelsLoading}
       generatingStoryboard={generationActions.generatingStoryboard}
@@ -232,6 +238,7 @@ export function TimelineClipProviderReworkControls({
       onReasonChange={setReason}
       onVideoReferenceChoiceChange={setVideoReferenceChoice}
       onReferenceImagesInputChange={setReferenceImagesInput}
+      onStoryboardModelChange={setStoryboardModel}
       onStoryboardStyleChange={setStoryboardStyle}
       onStoryboardPanelCountChange={setStoryboardPanelCount}
       onStoryboardVirtualIpToggle={handleStoryboardVirtualIpToggle}

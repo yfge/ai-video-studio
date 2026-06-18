@@ -181,6 +181,14 @@ def _clip(
         },
         "text": beat.get("text"),
     }
+    if beat.get("characters_involved"):
+        clip["characters_involved"] = beat.get("characters_involved")
+    if beat.get("speaker_name"):
+        clip["speaker_name"] = beat.get("speaker_name")
+    if beat.get("dialogue_action"):
+        clip["dialogue_action"] = beat.get("dialogue_action")
+    if beat.get("dialogue_emotion"):
+        clip["dialogue_emotion"] = beat.get("dialogue_emotion")
     if beat.get("audio_excluded_reason"):
         clip["audio_excluded_reason"] = beat.get("audio_excluded_reason")
     if beat.get("source_beat_type"):
@@ -192,15 +200,11 @@ def _clip(
             "start_ms": beat["start_ms"],
             "duration_ms": beat["duration_ms"],
         }
-        clip["speaker_name"] = beat.get("speaker_name")
-        clip["dialogue_action"] = beat.get("dialogue_action")
-        clip["dialogue_emotion"] = beat.get("dialogue_emotion")
     elif track_type == "video":
         clip["asset_ref"] = None
         clip["placeholder"] = True
     elif track_type == "subtitle":
         clip["asset_ref"] = None
-        clip["speaker_name"] = beat.get("speaker_name")
     return clip
 
 

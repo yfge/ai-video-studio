@@ -1,4 +1,5 @@
 from app.services.storyboard.grid_storyboard_prompt_bridge import (
+    build_clip_storyboard_panels,
     build_grid_storyboard_panels,
     build_grid_storyboard_sheet_prompt,
     build_grid_storyboard_video_prompt,
@@ -93,6 +94,32 @@ def test_build_grid_storyboard_panels_falls_back_to_clip_text():
     assert panels[0]["visual_prompt"] == "她推开会议室大门，众人回头。"
     assert panels[0]["video_prompt"] == "她推开会议室大门，众人回头。"
     assert panels[0]["duration_ms"] == 3000
+
+
+def test_build_clip_storyboard_panels_diversifies_clip_text_fallback():
+    clip = {
+        "clip_id": "video_scene_91_beat_4003_013",
+        "scene_id": 91,
+        "beat_id": 4003,
+        "start_ms": 36260,
+        "end_ms": 45444,
+        "text": "厨房与开放式餐厅相连。老拐和阿盖儿站在中岛台旁。",
+        "source_refs": {},
+    }
+
+    panels = build_clip_storyboard_panels(clip, panel_count=4)
+
+    assert len(panels) == 4
+    visual_prompts = [panel["visual_prompt"] for panel in panels]
+    assert len(set(visual_prompts)) == 4
+    assert all("Key moment" not in prompt for prompt in visual_prompts)
+    assert "Opening frame" in visual_prompts[0]
+    assert "Interaction frame" in visual_prompts[1]
+    assert "Detail frame" in visual_prompts[2]
+    assert "Closing frame" in visual_prompts[3]
+    assert panels[0]["motion_timeline"][0]["at_ms"] == 36260
+    assert panels[3]["motion_timeline"][0]["at_ms"] > panels[0]["motion_timeline"][0]["at_ms"]
+    assert len({panel["composition_geometry"] for panel in panels}) == 4
 
 
 def test_grid_sheet_and_video_prompts_constrain_text_and_panel_scope():

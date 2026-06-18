@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { afterEach, describe, it } from "node:test";
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { JSDOM } from "jsdom";
 
 import {
@@ -17,6 +23,7 @@ import { TimelineOverview } from "../src/components/features/Timeline/TimelineOv
 import { timelineLayoutForMeasuredWidth } from "../src/components/features/Timeline/timelineLayout";
 import type {
   Episode,
+  NormalizedScene,
   Script,
   TimelineClipAssetResponse,
   TimelineResolvedVideoListResponse,
@@ -90,6 +97,94 @@ describe("EpisodeTimelineWorkspace layout", () => {
     assert.equal(
       video.getAttribute("src"),
       "https://example.com/clip-ready.mp4",
+    );
+  });
+
+  it("falls back to story IP characters and images for selected timeline clips", async () => {
+    const calls = mockWorkspaceFetch({
+      environments: [environment("老拐的家", 5)],
+      environmentDetails: {
+        5: environment(
+          "老拐的家",
+          5,
+          "https://cdn.example/laoguai-home.png",
+        ),
+      },
+      storyCharacters: [
+        storyCharacter("老拐", 1),
+        storyCharacter("阿盖儿", 15),
+      ],
+      virtualIPs: {
+        1: virtualIP("老拐", 1, "https://cdn.example/laoguai.png"),
+        15: virtualIP("阿盖儿", 15, "https://cdn.example/agaier.png"),
+      },
+    });
+
+    const utils = render(
+      workspace(videoTimelineWithCharacterNames(["老拐"]), undefined, undefined, {
+        normalizedScenes: [normalizedScene("INT. 老拐的客厅 - DAY", 90)],
+      }),
+      { container: dom.window.document.body },
+    );
+
+    await waitFor(() =>
+      assert.equal(
+        (utils.getByLabelText("绑定角色 IP 老拐") as HTMLInputElement)
+          .checked,
+        true,
+      ),
+    );
+    assert.equal(
+      (utils.getByLabelText("绑定角色 IP 阿盖儿") as HTMLInputElement)
+        .checked,
+      false,
+    );
+    await waitFor(() => assert.ok(hasText(utils, "IP 图：1 张")));
+    await waitFor(() => assert.ok(hasText(utils, "环境图：1 张")));
+    assert.equal(utils.queryByLabelText("选择 IP 图 老拐 portrait"), null);
+    const ipDialog = openReferencePicker(utils, "选择 IP 图");
+    assert.ok(within(ipDialog).getByText("老拐"));
+    assert.ok(within(ipDialog).getByText("portrait"));
+    assert.equal(
+      within(ipDialog)
+        .getByLabelText("选择 IP 图 老拐 portrait")
+        .getAttribute("aria-pressed"),
+      "true",
+    );
+    fireEvent.click(within(ipDialog).getByRole("button", { name: "应用选择" }));
+    const envDialog = openReferencePicker(utils, "选择环境图");
+    assert.equal(
+      within(envDialog)
+        .getByLabelText("选择环境图 老拐的家 1")
+        .getAttribute("aria-pressed"),
+      "true",
+    );
+    fireEvent.click(within(envDialog).getByRole("button", { name: "应用选择" }));
+
+    fireEvent.click(utils.getByRole("button", { name: "生成片段分镜图" }));
+    await waitFor(() =>
+      assert.ok(
+        calls.some((call) => String(call.url).includes("/storyboard/generate")),
+      ),
+    );
+    const storyboardCall = calls.find((call) =>
+      String(call.url).includes("/storyboard/generate"),
+    );
+    assert.equal(
+      storyboardCall?.init?.body,
+      JSON.stringify({
+        expected_version: 3,
+        panel_count: 4,
+        style: "live_action",
+        generation_profile: "clip_storyboard",
+        size: "1536x1536",
+        aspect_ratio: "1:1",
+        character_virtual_ip_ids: [1],
+        character_reference_images: ["https://cdn.example/laoguai.png"],
+        environment_reference_images: [
+          "https://cdn.example/laoguai-home.png",
+        ],
+      }),
     );
   });
 
@@ -3173,15 +3268,15 @@ describe("EpisodeTimelineWorkspace layout", () => {
       target: { value: "1" },
     });
 
-    await waitFor(() => assert.ok(utils.getByAltText("环境图 办公室 1")));
-    await waitFor(() =>
-      assert.equal(
-        utils
-          .getByLabelText("选择环境图 办公室 1")
-          .getAttribute("aria-pressed"),
-        "true",
-      ),
+    await waitFor(() => assert.ok(utils.getByAltText("已选环境图 办公室 1")));
+    const envDialog = openReferencePicker(utils, "选择环境图");
+    assert.equal(
+      within(envDialog)
+        .getByLabelText("选择环境图 办公室 1")
+        .getAttribute("aria-pressed"),
+      "true",
     );
+    fireEvent.click(within(envDialog).getByRole("button", { name: "应用选择" }));
 
     assert.ok(utils.getByLabelText("视频生成绑定上下文"));
     assert.ok(utils.getAllByText("环境图：1 张").length >= 1);
@@ -3358,6 +3453,15 @@ function workspace(
   );
 }
 
+function openReferencePicker(utils: ReturnType<typeof render>, name: string) {
+  fireEvent.click(utils.getByRole("button", { name }));
+  return utils.getByRole("dialog");
+}
+
+function hasText(utils: ReturnType<typeof render>, text: string) {
+  return utils.queryAllByText(text).length > 0;
+}
+
 function episode(): Episode {
   return {
     id: 1,
@@ -3390,23 +3494,48 @@ function script(): Script {
 function mockWorkspaceFetch({
   environments = [],
   environmentDetails = {},
+  episodeCharacters = [],
+  storyCharacters = [],
+  episodePayload,
+  virtualIPs = {},
   resolvedVideos,
   renderJobs = [],
   clipAssets = [],
 }: {
   environments?: unknown[];
   environmentDetails?: Record<number, unknown>;
+  episodeCharacters?: unknown[];
+  storyCharacters?: unknown[];
+  episodePayload?: unknown;
+  virtualIPs?: Record<number, unknown>;
   resolvedVideos?: unknown;
   renderJobs?: unknown[];
   clipAssets?: TimelineClipAssetResponse[];
 } = {}) {
-  globalThis.fetch = (async (url: RequestInfo | URL) => {
+  const calls: Array<{ url: string; init?: RequestInit }> = [];
+  globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
+    calls.push({ url: String(url), init });
     const path = String(url);
     if (path.includes("/api/v1/ai/models/available")) {
       return jsonResponse({ models: [], default: "" });
     }
-    if (path.includes("/characters")) {
-      return jsonResponse({ items: [], total: 0, page: 1, page_size: 20 });
+    if (path.match(/\/api\/v1\/episodes\/[^/]+\/characters(?:\?|$)/)) {
+      return jsonResponse({
+        items: episodeCharacters,
+        total: episodeCharacters.length,
+        page: 1,
+        page_size: 20,
+      });
+    }
+    if (path.match(/\/api\/v1\/episodes\/[^/?]+$/)) {
+      return jsonResponse(episodePayload || episode());
+    }
+    if (path.match(/\/api\/v1\/stories\/[^/]+\/characters$/)) {
+      return jsonResponse(storyCharacters);
+    }
+    const virtualIpMatch = path.match(/\/api\/v1\/virtual-ips\/(\d+)$/);
+    if (virtualIpMatch) {
+      return jsonResponse(virtualIPs[Number(virtualIpMatch[1])] || {});
     }
     const environmentDetailMatch = path.match(
       /\/api\/v1\/story-structure\/environments\/(\d+)$/,
@@ -3428,8 +3557,16 @@ function mockWorkspaceFetch({
     if (path.includes("/clip-assets")) {
       return jsonResponse({ items: clipAssets });
     }
+    if (
+      path.includes("/storyboard/generate") ||
+      path.includes("/keyframes/generate") ||
+      path.includes("/rework/video")
+    ) {
+      return jsonResponse({ task_id: 101, status: "pending" });
+    }
     return jsonResponse({});
   }) as typeof fetch;
+  return calls;
 }
 
 function resolvedVideos(url: string): TimelineResolvedVideoListResponse {
@@ -3497,6 +3634,85 @@ function videoTimeline() {
       ],
     },
   ]);
+}
+
+function videoTimelineWithCharacterNames(names: string[]) {
+  const timeline = videoTimeline();
+  timeline.spec.tracks[0].clips[0] = {
+    ...timeline.spec.tracks[0].clips[0],
+    scene_id: 90,
+    scene_number: 1,
+    characters_involved: names,
+  };
+  return timeline;
+}
+
+function normalizedScene(slugLine: string, id: number): NormalizedScene {
+  return {
+    id,
+    scene_number: "1",
+    slug_line: slugLine,
+    status: "draft",
+    environment_id: null,
+  };
+}
+
+function environment(name: string, id: number, referenceImage?: string) {
+  return {
+    id,
+    business_id: `env_${id}`,
+    name,
+    description: `${name} description`,
+    reference_images: referenceImage ? [referenceImage] : undefined,
+    created_at: "2026-06-11T00:00:00Z",
+    updated_at: "2026-06-11T00:00:00Z",
+  };
+}
+
+function storyCharacter(name: string, virtualIpId: number) {
+  return {
+    id: virtualIpId + 100,
+    business_id: `story_char_${virtualIpId}`,
+    story_id: 7,
+    virtual_ip_id: virtualIpId,
+    virtual_ip_business_id: `vip_${virtualIpId}`,
+    virtual_ip_name: name,
+    character_name: null,
+    role_type: virtualIpId === 1 ? "protagonist" : "supporting",
+    importance: virtualIpId === 1 ? 5 : 3,
+    created_at: "2026-06-11T00:00:00Z",
+    updated_at: "2026-06-11T00:00:00Z",
+  };
+}
+
+function virtualIP(name: string, id: number, imageUrl: string) {
+  return {
+    id,
+    business_id: `vip_${id}`,
+    name,
+    description: `${name} description`,
+    tags: [],
+    is_active: true,
+    is_public: false,
+    default_avatar_url: imageUrl,
+    images: [
+      {
+        id: id + 1000,
+        business_id: `vip_img_${id}`,
+        virtual_ip_id: id,
+        file_path: `/uploads/${id}.png`,
+        oss_url: imageUrl,
+        category: "portrait",
+        subcategory: null,
+        tags: [],
+        is_default: true,
+        created_at: "2026-06-11T00:00:00Z",
+        updated_at: "2026-06-11T00:00:00Z",
+      },
+    ],
+    created_at: "2026-06-11T00:00:00Z",
+    updated_at: "2026-06-11T00:00:00Z",
+  };
 }
 
 function emptyTimeline() {

@@ -14,7 +14,10 @@ import type { TimelineClipProductionReadiness } from "./TimelineClipProductionRe
 import type { TimelineVideoReferenceChoice } from "./TimelineClipProviderReworkModel";
 import type { TimelineClipStoryboardReferenceSelection } from "./useTimelineClipStoryboardReferenceSelection";
 import type { ClipGenerationTaskMap } from "./useTimelineClipGenerationTaskTracker";
-import type { VideoModelOption } from "./TimelineClipProviderReworkControlsTypes";
+import type {
+  ImageModelOption,
+  VideoModelOption,
+} from "./TimelineClipProviderReworkControlsTypes";
 
 const COMMAND_SURFACE_CLASS = [
   "w-full bg-transparent p-0 shadow-none",
@@ -37,6 +40,7 @@ export function TimelineClipProviderReworkCards({
   referenceImagesInput,
   productionReadiness,
   manualReferenceAvailable,
+  storyboardModel,
   storyboardStyle,
   storyboardPanelCount,
   storyboardPanelIndex,
@@ -49,6 +53,8 @@ export function TimelineClipProviderReworkCards({
   storyboardReferenceSelection,
   generationTasks,
   currentClipId,
+  imageModels,
+  imageModelsLoading,
   videoModels,
   videoModelsLoading,
   generatingStoryboard,
@@ -67,6 +73,7 @@ export function TimelineClipProviderReworkCards({
   onReasonChange,
   onVideoReferenceChoiceChange,
   onReferenceImagesInputChange,
+  onStoryboardModelChange,
   onStoryboardStyleChange,
   onStoryboardPanelCountChange,
   onStoryboardVirtualIpToggle,
@@ -85,6 +92,7 @@ export function TimelineClipProviderReworkCards({
   referenceImagesInput: string;
   productionReadiness: TimelineClipProductionReadiness;
   manualReferenceAvailable: boolean;
+  storyboardModel: string;
   storyboardStyle: "2d_cartoon" | "3d_cartoon" | "live_action";
   storyboardPanelCount: string;
   storyboardPanelIndex?: number | null;
@@ -97,6 +105,8 @@ export function TimelineClipProviderReworkCards({
   storyboardReferenceSelection: TimelineClipStoryboardReferenceSelection;
   generationTasks?: ClipGenerationTaskMap;
   currentClipId?: string | null;
+  imageModels?: ImageModelOption[];
+  imageModelsLoading?: boolean;
   videoModels?: VideoModelOption[];
   videoModelsLoading?: boolean;
   generatingStoryboard: boolean;
@@ -115,6 +125,7 @@ export function TimelineClipProviderReworkCards({
   onReasonChange: (value: string) => void;
   onVideoReferenceChoiceChange: (value: TimelineVideoReferenceChoice) => void;
   onReferenceImagesInputChange: (value: string) => void;
+  onStoryboardModelChange: (value: string) => void;
   onStoryboardStyleChange: (
     value: "2d_cartoon" | "3d_cartoon" | "live_action",
   ) => void;
@@ -152,6 +163,7 @@ export function TimelineClipProviderReworkCards({
       >
         <div className={COMMAND_GRID_CLASS}>
           <StoryboardReferenceCard
+            storyboardModel={storyboardModel}
             storyboardStyle={storyboardStyle}
             storyboardPanelCount={storyboardPanelCount}
             storyboardSheetUrl={storyboardSheetUrl}
@@ -165,6 +177,9 @@ export function TimelineClipProviderReworkCards({
             canGenerateStoryboard={canGenerateStoryboard}
             storyboardTask={generationTasks?.storyboard}
             currentClipId={currentClipId ?? null}
+            imageModels={imageModels}
+            imageModelsLoading={imageModelsLoading}
+            onStoryboardModelChange={onStoryboardModelChange}
             onStoryboardStyleChange={onStoryboardStyleChange}
             onStoryboardPanelCountChange={onStoryboardPanelCountChange}
             onCharacterVirtualIpToggle={onStoryboardVirtualIpToggle}

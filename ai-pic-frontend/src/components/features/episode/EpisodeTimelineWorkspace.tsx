@@ -22,6 +22,8 @@ import { useTimelineGenerationRefresh } from "./useTimelineGenerationRefresh";
 import { useTimelineSceneEnvironments } from "./useTimelineSceneEnvironments";
 import { useTimelineRenderJobs } from "./useTimelineRenderJobs";
 import { useTimelineSelectionVisibility } from "./useTimelineSelectionVisibility";
+import { useTimelineProductionCharacters } from "./useTimelineProductionCharacters";
+import { inferEnvironmentIdForScene } from "./EpisodeTimelineEnvironmentInference";
 import type { EpisodeTimelineWorkspaceProps } from "./EpisodeTimelineWorkspaceProps";
 
 export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
@@ -62,10 +64,25 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
     episodeId: effectiveEpisodeId ?? "",
     autoLoad: Boolean(effectiveEpisodeId),
   });
+  const {
+    characters: productionCharacters,
+    loading: productionCharactersLoading,
+    error: productionCharactersError,
+  } = useTimelineProductionCharacters({
+    episodeId: effectiveEpisodeId,
+    episodeCharacters,
+    episodeCharactersLoading,
+    episodeCharactersError,
+  });
   const { models, loading: modelsLoading } = useAvailableModels({
     modelType: "text",
     enabled: true,
   });
+  const { models: imageModels, loading: imageModelsLoading } =
+    useAvailableModels({
+      modelType: "image",
+      enabled: true,
+    });
   const { models: videoModels, loading: videoModelsLoading } =
     useAvailableModels({ modelType: "video", enabled: true });
   const {
@@ -92,6 +109,10 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
   const selectedScene = useMemo(
     () => sceneForTimelineMeta(normalizedScenes, meta, sceneEnvOverrides),
     [normalizedScenes, meta, sceneEnvOverrides],
+  );
+  const inferredEnvironmentId = useMemo(
+    () => inferEnvironmentIdForScene(selectedScene, environments),
+    [selectedScene, environments],
   );
   const renderReadiness = resolvedVideos
     ? buildTimelineRenderReadinessFromResolvedVideos(resolvedVideos)
@@ -136,10 +157,11 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
   });
 
   useEffect(() => {
-    setSelectedEnvironmentId(selectedScene?.environment_id ?? null);
+    setSelectedEnvironmentId(inferredEnvironmentId);
   }, [
     selectedScene?.id,
     selectedScene?.environment_id,
+    inferredEnvironmentId,
     setSelectedEnvironmentId,
   ]);
 
@@ -177,12 +199,14 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
       selectedEnvironmentId={selectedEnvironmentId}
       environmentSaving={environmentSaving}
       timelineSpec={selectedTimelineSpec}
-      episodeCharacters={episodeCharacters}
-      episodeCharactersLoading={episodeCharactersLoading}
-      episodeCharactersError={episodeCharactersError}
+      episodeCharacters={productionCharacters}
+      episodeCharactersLoading={productionCharactersLoading}
+      episodeCharactersError={productionCharactersError}
       clipAssets={clipAssets}
       clipAssetsLoading={clipAssetsLoading}
       clipAssetsError={clipAssetsError || resolvedVideosError || null}
+      imageModels={imageModels}
+      imageModelsLoading={imageModelsLoading}
       videoModels={videoModels}
       videoModelsLoading={videoModelsLoading}
       onEnvironmentChange={setSelectedEnvironmentId}

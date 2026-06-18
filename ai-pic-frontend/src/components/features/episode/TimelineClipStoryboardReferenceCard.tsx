@@ -11,12 +11,15 @@ import { CompactProductionDetails } from "./CompactProductionDetails";
 import { StoryboardCharacterIpSelector } from "./TimelineClipStoryboardCharacterIpSelector";
 import { StoryboardReferenceImageSelectors } from "./TimelineClipStoryboardReferenceImages";
 import { TimelineClipTaskStatusLine } from "./TimelineClipTaskStatusLine";
+import type { ImageModelOption } from "./TimelineClipProviderReworkControlsTypes";
 import type { TimelineClipStoryboardReferenceSelection } from "./useTimelineClipStoryboardReferenceSelection";
 import type { TrackedClipGenerationTask } from "./useTimelineClipGenerationTaskTracker";
 
-const FIELD_GRID_CLASS = "grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2";
+const FIELD_GRID_CLASS =
+  "grid gap-2 min-[760px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.15fr)]";
 
 export function StoryboardReferenceCard({
+  storyboardModel,
   storyboardStyle,
   storyboardPanelCount,
   storyboardSheetUrl,
@@ -30,11 +33,15 @@ export function StoryboardReferenceCard({
   canGenerateStoryboard,
   storyboardTask,
   currentClipId,
+  imageModels,
+  imageModelsLoading,
+  onStoryboardModelChange,
   onStoryboardStyleChange,
   onStoryboardPanelCountChange,
   onCharacterVirtualIpToggle,
   onGenerateStoryboard,
 }: {
+  storyboardModel: string;
   storyboardStyle: TimelineClipStoryboardStyle;
   storyboardPanelCount: string;
   storyboardSheetUrl?: string | null;
@@ -48,6 +55,9 @@ export function StoryboardReferenceCard({
   canGenerateStoryboard: boolean;
   storyboardTask?: TrackedClipGenerationTask;
   currentClipId?: string | null;
+  imageModels?: ImageModelOption[];
+  imageModelsLoading?: boolean;
+  onStoryboardModelChange: (value: string) => void;
   onStoryboardStyleChange: (value: TimelineClipStoryboardStyle) => void;
   onStoryboardPanelCountChange: (value: string) => void;
   onCharacterVirtualIpToggle: (virtualIpId: number, checked: boolean) => void;
@@ -114,6 +124,12 @@ export function StoryboardReferenceCard({
                 ))}
               </select>
             </label>
+            <StoryboardImageModelSelect
+              value={storyboardModel}
+              imageModels={imageModels}
+              imageModelsLoading={imageModelsLoading}
+              onChange={onStoryboardModelChange}
+            />
           </div>
         </CompactProductionDetails>
       </div>
@@ -130,6 +146,7 @@ export function StoryboardReferenceCard({
           onToggle={onCharacterVirtualIpToggle}
         />
         <StoryboardReferenceImageSelectors
+          episodeCharacters={episodeCharacters}
           characterImageOptions={
             storyboardReferenceSelection.characterImageOptions
           }
@@ -148,12 +165,6 @@ export function StoryboardReferenceCard({
           }
           characterImagesError={
             storyboardReferenceSelection.characterImagesError
-          }
-          onCharacterImageToggle={
-            storyboardReferenceSelection.handleStoryboardCharacterReferenceImageToggle
-          }
-          onEnvironmentImageToggle={
-            storyboardReferenceSelection.handleStoryboardEnvironmentReferenceImageToggle
           }
           onCharacterImagesReplace={
             storyboardReferenceSelection.handleStoryboardCharacterReferenceImagesReplace
@@ -189,4 +200,46 @@ export function StoryboardReferenceCard({
       ) : null}
     </ClipProductionActionShell>
   );
+}
+
+function StoryboardImageModelSelect({
+  value,
+  imageModels,
+  imageModelsLoading,
+  onChange,
+}: {
+  value: string;
+  imageModels?: ImageModelOption[];
+  imageModelsLoading?: boolean;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="grid gap-1 text-xs text-gray-700">
+      <span>生图模型</span>
+      <select
+        aria-label="分镜生图模型"
+        value={value}
+        disabled={imageModelsLoading}
+        onChange={(event) => onChange(event.target.value)}
+        className={operatorSelectClass("w-full")}
+      >
+        <option value="">自动选择模型</option>
+        {(imageModels || []).map((option) => {
+          const optionValue = modelOptionValue(option);
+          if (!optionValue) return null;
+          return (
+            <option key={optionValue} value={optionValue}>
+              {option.name || option.model_id || option.id}
+            </option>
+          );
+        })}
+      </select>
+    </label>
+  );
+}
+
+function modelOptionValue(option: ImageModelOption) {
+  const providerScopedId =
+    option.provider && option.id ? `${option.provider}:${option.id}` : option.id;
+  return option.model_id || providerScopedId || option.name || "";
 }

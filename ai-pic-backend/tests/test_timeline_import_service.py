@@ -33,6 +33,9 @@ def _audio_timeline(script: Script, *, version: int = 3) -> dict:
                 "beat_id": 101,
                 "beat_type": "dialogue",
                 "speaker_name": "A",
+                "characters_involved": ["A", "B"],
+                "dialogue_action": "points at the console",
+                "dialogue_emotion": "urgent",
                 "text": "hello",
                 "start_ms": 0,
                 "end_ms": 1200,
@@ -42,6 +45,7 @@ def _audio_timeline(script: Script, *, version: int = 3) -> dict:
                 "scene_number": 1,
                 "beat_id": 102,
                 "beat_type": "action",
+                "characters_involved": ["A", "B"],
                 "text": "Camera pans across the control room",
                 "start_ms": 1200,
                 "end_ms": 1600,
@@ -123,6 +127,11 @@ def test_import_audio_timeline_creates_timeline_spec_tracks(db_session):
     assert dialogue_clip["source_refs"]["scene_beat_id"] == 101
     video_clip = tracks["video"]["clips"][0]
     subtitle_clip = tracks["subtitle"]["clips"][0]
+    assert video_clip["speaker_name"] == "A"
+    assert video_clip["characters_involved"] == ["A", "B"]
+    assert video_clip["dialogue_action"] == "points at the console"
+    assert video_clip["dialogue_emotion"] == "urgent"
+    assert tracks["video"]["clips"][1]["characters_involved"] == ["A", "B"]
     assert video_clip["clip_id"] == stable_clip_id(
         track_type="video", scene_id=11, beat_id=101, ordinal=1
     )

@@ -24,21 +24,24 @@ class _DummyResponse:
 
 
 class _DummyManager:
-    def __init__(self, response: _DummyResponse) -> None:
-        self._response = response
+    def __init__(self, response: _DummyResponse | list[_DummyResponse]) -> None:
+        self._responses = list(response) if isinstance(response, list) else [response]
         self.last_call: tuple[str, dict] | None = None
+        self.calls: list[tuple[str, dict]] = []
 
     async def generate_image(self, **kwargs):
         self.last_call = ("generate_image", kwargs)
-        return self._response
+        self.calls.append(self.last_call)
+        return self._responses.pop(0)
 
     async def image_to_image(self, **kwargs):
         self.last_call = ("image_to_image", kwargs)
-        return self._response
+        self.calls.append(self.last_call)
+        return self._responses.pop(0)
 
 
 class _DummyAIService:
-    def __init__(self, response: _DummyResponse) -> None:
+    def __init__(self, response: _DummyResponse | list[_DummyResponse]) -> None:
         self.ai_manager = _DummyManager(response)
 
 
@@ -170,6 +173,37 @@ async def test_storyboard_refs_use_text_to_image_when_provider_supports_referenc
     ]
     assert "image_url" not in kwargs
     assert result["image_gen"]["mode"] == "text_to_image"
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_storyboard_codex_overload_falls_back_to_seedream():
+    overloaded = "Our servers are currently overloaded. Please try again later."
+    image = "https://example.com/fallback.png"
+    model_id = "doubao-seedream-4-5-251128"
+    ai_service = _DummyAIService(
+        [
+            _DummyResponse(success=False, data={}, provider="codex", model="gpt-image-2", error=overloaded),
+            _DummyResponse(success=True, data={"images": [image]}, provider="volcengine", model=model_id),
+        ]
+    )
+
+    result = await generate_storyboard_image_urls(
+        prompt="test prompt",
+        refs=["http://backend.local/uploads/ref-1.png"],
+        model="codex:gpt-image-2",
+        count=1, size="1536x1536", aspect_ratio="1:1", width=None, height=None,
+        style="realistic", style_preset_id=None, style_spec=None,
+        ai_service=ai_service,
+        backend_base="http://backend.local",
+    )
+
+    calls = [(kwargs["prefer_provider"], kwargs["model"]) for _, kwargs in ai_service.ai_manager.calls]
+    assert calls == [("codex", "gpt-image-2"), ("volcengine", model_id)]
+    assert result["urls"] == [image]
+    assert result["provider"] == "volcengine"
+    assert result["image_gen"]["model_id"] == model_id
+    assert result["image_gen"]["fallback_from_model"] == "codex:gpt-image-2"
 
 
 @pytest.mark.unit

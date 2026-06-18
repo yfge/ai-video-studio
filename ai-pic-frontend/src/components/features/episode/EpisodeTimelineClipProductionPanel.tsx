@@ -17,7 +17,10 @@ import {
 import { TimelineClipProviderReworkControls } from "./TimelineClipProviderReworkControls";
 import { selectedTimelineClipId } from "./TimelineClipAssetAuditPanel";
 import { isTimelineVideoClip } from "./TimelineClipProviderReworkModel";
-import type { VideoModelOption } from "./TimelineClipProviderReworkControlsTypes";
+import type {
+  ImageModelOption,
+  VideoModelOption,
+} from "./TimelineClipProviderReworkControlsTypes";
 import { ClipProductionSummary } from "./EpisodeTimelineClipProductionSections";
 import { EpisodeTimelineClipSupportPanel } from "./EpisodeTimelineClipSupportPanel";
 
@@ -41,6 +44,8 @@ export function EpisodeTimelineClipProductionPanel({
   clipAssets,
   clipAssetsLoading,
   clipAssetsError,
+  imageModels,
+  imageModelsLoading,
   videoModels,
   videoModelsLoading,
   onEnvironmentChange,
@@ -70,6 +75,8 @@ export function EpisodeTimelineClipProductionPanel({
   clipAssets: TimelineClipAssetResponse[];
   clipAssetsLoading: boolean;
   clipAssetsError: string | null;
+  imageModels?: ImageModelOption[];
+  imageModelsLoading?: boolean;
   videoModels?: VideoModelOption[];
   videoModelsLoading?: boolean;
   onEnvironmentChange: (value: number | null) => void;
@@ -136,6 +143,8 @@ export function EpisodeTimelineClipProductionPanel({
               episodeCharactersError={episodeCharactersError}
               environments={environments}
               selectedEnvironmentId={selectedEnvironmentId}
+              imageModels={imageModels}
+              imageModelsLoading={imageModelsLoading}
               videoModels={videoModels}
               videoModelsLoading={videoModelsLoading}
               onNavigateToCharacters={onNavigateToCharacters}

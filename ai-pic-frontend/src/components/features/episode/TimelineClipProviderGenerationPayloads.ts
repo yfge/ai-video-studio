@@ -8,6 +8,7 @@ export function buildTimelineClipStoryboardGeneratePayload({
   expectedVersion,
   panelCount,
   style,
+  model,
   referenceImages,
   characterVirtualIpIds,
   characterReferenceImages,
@@ -16,23 +17,29 @@ export function buildTimelineClipStoryboardGeneratePayload({
   expectedVersion: number;
   panelCount: number;
   style: TimelineClipStoryboardGenerateRequest["style"];
+  model?: string | null;
   referenceImages?: string[] | null;
   characterVirtualIpIds?: number[] | null;
   characterReferenceImages?: string[] | null;
   environmentReferenceImages?: string[] | null;
 }): TimelineClipStoryboardGenerateRequest {
-  return {
+  const payload: TimelineClipStoryboardGenerateRequest = {
     expected_version: expectedVersion,
     panel_count: Math.min(9, Math.max(2, Math.round(panelCount))),
     style,
     generation_profile: "clip_storyboard",
     size: "1536x1536",
     aspect_ratio: "1:1",
-    reference_images: optionalStrings(referenceImages),
-    character_virtual_ip_ids: optionalVirtualIpIds(characterVirtualIpIds),
-    character_reference_images: optionalStrings(characterReferenceImages),
-    environment_reference_images: optionalStrings(environmentReferenceImages),
   };
+  const cleanedModel = model?.trim();
+  if (cleanedModel) payload.model = cleanedModel;
+  payload.reference_images = optionalStrings(referenceImages);
+  payload.character_virtual_ip_ids = optionalVirtualIpIds(characterVirtualIpIds);
+  payload.character_reference_images = optionalStrings(characterReferenceImages);
+  payload.environment_reference_images = optionalStrings(
+    environmentReferenceImages,
+  );
+  return payload;
 }
 
 export function buildTimelineClipKeyframeGeneratePayload({

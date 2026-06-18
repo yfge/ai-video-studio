@@ -16,6 +16,8 @@ export type VideoModelOption = {
   provider?: string;
 };
 
+export type ImageModelOption = VideoModelOption;
+
 export type TimelineClipProviderReworkControlsProps = {
   timelineId?: number | string | null;
   timelineVersion?: number | null;
@@ -29,6 +31,8 @@ export type TimelineClipProviderReworkControlsProps = {
   selectedEnvironmentId?: number | null;
   storyboardCharacterImageOptions?: StoryboardCharacterImageOptions;
   storyboardEnvironmentImageOptions?: StoryboardReferenceImageOption[];
+  imageModels?: ImageModelOption[];
+  imageModelsLoading?: boolean;
   videoModels?: VideoModelOption[];
   videoModelsLoading?: boolean;
   onNavigateToCharacters?: () => void;

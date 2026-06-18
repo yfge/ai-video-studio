@@ -1,10 +1,12 @@
 "use client";
-
 import type { TimelineItem, TimelineTrack } from "@/components/features";
 import { asRecord, getString, parseMs } from "@/hooks/useEpisodeDetail";
 import type { TimelineResponse, TimelineTrackSpec } from "@/utils/api/types";
+import {
+  audioTimelineBeatContextById,
+  enrichTimelineClipMetaFromAudioBeat,
+} from "./EpisodeTimelineAudioBeatEnrichment";
 export { sceneForTimelineMeta } from "./EpisodeTimelineSceneModel";
-
 export const formatTimelineMs = (ms: number) => {
   const seconds = Math.floor(ms / 1000);
   const minutes = Math.floor(seconds / 60);
@@ -30,6 +32,7 @@ export function buildEpisodeTimelineTracks(
 ): TimelineTrack[] {
   const nativeTracks = timelineSpecToTimelineTracks(
     selectedTimelineSpec,
+    selectedAudioTimeline,
     selectedStoryboard,
   );
   if (nativeTracks.length > 0) return nativeTracks;
@@ -124,13 +127,15 @@ function legacyAudioTimelineToTimelineTracks(
 
 function timelineSpecToTimelineTracks(
   selectedTimelineSpec: TimelineResponse | null,
+  selectedAudioTimeline: Record<string, unknown> | null,
   selectedStoryboard: Record<string, unknown> | null,
 ): TimelineTrack[] {
   const specTracks = Array.isArray(selectedTimelineSpec?.spec?.tracks)
     ? selectedTimelineSpec.spec.tracks
     : [];
+  const audioBeatById = audioTimelineBeatContextById(selectedAudioTimeline);
   const timelineTracks = specTracks
-    .map((track) => timelineSpecTrackToTimelineTrack(track))
+    .map((track) => timelineSpecTrackToTimelineTrack(track, audioBeatById))
     .filter((track): track is TimelineTrack => Boolean(track));
 
   const storyboardTrack = storyboardSupportTrack(selectedStoryboard);
@@ -142,6 +147,7 @@ function timelineSpecToTimelineTracks(
 
 function timelineSpecTrackToTimelineTrack(
   track: TimelineTrackSpec,
+  audioBeatById: Map<string, Record<string, unknown>>,
 ): TimelineTrack | null {
   const trackType = track.track_type || String(track.type || "");
   const clips = Array.isArray(track.clips) ? track.clips : [];
@@ -150,9 +156,10 @@ function timelineSpecTrackToTimelineTrack(
       const start = parseMs(clip.start_ms);
       const end = parseMs(clip.end_ms);
       if (start == null || end == null || end < start) return null;
+      const meta = enrichTimelineClipMetaFromAudioBeat(clip, audioBeatById);
       const label =
-        getString(clip.text) ||
-        getString(clip.speaker_name) ||
+        getString(meta.text) ||
+        getString(meta.speaker_name) ||
         `${timelineTrackLabel(trackType)} ${idx + 1}`;
       return {
         id: `${trackType}-${clip.clip_id || idx}`,
@@ -162,7 +169,7 @@ function timelineSpecTrackToTimelineTrack(
         displayLabel: timelineItemDisplayLabel(trackType, idx),
         type: trackType || "clip",
         color: timelineTrackColor(trackType),
-        meta: clip as unknown as Record<string, unknown>,
+        meta,
       };
     })
     .filter((item): item is TimelineItem => Boolean(item));

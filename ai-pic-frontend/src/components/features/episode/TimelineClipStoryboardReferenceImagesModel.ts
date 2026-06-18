@@ -42,6 +42,40 @@ export function buildCharacterImageOptions(
   );
 }
 
+export function buildVirtualIPImageOptions(
+  virtualIp: unknown,
+  displayName = "角色",
+) {
+  const record = asRecord(virtualIp);
+  const name = cleanText(displayName) || cleanText(record?.name) || "角色";
+  const images = Array.isArray(record?.images) ? record.images : [];
+  const styleReferenceImages = Array.isArray(record?.style_reference_images)
+    ? record.style_reference_images
+    : [];
+  return dedupeReferenceImageOptions([
+    ...images.flatMap((item, index) => {
+      const image = asRecord(item);
+      const url =
+        getString(image?.oss_url) ||
+        getString(image?.file_url) ||
+        getString(image?.url) ||
+        getString(image?.file_path);
+      if (!url) return [];
+      const category = cleanText(image?.category);
+      const subcategory = cleanText(image?.subcategory);
+      const suffix = [category, subcategory].filter(Boolean).join(" ");
+      return {
+        url,
+        label: suffix ? `${name} ${suffix}` : `${name} ${index + 1}`,
+      };
+    }),
+    ...buildSingleReferenceOption(record?.default_avatar_url, `${name} 默认头像`),
+    ...styleReferenceImages.flatMap((url, index) =>
+      buildSingleReferenceOption(url, `${name} 风格参考 ${index + 1}`),
+    ),
+  ]);
+}
+
 export function buildEnvironmentImageOptions(environment?: Environment | null) {
   return dedupeReferenceImageOptions(
     (environment?.reference_images || []).flatMap((url, index) => {
@@ -53,6 +87,11 @@ export function buildEnvironmentImageOptions(environment?: Environment | null) {
       };
     }),
   );
+}
+
+function buildSingleReferenceOption(value: unknown, label: string) {
+  const url = cleanText(value);
+  return url ? [{ url, label }] : [];
 }
 
 export function dedupeReferenceImageOptions(
