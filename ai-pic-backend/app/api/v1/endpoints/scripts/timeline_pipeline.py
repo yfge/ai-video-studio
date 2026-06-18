@@ -39,7 +39,7 @@ class TimelinePipelineGenerateRequest(BaseModel):
     overwrite_storyboard: bool = Field(False, description="Overwrite storyboard")
     min_pause_seconds: float = Field(
         1.5,
-        description="Minimum pause duration for storyboard placeholders",
+        description="Minimum pause duration for video clips/storyboard placeholders",
     )
     use_duration_control: bool = Field(
         False,
@@ -131,6 +131,7 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
                 timing_model=timing_model,
                 overwrite_audio=overwrite_audio,
                 overwrite_timeline=overwrite_timeline,
+                min_pause_duration_ms=min_pause_ms,
                 use_duration_control=use_duration_control,
                 user_id=user.id,
                 progress_callback=_progress_cb,

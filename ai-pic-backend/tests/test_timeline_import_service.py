@@ -99,16 +99,17 @@ def test_import_audio_timeline_creates_timeline_spec_tracks(db_session):
     tracks = {track["track_type"]: track for track in spec["tracks"]}
     assert set(tracks) == {"dialogue", "video", "subtitle"}
     assert len(tracks["dialogue"]["clips"]) == 1
-    assert len(tracks["video"]["clips"]) == 4
+    assert len(tracks["video"]["clips"]) == 3
     assert len(tracks["subtitle"]["clips"]) == 1
     assert all(clip["beat_type"] == "dialogue" for clip in tracks["dialogue"]["clips"])
     assert all(clip["beat_type"] == "dialogue" for clip in tracks["subtitle"]["clips"])
     assert [clip["beat_type"] for clip in tracks["video"]["clips"]] == [
         "dialogue",
         "action",
-        "pause",
         "action",
     ]
+    assert tracks["video"]["clips"][1]["end_ms"] == 2000
+    assert tracks["video"]["clips"][1]["absorbed_pause_beat_ids"] == [103]
     assert tracks["video"]["clips"][-1]["audio_excluded_reason"] == "fallback_narration"
     assert tracks["video"]["clips"][-1]["source_beat_type"] == "dialogue"
 

@@ -120,9 +120,18 @@ def test_process_timeline_pipeline_imports_audio_timeline_to_timeline_spec(
                     "scene_id": scene_ids[1],
                     "scene_number": 2,
                     "beat_id": 502,
+                    "beat_type": "pause",
+                    "text": "",
+                    "start_ms": 1200,
+                    "end_ms": 1700,
+                },
+                {
+                    "scene_id": scene_ids[1],
+                    "scene_number": 2,
+                    "beat_id": 503,
                     "beat_type": "dialogue",
                     "text": "world",
-                    "start_ms": 1200,
+                    "start_ms": 1700,
                     "end_ms": 2400,
                 },
             ],
@@ -218,7 +227,13 @@ def test_process_timeline_pipeline_imports_audio_timeline_to_timeline_spec(
     _patch_session_local(monkeypatch, test_db)
 
     timeline_pipeline_endpoint._process_timeline_pipeline_task(
-        task.id, {"script_id": script.id, "use_duration_control": True}, user.id
+        task.id,
+        {
+            "script_id": script.id,
+            "use_duration_control": True,
+            "min_pause_seconds": 2.25,
+        },
+        user.id,
     )
 
     session = test_db()
@@ -249,6 +264,9 @@ def test_process_timeline_pipeline_imports_audio_timeline_to_timeline_spec(
         assert tracks["dialogue"]["clips"][0]["clip_id"].startswith(
             f"dialogue_scene_{scene_ids[0]}_beat_501_"
         )
+        assert [clip["beat_id"] for clip in tracks["video"]["clips"]] == [501, 503]
+        assert tracks["video"]["clips"][0]["absorbed_pause_beat_ids"] == [502]
+        assert tracks["video"]["clips"][0]["end_ms"] == 1700
         assert (
             tracks["video"]["clips"][0]["source_refs"]["timeline_shot_plan"]["provider"]
             == "deepseek"

@@ -164,6 +164,82 @@ def test_import_repairs_fallback_narrator_prose_on_audio_tracks(db_session):
     )
 
 
+def test_import_repairs_short_pause_video_clips_on_same_audio_version(db_session):
+    episode, script = _bootstrap(db_session)
+    audio_timeline = _audio_timeline(script)
+    audio_timeline["episode_audio"]["duration_seconds"] = 2.02
+    audio_timeline["beats"].append(
+        {
+            "scene_id": 11,
+            "scene_number": 1,
+            "beat_id": 103,
+            "beat_type": "pause",
+            "text": "",
+            "start_ms": 1600,
+            "end_ms": 2020,
+        }
+    )
+    created = import_audio_timeline_to_timeline_spec(
+        db_session,
+        episode=episode,
+        script=script,
+        audio_timeline=audio_timeline,
+    )
+
+    spec = deepcopy(created.timeline.spec)
+    tracks = {track["track_type"]: track for track in spec["tracks"]}
+    tracks["video"]["clips"].append(
+        {
+            "clip_id": stable_clip_id(
+                track_type="video", scene_id=11, beat_id=103, ordinal=3
+            ),
+            "track_type": "video",
+            "scene_id": 11,
+            "scene_number": 1,
+            "beat_id": 103,
+            "beat_type": "pause",
+            "ordinal": 3,
+            "start_ms": 1600,
+            "end_ms": 2020,
+            "duration_ms": 420,
+            "timing_source": "audio_timeline.beats",
+            "source": {
+                "kind": "audio_timeline_beat",
+                "scene_id": 11,
+                "beat_id": 103,
+                "audio_timeline_version": 4,
+            },
+            "source_refs": {
+                "scene_beat_id": 103,
+                "audio_timeline_version": 4,
+            },
+            "text": "",
+            "asset_ref": None,
+            "placeholder": True,
+        }
+    )
+    created.timeline.spec = spec
+    db_session.add(created.timeline)
+    db_session.commit()
+
+    repaired = import_audio_timeline_to_timeline_spec(
+        db_session,
+        episode=episode,
+        script=script,
+        audio_timeline=audio_timeline,
+        overwrite=False,
+    )
+
+    assert repaired.action == "updated"
+    assert repaired.timeline.version == 2
+    repaired_tracks = {
+        track["track_type"]: track for track in repaired.timeline.spec["tracks"]
+    }
+    assert _beat_types(repaired_tracks["video"]) == ["dialogue", "action"]
+    assert repaired_tracks["video"]["clips"][-1]["end_ms"] == 2020
+    assert repaired_tracks["video"]["clips"][-1]["absorbed_pause_beat_ids"] == [103]
+
+
 def _stale_clip(clip: dict, *, track_type: str, with_audio: bool) -> dict:
     stale = {
         **clip,

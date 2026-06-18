@@ -6,6 +6,10 @@ from app.models.script import Episode, Script
 from app.services.audio.dialogue_processing.audio_dialogue_filter import (
     should_treat_dialogue_as_action_for_audio,
 )
+from app.services.timeline_video_pause_policy import (
+    DEFAULT_VIDEO_MIN_PAUSE_DURATION_MS,
+    video_track_beats,
+)
 
 
 def build_timeline_spec_from_audio_timeline(
@@ -14,6 +18,7 @@ def build_timeline_spec_from_audio_timeline(
     script: Script,
     audio_timeline: dict[str, Any],
     version: int = 1,
+    min_pause_duration_ms: int = DEFAULT_VIDEO_MIN_PAUSE_DURATION_MS,
 ) -> dict[str, Any]:
     beats = audio_timeline.get("beats")
     if not isinstance(beats, list) or not beats:
@@ -22,6 +27,10 @@ def build_timeline_spec_from_audio_timeline(
     source_version = audio_timeline_version(audio_timeline)
     normalized_beats = _normalize_beats(beats)
     dialogue_beats = _filter_dialogue_beats(normalized_beats)
+    video_beats = video_track_beats(
+        normalized_beats,
+        min_pause_duration_ms=min_pause_duration_ms,
+    )
     duration_ms = max((beat["end_ms"] for beat in normalized_beats), default=0)
     episode_audio = audio_timeline.get("episode_audio")
     if not isinstance(episode_audio, dict):
@@ -59,7 +68,7 @@ def build_timeline_spec_from_audio_timeline(
                 "track_type": "video",
                 "clips": [
                     _clip("video", beat, source_version, episode_audio)
-                    for beat in normalized_beats
+                    for beat in video_beats
                 ],
             },
             {
@@ -193,6 +202,13 @@ def _clip(
         clip["audio_excluded_reason"] = beat.get("audio_excluded_reason")
     if beat.get("source_beat_type"):
         clip["source_beat_type"] = beat.get("source_beat_type")
+    if beat.get("absorbed_pause_beat_ids"):
+        clip["absorbed_pause_beat_ids"] = beat.get("absorbed_pause_beat_ids")
+        clip["absorbed_pause_ranges"] = beat.get("absorbed_pause_ranges") or []
+        clip["absorbed_pause_duration_ms"] = beat.get("absorbed_pause_duration_ms") or 0
+        clip["source_refs"]["absorbed_pause_beat_ids"] = beat.get(
+            "absorbed_pause_beat_ids"
+        )
     if track_type == "dialogue":
         clip["asset_ref"] = {
             "kind": "episode_audio",

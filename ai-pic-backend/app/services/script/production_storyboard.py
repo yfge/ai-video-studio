@@ -49,6 +49,7 @@ async def run_auto_timeline_placeholders(
         timing_model=timing_model,
         overwrite_audio=True,
         overwrite_timeline=True,
+        min_pause_duration_ms=min_pause_duration_ms,
         use_duration_control=True,
         user_id=owner_user_id,
         progress_callback=_progress,

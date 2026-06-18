@@ -209,6 +209,7 @@ async def test_auto_timeline_placeholders_imports_timeline_spec_and_checks_audio
     assert main_chain_call["use_duration_control"] is True
     assert main_chain_call["overwrite_audio"] is True
     assert main_chain_call["overwrite_timeline"] is True
+    assert main_chain_call["min_pause_duration_ms"] == 1500
     timeline = db_session.query(Timeline).filter(Timeline.script_id == script.id).one()
     assert timeline.source_audio_timeline_version == 5
     assert timeline.created_by == user.id

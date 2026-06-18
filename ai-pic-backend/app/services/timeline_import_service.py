@@ -19,6 +19,7 @@ from app.services.timeline_spec_validation import validate_timeline_spec
 from app.services.timeline_storyboard_spec_builder import (
     build_timeline_spec_from_storyboard_frames,
 )
+from app.services.timeline_video_pause_policy import DEFAULT_VIDEO_MIN_PAUSE_DURATION_MS
 from sqlalchemy.orm import Session
 
 
@@ -35,6 +36,7 @@ def import_audio_timeline_to_timeline_spec(
     script: Script,
     audio_timeline: dict[str, Any] | None = None,
     overwrite: bool = False,
+    min_pause_duration_ms: int = DEFAULT_VIDEO_MIN_PAUSE_DURATION_MS,
     user_id: int | None = None,
 ) -> TimelineImportResult:
     """Create or update the episode Timeline Spec v1 from audio_timeline beats."""
@@ -59,6 +61,7 @@ def import_audio_timeline_to_timeline_spec(
             existing,
             audio_timeline=timeline_payload,
             source_version=source_version,
+            min_pause_duration_ms=min_pause_duration_ms,
         )
     ):
         return TimelineImportResult(timeline=existing, action="skipped")
@@ -70,6 +73,7 @@ def import_audio_timeline_to_timeline_spec(
         audio_timeline=timeline_payload,
         version=next_version,
         source_version=source_version,
+        min_pause_duration_ms=min_pause_duration_ms,
     )
     validate_timeline_spec(
         spec,
@@ -157,6 +161,7 @@ def _build_import_spec(
     audio_timeline: dict[str, Any],
     version: int,
     source_version: int | None,
+    min_pause_duration_ms: int,
 ) -> dict[str, Any]:
     try:
         return build_timeline_spec_from_audio_timeline(
@@ -164,6 +169,7 @@ def _build_import_spec(
             script=script,
             audio_timeline=audio_timeline,
             version=version,
+            min_pause_duration_ms=min_pause_duration_ms,
         )
     except RuntimeError as exc:
         if str(exc) != "audio_timeline_beats_not_monotonic":

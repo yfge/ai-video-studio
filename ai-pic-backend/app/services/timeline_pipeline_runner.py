@@ -19,6 +19,11 @@ from app.services.duration_controlled_dialogue_service import (
 from app.services.script.timeline_shot_plan_step import (
     generate_timeline_shot_plan_from_current_version,
 )
+from app.services.timeline_pipeline_state import (
+    episode_has_audio_timeline,
+    scene_has_dialogue_audio,
+    scene_number_sort_key,
+)
 from app.services.timeline_import_service import (
     TimelineImportResult,
     import_audio_timeline_to_timeline_spec,
@@ -44,6 +49,7 @@ async def run_timeline_main_chain(
     timing_model: str | None = None,
     overwrite_audio: bool = False,
     overwrite_timeline: bool = False,
+    min_pause_duration_ms: int = 1500,
     use_duration_control: bool = False,
     user_id: int | None = None,
     progress_callback: ProgressCallback | None = None,
@@ -99,6 +105,7 @@ async def run_timeline_main_chain(
         script=script,
         audio_timeline=audio_timeline_payload,
         overwrite=overwrite_timeline,
+        min_pause_duration_ms=min_pause_duration_ms,
         user_id=user_id,
     )
     if progress_callback:
@@ -206,44 +213,3 @@ async def _run_legacy_scene_dialogue_audio(
             timing_model=timing_model,
             target_duration_seconds=scene_target,
         )
-
-
-def scene_has_dialogue_audio(scene: Scene, script_id: int) -> bool:
-    meta = scene.extra_metadata
-    if not isinstance(meta, dict):
-        return False
-    payload = meta.get("dialogue_audio")
-    if not isinstance(payload, dict):
-        return False
-    if payload.get("script_id") != script_id:
-        return False
-    return bool(payload.get("oss_url"))
-
-
-def scene_number_sort_key(scene: Scene) -> tuple[int, int, str]:
-    raw = getattr(scene, "scene_number", None)
-    num = _to_int(raw)
-    if num is None:
-        return (1, 0, str(raw or ""))
-    return (0, num, str(raw or ""))
-
-
-def episode_has_audio_timeline(episode: Episode, script_id: int) -> bool:
-    meta = episode.extra_metadata if isinstance(episode.extra_metadata, dict) else {}
-    timeline = meta.get("audio_timeline") if isinstance(meta, dict) else None
-    if not isinstance(timeline, dict):
-        return False
-    if timeline.get("script_id") != script_id:
-        return False
-    ep_audio = timeline.get("episode_audio")
-    if not isinstance(ep_audio, dict) or not ep_audio.get("oss_url"):
-        return False
-    beats = timeline.get("beats")
-    return isinstance(beats, list) and len(beats) > 0
-
-
-def _to_int(value: Any) -> int | None:
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None
