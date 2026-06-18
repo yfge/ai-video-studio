@@ -5,10 +5,12 @@ import type {
   EpisodeCharacter,
   TimelineClipVideoReworkAction,
 } from "@/utils/api/types";
+import { TimelineClipGenerationChain } from "./TimelineClipGenerationChain";
 import { TimelineClipKeyframeCard } from "./TimelineClipKeyframeCard";
 import { TimelineClipSharedReferenceContext } from "./TimelineClipSharedReferenceContext";
 import { StoryboardReferenceCard } from "./TimelineClipStoryboardReferenceCard";
 import { TimelineClipVideoReworkCard } from "./TimelineClipVideoReworkCard";
+import type { TimelineClipProductionReadiness } from "./TimelineClipProductionReadiness";
 import type { TimelineVideoReferenceChoice } from "./TimelineClipProviderReworkModel";
 import type { TimelineClipStoryboardReferenceSelection } from "./useTimelineClipStoryboardReferenceSelection";
 import type { ClipGenerationTaskMap } from "./useTimelineClipGenerationTaskTracker";
@@ -33,7 +35,7 @@ export function TimelineClipProviderReworkCards({
   reason,
   videoReferenceChoice,
   referenceImagesInput,
-  keyframeStatus,
+  productionReadiness,
   manualReferenceAvailable,
   storyboardStyle,
   storyboardPanelCount,
@@ -81,7 +83,7 @@ export function TimelineClipProviderReworkCards({
   reason: string;
   videoReferenceChoice: TimelineVideoReferenceChoice;
   referenceImagesInput: string;
-  keyframeStatus: { startReady: boolean; endReady: boolean; label: string };
+  productionReadiness: TimelineClipProductionReadiness;
   manualReferenceAvailable: boolean;
   storyboardStyle: "2d_cartoon" | "3d_cartoon" | "live_action";
   storyboardPanelCount: string;
@@ -129,6 +131,7 @@ export function TimelineClipProviderReworkCards({
       className="px-0.5 py-0"
       onSubmit={onSubmit}
     >
+      <TimelineClipGenerationChain readiness={productionReadiness} />
       <TimelineClipSharedReferenceContext
         episodeCharacters={episodeCharacters}
         selectedCharacterVirtualIpIds={selectedStoryboardVirtualIpIds}
@@ -170,7 +173,7 @@ export function TimelineClipProviderReworkCards({
           <TimelineClipKeyframeCard
             generating={generatingKeyframes}
             canGenerate={canGenerateKeyframes}
-            keyframeStatus={keyframeStatus}
+            keyframeStatus={productionReadiness.keyframeStatus}
             keyframesTask={generationTasks?.keyframes}
             currentClipId={currentClipId ?? null}
             onGenerate={onGenerateKeyframes}
@@ -186,7 +189,7 @@ export function TimelineClipProviderReworkCards({
             reason={reason}
             videoReferenceChoice={videoReferenceChoice}
             storyboardPanelIndex={storyboardPanelIndex}
-            startEndReferenceAvailable={keyframeStatus.startReady}
+            startEndReferenceAvailable={productionReadiness.keyframesReady}
             manualReferenceAvailable={manualReferenceAvailable}
             episodeCharacters={episodeCharacters}
             selectedCharacterVirtualIpIds={selectedStoryboardVirtualIpIds}
@@ -199,6 +202,7 @@ export function TimelineClipProviderReworkCards({
             submitting={submitting}
             submitError={submitError}
             canSubmit={canSubmit}
+            disabledReason={productionReadiness.videoGateMessage}
             videoTask={generationTasks?.video}
             currentClipId={currentClipId ?? null}
             videoModels={videoModels}

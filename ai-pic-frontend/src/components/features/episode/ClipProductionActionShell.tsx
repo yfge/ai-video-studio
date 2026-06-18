@@ -5,9 +5,9 @@ import type { ReactNode } from "react";
 type ClipProductionActionTone = "default" | "primary";
 
 const MOBILE_LAYOUT_CLASS = {
-  storyboard: "max-[719px]:order-2",
-  keyframes: "max-[719px]:order-3",
-  video: "max-[719px]:order-1 max-[719px]:col-span-2",
+  storyboard: "max-[719px]:order-1",
+  keyframes: "max-[719px]:order-2",
+  video: "max-[719px]:order-3 max-[719px]:col-span-2",
 };
 
 export function ClipProductionActionShell({

@@ -12,15 +12,12 @@ import type {
 import { TimelineClipProviderReworkCards } from "./TimelineClipProviderReworkCards";
 import {
   buildTimelineClipVideoReworkTaskPayload,
-  hasTimelineClipReferenceImages,
   isTimelineVideoClip,
   parseReferenceImagesInput,
   parseOptionalNumber,
-  timelineClipStartEndFrameStatus,
-  timelineClipStoryboardPanelIndex,
-  timelineClipStoryboardSheetUrl,
   type TimelineVideoReferenceChoice,
 } from "./TimelineClipProviderReworkModel";
+import { timelineClipProductionReadiness } from "./TimelineClipProductionReadiness";
 import { useTimelineClipStoryboardReferenceSelection } from "./useTimelineClipStoryboardReferenceSelection";
 import { useTimelineClipStoryboardVirtualIpSelection } from "./useTimelineClipStoryboardVirtualIpSelection";
 import { useTimelineClipProviderGenerationActions } from "./useTimelineClipProviderGenerationActions";
@@ -66,9 +63,7 @@ export function TimelineClipProviderReworkControls({
   const [submitting, setSubmitting] = useState(false);
 
   const isVideoClip = isTimelineVideoClip(item);
-  const storyboardPanelIndex = timelineClipStoryboardPanelIndex(item);
-  const storyboardSheetUrl = timelineClipStoryboardSheetUrl(item);
-  const keyframeStatus = timelineClipStartEndFrameStatus(item);
+  const productionReadiness = timelineClipProductionReadiness(item);
   const parsedDuration = parseOptionalNumber(duration);
   const referenceImages = parseReferenceImagesInput(referenceImagesInput);
   const { selectedStoryboardVirtualIpIds, handleStoryboardVirtualIpToggle } =
@@ -90,11 +85,6 @@ export function TimelineClipProviderReworkControls({
     storyboardReferenceSelection.selectedStoryboardCharacterReferenceImages;
   const selectedEnvironmentReferenceImages =
     storyboardReferenceSelection.selectedStoryboardEnvironmentReferenceImages;
-  const hasManualOrSharedReferences = hasTimelineClipReferenceImages({
-    manualReferenceImages: referenceImages,
-    characterReferenceImages: selectedCharacterReferenceImages,
-    environmentReferenceImages: selectedEnvironmentReferenceImages,
-  });
   const taskTracker = useTimelineClipGenerationTaskTracker({
     onCompleted: async () => {
       await onGenerationCompleted?.();
@@ -121,19 +111,16 @@ export function TimelineClipProviderReworkControls({
   let effectiveReferenceChoice = videoReferenceChoice;
   if (
     effectiveReferenceChoice === "clip_storyboard_panel" &&
-    !storyboardPanelIndex
+    !productionReadiness.storyboardPanelIndex
   ) {
     effectiveReferenceChoice = "start_end";
   }
-  if (
-    effectiveReferenceChoice === "start_end" &&
-    !keyframeStatus.startReady &&
-    hasManualOrSharedReferences
-  ) {
-    effectiveReferenceChoice = "manual_refs";
-  }
   const canSubmit = Boolean(
-    timelineId && timelineVersion && clipId && !submitting,
+    timelineId &&
+      timelineVersion &&
+      clipId &&
+      productionReadiness.canGenerateVideo &&
+      !submitting,
   );
 
   if (!isVideoClip) return null;
@@ -148,6 +135,14 @@ export function TimelineClipProviderReworkControls({
     }
     if (duration.trim() && !parsedDuration) {
       const message = "请输入有效的视频时长";
+      generationActions.setSubmitError(message);
+      onNotify?.(message, "warning");
+      return;
+    }
+    if (!productionReadiness.canGenerateVideo) {
+      const message =
+        productionReadiness.videoGateMessage ||
+        "先完成片段分镜图和首尾帧后才能生视频";
       generationActions.setSubmitError(message);
       onNotify?.(message, "warning");
       return;
@@ -205,12 +200,12 @@ export function TimelineClipProviderReworkControls({
       reason={reason}
       videoReferenceChoice={videoReferenceChoice}
       referenceImagesInput={referenceImagesInput}
-      keyframeStatus={keyframeStatus}
+      productionReadiness={productionReadiness}
       manualReferenceAvailable
       storyboardStyle={storyboardStyle}
       storyboardPanelCount={storyboardPanelCount}
-      storyboardPanelIndex={storyboardPanelIndex}
-      storyboardSheetUrl={storyboardSheetUrl}
+      storyboardPanelIndex={productionReadiness.storyboardPanelIndex}
+      storyboardSheetUrl={productionReadiness.storyboardSheetUrl}
       episodeCharacters={episodeCharacters}
       episodeCharactersLoading={episodeCharactersLoading}
       episodeCharactersError={episodeCharactersError}

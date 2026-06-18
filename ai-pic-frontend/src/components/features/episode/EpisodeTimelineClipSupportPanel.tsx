@@ -86,7 +86,6 @@ export function EpisodeTimelineClipSupportPanel({
   const supportOverflow = !shouldPromoteAssetAudit ? (
     <ClipSupportOverflow
       videoReady={videoReady}
-      onNavigateToScript={onNavigateToScript}
       onNavigateToStoryboard={onNavigateToStoryboard}
       onNavigateToTasks={onNavigateToTasks}
     >
@@ -100,6 +99,7 @@ export function EpisodeTimelineClipSupportPanel({
         data-clip-support-layout={shouldPromoteAssetAudit ? "split" : "compact"}
       >
         <div className="min-w-0 space-y-1.5">
+          <ClipScriptSupportAction onNavigateToScript={onNavigateToScript} />
           <ClipEnvironmentSection
             scene={scene}
             environments={environments}
@@ -112,7 +112,6 @@ export function EpisodeTimelineClipSupportPanel({
           {shouldPromoteAssetAudit ? (
             <ClipSupportLinks
               videoReady={videoReady}
-              onNavigateToScript={onNavigateToScript}
               onNavigateToStoryboard={onNavigateToStoryboard}
               onNavigateToTasks={onNavigateToTasks}
             />
@@ -130,13 +129,11 @@ export function EpisodeTimelineClipSupportPanel({
 
 function ClipSupportOverflow({
   videoReady,
-  onNavigateToScript,
   onNavigateToStoryboard,
   onNavigateToTasks,
   children,
 }: {
   videoReady: boolean;
-  onNavigateToScript: () => void;
   onNavigateToStoryboard: () => void;
   onNavigateToTasks: () => void;
   children: ReactNode;
@@ -168,7 +165,6 @@ function ClipSupportOverflow({
       <div className="absolute right-0 top-full z-20 mt-1 hidden w-[min(28rem,calc(100vw-2rem))] rounded-lg border border-gray-200 bg-white p-3 shadow-xl group-open:block">
         <ClipSupportLinks
           videoReady={videoReady}
-          onNavigateToScript={onNavigateToScript}
           onNavigateToStoryboard={onNavigateToStoryboard}
           onNavigateToTasks={onNavigateToTasks}
         />
@@ -180,19 +176,16 @@ function ClipSupportOverflow({
 
 function ClipSupportLinks({
   videoReady,
-  onNavigateToScript,
   onNavigateToStoryboard,
   onNavigateToTasks,
 }: {
   videoReady: boolean;
-  onNavigateToScript: () => void;
   onNavigateToStoryboard: () => void;
   onNavigateToTasks: () => void;
 }) {
   const actionClass =
     "rounded px-1.5 py-0.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-950";
   const actions = [
-    { label: "剧本", onClick: onNavigateToScript },
     { label: "替换片段", onClick: onNavigateToStoryboard, active: !videoReady },
     { label: "任务", onClick: onNavigateToTasks },
   ];
@@ -211,6 +204,29 @@ function ClipSupportLinks({
           {action.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+function ClipScriptSupportAction({
+  onNavigateToScript,
+}: {
+  onNavigateToScript: () => void;
+}) {
+  return (
+    <div
+      data-clip-script-support="visible"
+      className="flex min-h-6 min-w-0 items-center gap-1 text-xs"
+    >
+      <span className="text-[11px] font-medium text-gray-500">剧本上下文</span>
+      <button
+        type="button"
+        data-clip-script-support-action="visible"
+        onClick={onNavigateToScript}
+        className="rounded px-1.5 py-0.5 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-50 hover:text-blue-800"
+      >
+        剧本
+      </button>
     </div>
   );
 }

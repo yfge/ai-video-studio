@@ -45,6 +45,7 @@ export function TimelineClipVideoReworkCard({
   submitting,
   submitError,
   canSubmit,
+  disabledReason,
   videoTask,
   currentClipId,
   onActionChange,
@@ -76,6 +77,7 @@ export function TimelineClipVideoReworkCard({
   submitting: boolean;
   submitError: string | null;
   canSubmit: boolean;
+  disabledReason?: string | null;
   videoTask?: TrackedClipGenerationTask;
   currentClipId?: string | null;
   onActionChange: (value: TimelineClipVideoReworkAction) => void;
@@ -101,7 +103,7 @@ export function TimelineClipVideoReworkCard({
         <button
           type="submit"
           aria-label="生成/重做此片段视频"
-          title="生成/重做此片段视频"
+          title={disabledReason || "生成/重做此片段视频"}
           disabled={!canSubmit}
           className={operatorButtonClass(
             "primary",
@@ -192,6 +194,14 @@ export function TimelineClipVideoReworkCard({
         />
       </div>
       <div className="grid gap-2">
+        {!canSubmit && disabledReason ? (
+          <div
+            data-clip-video-generation-gate="blocked"
+            className="rounded-md bg-amber-50 px-2 py-1.5 text-xs text-amber-700"
+          >
+            {disabledReason}
+          </div>
+        ) : null}
         {submitError ? (
           <div className="text-xs text-red-600">{submitError}</div>
         ) : null}

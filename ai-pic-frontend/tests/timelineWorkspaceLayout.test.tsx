@@ -71,6 +71,21 @@ describe("EpisodeTimelineWorkspace layout", () => {
     assert.equal(utils.queryByText("片段检查器"), null);
     assert.ok(utils.getByRole("button", { name: "生成片段分镜图" }));
     assert.ok(utils.getByRole("button", { name: "生成/重做此片段视频" }));
+    const commandCards = Array.from(
+      dom.window.document.querySelectorAll("[data-clip-command-card]"),
+    ) as HTMLElement[];
+    assert.deepEqual(
+      commandCards.map((card) => card.getAttribute("data-clip-command-card")),
+      ["storyboard", "keyframes", "video"],
+    );
+    const storyboardCard = commandCards.find(
+      (card) => card.getAttribute("data-clip-command-card") === "storyboard",
+    );
+    const videoCard = commandCards.find(
+      (card) => card.getAttribute("data-clip-command-card") === "video",
+    );
+    assert.match(storyboardCard?.className || "", /max-\[719px\]:order-1/);
+    assert.doesNotMatch(videoCard?.className || "", /max-\[719px\]:order-1/);
     const video = utils.getByLabelText("播放选中片段视频");
     assert.equal(
       video.getAttribute("src"),
@@ -1180,6 +1195,45 @@ describe("EpisodeTimelineWorkspace layout", () => {
     assert.doesNotMatch(supportSummary.className, /px-2/);
   });
 
+  it("keeps selected clip script navigation visible outside collapsed support actions", async () => {
+    mockWorkspaceFetch();
+    const navigations: string[] = [];
+
+    const utils = render(
+      workspace(videoTimeline(), undefined, undefined, {
+        onNavigateToScript: () => navigations.push("script"),
+      }),
+      {
+        container: dom.window.document.body,
+      },
+    );
+
+    await waitFor(() => {
+      assert.ok(utils.getByRole("button", { name: "剧本" }));
+      assert.ok(
+        dom.window.document.querySelector(
+          '[data-clip-support-overflow="compact"]',
+        ),
+      );
+    });
+
+    const scriptButton = utils.getByRole("button", { name: "剧本" });
+    assert.ok(scriptButton.closest('[data-clip-script-support="visible"]'));
+    assert.equal(
+      scriptButton.closest('[data-clip-support-overflow="compact"]'),
+      null,
+    );
+    const supportDetails = dom.window.document.querySelector(
+      '[data-clip-support-overflow="compact"]',
+    ) as HTMLDetailsElement;
+    assert.ok(supportDetails);
+    assert.equal(supportDetails.open, false);
+    assert.equal(supportDetails.textContent?.includes("剧本"), false);
+
+    fireEvent.click(scriptButton);
+    assert.deepEqual(navigations, ["script"]);
+  });
+
   it("shows scene environment save immediately for clips with a saved environment", async () => {
     mockWorkspaceFetch();
 
@@ -2167,9 +2221,9 @@ describe("EpisodeTimelineWorkspace layout", () => {
       commandCards[2].getAttribute("data-clip-command-card-tone"),
       "primary",
     );
-    assert.match(commandCards[0].className, /max-\[719px\]:order-2/);
-    assert.match(commandCards[1].className, /max-\[719px\]:order-3/);
-    assert.match(commandCards[2].className, /max-\[719px\]:order-1/);
+    assert.match(commandCards[0].className, /max-\[719px\]:order-1/);
+    assert.match(commandCards[1].className, /max-\[719px\]:order-2/);
+    assert.match(commandCards[2].className, /max-\[719px\]:order-3/);
     assert.match(commandCards[2].className, /max-\[719px\]:col-span-2/);
     assert.doesNotMatch(commandCards[0].className, /col-span-2/);
     assert.doesNotMatch(commandCards[1].className, /col-span-2/);
@@ -2306,7 +2360,10 @@ describe("EpisodeTimelineWorkspace layout", () => {
     assert.equal(storyboardButton.getAttribute("title"), "生成片段分镜图");
     assert.equal(keyframeButton.textContent?.trim(), "生成首尾帧");
     assert.equal(videoButton.textContent?.trim(), "生成/重做此片段视频");
-    assert.equal(videoButton.getAttribute("title"), "生成/重做此片段视频");
+    assert.equal(
+      videoButton.getAttribute("title"),
+      "先完成片段分镜图和首尾帧后才能生视频",
+    );
     assert.doesNotMatch(storyboardButton.textContent || "", /分镜图分镜图/);
     assert.doesNotMatch(keyframeButton.textContent || "", /首尾帧首尾帧/);
     assert.ok(storyboardButton.querySelector("svg"));
@@ -2469,6 +2526,7 @@ describe("EpisodeTimelineWorkspace layout", () => {
       supportSummary?.querySelector('[data-clip-support-more-icon="dots"]'),
     );
     assert.ok(supportDetails.textContent?.includes("辅助操作"));
+    assert.equal(supportDetails.textContent?.includes("剧本"), false);
     assert.ok(supportDetails.textContent?.includes("替换片段"));
     assert.ok(supportDetails.textContent?.includes("任务"));
   });
@@ -3126,7 +3184,7 @@ describe("EpisodeTimelineWorkspace layout", () => {
     );
 
     assert.ok(utils.getByLabelText("视频生成绑定上下文"));
-    assert.ok(utils.getByText("环境图：1 张"));
+    assert.ok(utils.getAllByText("环境图：1 张").length >= 1);
   });
 
   it("labels the header primary action from clip-video readiness", () => {
@@ -3268,6 +3326,7 @@ function workspace(
     normalizedScenes?: NormalizedScene[];
     selectedStoryboard?: Record<string, unknown> | null;
     onSelectedClipIdChange?: (clipId: string | null) => void;
+    onNavigateToScript?: () => void;
   } = {},
 ) {
   return (
@@ -3290,7 +3349,7 @@ function workspace(
           useDurationControl={false}
           setUseDurationControl={() => {}}
           onNavigateToTasks={() => {}}
-          onNavigateToScript={() => {}}
+          onNavigateToScript={options.onNavigateToScript ?? (() => {})}
           onNavigateToStoryboard={() => {}}
           onNavigateToCharacters={() => {}}
         />

@@ -209,6 +209,11 @@ describe("timeline clip rework controls", () => {
 
     assert.ok(utils.getByLabelText("步骤 1 · 片段分镜图"));
     assert.ok(utils.getByLabelText("步骤 3 · 片段视频"));
+    const chain = utils.getByLabelText("片段生图生视频链路");
+    assert.ok(within(chain).getByText("选参考/绑定"));
+    assert.ok(within(chain).getByText("生图：分镜图"));
+    assert.ok(within(chain).getByText("生图：首尾帧"));
+    assert.ok(within(chain).getByText("生视频：片段视频"));
     assert.ok(utils.getByRole("button", { name: "生成片段分镜图" }));
     assert.ok(utils.getByRole("button", { name: "生成/重做此片段视频" }));
     assert.ok(utils.getByLabelText("视频参考来源"));
@@ -269,12 +274,88 @@ describe("timeline clip rework controls", () => {
       { container: dom.window.document.body },
     );
 
-    assert.ok(utils.getByText("首尾帧待生成"));
+    assert.ok(utils.getAllByText("首尾帧待生成").length >= 1);
+    assert.ok(
+      utils.getAllByText("先完成片段分镜图和首尾帧后才能生视频").length >= 1,
+    );
+    assert.equal(
+      (
+        utils.getByRole("button", {
+          name: "生成/重做此片段视频",
+        }) as HTMLButtonElement
+      ).disabled,
+      true,
+    );
     assert.equal(
       (utils.getByRole("option", { name: /首尾帧/ }) as HTMLOptionElement)
         .disabled,
       true,
     );
+  });
+
+  it("requires both clip storyboard and keyframes before video generation", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ task_id: 97, status: "pending" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    const utils = render(
+      React.createElement(TimelineClipProviderReworkControls, {
+        timelineId: 8,
+        timelineVersion: 3,
+        clipId: "video_scene_1_beat_1_001",
+        item: videoClipWithoutStoryboardPanel(),
+      }),
+      { container: dom.window.document.body },
+    );
+
+    const videoButton = utils.getByRole("button", {
+      name: "生成/重做此片段视频",
+    }) as HTMLButtonElement;
+    assert.equal(videoButton.disabled, true);
+    assert.ok(
+      utils.getAllByText("先完成片段分镜图和首尾帧后才能生视频").length >= 1,
+    );
+    fireEvent.submit(videoButton.closest("form")!);
+    await waitFor(() => assert.equal(calls.length, 0));
+  });
+
+  it("does not let manual references bypass the video generation image gate", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ task_id: 98, status: "pending" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    const utils = render(
+      React.createElement(TimelineClipProviderReworkControls, {
+        timelineId: 8,
+        timelineVersion: 3,
+        clipId: "video_scene_1_beat_1_001",
+        item: videoClipWithoutStartEndFrames(),
+      }),
+      { container: dom.window.document.body },
+    );
+
+    fireEvent.input(utils.getByLabelText("附加参考图 URL"), {
+      target: { value: "https://manual.example/ref.png" },
+    });
+    fireEvent.change(utils.getByLabelText("视频参考来源"), {
+      target: { value: "manual_refs" },
+    });
+    const videoButton = utils.getByRole("button", {
+      name: "生成/重做此片段视频",
+    }) as HTMLButtonElement;
+    assert.equal(videoButton.disabled, true);
+    fireEvent.submit(videoButton.closest("form")!);
+    await waitFor(() => assert.equal(calls.length, 0));
   });
 
   it("keeps storyboard and video submit paths clip-scoped from the two-step controls", async () => {
@@ -869,6 +950,18 @@ function videoClipWithoutStartEndFrames() {
       end_frame_asset_ref: undefined,
       start_frame_url: undefined,
       end_frame_url: undefined,
+    },
+  };
+}
+
+function videoClipWithoutStoryboardPanel() {
+  const clip = videoClipWithStoryboardPanel();
+  return {
+    ...clip,
+    meta: {
+      ...clip.meta,
+      source_refs: {},
+      clip_storyboard_sheet_asset_ref: undefined,
     },
   };
 }
