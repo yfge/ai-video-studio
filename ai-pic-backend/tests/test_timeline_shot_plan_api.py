@@ -101,6 +101,45 @@ def test_timeline_shot_plan_api_rejects_invalid_plan_without_updating(
     assert "timeline_shot_plan" not in video_clip["source_refs"]
 
 
+def test_timeline_shot_plan_api_coerces_excess_motion_timeline_points(
+    client,
+    db_session,
+    monkeypatch,
+):
+    shots = _valid_shots()
+    shots[0]["motion_timeline"] = [
+        {"at_ms": 0, "action": "robot leans into frame"},
+        {"at_ms": 800, "action": "robot checks the glowing bead"},
+        {"at_ms": 1600, "action": "robot raises one hand"},
+        {"at_ms": 2400, "action": "robot points at the data trail"},
+        {"at_ms": 4600, "action": "robot locks on the final clue"},
+    ]
+    fake_ai = _FakeAIManager(shots)
+    monkeypatch.setattr(
+        "app.services.timeline_shot_plan_service.ai_service.ai_manager",
+        fake_ai,
+    )
+    episode, script = _bootstrap_episode(db_session)
+    timeline = _create_timeline(client, episode, script)
+
+    response = client.post(
+        f"/api/v1/timelines/{timeline['id']}/shot-plan",
+        json={"expected_version": timeline["version"]},
+    )
+
+    assert response.status_code == 200
+    assert len(fake_ai.calls) == 1
+    updated = response.json()
+    tracks = {track["track_type"]: track for track in updated["spec"]["tracks"]}
+    shot_plan = tracks["video"]["clips"][0]["source_refs"]["timeline_shot_plan"]
+    assert [point["at_ms"] for point in shot_plan["motion_timeline"]] == [
+        0,
+        800,
+        2400,
+        4000,
+    ]
+
+
 def test_timeline_shot_plan_prompt_includes_character_anchor_hint():
     episode = SimpleNamespace(id=133)
     script = SimpleNamespace(id=117)

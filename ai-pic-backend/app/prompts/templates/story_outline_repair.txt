@@ -2,6 +2,14 @@
 
 - Schema: {{ schema }}
 - 缺失/异常字段: {{ missing_fields | default([]) | join(', ') }}
+- production_mode: {{ production_mode | default(false) }}
+- 质量门禁问题ID: {{ quality_gate_issues | default([]) | join(', ') }}
+- 质量门禁问题详情:
+{% for item in quality_gate_issue_details | default([]) %}
+  - {{ item }}
+{% endfor %}
+- 故事质量警告: {{ story_quality_warnings | default([]) | join('；') }}
+- 角色一致性警告: {{ character_warnings | default([]) | join('；') }}
 - 原始提示词:
 {{ original_prompt or '' }}
 - 原始输出:
@@ -11,3 +19,9 @@
 1) 只返回 JSON，不要代码块或额外文字。
 2) 必须包含 premise、synopsis、main_conflict、resolution、character_relationships、main_characters 等关键字段，缺失时用合理占位（中文）补齐。
 3) 尽量保留原始信息，确保字段类型与 Schema 一致。
+{% if production_mode %}
+4) 必须补齐 `structured_story_contract`，版本 {{ story_contract_version | default('story_contract_v1') }}，包含 target_audience、core_emotional_pain、big_expectation、small_expectation_ladder、protagonist_goal、structural_conflict、information_gap、first_three_episode_spine、stage_highs、shootability、compliance_risks、traffic_hooks。
+5) `compliance_risks` 必须是数组；若无实质合规风险，返回空数组 `[]`，不要填入泛泛的风险提示。
+6) 开场、第二幕、高潮和结局必须出现可被校验的强冲突关键词，例如“突然、发现、危机、冲突、背叛、真相、紧张、对抗、高潮、揭示、解决、收束”，并写成可拍动作。
+7) 每个爽点必须写明：谁做了什么、遇到什么阻力、付出什么代价、获得什么结果、观众得到什么信息变化。
+{% endif %}

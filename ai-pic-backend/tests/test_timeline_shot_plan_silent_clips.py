@@ -134,11 +134,10 @@ def test_timeline_shot_plan_api_allows_action_clip_without_dialogue_source(
 ):
     episode, script = _bootstrap_episode(db_session)
     spec = _timeline_spec(episode, script)
-    for track in spec["tracks"]:
-        for clip in track["clips"]:
-            clip["beat_type"] = "action"
-            clip["speaker_name"] = None
-            clip["text"] = "机器人检查时间轴上的第一颗光点。"
+    for clip in spec["tracks"][1]["clips"]:
+        clip["beat_type"] = "action"
+        clip["speaker_name"] = None
+        clip["text"] = "机器人检查时间轴上的第一颗光点。"
     shot = {**_valid_shots()[0], "dialogue_source": ""}
     fake_ai = _FakeAIManager([shot])
     monkeypatch.setattr(

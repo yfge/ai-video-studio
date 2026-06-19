@@ -155,9 +155,11 @@ def mock_ai_service(monkeypatch):
                 "generation_method": "mock-provider:episodes",
             }
 
-        async def generate_script(self, **_: Any) -> dict:
+        async def generate_script(self, **kwargs: Any) -> dict:
             return {
-                "content": mock_passing_script_payload(),
+                "content": mock_passing_script_payload(
+                    _first_story_character_name(kwargs.get("story")) or "Hero"
+                ),
                 "prompt": "mock-script-prompt",
                 "generation_method": "mock-provider:scripts",
             }
@@ -203,3 +205,20 @@ def mock_ai_service(monkeypatch):
         for file_path in created_files:
             if file_path.exists():
                 file_path.unlink()
+
+
+def _first_story_character_name(story: Any) -> str | None:
+    if not isinstance(story, dict):
+        return None
+    for key in ("character_profiles", "main_characters"):
+        characters = story.get(key)
+        if not isinstance(characters, list):
+            continue
+        for item in characters:
+            if isinstance(item, dict):
+                name = item.get("name") or item.get("character_name")
+            else:
+                name = item
+            if name:
+                return str(name)
+    return None

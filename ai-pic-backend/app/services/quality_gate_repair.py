@@ -19,16 +19,23 @@ async def repair_quality_gate_payload(
     model: Optional[str],
     prefer_provider: Optional[str],
     temperature: float,
+    extra_instructions: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     if not ai_manager:
         return None
 
+    prompt_parts = [
+        f"The generated {kind} JSON failed strict quality gate validation.",
+        "Repair the JSON while preserving the same schema and story intent.",
+        "Return strict JSON only, no markdown.",
+    ]
+    if extra_instructions:
+        prompt_parts.append(extra_instructions.strip())
     prompt = (
-        f"The generated {kind} JSON failed strict quality gate validation.\n"
-        "Repair the JSON while preserving the same schema and story intent.\n"
-        "Return strict JSON only, no markdown.\n\n"
-        f"quality_gate:\n{json.dumps(quality_gate, ensure_ascii=False)[:6000]}\n\n"
-        f"payload:\n{json.dumps(payload, ensure_ascii=False)[:12000]}"
+        "\n".join(prompt_parts)
+        + "\n\n"
+        + f"quality_gate:\n{json.dumps(quality_gate, ensure_ascii=False)[:6000]}\n\n"
+        + f"payload:\n{json.dumps(payload, ensure_ascii=False)[:12000]}"
     )
     response = await ai_manager.generate_text(
         prompt=prompt,

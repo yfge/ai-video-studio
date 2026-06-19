@@ -10,6 +10,7 @@ from app.services.script.production_hooks import (
     render_production_requirements,
 )
 from app.services.script.production_quality_gate import build_production_quality_gate
+from app.services.script.production_rewrite_guidance import extract_rewrite_guidance
 from app.services.script_score_thresholds import (
     PASS_DIMENSION_THRESHOLD,
     PASS_OVERALL_THRESHOLD,
@@ -20,7 +21,7 @@ logger = get_logger(__name__)
 AttemptGenerator = Callable[[int, str], Awaitable[Dict[str, Any]]]
 AttemptScorer = Callable[[Dict[str, Any]], Awaitable[Dict[str, Any]]]
 
-MAX_PRODUCTION_REWRITES = 3
+MAX_PRODUCTION_REWRITES = 5
 
 
 @dataclass
@@ -151,21 +152,13 @@ def score_overall(scoring: Dict[str, Any]) -> float:
         return 0.0
 
 
-def extract_rewrite_guidance(scoring: Dict[str, Any]) -> List[str]:
-    script_score = _safe_dict(scoring.get("script_score"))
-    guidance = script_score.get("rewrite_guidance")
-    if not isinstance(guidance, list):
-        return []
-    return [str(item).strip() for item in guidance if str(item).strip()]
-
-
 def select_best_attempt(attempts: List[Dict[str, Any]]) -> Dict[str, Any]:
     if not attempts:
         raise RuntimeError("production_pipeline_no_attempts")
     for attempt in attempts:
         if score_passes(_safe_dict(attempt.get("scoring"))):
             return attempt
-    return max(attempts, key=lambda item: float(item.get("overall_score") or 0.0))
+    return max(attempts, key=_attempt_quality_key)
 
 
 def summarize_attempt(attempt: Dict[str, Any]) -> Dict[str, Any]:
@@ -216,3 +209,26 @@ def _looks_numeric(value: Any) -> bool:
         return True
     except (TypeError, ValueError):
         return False
+
+
+def _attempt_quality_key(attempt: Dict[str, Any]) -> tuple[float, float, int, int]:
+    scoring = _safe_dict(attempt.get("scoring"))
+    script_score = _safe_dict(scoring.get("script_score"))
+    dims = _safe_dict(script_score.get("dimension_scores"))
+    numeric_dims = [
+        float(value)
+        for value in dims.values()
+        if isinstance(value, (int, float)) or _looks_numeric(value)
+    ]
+    min_dim = min(numeric_dims) if numeric_dims else 0.0
+    asset_tags = _safe_dict(scoring.get("asset_tags"))
+    asset_count = asset_tags.get("asset_count")
+    try:
+        assets = int(asset_count)
+    except (TypeError, ValueError):
+        assets = 0
+    try:
+        attempt_no = int(attempt.get("attempt") or 0)
+    except (TypeError, ValueError):
+        attempt_no = 0
+    return (float(attempt.get("overall_score") or 0.0), min_dim, assets, attempt_no)

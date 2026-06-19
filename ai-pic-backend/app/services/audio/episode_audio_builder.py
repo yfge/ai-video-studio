@@ -21,8 +21,11 @@ from app.repositories.audio_timeline_repository import (
 from app.services.audio.audio_generator import (
     concat_mp3s,
     download_to_file,
+    encode_mp3,
     ensure_oss_configured,
+    generate_silence_wav,
 )
+from app.services.audio.episode_audio_padding import pad_to_episode_target_duration
 from app.services.audio.episode_timeline_beats import build_episode_timeline_beats
 from app.services.storage.oss_service import oss_service
 from sqlalchemy.orm import Session
@@ -70,6 +73,11 @@ async def generate_episode_audio_timeline(
         scenes=scenes_sorted,
         beats_by_scene_id=beats_by_scene,
     )
+    timeline_beats, duration_ms_total, padding_ms = pad_to_episode_target_duration(
+        episode,
+        timeline_beats,
+        duration_ms_total,
+    )
     duration_seconds_total = round(duration_ms_total / 1000.0, 3)
     _log_duration(episode, script, duration_ms_total, duration_seconds_total)
 
@@ -80,6 +88,12 @@ async def generate_episode_audio_timeline(
             p = tmp_root_path / f"scene-{idx}.mp3"
             await download_to_file(str(url), p)
             mp3_paths.append(p)
+        if padding_ms > 0:
+            silence_wav = tmp_root_path / "tail-padding.wav"
+            silence_mp3 = tmp_root_path / "tail-padding.mp3"
+            generate_silence_wav(silence_wav, padding_ms)
+            encode_mp3(silence_wav, silence_mp3)
+            mp3_paths.append(silence_mp3)
 
         episode_mp3 = tmp_root_path / "episode.mp3"
         concat_mp3s(mp3_paths, episode_mp3)

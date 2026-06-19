@@ -1,7 +1,5 @@
 from __future__ import annotations
-
 from typing import Any, Optional
-
 from app.core.logging import get_logger
 from app.services.providers.base import AIModelType, AIResponse
 from app.services.video.video_task_dispatch_helpers import (
@@ -11,7 +9,7 @@ from app.services.video.video_task_dispatch_helpers import (
     resolve_model_type,
 )
 from app.services.video.video_task_provider_resolver import resolve_provider_model
-
+from app.services.video.video_reference_media import filter_reference_media_candidates
 
 class VideoTaskDispatcher:
     def __init__(self, ai_manager: Any):
@@ -33,7 +31,12 @@ class VideoTaskDispatcher:
     ) -> AIResponse:
         model_type = resolve_model_type(image_url, kwargs)
         available, prefer_provider, model = self._resolve_candidates(
-            model, prefer_provider, model_type
+            model,
+            prefer_provider,
+            model_type,
+            image_url=image_url,
+            end_image_url=end_image_url,
+            request_kwargs=kwargs,
         )
         if not available:
             return build_failure_response(
@@ -84,7 +87,10 @@ class VideoTaskDispatcher:
         last_model_used = model
         last_response: Optional[AIResponse] = None
         errors: list[str] = []
-        for _ in range(self.ai_manager.config.max_retries):
+        retry_limit = self.ai_manager.config.max_retries
+        if self.ai_manager.config.enable_fallback:
+            retry_limit = max(retry_limit, len(available))
+        for _ in range(retry_limit):
             result = await self._submit_once(
                 available,
                 prefer_provider,
@@ -134,10 +140,21 @@ class VideoTaskDispatcher:
         model: Optional[str],
         prefer_provider: Optional[str],
         model_type: AIModelType,
+        *,
+        image_url: Optional[str],
+        end_image_url: Optional[str],
+        request_kwargs: dict[str, Any],
     ) -> tuple[list[str], Optional[str], Optional[str]]:
         available = self.ai_manager.get_available_providers(model_type=model_type)
         prefer_provider, model = self.ai_manager._resolve_prefer_provider_and_model(
             model, prefer_provider
+        )
+        available = filter_reference_media_candidates(
+            self.ai_manager,
+            available,
+            image_url=image_url,
+            end_image_url=end_image_url,
+            request_kwargs=request_kwargs,
         )
         if prefer_provider:
             available = [p for p in available if p == prefer_provider]

@@ -2,7 +2,7 @@
 
 这是一个以虚拟IP为中心的AI短剧制作工作流平台的前端应用，基于 Next.js 16（App Router）构建。
 
-> 快速跑通全栈开发环境建议从根目录 `README.md` / `README_EN.md` 与 `docker/README.md` 开始。
+> 快速跑通全栈开发环境建议从根目录 `README.md` / `README_CN.md` 与 `docker/README.md` 开始。
 
 ## 核心功能
 

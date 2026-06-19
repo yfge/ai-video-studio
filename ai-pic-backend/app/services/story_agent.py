@@ -8,12 +8,11 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from app.prompts.manager import prompt_manager
 from app.prompts.template_resolver import resolve_template_name
 from app.prompts.templates import PromptTemplate
-from app.schemas.generation import StoryOutlineModel
-from app.services.story.story_outline_character_validation import (
-    story_outline_validation_passed,
-    validate_story_outline_characters,
+from app.services.story_agent_validation import (
+    build_story_agent_result,
+    story_outline_schema,
+    validate_story_outline_candidate,
 )
-from app.services.story.story_outline_quality import validate_story_outline_quality
 from app.utils.json_utils import extract_json_block
 
 logger = logging.getLogger(__name__)
@@ -80,7 +79,7 @@ class StoryLangGraphAgent:
             return None
 
         production_mode = generation_mode == "production"
-        schema = StoryOutlineModel.model_json_schema()
+        schema = story_outline_schema(production_mode=production_mode)
         variables = {
             "title": title,
             "story_format": story_format,
@@ -133,44 +132,39 @@ class StoryLangGraphAgent:
         model_used = resp.model
         usage = resp.usage
         reasoning = ["draft_ok"] if resp.success else ["draft_failed"]
+        quality_gate_issues: list[str] = []
+        quality_gate_issue_details: list[str] = []
+        story_quality_warnings: list[str] = []
+        character_warnings: list[str] = []
 
         try:
             if parsed:
-                StoryOutlineModel.model_validate(parsed)
-                char_validation = validate_story_outline_characters(parsed, characters)
-                if char_validation["character_warnings"]:
-                    logger.warning(
-                        "Story character validation warnings",
-                        extra={"warnings": char_validation["character_warnings"]},
-                    )
-                quality_validation = validate_story_outline_quality(
-                    parsed, hook_plan, content_restrictions
+                validation = validate_story_outline_candidate(
+                    parsed,
+                    characters=characters,
+                    hook_plan=hook_plan,
+                    content_restrictions=content_restrictions,
+                    production_mode=production_mode,
+                    log_suffix="",
                 )
-                if quality_validation["story_quality_warnings"]:
-                    logger.warning(
-                        "Story quality validation warnings",
-                        extra={
-                            "warnings": quality_validation["story_quality_warnings"]
-                        },
+                character_warnings = validation.character_warnings
+                story_quality_warnings = validation.story_quality_warnings
+                quality_gate_issues = validation.quality_gate_issues
+                quality_gate_issue_details = validation.quality_gate_issue_details
+                if validation.passed:
+                    return build_story_agent_result(
+                        latest_text=latest_text,
+                        parsed=parsed,
+                        resolved_template=resolved_template,
+                        provider_used=provider_used,
+                        model_used=model_used,
+                        usage=usage,
+                        prompt=prompt,
+                        generation_mode=generation_mode,
+                        production_mode=production_mode,
+                        reasoning=reasoning + ["validated"],
+                        validation=validation,
                     )
-                if story_outline_validation_passed(char_validation, quality_validation):
-                    return {
-                        "content": latest_text,
-                        "normalized": parsed,
-                        "generation_method": "langgraph_story",
-                        "template_used": resolved_template,
-                        "provider_used": provider_used,
-                        "model_used": model_used,
-                        "usage": usage,
-                        "prompt": prompt,
-                        "generation_mode": generation_mode,
-                        "production_mode": production_mode,
-                        "prompt_version": resolved_template,
-                        "contract_version": "story_contract_v1",
-                        "reasoning": reasoning + ["validated"],
-                        **char_validation,
-                        **quality_validation,
-                    }
         except Exception:
             pass
 
@@ -178,45 +172,32 @@ class StoryLangGraphAgent:
         for attempt in range(3):
             if parsed:
                 try:
-                    StoryOutlineModel.model_validate(parsed)
-                    char_validation = validate_story_outline_characters(
-                        parsed, characters
+                    validation = validate_story_outline_candidate(
+                        parsed,
+                        characters=characters,
+                        hook_plan=hook_plan,
+                        content_restrictions=content_restrictions,
+                        production_mode=production_mode,
+                        log_suffix=" (repair attempt)",
                     )
-                    if char_validation["character_warnings"]:
-                        logger.warning(
-                            "Story character validation warnings (repair attempt)",
-                            extra={"warnings": char_validation["character_warnings"]},
+                    character_warnings = validation.character_warnings
+                    story_quality_warnings = validation.story_quality_warnings
+                    quality_gate_issues = validation.quality_gate_issues
+                    quality_gate_issue_details = validation.quality_gate_issue_details
+                    if validation.passed:
+                        return build_story_agent_result(
+                            latest_text=latest_text,
+                            parsed=parsed,
+                            resolved_template=resolved_template,
+                            provider_used=provider_used,
+                            model_used=model_used,
+                            usage=usage,
+                            prompt=prompt,
+                            generation_mode=generation_mode,
+                            production_mode=production_mode,
+                            reasoning=reasoning + [f"validated_attempt_{attempt}"],
+                            validation=validation,
                         )
-                    quality_validation = validate_story_outline_quality(
-                        parsed, hook_plan, content_restrictions
-                    )
-                    if quality_validation["story_quality_warnings"]:
-                        logger.warning(
-                            "Story quality validation warnings (repair attempt)",
-                            extra={
-                                "warnings": quality_validation["story_quality_warnings"]
-                            },
-                        )
-                    if story_outline_validation_passed(
-                        char_validation, quality_validation
-                    ):
-                        return {
-                            "content": latest_text,
-                            "normalized": parsed,
-                            "generation_method": "langgraph_story",
-                            "template_used": resolved_template,
-                            "provider_used": provider_used,
-                            "model_used": model_used,
-                            "usage": usage,
-                            "prompt": prompt,
-                            "generation_mode": generation_mode,
-                            "production_mode": production_mode,
-                            "prompt_version": resolved_template,
-                            "contract_version": "story_contract_v1",
-                            "reasoning": reasoning + [f"validated_attempt_{attempt}"],
-                            **char_validation,
-                            **quality_validation,
-                        }
                 except Exception as exc:  # pragma: no cover - schema guard
                     missing_fields = _extract_missing_fields(exc)
 
@@ -227,6 +208,12 @@ class StoryLangGraphAgent:
                     "original_prompt": prompt,
                     "original_output": latest_text,
                     "missing_fields": missing_fields,
+                    "production_mode": production_mode,
+                    "story_contract_version": "story_contract_v1",
+                    "quality_gate_issues": quality_gate_issues,
+                    "quality_gate_issue_details": quality_gate_issue_details,
+                    "story_quality_warnings": story_quality_warnings,
+                    "character_warnings": character_warnings,
                 },
             )
             repair_resp = await self.service.ai_manager.generate_text(

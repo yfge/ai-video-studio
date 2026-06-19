@@ -15,9 +15,20 @@ from app.services.narrative_quality_gate import (
 from app.services.story.story_generation_service import StoryGenerationService
 from app.services.task_worker import story_generate_task
 from fastapi import APIRouter, Depends
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 router = APIRouter()
+
+
+def _story_generation_error_message(exc: Exception) -> str:
+    if isinstance(exc, HTTPException):
+        detail = exc.detail
+        if isinstance(detail, str):
+            return detail
+        return json.dumps(detail, ensure_ascii=False)
+    error_message = str(exc)
+    return error_message or repr(exc)
 
 
 def _process_story_generation_task(task_id: int, request_dict: dict, user_id: int):
@@ -51,7 +62,7 @@ def _process_story_generation_task(task_id: int, request_dict: dict, user_id: in
                 if isinstance(exc, NarrativeQualityGateError):
                     attach_quality_gate_failure_to_task(task, exc.quality_gate)
                 task.status = TaskStatus.FAILED
-                task.error_message = str(exc)
+                task.error_message = _story_generation_error_message(exc)
                 db.commit()
 
 

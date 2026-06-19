@@ -155,6 +155,32 @@ async def test_lint_fails_when_cliffhanger_llm_unavailable():
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
+async def test_lint_uses_strong_local_cliffhanger_when_llm_unavailable():
+    script = """
+第1集
+1-1 内. 会议室 - 夜
+人物： AP、陈默
+▲投影数字变红，客户手指重重敲在错误数据上。
+AP(冷静)：证据在这。
+陈默(慌乱)：我不知道。
+▲AP把手机举到镜头前，短信倒计时从30秒跳到29秒。
+▲【特写】镜头停在关键线索上，所有声音突然压低。
+AP(压低声)：你真以为，这就是全部真相？
+"""
+
+    result = await lint_script_content_async(
+        script,
+        options=ScriptLintOptions(pass_threshold=0.0),
+        ai_manager=None,
+    )
+
+    cliffhanger = next(rule for rule in result.rules if rule.rule_id == "cliffhanger")
+    assert cliffhanger.passed is True
+    assert cliffhanger.details["provider"] == "local_strong_cliffhanger_fallback"
+
+
+@pytest.mark.unit
 def test_sync_lint_requires_async_cliffhanger_judgement():
     result = lint_script_content(
         "第1集\n【音效】砰！\nScene 1 客厅 - 夜\n苏辰：谁？\n",

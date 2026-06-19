@@ -366,6 +366,49 @@ describe("timeline clip rework controls", () => {
     await waitFor(() => assert.equal(calls.length, 0));
   });
 
+  it("allows Timeline shot plan clips to generate video without extra keyframes", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ task_id: 99, status: "pending" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    const utils = render(
+      React.createElement(TimelineClipProviderReworkControls, {
+        timelineId: 8,
+        timelineVersion: 3,
+        clipId: "video_scene_1_beat_1_001",
+        item: videoClipWithTimelineShotPlanOnly(),
+      }),
+      { container: dom.window.document.body },
+    );
+
+    const videoButton = utils.getByRole("button", {
+      name: "生成/重做此片段视频",
+    }) as HTMLButtonElement;
+    assert.equal(videoButton.disabled, false);
+    fireEvent.click(videoButton);
+    await waitFor(() => assert.equal(calls.length, 1));
+    assert.equal(
+      calls[0].url,
+      "/api/v1/timelines/8/clips/video_scene_1_beat_1_001/rework/video",
+    );
+    assert.equal(
+      calls[0].init?.body,
+      JSON.stringify({
+        expected_version: 3,
+        action: "re_cut",
+        resolution: "720p",
+        asset_role: "generated_video",
+        use_end_frame: true,
+        return_last_frame: true,
+      }),
+    );
+  });
+
   it("keeps storyboard and video submit paths clip-scoped from the two-step controls", async () => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
     globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
@@ -1162,6 +1205,26 @@ function videoClipWithoutStoryboardPanel() {
       ...clip.meta,
       source_refs: {},
       clip_storyboard_sheet_asset_ref: undefined,
+    },
+  };
+}
+
+function videoClipWithTimelineShotPlanOnly() {
+  const clip = videoClipWithoutStoryboardPanel();
+  return {
+    ...clip,
+    meta: {
+      ...clip.meta,
+      start_frame_asset_ref: undefined,
+      end_frame_asset_ref: undefined,
+      start_frame_url: undefined,
+      end_frame_url: undefined,
+      source_refs: {
+        timeline_shot_plan: {
+          video_prompt: "Timeline shot plan motion prompt",
+          motion_timeline: [{ at_ms: 0, action: "open with a tense push-in" }],
+        },
+      },
     },
   };
 }

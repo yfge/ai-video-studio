@@ -10,6 +10,7 @@ from app.schemas.script_beat_contract import (
 )
 from app.services.ai.script_text import build_script_text
 from app.services.script.beat_contract_canonicalizer import canonicalize_contract_enums
+from app.services.script.beat_contract_flatten import contract_to_legacy_lines
 from app.services.script.scene_utils import to_int
 
 _SCENE_ROLES = set(SceneRole.__args__)
@@ -39,32 +40,7 @@ def flatten_contract_to_script_payload(
     target_chars_per_episode: int | None,
     title: str | None,
 ) -> dict[str, Any]:
-    scenes = [_scene_to_legacy(scene) for scene in contract.scenes]
-    dialogues: list[dict[str, Any]] = []
-    stage_directions: list[dict[str, Any]] = []
-    for scene in contract.scenes:
-        for beat in scene.beats:
-            for line in beat.dialogue_lines:
-                dialogues.append(
-                    {
-                        "scene_number": scene.scene_number,
-                        "beat_order_index": beat.order_index,
-                        "character": line.character,
-                        "content": line.content,
-                        "emotion": line.emotion,
-                        "action": line.action,
-                    }
-                )
-            for action in beat.action_lines:
-                stage_directions.append(
-                    {
-                        "scene_number": scene.scene_number,
-                        "beat_order_index": beat.order_index,
-                        "timing": action.timing,
-                        "content": action.content,
-                        "type": action.type or "action",
-                    }
-                )
+    scenes, dialogues, stage_directions = contract_to_legacy_lines(contract)
 
     contract_payload = contract.model_dump(mode="json")
     content = build_script_text(
@@ -202,21 +178,6 @@ def _legacy_payload_to_contract(payload: dict[str, Any]) -> StructuredScriptCont
     if fallback_detected:
         contract.model_extra["fallback_detected"] = True
     return contract
-
-
-def _scene_to_legacy(scene) -> dict[str, Any]:
-    return {
-        "scene_number": scene.scene_number,
-        "slug_line": scene.slug_line,
-        "location": scene.location,
-        "time_of_day": scene.time_of_day,
-        "summary": scene.conflict.question,
-        "description": scene.conflict.question,
-        "estimated_duration_seconds": scene.estimated_duration_seconds,
-        "dramatic_role": scene.dramatic_role,
-        "conflict_notes": scene.conflict.model_dump(mode="json"),
-        "beats": [beat.model_dump(mode="json") for beat in scene.beats],
-    }
 
 
 def _items_for_scene(items: list[Any], scene_no: int) -> list[dict[str, Any]]:

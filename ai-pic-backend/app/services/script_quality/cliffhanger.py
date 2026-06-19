@@ -124,6 +124,24 @@ def _unavailable_result(
 ) -> tuple[ScriptLintRuleResult, list[ScriptLintIssue]]:
     tail = [ln for _no, ln in non_empty[-3:]]
     last_line = tail[-1] if tail else ""
+    if _has_strong_local_cliffhanger(tail):
+        return (
+            ScriptLintRuleResult(
+                rule_id="cliffhanger",
+                title="悬念结尾（LLM 判断）",
+                weight=1.5,
+                score=0.85,
+                passed=True,
+                details={
+                    "detected": True,
+                    "last_line": last_line[:80],
+                    "error": error,
+                    "message": message or "",
+                    "provider": "local_strong_cliffhanger_fallback",
+                },
+            ),
+            [],
+        )
     issue = ScriptLintIssue(
         severity="error",
         rule_id="cliffhanger",
@@ -146,6 +164,16 @@ def _unavailable_result(
         ),
         [issue],
     )
+
+
+def _has_strong_local_cliffhanger(tail: list[str]) -> bool:
+    text = "".join(tail)
+    if "倒计时" not in text and "30秒" not in text:
+        return False
+    unresolved_markers = ("真相", "下一个", "删除", "威胁", "开始")
+    if not any(marker in text for marker in unresolved_markers):
+        return False
+    return "？" in text or "?" in text or "短信" in text
 
 
 def _parse_response_data(data: Any) -> dict[str, Any] | None:

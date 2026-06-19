@@ -8,9 +8,10 @@ from app.models.script import Episode, Story
 from app.services.ai.script_text import build_script_text
 from app.services.ai_service import ai_service
 from app.services.narrative_quality_gate import enforce_script_quality_gate_with_repair
-from app.services.script.beat_contract_normalizer import (
-    flatten_contract_to_script_payload,
-    normalize_script_beat_contract,
+from app.services.script.generation_attempt_contract import (
+    apply_beat_contract_payload,
+    attempt_temperature,
+    has_beat_contract_payload,
 )
 from app.services.script.content_normalization import normalize_script_content
 from app.services.script.sync_generation_payloads import (
@@ -49,7 +50,7 @@ async def generate_prepared_script_attempt(
         style_preferences=request_dict.get("style_preferences"),
         model=model_id,
         prefer_provider=prefer_provider,
-        temperature=request_dict.get("temperature", 0.7),
+        temperature=attempt_temperature(attempt_no, request_dict.get("temperature", 0.7)),
         generation_mode=request_dict.get("generation_mode") or "production",
     )
     if not result:
@@ -73,9 +74,9 @@ async def generate_prepared_script_attempt(
     dialogues, stage_directions = populate_dialogues_and_stage_if_missing(
         scenes, dialogues_raw, stage_directions_raw, story=story
     )
-    if _has_beat_contract_payload(ai_content):
+    if has_beat_contract_payload(ai_content):
         ai_content, script_content, scenes, dialogues, stage_directions = (
-            _apply_beat_contract_payload(
+            apply_beat_contract_payload(
                 ai_content,
                 script_content=script_content,
                 scenes=scenes,
@@ -117,7 +118,7 @@ async def generate_prepared_script_attempt(
         db=db,
         model=model_id,
         prefer_provider=prefer_provider,
-        temperature=request_dict.get("temperature", 0.7),
+        temperature=attempt_temperature(attempt_no, request_dict.get("temperature", 0.7)),
         lint_threshold=request_dict.get("quality_threshold", 9.0),
         target_chars_per_episode=request_dict.get("target_chars_per_episode", 1300),
         require_beat_contract=request_dict.get("generation_mode") == "production",
@@ -170,80 +171,4 @@ async def score_prepared_script_attempt(
         hook_plan=marketing_defaults.get("hook_plan"),
         prefer_provider=prefer_provider,
         prefer_model=model_id,
-    )
-
-
-def _has_beat_contract_payload(content: Dict[str, Any]) -> bool:
-    if isinstance(content.get("structured_script_contract"), dict):
-        return True
-    metadata = content.get("metadata")
-    if isinstance(metadata, dict) and isinstance(
-        metadata.get("structured_script_contract"), dict
-    ):
-        return True
-    scenes = content.get("scenes") if isinstance(content.get("scenes"), list) else []
-    return any(
-        isinstance(scene, dict) and isinstance(scene.get("beats"), list)
-        for scene in scenes
-    )
-
-
-def _apply_beat_contract_payload(
-    ai_content: Dict[str, Any],
-    *,
-    script_content: str,
-    scenes: list[Dict[str, Any]],
-    dialogues: list[Dict[str, Any]],
-    stage_directions: list[Dict[str, Any]],
-    request_dict: Dict[str, Any],
-    episode: Episode,
-) -> tuple[
-    Dict[str, Any],
-    str,
-    list[Dict[str, Any]],
-    list[Dict[str, Any]],
-    list[Dict[str, Any]],
-]:
-    try:
-        beat_contract = normalize_script_beat_contract(
-            {
-                **ai_content,
-                "scenes": scenes,
-                "dialogues": dialogues,
-                "stage_directions": stage_directions,
-            }
-        )
-        flattened = flatten_contract_to_script_payload(
-            beat_contract,
-            format_type=request_dict.get("format_type", "screenplay"),
-            language=request_dict.get("language", "zh-CN"),
-            episode_number=episode.episode_number,
-            template_style=request_dict.get(
-                "template_style", "commercial_vertical_drama"
-            ),
-            target_chars_per_episode=request_dict.get("target_chars_per_episode", 1300),
-            title=episode.title,
-        )
-    except Exception as exc:
-        metadata = dict(ai_content.get("metadata") or {})
-        metadata["structured_script_contract_error"] = str(exc)
-        return (
-            {**ai_content, "metadata": metadata},
-            script_content,
-            scenes,
-            dialogues,
-            stage_directions,
-        )
-
-    metadata = {
-        **dict(ai_content.get("metadata") or {}),
-        **flattened.get("metadata", {}),
-    }
-    updated = {**ai_content, **flattened, "metadata": metadata}
-    return (
-        updated,
-        flattened["content"],
-        flattened["scenes"],
-        flattened["dialogues"],
-        flattened["stage_directions"],
     )

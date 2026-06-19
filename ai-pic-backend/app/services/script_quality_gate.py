@@ -1,21 +1,13 @@
 from __future__ import annotations
 
 import logging
-from copy import deepcopy
 from typing import Any, Dict, Optional
 
-from app.schemas.generation import ScriptModel
 from app.services.quality_gate_core import (
     MAX_QUALITY_GATE_REPAIRS,
     NarrativeQualityGateError,
     build_quality_gate_report,
     make_quality_check,
-    quality_gate_attempt_snapshot,
-)
-from app.services.quality_gate_repair import repair_quality_gate_payload
-from app.services.script_quality_gate_auto_characters import (
-    auto_create_temporary_characters_for_gate,
-    with_auto_created_characters,
 )
 from app.services.script_quality_gate_beat_contract import (
     beat_contract_check,
@@ -30,9 +22,6 @@ from app.services.script_quality_gate_checks import (
     schema_check,
     script_quality_check,
     story_model_character_check,
-)
-from app.services.script_quality_gate_repair_guard import (
-    repair_preserves_script_structure,
 )
 
 logger = logging.getLogger(__name__)
@@ -132,104 +121,23 @@ async def enforce_script_quality_gate_with_repair(
     target_chars_per_episode: Optional[int] = None,
     require_beat_contract: bool = False,
 ) -> tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
-    attempts: list[Dict[str, Any]] = []
-    content = deepcopy(content)
-    auto_created_characters: list[Dict[str, Any]] = []
-    gate_options = {
-        "story": story,
-        "story_model": story_model,
-        "episode_id": episode_id,
-        "db": db,
-        "lint_threshold": lint_threshold,
-        "target_chars_per_episode": target_chars_per_episode,
-        "ai_manager": ai_manager,
-        "model": model,
-        "prefer_provider": prefer_provider,
-        "require_beat_contract": require_beat_contract,
-    }
-    gate = await evaluate_script_quality_gate(
-        content=content,
-        result=result,
-        **gate_options,
+    from app.services.script_quality_gate_repair_flow import (
+        enforce_script_quality_gate_with_repair as enforce_repair_flow,
     )
-    created = await auto_create_temporary_characters_for_gate(
-        gate=gate,
+
+    return await enforce_repair_flow(
+        ai_manager=ai_manager,
+        result=result,
         content=content,
+        story=story,
         story_model=story_model,
         episode_id=episode_id,
         db=db,
+        model=model,
+        prefer_provider=prefer_provider,
+        temperature=temperature,
+        max_repairs=max_repairs,
+        lint_threshold=lint_threshold,
+        target_chars_per_episode=target_chars_per_episode,
+        require_beat_contract=require_beat_contract,
     )
-    if created:
-        auto_created_characters.extend(created)
-        result = with_auto_created_characters(result, auto_created_characters)
-        gate = await evaluate_script_quality_gate(
-            content=content,
-            result=result,
-            **gate_options,
-        )
-    if gate["passed"]:
-        return _with_script_gate(result, content, gate), content, gate
-
-    for attempt in range(1, max_repairs + 1):
-        repaired = await repair_quality_gate_payload(
-            ai_manager=ai_manager,
-            kind="script",
-            payload=content,
-            quality_gate=gate,
-            schema={"name": "script", "schema": ScriptModel.model_json_schema()},
-            model=model,
-            prefer_provider=prefer_provider,
-            temperature=temperature,
-        )
-        attempts.append(
-            {
-                "attempt": attempt,
-                "input_gate": quality_gate_attempt_snapshot(gate),
-                "repaired": bool(repaired),
-            }
-        )
-        if not repaired:
-            continue
-        structure_ok, structure_details = repair_preserves_script_structure(
-            before=content,
-            repaired=repaired,
-        )
-        attempts[-1]["structure_guard"] = structure_details
-        if not structure_ok:
-            logger.warning("Rejected script quality repair that lost structure")
-            continue
-        content = repaired
-        gate = await evaluate_script_quality_gate(
-            content=content,
-            result=result,
-            repair_attempts=deepcopy(attempts),
-            **gate_options,
-        )
-        created = await auto_create_temporary_characters_for_gate(
-            gate=gate,
-            content=content,
-            story_model=story_model,
-            episode_id=episode_id,
-            db=db,
-        )
-        if created:
-            auto_created_characters.extend(created)
-            result = with_auto_created_characters(result, auto_created_characters)
-            gate = await evaluate_script_quality_gate(
-                content=content,
-                result=result,
-                repair_attempts=deepcopy(attempts),
-                **gate_options,
-            )
-        attempts[-1]["output_gate"] = quality_gate_attempt_snapshot(gate)
-        if gate["passed"]:
-            return _with_script_gate(result, content, gate), content, gate
-
-    gate["repair_attempts"] = attempts
-    raise NarrativeQualityGateError("script", gate)
-
-
-def _with_script_gate(
-    result: Dict[str, Any], content: Dict[str, Any], gate: Dict[str, Any]
-) -> Dict[str, Any]:
-    return {**result, "content": content, "normalized": content, "quality_gate": gate}

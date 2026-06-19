@@ -12,6 +12,8 @@ from app.services.render.timeline_render_clip_assets import (
 from app.services.render.timeline_render_legacy_match import (
     find_legacy_storyboard_frame,
 )
+from app.services.render.timeline_render_missing import missing_clip_payload
+from app.services.render.timeline_render_short_gap import resolve_short_gap_neighbor
 from app.services.render.timeline_render_types import TimelineClipVideo
 from sqlalchemy.orm import Session
 
@@ -19,9 +21,11 @@ from sqlalchemy.orm import Session
 def resolve_timeline_video_clips(
     db: Session,
     timeline: Timeline,
+    *,
+    active_clip_ids: set[str] | None = None,
 ) -> tuple[list[TimelineClipVideo], list[dict[str, Any]]]:
     resolver = TimelineClipResolver(db)
-    return resolver.resolve(timeline)
+    return resolver.resolve(timeline, active_clip_ids=active_clip_ids)
 
 
 class TimelineClipResolver:
@@ -32,19 +36,36 @@ class TimelineClipResolver:
     def resolve(
         self,
         timeline: Timeline,
+        *,
+        active_clip_ids: set[str] | None = None,
     ) -> tuple[list[TimelineClipVideo], list[dict[str, Any]]]:
         spec = timeline.spec if isinstance(timeline.spec, dict) else {}
         storyboard_frames = self._storyboard_frames(timeline)
-        resolved: list[TimelineClipVideo] = []
-        missing: list[dict[str, Any]] = []
+        clips = self._timeline_video_clips(spec)
+        active_clip_ids = active_clip_ids or set()
+        preliminary: list[tuple[dict[str, Any], str, str | None, str]] = []
 
-        for clip in self._timeline_video_clips(spec):
+        for clip in clips:
             clip_id = self._clip_id(clip)
             url, source = self._resolve_clip_video_url(
                 timeline, clip, storyboard_frames
             )
+            preliminary.append((clip, clip_id, url, source))
+
+        resolved: list[TimelineClipVideo] = []
+        missing: list[dict[str, Any]] = []
+
+        for index, (clip, clip_id, url, source) in enumerate(preliminary):
+            if not url and clip_id not in active_clip_ids:
+                fallback = resolve_short_gap_neighbor(
+                    preliminary,
+                    index,
+                    duration_seconds=self._clip_duration_seconds(clip),
+                )
+                if fallback:
+                    url, source = fallback
             if not url:
-                missing.append(self._missing_clip_payload(clip, clip_id))
+                missing.append(missing_clip_payload(clip, clip_id))
                 continue
             resolved.append(
                 TimelineClipVideo(
@@ -189,20 +210,6 @@ class TimelineClipResolver:
                 if isinstance(value, str) and value.strip():
                     return value.strip()
         return None
-
-    @staticmethod
-    def _missing_clip_payload(
-        clip: dict[str, Any],
-        clip_id: str,
-    ) -> dict[str, Any]:
-        return {
-            "clip_id": clip_id,
-            "scene_id": clip.get("scene_id"),
-            "scene_number": clip.get("scene_number"),
-            "start_ms": TimelineClipResolver._maybe_int(clip.get("start_ms")),
-            "end_ms": TimelineClipResolver._maybe_int(clip.get("end_ms")),
-            "reason": "missing_video_url",
-        }
 
     @staticmethod
     def _clip_duration_seconds(clip: dict[str, Any]) -> float:

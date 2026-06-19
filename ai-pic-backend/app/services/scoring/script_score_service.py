@@ -14,6 +14,13 @@ from app.core.logging import get_logger
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation import ScriptScoreDimensions, ScriptScoreResult
+from app.services.scoring.script_score_calibration import (
+    calibrate_commercial_anchor_score,
+)
+from app.services.scoring.script_score_schema import (
+    script_score_json_schema,
+    script_score_json_schema as _script_score_json_schema,
+)
 from app.services.script_score_thresholds import (
     PASS_DIMENSION_THRESHOLD,
     PASS_OVERALL_THRESHOLD,
@@ -89,14 +96,13 @@ class ScriptScoreService:
             logger.warning("AI manager unavailable, returning default score result")
             return self._default_score_result()
 
-        schema = ScriptScoreResult.model_json_schema()
         resp = await ai_manager.generate_text(
             prompt=prompt,
             prefer_provider=prefer_provider,
             model=prefer_model,
             max_tokens=2000,
             temperature=0.3,  # 低温度以保持评分一致性
-            json_schema={"name": "script_score", "schema": schema},
+            json_schema={"name": "script_score", "schema": script_score_json_schema()},
             stream=False,
         )
 
@@ -108,6 +114,7 @@ class ScriptScoreService:
 
         # 解析响应
         result = self._parse_score_response(response_text)
+        result = calibrate_commercial_anchor_score(result, script_content)
 
         logger.info(
             "Script scored",

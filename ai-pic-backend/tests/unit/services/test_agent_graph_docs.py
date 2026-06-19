@@ -37,7 +37,7 @@ def test_agent_graph_docs_match_real_stategraph_registry():
     for stem in LEGACY_STRUCTURED_LOOP_DOCS:
         assert stem not in generator
 
-    for readme_name in ("README.md", "README_EN.md"):
+    for readme_name in ("README.md", "README_CN.md"):
         readme = (root / readme_name).read_text()
         for stem in EXPECTED_STATEGRAPH_DOCS:
             assert f"docs/agent_graphs/{stem}.png" in readme

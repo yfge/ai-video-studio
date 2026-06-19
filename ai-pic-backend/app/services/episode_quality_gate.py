@@ -15,6 +15,10 @@ from app.services.episode_contract_quality import (
     episode_contract_quality_check,
     required_episode_contract_check,
 )
+from app.services.episode_quality_gate_helpers import (
+    continuity_errors,
+    episode_contract_repair_instructions,
+)
 from app.services.narrative_context import extract_story_characters
 from app.services.quality_gate_core import (
     MAX_QUALITY_GATE_REPAIRS,
@@ -129,7 +133,7 @@ def evaluate_episode_quality_gate(
         )
     )
 
-    ledger_errors = _continuity_errors(continuity_ledger)
+    ledger_errors = continuity_errors(continuity_ledger)
     checks.append(
         make_quality_check(
             "episode_continuity",
@@ -147,16 +151,6 @@ def evaluate_episode_quality_gate(
     return build_quality_gate_report(
         kind="episode", checks=checks, repair_attempts=repair_attempts
     )
-
-
-def _continuity_errors(continuity_ledger: Optional[Dict[str, Any]]) -> list[Any]:
-    errors: list[Any] = []
-    if isinstance(continuity_ledger, dict):
-        for key in ("errors", "continuity_errors"):
-            raw = continuity_ledger.get(key)
-            if isinstance(raw, list):
-                errors.extend(raw)
-    return errors
 
 
 async def enforce_episode_quality_gate_with_repair(
@@ -201,6 +195,9 @@ async def enforce_episode_quality_gate_with_repair(
             model=model,
             prefer_provider=prefer_provider,
             temperature=temperature,
+            extra_instructions=episode_contract_repair_instructions(
+                require_episode_contract
+            ),
         )
         attempts.append(
             {

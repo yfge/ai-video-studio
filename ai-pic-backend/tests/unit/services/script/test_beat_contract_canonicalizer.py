@@ -2,7 +2,6 @@ from copy import deepcopy
 
 import pytest
 from app.services.script.beat_contract_normalizer import normalize_script_beat_contract
-from pydantic import ValidationError
 from tests.unit.services.script.test_beat_contract_normalizer import _valid_contract
 
 
@@ -37,18 +36,20 @@ def test_normalize_contract_canonicalizes_beat_type_aliases():
 
 
 @pytest.mark.unit
-def test_normalize_contract_rejects_unknown_beat_type():
+def test_normalize_contract_defaults_unknown_non_empty_beat_type():
     payload = _valid_contract()
     payload["scenes"][0]["beats"][0]["beat_type"] = "vibes"
 
-    with pytest.raises(ValidationError):
-        normalize_script_beat_contract(payload)
+    contract = normalize_script_beat_contract(payload)
+
+    assert contract.scenes[0].beats[0].beat_type == "conflict"
 
 
 @pytest.mark.unit
-def test_normalize_contract_rejects_unknown_dramatic_role():
+def test_normalize_contract_defaults_unknown_non_empty_dramatic_role():
     payload = _valid_contract()
     payload["scenes"][0]["dramatic_role"] = "vibes"
 
-    with pytest.raises(ValidationError):
-        normalize_script_beat_contract(payload)
+    contract = normalize_script_beat_contract(payload)
+
+    assert contract.scenes[0].dramatic_role == "escalation"

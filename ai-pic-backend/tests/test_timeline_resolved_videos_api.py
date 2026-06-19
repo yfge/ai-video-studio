@@ -2,7 +2,7 @@ import json
 
 from app.models.script import Episode, Script, Story
 from app.models.task import Task, TaskStatus, TaskType
-from app.models.timeline import MediaAsset, TimelineClipAsset
+from app.models.timeline import MediaAsset, Timeline, TimelineClipAsset
 from app.models.user import User
 from sqlalchemy.orm import Session
 
@@ -56,7 +56,7 @@ def _timeline_spec(episode: Episode, script: Script, original_asset: MediaAsset)
         "source_audio_timeline_version": 1,
         "fps": 24,
         "resolution": "1080x1920",
-        "duration_ms": 5000,
+        "duration_ms": 7000,
         "tracks": [
             {
                 "track_type": "video",
@@ -76,7 +76,7 @@ def _timeline_spec(episode: Episode, script: Script, original_asset: MediaAsset)
                     ),
                     _video_clip("video_storyboard", start_ms=2000, end_ms=3000),
                     _video_clip("video_generating", start_ms=3000, end_ms=4000),
-                    _video_clip("video_missing", start_ms=4000, end_ms=5000),
+                    _video_clip("video_missing", start_ms=4000, end_ms=7000),
                 ],
             }
         ],
@@ -191,3 +191,102 @@ def test_resolved_videos_prioritizes_lineage_and_marks_generating(
     assert items["video_generating"]["task_type"] == "video_generation"
     assert items["video_missing"]["status"] == "missing"
     assert items["video_missing"]["reason"] == "missing_video_url"
+
+
+def test_resolved_videos_fills_short_missing_clip_from_neighbor(
+    client,
+    db_session,
+):
+    episode, script = _bootstrap_episode(db_session)
+    original_asset = _media_asset(db_session, "https://example.com/original.mp4")
+    spec = _timeline_spec(episode, script, original_asset)
+    spec["duration_ms"] = 2500
+    spec["tracks"][0]["clips"] = [
+        _video_clip(
+            "video_ready_before",
+            video_url="https://example.com/before.mp4",
+            start_ms=0,
+            end_ms=1000,
+        ),
+        _video_clip("video_short_gap", start_ms=1000, end_ms=1800),
+        _video_clip(
+            "video_ready_after",
+            video_url="https://example.com/after.mp4",
+            start_ms=1800,
+            end_ms=2500,
+        ),
+    ]
+
+    create_response = client.post(
+        f"/api/v1/episodes/{episode.id}/timelines",
+        json={
+            "script_id": script.id,
+            "title": "Resolved Short Gap Timeline",
+            "spec": spec,
+        },
+    )
+    assert create_response.status_code == 200, create_response.text
+    timeline = create_response.json()
+
+    response = client.get(f"/api/v1/timelines/{timeline['id']}/resolved-videos")
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["ready"] is True
+    assert payload["missing_clip_count"] == 0
+    items = {item["clip_id"]: item for item in payload["items"]}
+    assert items["video_short_gap"]["status"] == "ready"
+    assert items["video_short_gap"]["url"] == "https://example.com/before.mp4"
+    assert items["video_short_gap"]["source"] == (
+        "short_gap_neighbor:video_ready_before"
+    )
+
+
+def test_resolved_videos_keeps_generated_assets_after_timeline_version_bump(
+    client,
+    db_session,
+):
+    user = db_session.query(User).filter(User.username == "test_admin").one()
+    episode, script = _bootstrap_episode(db_session)
+    original_asset = _media_asset(db_session, "https://example.com/original.mp4")
+    generated_asset = _media_asset(db_session, "https://example.com/generated.mp4")
+    spec = _timeline_spec(episode, script, original_asset)
+    spec["tracks"][0]["clips"] = [
+        _video_clip("video_generated", start_ms=0, end_ms=1000)
+    ]
+
+    create_response = client.post(
+        f"/api/v1/episodes/{episode.id}/timelines",
+        json={
+            "script_id": script.id,
+            "title": "Version Bump Resolved Timeline",
+            "spec": spec,
+        },
+    )
+    assert create_response.status_code == 200, create_response.text
+    timeline = create_response.json()
+    db_session.add(
+        TimelineClipAsset(
+            timeline_id=timeline["id"],
+            timeline_version=timeline["version"],
+            clip_id="video_generated",
+            track_type="video",
+            asset_role="generated_video",
+            media_asset_id=generated_asset.id,
+            source="provider_rework",
+            created_by=user.id,
+        )
+    )
+    db_session.query(Timeline).filter(Timeline.id == timeline["id"]).update(
+        {Timeline.version: timeline["version"] + 1}
+    )
+    db_session.commit()
+
+    response = client.get(f"/api/v1/timelines/{timeline['id']}/resolved-videos")
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["ready"] is True
+    items = {item["clip_id"]: item for item in payload["items"]}
+    assert items["video_generated"]["url"] == "https://example.com/generated.mp4"
+    assert items["video_generated"]["source"] == "timeline_clip_asset:provider_rework"

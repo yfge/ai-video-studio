@@ -60,13 +60,14 @@ def invalid_batch_detail(
 ) -> dict[str, Any]:
     attempt = last_attempt(result)
     metadata = attempt.get("metadata") if isinstance(attempt.get("metadata"), dict) else {}
+    errors = safe_validation_errors(result.get("validation_errors"))
     return {
-        "message": "timeline shot plan JSON invalid",
+        "message": _validation_message(errors),
         "stage": "timeline_shot_plan",
         "batch_index": batch_index,
         "batch_count": batch_count,
         "clip_ids": clip_ids,
-        "errors": safe_validation_errors(result.get("validation_errors")),
+        "errors": errors,
         "provider": attempt.get("provider_used"),
         "model": attempt.get("model_used"),
         "usage": attempt.get("usage") if isinstance(attempt.get("usage"), dict) else {},
@@ -74,6 +75,14 @@ def invalid_batch_detail(
         "max_tokens": max_tokens,
         "repair_attempts": len(result.get("repair_attempts") or []),
     }
+
+
+def _validation_message(errors: list[dict[str, Any]]) -> str:
+    if len(errors) == 1:
+        message = errors[0].get("message") or errors[0].get("msg")
+        if isinstance(message, str) and message.strip():
+            return message.strip()
+    return "timeline shot plan JSON invalid"
 
 
 def last_attempt(result: dict[str, Any]) -> dict[str, Any]:

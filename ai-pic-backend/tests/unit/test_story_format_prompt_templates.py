@@ -267,6 +267,9 @@ def test_script_scenes_short_drama_production_prompt_has_quality_brief():
     assert "timestamp skeleton" in prompt
     assert "0-3 秒 ignition" in prompt
     assert "close-up reaction" in prompt
+    assert "客户张总给出60秒撤单" in prompt
+    assert "数字不会撒谎，看时间戳" in prompt
+    assert "改完给你20万，不做就裁你" in prompt
 
 
 def test_script_scenes_short_drama_standard_prompt_omits_production_brief():

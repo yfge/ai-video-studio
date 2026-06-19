@@ -21,9 +21,11 @@ def fetch_episode_character_sources(db: Any, episode_id: int):
     if not episode_chars:
         return []
 
-    vip_ids = {ec.virtual_ip_id for ec in episode_chars}
+    vip_ids = {ec.virtual_ip_id for ec in episode_chars if ec.virtual_ip_id is not None}
     vips = db.query(VirtualIP).filter(VirtualIP.id.in_(vip_ids)).all()
-    vip_by_id = {vip.id: vip for vip in vips}
+    vip_by_id = {
+        vip.id: vip for vip in vips if getattr(vip, "id", None) is not None
+    }
     return [(ec, vip_by_id.get(ec.virtual_ip_id)) for ec in episode_chars]
 
 

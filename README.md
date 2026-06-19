@@ -169,10 +169,20 @@ compatibility and are not listed as LangGraph diagrams.
 Available graph snapshots include:
 
 - `ScriptLangGraphAgent`: script generation
+  ([PNG](docs/agent_graphs/script_langgraph_agent.png),
+  [Mermaid](docs/agent_graphs/script_langgraph_agent.mmd))
 - `StoryboardPipeline`: explicit storyboard pipeline
+  ([PNG](docs/agent_graphs/storyboard_pipeline.png),
+  [Mermaid](docs/agent_graphs/storyboard_pipeline.mmd))
 - `StoryboardReActReasoner`: storyboard planning, critique, and generation
+  ([PNG](docs/agent_graphs/storyboard_react_reasoner.png),
+  [Mermaid](docs/agent_graphs/storyboard_react_reasoner.mmd))
 - `TimelineLangGraphAgent`: legacy dialogue rhythm and gap timing
+  ([PNG](docs/agent_graphs/timeline_langgraph_agent.png),
+  [Mermaid](docs/agent_graphs/timeline_langgraph_agent.mmd))
 - `DurationOrchestratorAgent`: experimental duration control loop
+  ([PNG](docs/agent_graphs/duration_orchestrator_agent.png),
+  [Mermaid](docs/agent_graphs/duration_orchestrator_agent.mmd))
 
 ## Validation
 

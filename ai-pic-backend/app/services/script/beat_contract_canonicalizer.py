@@ -10,34 +10,53 @@ _BEAT_TYPES = set(BeatType.__args__)
 _SCENE_ROLE_ALIASES = {
     "conflict": "escalation",
     "conflict_escalation": "escalation",
+    "conflict_ladder": "escalation",
     "crisis": "escalation",
+    "discovery": "escalation",
+    "investigation": "escalation",
+    "progression": "escalation",
+    "progressive": "escalation",
     "reveal": "escalation",
     "revelation": "escalation",
+    "rising": "escalation",
+    "rising_action": "escalation",
     "resolution": "payoff",
+    "turning_point": "escalation",
+    "twist": "escalation",
+    "button": "cliffhanger",
+    "final_button": "cliffhanger",
 }
 _BEAT_TYPE_ALIASES = {
     "action": "transition",
+    "beat": "setup",
     "choice": "transition",
     "choice_point": "transition",
     "climax": "payoff",
     "confirmation": "reveal",
     "confrontation": "conflict",
     "crisis": "conflict",
+    "conflict_ladder": "conflict",
     "decision": "transition",
     "discovery": "reveal",
     "evidence": "reveal",
     "escalation": "conflict",
+    "final_button": "cliffhanger",
     "investigation": "setup",
+    "jolt": "reveal",
     "proof": "reveal",
+    "progression": "conflict",
+    "progressive": "conflict",
     "reaction": "transition",
     "resolution": "payoff",
     "reversal": "reveal",
     "revelation": "reveal",
     "rising_action": "conflict",
+    "spike": "payoff",
     "threat": "conflict",
     "turn": "reveal",
     "twist": "reveal",
     "verification": "reveal",
+    "button": "cliffhanger",
 }
 
 
@@ -70,7 +89,9 @@ def _scene_role_alias(value: Any) -> Any:
     canonical = raw.lower()
     if canonical in _SCENE_ROLES:
         return canonical
-    return _SCENE_ROLE_ALIASES.get(canonical, value)
+    if canonical in _SCENE_ROLE_ALIASES:
+        return _SCENE_ROLE_ALIASES[canonical]
+    return "escalation" if raw else value
 
 
 def _beat_type_alias(value: Any) -> Any:
@@ -78,4 +99,6 @@ def _beat_type_alias(value: Any) -> Any:
     canonical = raw.lower()
     if canonical in _BEAT_TYPES:
         return canonical
-    return _BEAT_TYPE_ALIASES.get(canonical, value)
+    if canonical in _BEAT_TYPE_ALIASES:
+        return _BEAT_TYPE_ALIASES[canonical]
+    return "conflict" if raw else value

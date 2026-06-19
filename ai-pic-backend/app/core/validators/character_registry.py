@@ -11,10 +11,23 @@ from __future__ import annotations
 import re
 from typing import Iterable
 
-# Allowed generic roles (non-named extras). Keep this list small on purpose.
-GENERIC_ROLE_BASES = ("路人", "店员", "旁白")
+# Allowed generic roles (non-named extras). These are functional short-drama
+# roles, not durable story characters.
+GENERIC_ROLE_BASES = (
+    "路人",
+    "店员",
+    "旁白",
+    "客户",
+    "助理",
+    "团队成员",
+    "篡改者",
+    "录音",
+    "短信",
+)
 
-_GENERIC_ROLE_RE = re.compile(r"^(?P<base>路人|店员)(?P<suffix>[甲乙丙丁A-D]|\d+)?$")
+_GENERIC_ROLE_RE = re.compile(
+    r"^(?P<base>路人|店员|团队成员)(?P<suffix>[甲乙丙丁A-D]|\d+)?$"
+)
 _NAME_SPLIT_RE = re.compile(r"[\s\-_—|/\\\\]+")
 _CJK_RE = re.compile(r"[\u4e00-\u9fff]")
 _TIMESTAMPISH_RE = re.compile(r"^[0-9T:.]+$")
@@ -37,8 +50,8 @@ def normalize_generic_role(name: str | None) -> str | None:
     token = normalize_character_name_token(name)
     if not token:
         return None
-    if token == "旁白":
-        return "旁白"
+    if token in GENERIC_ROLE_BASES:
+        return token
     match = _GENERIC_ROLE_RE.match(token)
     if not match:
         return None

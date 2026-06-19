@@ -216,6 +216,26 @@ class TimelineClipAssetRepository(BaseRepository[TimelineClipAsset]):
             .first()
         )
 
+    def get_latest_for_clip_role_any_version(
+        self,
+        *,
+        timeline_id: int,
+        clip_id: str,
+        asset_role: str,
+    ) -> Optional[TimelineClipAsset]:
+        return (
+            self.session.query(TimelineClipAsset)
+            .filter(TimelineClipAsset.timeline_id == timeline_id)
+            .filter(TimelineClipAsset.clip_id == clip_id)
+            .filter(TimelineClipAsset.asset_role == asset_role)
+            .filter(TimelineClipAsset.is_deleted.is_(False))
+            .order_by(
+                TimelineClipAsset.timeline_version.desc(),
+                TimelineClipAsset.id.desc(),
+            )
+            .first()
+        )
+
 
 class RenderJobRepository(BaseRepository[RenderJob]):
     """Render job persistence with idempotency lookup."""

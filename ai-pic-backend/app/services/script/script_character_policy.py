@@ -49,6 +49,19 @@ def _iter_story_registry(story: Story) -> Iterable[tuple[str, Iterable[str]]]:
             aliases.extend(extract_name_aliases(vip_name))
         yield canonical, aliases
 
+    for character in getattr(story, "main_characters", None) or []:
+        if isinstance(character, dict):
+            name = character.get("name") or character.get("character_name")
+            raw_aliases = character.get("aliases")
+            aliases = raw_aliases if isinstance(raw_aliases, list) else []
+        else:
+            name = character
+            aliases = []
+        canonical = normalize_character_name_token(str(name or ""))
+        if not canonical:
+            continue
+        yield canonical, [*extract_name_aliases(canonical), *aliases]
+
 
 def build_story_alias_map(story: Story) -> dict[str, str]:
     """Build alias -> canonical mapping from StoryCharacter registry."""
@@ -75,23 +88,13 @@ def build_episode_alias_map(
     Returns:
         Dictionary mapping normalized aliases to canonical character names
     """
-    from app.models.episode_character import EpisodeCharacter
-
-    episode_chars = (
-        db.query(EpisodeCharacter)
-        .filter(
-            EpisodeCharacter.episode_id == episode_id,
-            EpisodeCharacter.is_deleted == False,
-        )
-        .all()
-    )
+    from app.repositories.script_lookup_repository import fetch_episode_character_sources
 
     canonical_names: list[str] = []
     extra_aliases: dict[str, list[str]] = {}
 
-    for ec in episode_chars:
+    for ec, vip in fetch_episode_character_sources(db, episode_id):
         # Get display name
-        vip = getattr(ec, "virtual_ip", None)
         vip_name = getattr(vip, "name", None) if vip else None
         canonical = getattr(ec, "character_name", None)
 
@@ -157,7 +160,7 @@ def enforce_script_character_policy(
     Policy:
       - Only Story-registered and Episode-registered characters may appear.
       - Episode characters take priority over Story characters when names conflict.
-      - Allow generic roles: 路人/店员/旁白 (with optional suffix like 路人甲).
+      - Allow generic functional roles, such as 路人/店员/客户/团队成员.
       - Missing dialogue speaker is treated as 旁白.
 
     Args:

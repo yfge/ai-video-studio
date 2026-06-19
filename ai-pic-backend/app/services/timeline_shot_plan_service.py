@@ -27,6 +27,7 @@ from app.services.timeline_shot_plan_payloads import (
     apply_timeline_shot_plan,
     build_timeline_shot_plan_prompt,
     clips_for_track,
+    coerce_timeline_shot_plan_payload,
     validate_timeline_shot_plan_matches,
 )
 from app.services.timeline_spec_validation import validate_timeline_spec
@@ -195,6 +196,7 @@ class TimelineShotPlanService:
             system_prompt="You are a strict JSON writer. Output JSON only.",
             repair_system_prompt="You are a strict JSON repair tool. Output JSON only.",
             pydantic_model=TimelineShotPlan,
+            extractor=coerce_timeline_shot_plan_payload,
             extra_validator=lambda normalized: plan_mismatch_errors(
                 validate_timeline_shot_plan_matches(normalized, batch_spec)
             ),

@@ -3,6 +3,11 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List, Optional
 
+from app.services.ai.commercial_script_beat_order import (
+    append_beat_ordered_scene,
+    has_beat_ordered_items,
+)
+
 
 def build_commercial_vertical_text(
     *,
@@ -44,6 +49,10 @@ def build_commercial_vertical_text(
                     "emotion": "压低声",
                 }
             ]
+
+        if has_beat_ordered_items(scene_dialogues, scene_stage):
+            append_beat_ordered_scene(lines, scene_dialogues, scene_stage)
+            continue
 
         stage_cursor = 0
         intro_stage, stage_cursor = _pop_intro_stage(scene_stage, stage_cursor)

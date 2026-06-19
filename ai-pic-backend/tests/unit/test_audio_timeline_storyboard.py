@@ -1,4 +1,6 @@
 from app.models.story_structure import Scene, SceneBeat
+from app.models.script import Episode
+from app.services.audio.episode_audio_padding import pad_to_episode_target_duration
 from app.services.audio.episode_timeline_beats import build_episode_timeline_beats
 from app.services.audio.storyboard_from_timeline import (
     build_storyboard_frames_from_audio_timeline,
@@ -50,6 +52,38 @@ def test_build_episode_timeline_beats_offsets_scene_windows() -> None:
     assert total_ms == 3500
     assert [b["start_ms"] for b in beats] == [0, 1000, 1500]
     assert [b["end_ms"] for b in beats] == [1000, 1500, 3500]
+
+
+def test_pad_episode_timeline_to_target_adds_action_beats() -> None:
+    episode = Episode(id=1, duration_minutes=3)
+    beats = [
+        {
+            "scene_id": 2,
+            "scene_number": 1,
+            "beat_id": 11,
+            "beat_type": "dialogue",
+            "text": "你好",
+            "start_ms": 0,
+            "end_ms": 3500,
+        }
+    ]
+
+    padded, total_ms, padding_ms = pad_to_episode_target_duration(
+        episode,
+        beats,
+        3500,
+    )
+
+    assert total_ms == 180000
+    assert padding_ms == 176500
+    assert padded[-1]["end_ms"] == 180000
+    padding_beats = [beat for beat in padded if beat.get("padding")]
+    assert padding_beats
+    assert {beat["beat_type"] for beat in padding_beats} == {"action"}
+    assert all(
+        0 < beat["end_ms"] - beat["start_ms"] <= 8000 for beat in padding_beats
+    )
+    assert "倒计时" in padding_beats[0]["text"]
 
 
 def test_build_storyboard_frames_from_audio_timeline_merges_short_pauses() -> None:

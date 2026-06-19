@@ -1,6 +1,8 @@
 import re
 from typing import Any, Dict
 
+from app.utils.json_utils import extract_json_block
+
 CHINESE_KEY_MAP = {
     "故事前提": "premise",
     "前提": "premise",

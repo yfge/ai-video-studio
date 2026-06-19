@@ -115,6 +115,11 @@ def test_flatten_contract_to_legacy_script_payload():
     assert flattened["dialogues"][0]["scene_number"] == 1
     assert flattened["dialogues"][0]["character"] == "小机"
     assert flattened["stage_directions"][0]["scene_number"] == 1
+    assert flattened["stage_directions"][0]["type"] == "visible_event"
+    assert "屏幕显示奖金归零" in flattened["content"]
+    assert flattened["content"].index("屏幕显示奖金归零") < flattened[
+        "content"
+    ].index("奖金清零？")
     assert "小机" in flattened["content"]
     assert flattened["metadata"]["structured_contract_version"] == "script-beat-v1"
 

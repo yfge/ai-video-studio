@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 
-def mock_passing_script_payload() -> dict[str, Any]:
+def mock_passing_script_payload(protagonist_name: str = "Hero") -> dict[str, Any]:
     from app.schemas.script_beat_contract import StructuredScriptContract
     from app.services.script.beat_contract_normalizer import (
         flatten_contract_to_script_payload,
@@ -90,7 +90,7 @@ def mock_passing_script_payload() -> dict[str, Any]:
             ],
         }
     )
-    return flatten_contract_to_script_payload(
+    payload = flatten_contract_to_script_payload(
         contract,
         format_type="screenplay",
         language="zh-CN",
@@ -99,3 +99,16 @@ def mock_passing_script_payload() -> dict[str, Any]:
         target_chars_per_episode=1300,
         title="证据背面的签名",
     )
+    if protagonist_name and protagonist_name != "Hero":
+        return _replace_text(payload, "Hero", protagonist_name)
+    return payload
+
+
+def _replace_text(value: Any, old: str, new: str) -> Any:
+    if isinstance(value, str):
+        return value.replace(old, new)
+    if isinstance(value, list):
+        return [_replace_text(item, old, new) for item in value]
+    if isinstance(value, dict):
+        return {key: _replace_text(item, old, new) for key, item in value.items()}
+    return value

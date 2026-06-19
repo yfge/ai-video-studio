@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from app.core.logging import get_logger
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
-from app.schemas.generation import TrafficSheet, TrafficSheetAsset
-from app.utils.json_utils import extract_json_block
+from app.schemas.generation import TrafficSheet
+from app.services.scoring.traffic_sheet_parser import parse_traffic_sheet_response
 
 if TYPE_CHECKING:
     from app.services.ai_service import AIService
@@ -152,53 +152,12 @@ class TrafficSheetService:
         story: Optional[Dict[str, Any]] = None,
     ) -> TrafficSheet:
         """解析 AI 响应为投流表"""
-        try:
-            data = extract_json_block(response)
-            if not data:
-                raise ValueError("No JSON found in response")
-
-            # 解析素材列表
-            assets = []
-            for asset_data in data.get("assets", []):
-                asset = TrafficSheetAsset(
-                    asset_id=asset_data.get("asset_id", f"asset_{len(assets)+1}"),
-                    duration_seconds=int(asset_data.get("duration_seconds", 15)),
-                    market_region=asset_data.get("market_region"),
-                    micro_genre=asset_data.get("micro_genre"),
-                    hook_type=asset_data.get("hook_type", "reveal"),
-                    source_episode=int(asset_data.get("source_episode", 1)),
-                    source_timecode_start=asset_data.get("source_timecode_start"),
-                    source_timecode_end=asset_data.get("source_timecode_end"),
-                    key_line=asset_data.get("key_line", ""),
-                    visual_hook=asset_data.get("visual_hook", ""),
-                    shot_list=asset_data.get("shot_list", []),
-                    cliff_or_cta=asset_data.get("cliff_or_cta", ""),
-                    music_reference=asset_data.get("music_reference"),
-                    compliance_flags=asset_data.get("compliance_flags"),
-                )
-                assets.append(asset)
-
-            return TrafficSheet(
-                episode_id=episode_id or data.get("episode_id"),
-                script_id=script_id or data.get("script_id"),
-                market_region=data.get("market_region")
-                or (story.get("market_region") if story else None),
-                micro_genre=data.get("micro_genre")
-                or (story.get("micro_genre") if story else None),
-                assets=assets,
-                generated_at=datetime.utcnow(),
-            )
-
-        except Exception as e:
-            logger.warning(f"Failed to parse traffic sheet response: {e}")
-            return TrafficSheet(
-                episode_id=episode_id,
-                script_id=script_id,
-                market_region=story.get("market_region") if story else None,
-                micro_genre=story.get("micro_genre") if story else None,
-                assets=[],
-                generated_at=datetime.utcnow(),
-            )
+        return parse_traffic_sheet_response(
+            response,
+            episode_id=episode_id,
+            script_id=script_id,
+            story=story,
+        )
 
 
 async def generate_traffic_sheet_from_db(

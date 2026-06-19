@@ -205,6 +205,12 @@ class TestScriptScoreService:
         assert result.overall_score == 4.5
         assert result.verdict == "pass"
         mock_ai_service.ai_manager.generate_text.assert_called_once()
+        prompt = mock_ai_service.ai_manager.generate_text.call_args.kwargs["prompt"]
+        assert "总分 >= 4.5" in prompt
+        assert "所有维度 >= 4.2" in prompt
+        assert "精品线校准锚点" in prompt
+        assert "客户撤单倒计时" in prompt
+        assert "不要再用“男二动机需补充”" in prompt
 
 
 class TestScoreThresholds:

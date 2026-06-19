@@ -12,6 +12,10 @@ from app.services.ai.scripts_ai_manager_payloads import (
     _SCENE_PLAN_SCHEMA_PAYLOAD,
     _minify_episode_for_prompt,
 )
+from app.services.ai.scripts_ai_manager_result import (
+    build_ai_manager_script_result,
+    log_beat_contract_generation_error,
+)
 from app.services.script_score_thresholds import (
     PASS_DIMENSION_THRESHOLD,
     PASS_OVERALL_THRESHOLD,
@@ -184,67 +188,22 @@ class ScriptManagerMixin:
                 prefer_provider=prefer_provider,
                 generation_mode=generation_mode,
             )
-        except BeatContractGenerationError:
+        except BeatContractGenerationError as exc:
+            log_beat_contract_generation_error(self, exc)
             if prefer_provider or model:
                 raise
             return None
-        flattened = beat_result["payload"]
-        response = beat_result["response"]
-        prompt = beat_result["prompt"]
-
-        payload = {
-            "content": flattened["content"],
-            "scenes": flattened["scenes"],
-            "dialogues": flattened["dialogues"],
-            "stage_directions": flattened["stage_directions"],
-            "metadata": {
-                "story_title": story.get("title"),
-                "episode_title": episode.get("title"),
-                "generator": f"ai_manager:{response.provider}",
-                "language": language,
-                "format_type": format_type,
-                "scene_detail_level": scene_detail_level,
-                "style_preferences": style_preferences or [],
-                "template_style": template_style,
-                "target_chars_per_episode": target_chars_per_episode,
-                "quality_threshold": quality_threshold,
-                "generation_mode": generation_mode,
-                "market_region": story.get("market_region")
-                or episode.get("market_region"),
-                "micro_genre": story.get("micro_genre") or episode.get("micro_genre"),
-                "hook_plan": story.get("hook_plan") or episode.get("hook_plan"),
-                "twist_density": story.get("twist_density")
-                or episode.get("twist_density"),
-                "cliffhanger_plan": story.get("cliffhanger_plan")
-                or episode.get("cliffhanger_plan"),
-                "ad_snippets": story.get("ad_snippets") or episode.get("ad_snippets"),
-                **flattened.get("metadata", {}),
-            },
-            "structured_script_contract": flattened["structured_script_contract"],
-        }
-
-        payload["content"] = self._build_script_text(
-            payload.get("scenes") or [],
-            payload.get("dialogues") or [],
-            payload.get("stage_directions") or [],
-            format_type=format_type,
+        return build_ai_manager_script_result(
+            beat_result=beat_result,
+            story=story,
+            episode=episode,
             language=language,
-            episode_number=episode.get("episode_number"),
+            format_type=format_type,
+            scene_detail_level=scene_detail_level,
+            style_preferences=style_preferences or [],
             template_style=template_style,
             target_chars_per_episode=target_chars_per_episode,
-            title=episode.get("title"),
+            quality_threshold=quality_threshold,
+            generation_mode=generation_mode,
+            build_script_text=self._build_script_text,
         )
-        payload["metadata"]["structured_script_contract"] = payload[
-            "structured_script_contract"
-        ]
-
-        return {
-            "content": payload,
-            "normalized": payload,
-            "prompt": prompt,
-            "generation_method": f"ai_manager_{response.provider}",
-            "template_used": "script_beats",
-            "provider_used": response.provider,
-            "model_used": response.model,
-            "usage": response.usage,
-        }

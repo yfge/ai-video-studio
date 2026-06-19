@@ -62,3 +62,19 @@ def test_video_motion_prompt_without_override_keeps_motion_and_constraints() -> 
     assert "1800ms: 他抬眼看向雨中的车窗" in prompt
     assert "No subtitles" in prompt
     assert metadata["prompt_contract_version"] == PROMPT_CONTRACT_VERSION
+
+
+def test_video_motion_prompt_expands_short_timeline_slot_for_provider() -> None:
+    clip = clip_with_motion_plan()
+    clip["duration_ms"] = 1240
+    clip["source_refs"]["timeline_shot_plan"]["video_prompt"] = (
+        "Plot: 截图投到主屏。 Duration: 1240ms. "
+        "Motion timeline: [{\"at_ms\": 0, \"action\": \"截图出现\"}]"
+    )
+
+    prompt, _metadata = build_timeline_clip_video_motion_prompt(clip)
+
+    assert "Duration: 1240ms" not in prompt
+    assert "source timeline slot: 1240ms; provider render duration: 4s" in prompt
+    assert "render as one continuous 4-second shot" in prompt
+    assert "Avoid a flicker-fast micro clip" in prompt

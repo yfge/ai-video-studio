@@ -130,6 +130,12 @@ export function timelineClipStoryboardSheetUrl(item: TimelineItem | null) {
   );
 }
 
+export function timelineClipHasShotPlan(item: TimelineItem | null) {
+  const meta = timelineItemMeta(item);
+  const sourceRefs = asRecord(meta.source_refs);
+  return Boolean(asRecord(sourceRefs?.timeline_shot_plan));
+}
+
 export function timelineClipStartEndFrameStatus(item: TimelineItem | null) {
   const meta = timelineItemMeta(item);
   const startReady =

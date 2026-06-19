@@ -18,6 +18,12 @@ class TimelineClipAssetVideoResolver:
             clip_id=clip_id,
             asset_role="generated_video",
         )
+        if link is None:
+            link = self.clip_assets.get_latest_for_clip_role_any_version(
+                timeline_id=timeline.id,
+                clip_id=clip_id,
+                asset_role="generated_video",
+            )
         asset = link.media_asset if link is not None else None
         if asset is None or asset.is_deleted:
             return None, "missing"

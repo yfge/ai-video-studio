@@ -31,3 +31,25 @@ async def test_deepseek_v4_pro_quality_gate_repair_disables_thinking():
 
     assert repaired == {"repaired": True}
     assert manager.calls[0]["thinking"] == {"type": "disabled"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.unit
+async def test_quality_gate_repair_includes_extra_instructions():
+    manager = _DummyAIManager()
+
+    await repair_quality_gate_payload(
+        ai_manager=manager,
+        kind="episode",
+        payload={"episodes": [{"episode_number": 1}]},
+        quality_gate={"passed": False},
+        schema={"name": "episode_plan", "schema": {"type": "object"}},
+        model="deepseek-v4-flash",
+        prefer_provider="deepseek",
+        temperature=0.7,
+        extra_instructions="Every episode must include structured_episode_contract.",
+    )
+
+    prompt = manager.calls[0]["prompt"]
+    assert "failed strict quality gate validation" in prompt
+    assert "structured_episode_contract" in prompt

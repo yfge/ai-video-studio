@@ -1,5 +1,6 @@
 import type { TimelineItem } from "@/components/features";
 import {
+  timelineClipHasShotPlan,
   timelineClipStartEndFrameStatus,
   timelineClipStoryboardPanelIndex,
   timelineClipStoryboardSheetUrl,
@@ -26,7 +27,8 @@ export function timelineClipProductionReadiness(
   const keyframeStatus = timelineClipStartEndFrameStatus(item);
   const storyboardReady = Boolean(storyboardSheetUrl);
   const keyframesReady = keyframeStatus.startReady && keyframeStatus.endReady;
-  const canGenerateVideo = storyboardReady && keyframesReady;
+  const canGenerateVideo =
+    (storyboardReady && keyframesReady) || timelineClipHasShotPlan(item);
   return {
     storyboardReady,
     keyframesReady,

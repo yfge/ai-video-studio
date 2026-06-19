@@ -43,6 +43,7 @@ class _RepairManager:
     def __init__(self, payloads: list[dict[str, Any]]) -> None:
         self.payloads = list(payloads)
         self.calls = 0
+        self.call_kwargs: list[dict[str, Any]] = []
 
     async def generate_text(self, **kwargs: Any) -> Any:
         schema = kwargs.get("json_schema") or {}
@@ -60,6 +61,7 @@ class _RepairManager:
                 },
             )
         self.calls += 1
+        self.call_kwargs.append(kwargs)
         payload = self.payloads.pop(0) if self.payloads else {}
         return SimpleNamespace(success=True, data=payload)
 
@@ -131,7 +133,19 @@ async def test_script_gate_auto_creates_episode_temporary_speaker(
 
     result, updated_content, gate = await enforce_script_quality_gate_with_repair(
         ai_manager=_RepairManager([]),
-        result={},
+        result={
+            "character_validation_passed": False,
+            "character_validation_results": [
+                {
+                    "passed": False,
+                    "severity": "warning",
+                    "message": "Found 1 unknown speaker(s) in dialogues",
+                    "details": {"unknown_speakers": ["快递员"]},
+                }
+            ],
+            "character_warnings": ["Unknown speaker(s) in dialogues: 快递员"],
+            "unknown_names": ["快递员"],
+        },
         content=content,
         story={"characters": [{"name": "林雪"}, {"name": "陈默"}]},
         story_model=_story_model_with_registry(),
@@ -141,6 +155,8 @@ async def test_script_gate_auto_creates_episode_temporary_speaker(
     )
 
     assert gate["passed"] is True
+    assert result["character_validation_passed"] is True
+    assert result["unknown_names"] == []
     assert result["auto_created_characters"] == [
         {"episode_character_id": 123, "character_name": "快递员"}
     ]

@@ -4,10 +4,12 @@ from typing import Any
 
 import pytest
 from app.services.ai.scripts_ai_manager import (
-    _BEAT_CONTRACT_MAX_TOKENS,
     _MAX_DIALOGUE_SCENES,
     _SCENE_PLAN_MAX_TOKENS,
     ScriptManagerMixin,
+)
+from app.services.ai.scripts_ai_manager_payloads import (
+    _BEAT_CONTRACT_MAX_TOKENS,
 )
 
 

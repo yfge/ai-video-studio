@@ -9,6 +9,7 @@ from app.core.validators.script_dialogue_quality import (
     find_reused_short_dialogues,
     validate_scene_dialogues,
 )
+from app.core.validators.character_registry import normalize_generic_role
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
 from app.repositories.script_lookup_repository import (
@@ -180,6 +181,7 @@ class ScriptLangGraphAgent:
                 s
                 for s in unknown_speakers
                 if s not in CharacterConsistencyValidator.NARRATOR_NAMES
+                and not normalize_generic_role(s)
             }
 
         if unknown_speakers:
@@ -1009,6 +1011,15 @@ class ScriptLangGraphAgent:
                     **state,
                     "react_needs_retry": False,
                     "reasoning": reasoning + ["react_skipped"],
+                }
+
+            if generation_mode == "production" and state.get(
+                "structured_script_contract"
+            ):
+                return {
+                    **state,
+                    "react_needs_retry": False,
+                    "reasoning": reasoning + ["react_skipped_beat_contract"],
                 }
 
             reused_short_norms = find_reused_short_dialogues(dialogues)

@@ -46,10 +46,13 @@ class TimelineResolvedVideoService:
                 detail="timeline not found",
             )
 
-        resolved, missing = self.resolver.resolve(timeline)
+        tasks_by_clip = self._active_tasks_by_clip(timeline.business_id, current_user)
+        resolved, missing = self.resolver.resolve(
+            timeline,
+            active_clip_ids=set(tasks_by_clip),
+        )
         resolved_by_clip = {item.clip_id: item for item in resolved}
         missing_by_clip = {str(item.get("clip_id") or ""): item for item in missing}
-        tasks_by_clip = self._active_tasks_by_clip(timeline.business_id, current_user)
         items = [
             self._item_for_clip(
                 clip,

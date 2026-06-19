@@ -15,6 +15,26 @@ variables:
     type: list
     required: false
     description: "校验失败时缺失或异常的字段路径列表"
+  production_mode:
+    type: boolean
+    required: false
+    description: "是否为 production 生成链路"
+  quality_gate_issues:
+    type: list
+    required: false
+    description: "生产质量门禁失败的检查 ID"
+  quality_gate_issue_details:
+    type: list
+    required: false
+    description: "生产质量门禁失败详情"
+  story_quality_warnings:
+    type: list
+    required: false
+    description: "故事节奏、钩子、合规等质量警告"
+  character_warnings:
+    type: list
+    required: false
+    description: "角色一致性警告"
   original_prompt:
     type: string
     required: false

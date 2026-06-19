@@ -1,11 +1,56 @@
 from __future__ import annotations
 
+import re
 from typing import Any, Dict, List
 
 from app.services.validators.character_consistency_validator import (
+    CharacterValidationResult,
     CharacterConsistencyValidator,
     CharacterProfile,
+    ValidationSeverity,
 )
+
+
+_GENERIC_STORY_ROLE_NAMES = {
+    "客户",
+    "客户代表",
+    "客户方",
+    "团队",
+    "团队成员",
+    "同事",
+    "背景人",
+    "竞争对手",
+    "竞争对手公司",
+    "董事会",
+    "内鬼",
+    "篡改者",
+}
+
+
+def _is_generic_story_role_name(name: str) -> bool:
+    cleaned = re.sub(r"[（(].*?[）)]", "", name or "").strip()
+    return cleaned in _GENERIC_STORY_ROLE_NAMES
+
+
+def _filter_generic_unknown_names(
+    validation: CharacterValidationResult,
+) -> CharacterValidationResult | None:
+    unknown_names = validation.details.get("unknown_names")
+    if validation.severity != ValidationSeverity.WARNING or not isinstance(
+        unknown_names, list
+    ):
+        return validation
+
+    remaining = [
+        name for name in unknown_names if not _is_generic_story_role_name(str(name))
+    ]
+    if not remaining:
+        return None
+    if len(remaining) == len(unknown_names):
+        return validation
+    validation.details["unknown_names"] = remaining
+    validation.message = f"Found {len(remaining)} unknown character(s)"
+    return validation
 
 
 def _build_character_profiles(
@@ -14,7 +59,7 @@ def _build_character_profiles(
     return [
         CharacterProfile(
             name=char.get("name", ""),
-            aliases=char.get("aliases", []),
+            aliases=_character_aliases(char),
             role_type=char.get("role_type") or char.get("role"),
             gender=char.get("gender"),
             age=char.get("age"),
@@ -24,6 +69,14 @@ def _build_character_profiles(
         for char in characters
         if char.get("name")
     ]
+
+
+def _character_aliases(char: Dict[str, Any]) -> list[str]:
+    aliases = [str(item) for item in char.get("aliases", []) if item]
+    name = str(char.get("name") or "")
+    if "角色" in name:
+        aliases.append(re.sub(r"角色(?=[\-_—－]|$)", "", name).strip())
+    return [alias for alias in aliases if alias]
 
 
 def validate_story_outline_characters(
@@ -46,6 +99,8 @@ def validate_story_outline_characters(
             continue
         name = char.get("name") or char.get("character_name")
         if not name:
+            continue
+        if _is_generic_story_role_name(str(name)):
             continue
         canonical = validator.resolve_name(name)
         if not canonical:
@@ -71,6 +126,9 @@ def validate_story_outline_characters(
     ]
     if content_to_check:
         for validation in validator.validate_names_in_text("\n".join(content_to_check)):
+            validation = _filter_generic_unknown_names(validation)
+            if validation is None:
+                continue
             results["character_validation_results"].append(validation.to_dict())
             if validation.severity.value == "warning":
                 results["character_warnings"].append(validation.message)

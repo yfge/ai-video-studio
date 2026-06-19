@@ -4,6 +4,7 @@ from copy import deepcopy
 from datetime import datetime
 from typing import Any
 
+from app.services.timeline_shot_plan_coercion import coerce_timeline_shot_plan_payload
 from app.services.timeline_shot_plan_models import TimelineShotPlan
 from app.services.timeline_shot_plan_styles import style_prompt_instruction
 
@@ -210,7 +211,9 @@ def _dialogue_text_for_video_clip(clip: dict[str, Any], spec: dict[str, Any]) ->
     matches = [_clips_by_scene_beat(spec, t).get(key) for t in ("dialogue", "subtitle")]
     primary = next((item for item in matches if item), {})
     beat_type = str(clip.get("beat_type") or primary.get("beat_type") or "").lower()
-    if beat_type != "dialogue" and not _strip_text(primary.get("speaker_name")):
+    if beat_type and beat_type != "dialogue":
+        return ""
+    if not _strip_text(primary.get("speaker_name")):
         return ""
     for matched in matches:
         if not matched:

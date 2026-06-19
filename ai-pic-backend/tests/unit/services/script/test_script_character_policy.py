@@ -59,6 +59,31 @@ def test_enforce_script_character_policy_normalizes_and_detects_unknown() -> Non
 
 
 @pytest.mark.unit
+def test_enforce_script_character_policy_allows_short_drama_functional_roles() -> None:
+    story = _make_story_with_registry()
+    scenes = [{"characters": ["林雪", "客户", "团队成员A", "篡改者"]}]
+    dialogues = [
+        {"character": "客户", "content": "这数据不对。"},
+        {"character": "助理", "content": "我马上调文件。"},
+        {"character": "团队成员B", "content": "不是我。"},
+        {"character": "录音", "content": "数据我改了。"},
+    ]
+
+    result = enforce_script_character_policy(
+        story=story, scenes=scenes, dialogues=dialogues
+    )
+
+    assert result.unknown_names == []
+    assert scenes[0]["characters"] == ["林雪", "客户", "团队成员", "篡改者"]
+    assert [d["character"] for d in dialogues] == [
+        "客户",
+        "助理",
+        "团队成员",
+        "录音",
+    ]
+
+
+@pytest.mark.unit
 def test_enforce_script_character_policy_is_backwards_compatible_without_registry() -> (
     None
 ):

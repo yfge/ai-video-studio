@@ -10,18 +10,25 @@ from app.services.script.production_pipeline import (
 )
 
 
-def _scoring(verdict: str, overall: float, guidance: list[str] | None = None) -> dict:
+def _scoring(
+    verdict: str,
+    overall: float,
+    guidance: list[str] | None = None,
+    dimensions: dict[str, float] | None = None,
+    asset_count: int = 1,
+) -> dict:
+    dimension_scores = dimensions or {
+        "conflict_intensity": overall,
+        "character_recognizability": overall,
+        "cultural_fit": overall,
+        "clip_ability": overall,
+        "logic_coherence": overall,
+    }
     return {
         "script_score": {
             "overall_score": overall,
             "verdict": verdict,
-            "dimension_scores": {
-                "conflict_intensity": overall,
-                "character_recognizability": overall,
-                "cultural_fit": overall,
-                "clip_ability": overall,
-                "logic_coherence": overall,
-            },
+            "dimension_scores": dimension_scores,
             "rewrite_guidance": guidance or [],
         },
         "traffic_sheet": {
@@ -35,7 +42,7 @@ def _scoring(verdict: str, overall: float, guidance: list[str] | None = None) ->
                 }
             ]
         },
-        "asset_tags": {"asset_count": 1, "hook_types": ["reveal"]},
+        "asset_tags": {"asset_count": asset_count, "hook_types": ["reveal"]},
     }
 
 
@@ -144,13 +151,15 @@ async def test_production_generation_rewrites_and_selects_pass():
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_production_generation_raises_after_four_low_quality_attempts():
+async def test_production_generation_raises_after_six_low_quality_attempts():
     calls: list[int] = []
     scores = [
         _scoring("rewrite", 2.1, ["重写前3秒钩子"]),
         _scoring("rewrite", 3.2, ["压缩中段解释"]),
         _scoring("review", 4.3, ["补强人物可辨识度"]),
         _scoring("pass", 4.4, ["仍未达到精品线"]),
+        _scoring("review", 4.1, ["补强第二场广告钩子"]),
+        _scoring("review", 4.2, ["补强反派动机"]),
     ]
 
     async def generate_attempt(attempt_no: int, _requirements: str) -> dict:
@@ -178,7 +187,7 @@ async def test_production_generation_raises_after_four_low_quality_attempts():
             score_attempt=score_attempt,
         )
 
-    assert calls == [1, 2, 3, 4]
+    assert calls == [1, 2, 3, 4, 5, 6]
     gate = exc_info.value.quality_gate
     assert gate["passed"] is False
     blocking_ids = {issue["id"] for issue in gate["blocking_issues"]}
@@ -186,9 +195,10 @@ async def test_production_generation_raises_after_four_low_quality_attempts():
     details = gate["blocking_issues"][0]["details"]
     assert details["thresholds"] == {"overall": 4.5, "dimension": 4.2}
     assert details["selected_attempt"] == 4
-    assert len(details["attempts"]) == 4
-    assert details["attempts"][-1]["overall_score"] == 4.4
-    assert details["rewrite_guidance"] == ["仍未达到精品线"]
+    assert len(details["attempts"]) == 6
+    assert details["attempts"][-1]["overall_score"] == 4.2
+    assert details["rewrite_guidance"][0] == "仍未达到精品线"
+    assert "整体 ScriptScore 必须提升到 4.5+" in details["rewrite_guidance"][1]
 
 
 @pytest.mark.unit

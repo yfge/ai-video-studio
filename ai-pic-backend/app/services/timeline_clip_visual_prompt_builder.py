@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Mapping
 
 from app.services.storyboard.grid_storyboard_prompt_layers import (
@@ -15,6 +16,11 @@ INLINE_CONSTRAINTS = (
     "no logos, no split-screen, no collage, no storyboard gutters."
 )
 _CLIP_PROMPT_KEYS = ("ai_prompt", "prompt", "description", "text", "label")
+_SHORT_VIDEO_MIN_PROVIDER_DURATION_SECONDS = 4
+_DURATION_LABEL_RE = re.compile(
+    r"\b(duration)\s*:\s*\d+(?:\.\d+)?\s*ms\b",
+    re.IGNORECASE,
+)
 
 
 def build_timeline_clip_keyframe_frames(
@@ -44,6 +50,7 @@ def build_timeline_clip_video_motion_prompt(
 
 def _prompt_context(clip: Mapping[str, Any], override: str | None) -> dict[str, Any]:
     shot_plan = _timeline_shot_plan(clip)
+    duration_ms = _clip_duration_ms(clip, shot_plan)
     visual_prompt, visual_source = _first_text_with_source(
         ("timeline_shot_plan.visual_prompt", shot_plan.get("visual_prompt")),
         ("timeline_shot_plan.image_prompt", shot_plan.get("image_prompt")),
@@ -62,6 +69,7 @@ def _prompt_context(clip: Mapping[str, Any], override: str | None) -> dict[str, 
                 for key in ("video_prompt", *_CLIP_PROMPT_KEYS)
             ),
         )
+        motion_prompt = _normalize_short_duration_labels(motion_prompt, duration_ms)
     return {
         "clip_id": _clean(clip.get("clip_id") or clip.get("id")) or "unknown",
         "visual_prompt": visual_prompt,
@@ -79,6 +87,7 @@ def _prompt_context(clip: Mapping[str, Any], override: str | None) -> dict[str, 
         ),
         "motion_timeline": normalize_motion_timeline(shot_plan.get("motion_timeline")),
         "emotional_landing": _clean(shot_plan.get("emotional_landing")),
+        "duration_guidance": _short_duration_guidance(duration_ms),
     }
 
 
@@ -125,6 +134,8 @@ def _video_motion_prompt(context: Mapping[str, Any]) -> str:
     ]
     if context.get("camera_movement"):
         lines.append(f"Camera movement: {context['camera_movement']}")
+    if context.get("duration_guidance"):
+        lines.append(context["duration_guidance"])
     motion = motion_timeline_text(context.get("motion_timeline") or [], separator=": ")
     if motion:
         lines.append(f"Motion timeline: {motion}")
@@ -171,4 +182,58 @@ def _has_prompt_content(context: Mapping[str, Any]) -> bool:
         context.get("visual_prompt")
         or context.get("motion_prompt")
         or context.get("motion_timeline")
+    )
+
+
+def _clip_duration_ms(
+    clip: Mapping[str, Any],
+    shot_plan: Mapping[str, Any],
+) -> int | None:
+    for value in (clip.get("duration_ms"), shot_plan.get("duration_ms")):
+        parsed = _int_ms(value)
+        if parsed and parsed > 0:
+            return parsed
+    start = _int_ms(clip.get("start_ms"))
+    end = _int_ms(clip.get("end_ms"))
+    if start is not None and end is not None and end > start:
+        return end - start
+    return None
+
+
+def _int_ms(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    if isinstance(value, str) and value.strip():
+        try:
+            return int(float(value.strip()))
+        except ValueError:
+            return None
+    return None
+
+
+def _normalize_short_duration_labels(text: str, duration_ms: int | None) -> str:
+    if not text or not duration_ms or duration_ms >= 4000:
+        return text
+    provider_seconds = _SHORT_VIDEO_MIN_PROVIDER_DURATION_SECONDS
+    replacement = (
+        f"source timeline slot: {duration_ms}ms; "
+        f"provider render duration: {provider_seconds}s"
+    )
+    return _DURATION_LABEL_RE.sub(replacement, text)
+
+
+def _short_duration_guidance(duration_ms: int | None) -> str:
+    if not duration_ms or duration_ms >= 4000:
+        return ""
+    provider_seconds = _SHORT_VIDEO_MIN_PROVIDER_DURATION_SECONDS
+    seconds = duration_ms / 1000.0
+    return (
+        "Provider clip timing: render as one continuous "
+        f"{provider_seconds}-second shot; smoothly stretch the source "
+        f"{seconds:.2f}s timeline slot and listed motion beats to fill the "
+        "provider clip. Avoid a flicker-fast micro clip."
     )
