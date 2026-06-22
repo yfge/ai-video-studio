@@ -1,5 +1,4 @@
 import Link from "next/link";
-import type { PointerEvent as ReactPointerEvent } from "react";
 import {
   OperatorPanel,
   StatusPill,
@@ -71,55 +70,6 @@ export function CanvasEdges({
         );
       })}
     </svg>
-  );
-}
-
-export function CanvasNodeCard({
-  node,
-  selected,
-  onSelect,
-  onPointerDown,
-}: {
-  node: ProductionCanvasNode;
-  selected: boolean;
-  onSelect: (nodeId: string) => void;
-  onPointerDown: (
-    event: ReactPointerEvent<HTMLButtonElement>,
-    nodeId: string,
-  ) => void;
-}) {
-  const status = productionCanvasStatusMeta[node.status];
-  const noteClass =
-    node.kind === "note"
-      ? "border-amber-200 bg-amber-50/95"
-      : "border-gray-200 bg-white";
-  return (
-    <button
-      type="button"
-      className={`absolute cursor-grab rounded-lg border p-3 text-left shadow-sm transition active:cursor-grabbing ${
-        selected ? "ring-2 ring-blue-500 ring-offset-2" : "hover:shadow-md"
-      } ${noteClass}`}
-      style={{
-        left: node.x,
-        top: node.y,
-        width: node.width,
-        height: getNodeHeight(node),
-      }}
-      data-canvas-node={node.id}
-      aria-label={`${node.label} ${node.title}`}
-      onClick={() => onSelect(node.id)}
-      onPointerDown={(event) => onPointerDown(event, node.id)}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <div className="truncate text-xs font-semibold text-gray-950">
-          {node.label}
-        </div>
-        <StatusPill tone={status.tone}>{status.label}</StatusPill>
-      </div>
-      <div className="mt-2 line-clamp-2 text-xs leading-5 text-gray-600">
-        {node.title}
-      </div>
-    </button>
   );
 }
 

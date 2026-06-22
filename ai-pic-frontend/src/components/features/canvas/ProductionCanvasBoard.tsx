@@ -9,8 +9,8 @@ import {
 import {
   CanvasEdges,
   CanvasInspector,
-  CanvasNodeCard,
 } from "./ProductionCanvasElements";
+import { CanvasNodeCard } from "./ProductionCanvasNodeCard";
 import { ProductionCanvasChatBar } from "./ProductionCanvasChatBar";
 import { useProductionCanvasSkillPlanner } from "./useProductionCanvasSkillPlanner";
 import { useProductionCanvasController } from "./useProductionCanvasController";
@@ -158,8 +158,12 @@ export function ProductionCanvasContent({
               {canvasState.nodes.map((node) => (
                 <CanvasNodeCard
                   key={node.id}
+                  executing={planner.executingNodeId === node.id}
                   node={node}
                   selected={node.id === selectedNode?.id}
+                  onExecuteNode={(nodeToExecute) =>
+                    void planner.executeSkillNode(nodeToExecute)
+                  }
                   onSelect={handleSelectNode}
                   onPointerDown={handleNodePointerDown}
                 />

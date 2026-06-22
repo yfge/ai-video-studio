@@ -69,7 +69,9 @@ export function readStoredCanvasState(storageKey: string | null | undefined) {
 }
 
 export function getNodeHeight(node: ProductionCanvasNode) {
-  return node.height || DEFAULT_NODE_HEIGHT;
+  if (node.height) return node.height;
+  if (node.skill && node.kind === "skill_result") return 118;
+  return DEFAULT_NODE_HEIGHT;
 }
 
 export function getWorldBounds(nodes: ProductionCanvasNode[]) {

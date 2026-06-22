@@ -365,7 +365,9 @@ describe("ProductionCanvasBoard", () => {
       fireEvent.click(
         utils.getByLabelText("Script Skill 现有剧本生成入口已就绪"),
       );
-      fireEvent.click(utils.getByRole("button", { name: "后台执行" }));
+      fireEvent.click(
+        utils.getByRole("button", { name: "后台执行 Script Skill" }),
+      );
       await waitFor(() => assert.ok(utils.getByText("dispatched_task_id: 77")));
       assert.equal(executeRequests[0]?.skill, "script.generate");
       assert.equal(executeRequests[0]?.episode_id, 123);
