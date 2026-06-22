@@ -1,14 +1,23 @@
 import { operatorButtonClass } from "@/components/shared";
+import {
+  productionCanvasContextFields,
+  type ProductionCanvasContextDraft,
+  type ProductionCanvasContextKey,
+} from "./productionCanvasContext";
 
 export function ProductionCanvasChatBar({
+  context,
   error,
   onCreate,
+  onContextChange,
   onPromptChange,
   prompt,
   running,
 }: {
+  context: ProductionCanvasContextDraft;
   error?: string | null;
   onCreate: () => void;
+  onContextChange: (key: ProductionCanvasContextKey, value: string) => void;
   onPromptChange: (value: string) => void;
   prompt: string;
   running: boolean;
@@ -35,6 +44,28 @@ export function ProductionCanvasChatBar({
         >
           {running ? "执行中" : "整体创建"}
         </button>
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+        {productionCanvasContextFields.map((field) => (
+          <label key={field.key} className="min-w-0">
+            <span className="text-[11px] font-semibold text-gray-600">
+              {field.label}
+            </span>
+            <input
+              aria-label={field.label}
+              inputMode="numeric"
+              value={context[field.key]}
+              onChange={(event) =>
+                onContextChange(field.key, event.target.value)
+              }
+              onInput={(event) =>
+                onContextChange(field.key, event.currentTarget.value)
+              }
+              placeholder={field.placeholder}
+              className="mt-1 h-8 w-full rounded-md border border-gray-200 bg-white px-2 text-xs text-gray-800 placeholder:text-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            />
+          </label>
+        ))}
       </div>
       {error ? <div className="mt-2 text-xs text-red-600">{error}</div> : null}
     </div>

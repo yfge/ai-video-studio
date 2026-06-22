@@ -74,6 +74,10 @@ def test_production_canvas_execute_image_skill_dispatches_existing_task(
             "prompt": "生成现有分镜的图片候选",
             "skill": "image.candidates",
             "script_id": script.id,
+            "frame_indexes": [1],
+            "model": "codex:gpt-image-2",
+            "aspect_ratio": "16:9",
+            "require_reference_images": False,
             "run_id": "abcdabcdabcdabcdabcdabcdabcdabcd",
         },
     )
@@ -82,7 +86,7 @@ def test_production_canvas_execute_image_skill_dispatches_existing_task(
     payload = response.json()["data"]
     assert payload["task_status"] == "pending"
     assert payload["skill_result"]["skill"] == "image.candidates"
-    assert payload["skill_result"]["outputs"]["queued_frame_count"] == 2
+    assert payload["skill_result"]["outputs"]["queued_frame_count"] == 1
     assert (
         payload["skill_result"]["outputs"]["dispatched_task_id"] == payload["task_id"]
     )
@@ -92,8 +96,10 @@ def test_production_canvas_execute_image_skill_dispatches_existing_task(
     assert task.task_type == TaskType.STORYBOARD_IMAGE_GENERATION
     assert task.target_business_id == "abcdabcdabcdabcdabcdabcdabcdabcd"
     assert params["script_id"] == script.id
-    assert params["frame_indexes"] == [0, 1]
-    assert params["require_reference_images"] is True
+    assert params["frame_indexes"] == [1]
+    assert params["model"] == "codex:gpt-image-2"
+    assert params["aspect_ratio"] == "16:9"
+    assert params["require_reference_images"] is False
     assert dispatched["task_id"] == task.id
     assert dispatched["params"]["script_id"] == script.id
 
@@ -124,6 +130,13 @@ def test_production_canvas_execute_video_skill_dispatches_existing_task(
             "prompt": "生成现有分镜的视频候选",
             "skill": "video.candidates",
             "script_id": script.id,
+            "frame_indexes": [1],
+            "model": "minimax:video-01",
+            "duration": 6,
+            "fps": 30,
+            "resolution": "1080p",
+            "ratio": "16:9",
+            "camera_fixed": True,
             "run_id": "abcdabcdabcdabcdabcdabcdabcdabcd",
         },
     )
@@ -142,7 +155,13 @@ def test_production_canvas_execute_video_skill_dispatches_existing_task(
     assert task.task_type == TaskType.VIDEO_GENERATION
     assert task.target_business_id == "abcdabcdabcdabcdabcdabcdabcdabcd"
     assert params["script_id"] == script.id
-    assert params["frame_indexes"] is None
+    assert params["frame_indexes"] == [1]
+    assert params["model"] == "minimax:video-01"
+    assert params["duration"] == 6
+    assert params["fps"] == 30
+    assert params["resolution"] == "1080p"
+    assert params["ratio"] == "16:9"
+    assert params["camera_fixed"] is True
     assert params["return_last_frame"] is True
     assert dispatched["task_id"] == task.id
     assert dispatched["params"]["script_id"] == script.id

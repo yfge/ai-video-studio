@@ -7,6 +7,11 @@ export type ProductionCanvasReuseTarget = {
   description?: string | null;
 };
 
+export type ProductionCanvasEdge = {
+  from: string;
+  to: string;
+};
+
 export type ProductionCanvasNode = {
   id: string;
   label: string;
@@ -112,7 +117,7 @@ export const productionCanvasNodes: ProductionCanvasNode[] = [
   },
 ];
 
-export const productionCanvasEdges = [
+export const productionCanvasEdges: ProductionCanvasEdge[] = [
   { from: "brief", to: "script" },
   { from: "script", to: "storyboard" },
   { from: "script", to: "image" },
@@ -120,7 +125,7 @@ export const productionCanvasEdges = [
   { from: "image", to: "video" },
   { from: "video", to: "timeline" },
   { from: "video", to: "report" },
-] as const;
+];
 
 export const productionCanvasStatusMeta = {
   ready: { label: "可复用", tone: "green" },

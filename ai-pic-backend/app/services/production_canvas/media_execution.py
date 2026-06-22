@@ -9,9 +9,7 @@ from app.schemas.production_canvas import (
 )
 from app.services.production_canvas.execution_common import (
     blocked_result,
-    decode_parameters,
     load_script,
-    load_task,
     skill_definition,
 )
 from app.services.storyboard.storyboard_image_autogen import (
@@ -42,7 +40,14 @@ def execute_storyboard_images(
         db,
         script_id=script.id,
         user_id=user.id,
-        require_reference_images=True,
+        frame_indexes=request.frame_indexes,
+        model=request.model,
+        aspect_ratio=request.aspect_ratio,
+        require_reference_images=(
+            request.require_reference_images
+            if request.require_reference_images is not None
+            else True
+        ),
     )
     if queue_result.child_task_id is None:
         return blocked_result(
@@ -80,6 +85,9 @@ def execute_storyboard_images(
                 "queued_frame_indexes": queue_result.queued_frame_indexes,
                 "queued_frame_count": len(queue_result.queued_frame_indexes),
                 "skipped_frame_indexes": queue_result.skipped_frame_indexes,
+                "model": request.model,
+                "aspect_ratio": request.aspect_ratio,
+                "require_reference_images": queue_result.require_reference_images,
                 **({"canvas_run_id": request.run_id} if request.run_id else {}),
             },
             reuse_targets=skill.reuse_targets if skill else [],
@@ -108,6 +116,13 @@ def execute_storyboard_video_candidates(
             user,
             script,
             prompt=request.prompt,
+            frame_indexes=request.frame_indexes,
+            model=request.model,
+            duration=request.duration,
+            fps=request.fps,
+            resolution=request.resolution,
+            ratio=request.ratio,
+            camera_fixed=request.camera_fixed,
             target_business_id=request.run_id,
         )
     except ValueError as exc:
@@ -136,55 +151,14 @@ def execute_storyboard_video_candidates(
                 "dispatched_task_id": task.id,
                 "task_status": task.status.value,
                 "frame_count": queue_result.frame_count,
+                "frame_indexes": request.frame_indexes,
+                "model": request.model,
+                "duration": request.duration,
+                "fps": request.fps,
+                "resolution": request.resolution,
+                "ratio": request.ratio,
+                "camera_fixed": request.camera_fixed,
                 **({"canvas_run_id": request.run_id} if request.run_id else {}),
-            },
-            reuse_targets=skill.reuse_targets if skill else [],
-        ),
-    )
-
-
-def execute_report_summary(
-    db: Session,
-    user: User,
-    request: ProductionCanvasSkillExecuteRequest,
-) -> ProductionCanvasSkillExecuteResponse:
-    skill = skill_definition("report.summarize")
-    task = load_task(db, user, request.task_id)
-    if task is None:
-        return blocked_result(
-            request,
-            title="Report Skill 等待任务证据",
-            detail="需要先绑定可访问的 task_id，之后才会汇总现有任务证据。",
-            required_inputs=["task_id"],
-        )
-
-    params = decode_parameters(task.parameters)
-    source_kind = params.get("kind") if isinstance(params.get("kind"), str) else None
-    canvas_run_id = request.run_id or task.target_business_id
-    if not canvas_run_id and source_kind == "production_canvas_run":
-        canvas_run_id = task.business_id
-    return ProductionCanvasSkillExecuteResponse(
-        task_id=task.id,
-        task_status=task.status.value,
-        skill_result=ProductionCanvasSkillResult(
-            skill="report.summarize",
-            label=skill.label if skill else "Report Skill",
-            status="review",
-            title="已汇总现有任务证据",
-            detail=(
-                f"任务 #{task.id}《{task.title}》当前状态 {task.status.value}；"
-                "可继续在任务页检查参数、失败信息和产物路径。"
-            ),
-            outputs={
-                "task_id": task.id,
-                "task_business_id": task.business_id,
-                "task_type": task.task_type.value,
-                "task_status": task.status.value,
-                "source_kind": source_kind,
-                "canvas_run_id": canvas_run_id,
-                "result_file_path": task.result_file_path,
-                "error_message": task.error_message,
-                "parameter_keys": sorted(params.keys()),
             },
             reuse_targets=skill.reuse_targets if skill else [],
         ),

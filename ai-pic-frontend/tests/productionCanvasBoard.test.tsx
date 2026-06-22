@@ -6,6 +6,10 @@ import { JSDOM } from "jsdom";
 import { productionNavItems } from "../src/components/shared/operator/OperatorShell";
 import { ProductionCanvasContent } from "../src/components/features/canvas/ProductionCanvasBoard";
 import {
+  addProductionCanvasEdge,
+  removeProductionCanvasEdge,
+} from "../src/components/features/canvas/productionCanvasGraphState";
+import {
   addProductionCanvasNote,
   createProductionCanvasState,
   moveProductionCanvasNode,
@@ -84,7 +88,7 @@ describe("ProductionCanvasBoard", () => {
       container: dom.window.document.body,
     });
 
-    utils.getByRole("button", { name: /Script/ }).click();
+    utils.getByLabelText("Script 短剧节拍、对白和质量门禁").click();
 
     assert.ok(utils.getByText("节点详情"));
     assert.ok(utils.getAllByText("Script").length >= 1);
@@ -93,9 +97,11 @@ describe("ProductionCanvasBoard", () => {
 
   it("updates reusable canvas state for drag, zoom, and notes", () => {
     const state = createProductionCanvasState();
+    const defaultTimeline = state.nodes.find((node) => node.id === "timeline");
     const movedNodes = moveProductionCanvasNode(state.nodes, "script", 24, -12);
     const movedScript = movedNodes.find((node) => node.id === "script");
 
+    assert.equal(defaultTimeline?.status, "blocked");
     assert.equal(movedScript?.x, 294);
     assert.equal(movedScript?.y, 52);
 
@@ -109,8 +115,53 @@ describe("ProductionCanvasBoard", () => {
     assert.equal(note?.label, "便签");
   });
 
+  it("edits dynamic canvas edges from the selected node", () => {
+    const state = createProductionCanvasState();
+    const withEdge = addProductionCanvasEdge(state.edges, "brief", "report");
+
+    assert.ok(
+      withEdge.some((edge) => edge.from === "brief" && edge.to === "report"),
+    );
+    assert.equal(
+      addProductionCanvasEdge(withEdge, "brief", "report").length,
+      withEdge.length,
+    );
+    assert.equal(
+      addProductionCanvasEdge(withEdge, "brief", "brief").length,
+      withEdge.length,
+    );
+    assert.ok(
+      !removeProductionCanvasEdge(withEdge, "brief", "report").some(
+        (edge) => edge.from === "brief" && edge.to === "report",
+      ),
+    );
+
+    const utils = render(<ProductionCanvasContent storageKey={null} />, {
+      container: dom.window.document.body,
+    });
+    assert.equal(
+      utils.container.querySelector("[data-canvas-edge='brief-report']"),
+      null,
+    );
+
+    fireEvent.change(utils.getByLabelText("连线目标"), {
+      target: { value: "report" },
+    });
+    fireEvent.click(utils.getByRole("button", { name: "添加连线" }));
+
+    assert.ok(
+      utils.container.querySelector("[data-canvas-edge='brief-report']"),
+    );
+    fireEvent.click(utils.getByRole("button", { name: "移除连线 Report" }));
+    assert.equal(
+      utils.container.querySelector("[data-canvas-edge='brief-report']"),
+      null,
+    );
+  });
+
   it("creates dynamic canvas nodes from a chat skill execution result", async () => {
     const originalFetch = globalThis.fetch;
+    const planRequests: Record<string, unknown>[] = [];
     const executeRequests: Record<string, unknown>[] = [];
     globalThis.fetch = async (input, init) => {
       const url = String(input);
@@ -163,7 +214,8 @@ describe("ProductionCanvasBoard", () => {
                   label: "Storyboard Skill",
                   title: "已提交现有分镜生成任务",
                   status: "running",
-                  detail: "后台已通过现有 STORYBOARD_GENERATION Celery worker 执行。",
+                  detail:
+                    "后台已通过现有 STORYBOARD_GENERATION Celery worker 执行。",
                   outputs: {
                     script_id: 321,
                     dispatched_task_id: 88,
@@ -174,7 +226,8 @@ describe("ProductionCanvasBoard", () => {
                     {
                       kind: "worker",
                       label: "Storyboard Celery worker",
-                      target: "app.services.task_worker.storyboard_generate_task",
+                      target:
+                        "app.services.task_worker.storyboard_generate_task",
                     },
                   ],
                 },
@@ -197,6 +250,7 @@ describe("ProductionCanvasBoard", () => {
                 detail: "后台已通过现有 SCRIPT_GENERATION Celery worker 执行。",
                 outputs: {
                   episode_id: 123,
+                  script_id: 321,
                   dispatched_task_id: 77,
                   task_status: "pending",
                   canvas_run_id: "canvas-run-123",
@@ -214,6 +268,8 @@ describe("ProductionCanvasBoard", () => {
           { headers: { "content-type": "application/json" } },
         ) as Promise<Response>;
       }
+      const planRequest = JSON.parse(String(init?.body));
+      planRequests.push(planRequest);
       return new Response(
         JSON.stringify({
           success: true,
@@ -259,7 +315,6 @@ describe("ProductionCanvasBoard", () => {
                 detail: "后台复用现有剧本生成队列。",
                 outputs: {
                   episode_id: 123,
-                  script_id: 321,
                 },
                 reuse_targets: [
                   {
@@ -280,9 +335,9 @@ describe("ProductionCanvasBoard", () => {
                 width: 220,
                 kind: "skill_result",
                 skill: "storyboard.plan",
-                detail: "后台复用现有分镜生成队列。",
+                detail: "需要先补齐执行上下文，之后才会调用现有生成 worker。",
                 outputs: {
-                  script_id: 321,
+                  required_inputs: ["script_id"],
                 },
                 reuse_targets: [
                   {
@@ -336,6 +391,12 @@ describe("ProductionCanvasBoard", () => {
       fireEvent.input(promptInput, {
         target: { value: "基于林妹妹做第 4 集，办公室轻喜剧" },
       });
+      fireEvent.input(utils.getByLabelText("剧集 ID"), {
+        target: { value: "123" },
+      });
+      fireEvent.input(utils.getByLabelText("任务 ID"), {
+        target: { value: "44" },
+      });
       await waitFor(() =>
         assert.equal(
           utils
@@ -349,6 +410,8 @@ describe("ProductionCanvasBoard", () => {
       await waitFor(() => {
         assert.ok(utils.getAllByText("Asset Selection").length >= 1);
       });
+      assert.equal(planRequests[0]?.episode_id, 123);
+      assert.equal(planRequests[0]?.task_id, 44);
       assert.ok(utils.getAllByText("已选择林妹妹和共享办公区").length >= 1);
       assert.ok(
         utils.getAllByText("复用现有 IP：林妹妹；环境：共享办公区").length >= 1,
@@ -371,19 +434,21 @@ describe("ProductionCanvasBoard", () => {
       await waitFor(() => assert.ok(utils.getByText("dispatched_task_id: 77")));
       assert.equal(executeRequests[0]?.skill, "script.generate");
       assert.equal(executeRequests[0]?.episode_id, 123);
+      assert.equal(executeRequests[0]?.task_id, 44);
       assert.equal(executeRequests[0]?.run_id, "canvas-run-123");
-      assert.ok(
-        utils.getByLabelText("Task #77 已提交现有剧本生成任务"),
-      );
+      assert.ok(utils.getByLabelText("Task #77 已提交现有剧本生成任务"));
       assert.ok(utils.getByText("Script Celery worker"));
 
       fireEvent.click(
         utils.getByLabelText("Storyboard Skill 现有分镜生成入口已就绪"),
       );
-      fireEvent.click(utils.getByRole("button", { name: "后台执行" }));
+      fireEvent.click(
+        utils.getByRole("button", { name: "后台执行 Storyboard Skill" }),
+      );
       await waitFor(() => assert.ok(utils.getByText("dispatched_task_id: 88")));
       assert.equal(executeRequests[1]?.skill, "storyboard.plan");
       assert.equal(executeRequests[1]?.script_id, 321);
+      assert.equal(executeRequests[1]?.task_id, 77);
       assert.equal(executeRequests[1]?.run_id, "canvas-run-123");
       assert.ok(utils.getByText("Storyboard Celery worker"));
 
@@ -391,9 +456,11 @@ describe("ProductionCanvasBoard", () => {
         utils.getByLabelText("Report Skill 等待汇总画布执行证据"),
       );
       fireEvent.click(utils.getByRole("button", { name: "后台执行" }));
-      await waitFor(() => assert.ok(utils.getByText("source_kind: production_canvas_run")));
+      await waitFor(() =>
+        assert.ok(utils.getByText("source_kind: production_canvas_run")),
+      );
       assert.equal(executeRequests[2]?.skill, "report.summarize");
-      assert.equal(executeRequests[2]?.task_id, 44);
+      assert.equal(executeRequests[2]?.task_id, 88);
       assert.equal(executeRequests[2]?.run_id, "canvas-run-123");
       assert.ok(utils.getByText("Task audit endpoint"));
     } finally {

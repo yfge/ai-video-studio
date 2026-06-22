@@ -1,5 +1,6 @@
 import {
   productionCanvasNodes,
+  type ProductionCanvasEdge,
   type ProductionCanvasNode,
 } from "./productionCanvasModel";
 import {
@@ -29,6 +30,12 @@ function isCanvasNode(value: unknown): value is ProductionCanvasNode {
   );
 }
 
+function isCanvasEdge(value: unknown): value is ProductionCanvasEdge {
+  if (!value || typeof value !== "object") return false;
+  const edge = value as Partial<ProductionCanvasEdge>;
+  return typeof edge.from === "string" && typeof edge.to === "string";
+}
+
 function mergeStoredNodes(nodes: unknown) {
   if (!Array.isArray(nodes)) return null;
   const baseById = new Map(
@@ -40,6 +47,12 @@ function mergeStoredNodes(nodes: unknown) {
   return merged.length ? merged : null;
 }
 
+function storedEdges(edges: unknown, fallback: ProductionCanvasState) {
+  if (!Array.isArray(edges)) return fallback.edges;
+  const nextEdges = edges.filter(isCanvasEdge);
+  return nextEdges.length ? nextEdges : fallback.edges;
+}
+
 export function readStoredCanvasState(storageKey: string | null | undefined) {
   const fallback = createProductionCanvasState();
   if (!storageKey || typeof window === "undefined") return fallback;
@@ -49,6 +62,7 @@ export function readStoredCanvasState(storageKey: string | null | undefined) {
     if (!raw) return fallback;
     const parsed = JSON.parse(raw) as Partial<ProductionCanvasState>;
     const nodes = mergeStoredNodes(parsed.nodes) || fallback.nodes;
+    const edges = storedEdges(parsed.edges, fallback);
     const viewport =
       parsed.viewport &&
       typeof parsed.viewport.x === "number" &&
@@ -62,7 +76,7 @@ export function readStoredCanvasState(storageKey: string | null | undefined) {
         ? parsed.selectedNodeId
         : nodes[0]?.id || "";
 
-    return { nodes, viewport, selectedNodeId };
+    return { edges, nodes, viewport, selectedNodeId };
   } catch {
     return fallback;
   }

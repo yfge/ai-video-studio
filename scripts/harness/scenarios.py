@@ -118,6 +118,13 @@ BROWSER_SCENARIOS: dict[str, BrowserScenario] = {
         required_text="生产工作台",
         notes="Open the authenticated operator workbench and capture dashboard readiness.",
     ),
+    "canvas_smoke": BrowserScenario(
+        name="canvas_smoke",
+        path="/canvas",
+        requires_auth=True,
+        required_text="创作画布",
+        notes="Open the infinite production canvas and capture operator readiness.",
+    ),
     "story_master_detail_smoke": BrowserScenario(
         name="story_master_detail_smoke",
         path="/stories",

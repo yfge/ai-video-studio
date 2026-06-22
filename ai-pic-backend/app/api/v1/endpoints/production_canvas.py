@@ -6,6 +6,7 @@ from app.models.user import User
 from app.schemas.production_canvas import (
     ProductionCanvasPlanRequest,
     ProductionCanvasPlanResponse,
+    ProductionCanvasSavedState,
     ProductionCanvasSkillExecuteRequest,
     ProductionCanvasSkillExecuteResponse,
 )
@@ -13,9 +14,11 @@ from app.services.production_canvas import (
     attach_canvas_run,
     build_canvas_skill_plan,
     execute_canvas_skill,
+    load_canvas_skill_run,
     persist_canvas_skill_run,
+    save_canvas_state,
 )
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 router = APIRouter()
@@ -49,3 +52,28 @@ async def execute_production_canvas_skill(
         request,
     )
     return {"success": True, "data": result.model_dump()}
+
+
+@router.get("/runs/{run_id}", response_model=dict)
+async def get_production_canvas_run(
+    run_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    run = load_canvas_skill_run(db, current_user, run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Production canvas run not found")
+    return {"success": True, "data": run.model_dump(by_alias=True)}
+
+
+@router.put("/runs/{run_id}/state", response_model=dict)
+async def save_production_canvas_run_state(
+    run_id: str,
+    request: ProductionCanvasSavedState,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    run = save_canvas_state(db, current_user, run_id, request)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Production canvas run not found")
+    return {"success": True, "data": run.model_dump(by_alias=True)}

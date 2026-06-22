@@ -2,14 +2,65 @@ from __future__ import annotations
 
 import json
 
-from sqlalchemy.orm import Session
-
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
+from app.repositories.task_repository import TaskRepository
 from app.schemas.production_canvas import (
     ProductionCanvasPlanRequest,
     ProductionCanvasPlanResponse,
+    ProductionCanvasRunResponse,
+    ProductionCanvasSavedState,
 )
+from sqlalchemy.orm import Session
+
+
+def _canvas_run_payload(task: Task) -> dict | None:
+    if not task.parameters:
+        return None
+    try:
+        payload = json.loads(task.parameters)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict) or payload.get("kind") != "production_canvas_run":
+        return None
+    return payload
+
+
+def _run_response_from_task(
+    task: Task,
+    payload: dict,
+) -> ProductionCanvasRunResponse | None:
+    saved_state = None
+    raw_saved_state = payload.get("saved_state")
+    if isinstance(raw_saved_state, dict):
+        saved_state = ProductionCanvasSavedState.model_validate(raw_saved_state)
+
+    plan = ProductionCanvasPlanResponse.model_validate(payload)
+    data = plan.model_dump()
+    data.update(
+        {
+            "run_id": task.business_id,
+            "task_id": task.id,
+            "saved_state": saved_state,
+        }
+    )
+    return ProductionCanvasRunResponse(**data)
+
+
+def _canvas_run_task(db: Session, user: User, run_id: str) -> tuple[Task, dict] | None:
+    if not run_id:
+        return None
+    task = TaskRepository(db).get_by(
+        business_id=run_id,
+        user_id=user.id,
+        is_deleted=False,
+    )
+    if not task:
+        return None
+    payload = _canvas_run_payload(task)
+    if payload is None:
+        return None
+    return task, payload
 
 
 def persist_canvas_skill_run(
@@ -55,3 +106,32 @@ def attach_canvas_run(
     task: Task,
 ) -> ProductionCanvasPlanResponse:
     return plan.model_copy(update={"run_id": task.business_id, "task_id": task.id})
+
+
+def load_canvas_skill_run(
+    db: Session,
+    user: User,
+    run_id: str,
+) -> ProductionCanvasRunResponse | None:
+    task_and_payload = _canvas_run_task(db, user, run_id)
+    if task_and_payload is None:
+        return None
+    task, payload = task_and_payload
+    return _run_response_from_task(task, payload)
+
+
+def save_canvas_state(
+    db: Session,
+    user: User,
+    run_id: str,
+    state: ProductionCanvasSavedState,
+) -> ProductionCanvasRunResponse | None:
+    task_and_payload = _canvas_run_task(db, user, run_id)
+    if task_and_payload is None:
+        return None
+    task, payload = task_and_payload
+    payload["saved_state"] = state.model_dump(by_alias=True)
+    task.parameters = json.dumps(payload, ensure_ascii=False)
+    db.commit()
+    db.refresh(task)
+    return _run_response_from_task(task, payload)

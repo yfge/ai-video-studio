@@ -11,6 +11,15 @@ export interface ProductionCanvasSkillExecuteRequest
   extends ProductionCanvasPlanRequest {
   skill: string;
   run_id?: string | null;
+  frame_indexes?: number[] | null;
+  model?: string | null;
+  aspect_ratio?: string | null;
+  require_reference_images?: boolean | null;
+  duration?: number | null;
+  fps?: number | null;
+  resolution?: string | null;
+  ratio?: string | null;
+  camera_fixed?: boolean | null;
 }
 
 export interface ProductionCanvasAssetSummary {
@@ -77,6 +86,42 @@ export interface ProductionCanvasPlanNode {
   action_label?: string | null;
 }
 
+export interface ProductionCanvasViewport {
+  x: number;
+  y: number;
+  zoom: number;
+}
+
+export interface ProductionCanvasSavedNode {
+  id: string;
+  label: string;
+  title: string;
+  status: "ready" | "running" | "review" | "blocked";
+  x: number;
+  y: number;
+  width: number;
+  height?: number | null;
+  kind?: "pipeline" | "note" | "skill_result" | null;
+  skill?: string | null;
+  detail?: string | null;
+  outputs?: Record<string, unknown>;
+  reuse_targets?: ProductionCanvasSkillReuseTarget[];
+  action_href?: string | null;
+  action_label?: string | null;
+}
+
+export interface ProductionCanvasSavedEdge {
+  from: string;
+  to: string;
+}
+
+export interface ProductionCanvasSavedState {
+  nodes: ProductionCanvasSavedNode[];
+  edges?: ProductionCanvasSavedEdge[];
+  viewport: ProductionCanvasViewport;
+  selected_node_id?: string | null;
+}
+
 export interface ProductionCanvasPlanResponse {
   prompt: string;
   run_id?: string | null;
@@ -85,6 +130,11 @@ export interface ProductionCanvasPlanResponse {
   selected_assets: ProductionCanvasSelectedAssets;
   skill_results?: ProductionCanvasSkillResult[];
   nodes: ProductionCanvasPlanNode[];
+}
+
+export interface ProductionCanvasRunResponse
+  extends ProductionCanvasPlanResponse {
+  saved_state?: ProductionCanvasSavedState | null;
 }
 
 export interface ProductionCanvasSkillExecuteResponse {

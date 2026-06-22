@@ -5,7 +5,7 @@ import {
   operatorButtonClass,
 } from "@/components/shared";
 import {
-  productionCanvasEdges,
+  type ProductionCanvasEdge,
   productionCanvasStatusMeta,
   type ProductionCanvasNode,
 } from "./productionCanvasModel";
@@ -37,10 +37,12 @@ function outputEntries(node: ProductionCanvasNode) {
 }
 
 export function CanvasEdges({
+  edges,
   nodes,
   width,
   height,
 }: {
+  edges: ProductionCanvasEdge[];
   nodes: ProductionCanvasNode[];
   width: number;
   height: number;
@@ -54,13 +56,14 @@ export function CanvasEdges({
       height={height}
       viewBox={`0 0 ${width} ${height}`}
     >
-      {productionCanvasEdges.map((edge) => {
+      {edges.map((edge) => {
         const source = nodeById.get(edge.from);
         const target = nodeById.get(edge.to);
         if (!source || !target) return null;
         return (
           <path
             key={`${edge.from}-${edge.to}`}
+            data-canvas-edge={`${edge.from}-${edge.to}`}
             d={edgePath(source, target)}
             fill="none"
             stroke="#94a3b8"

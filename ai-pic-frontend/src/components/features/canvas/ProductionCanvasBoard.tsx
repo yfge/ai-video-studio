@@ -6,14 +6,14 @@ import {
   OperatorShell,
   operatorButtonClass,
 } from "@/components/shared";
-import {
-  CanvasEdges,
-  CanvasInspector,
-} from "./ProductionCanvasElements";
+import { CanvasEdges, CanvasInspector } from "./ProductionCanvasElements";
+import { ProductionCanvasNodeTools } from "./ProductionCanvasNodeTools";
 import { CanvasNodeCard } from "./ProductionCanvasNodeCard";
 import { ProductionCanvasChatBar } from "./ProductionCanvasChatBar";
+import { ProductionCanvasRunControls } from "./ProductionCanvasRunControls";
 import { useProductionCanvasSkillPlanner } from "./useProductionCanvasSkillPlanner";
 import { useProductionCanvasController } from "./useProductionCanvasController";
+import { useProductionCanvasRunPersistence } from "./useProductionCanvasRunPersistence";
 import { PRODUCTION_CANVAS_STORAGE_KEY } from "./productionCanvasViewModel";
 
 export function ProductionCanvasBoard() {
@@ -39,14 +39,17 @@ export function ProductionCanvasBoard() {
   );
 }
 export function ProductionCanvasContent({
+  autosaveDelayMs = 1200,
   storageKey = PRODUCTION_CANVAS_STORAGE_KEY,
 }: {
+  autosaveDelayMs?: number | null;
   storageKey?: string | null;
 } = {}) {
   const {
     appendNodes,
     canvasRef,
     canvasState,
+    handleAddEdge,
     handleAddNote,
     handleCanvasPointerDown,
     handleCanvasPointerMove,
@@ -54,15 +57,24 @@ export function ProductionCanvasContent({
     handleFit,
     handleNodePointerDown,
     handleReset,
+    handleRemoveEdge,
     handleSelectNode,
+    handleUpdateNodeOutputs,
     handleWheel,
     handleZoomButton,
+    replaceCanvasState,
     selectedNode,
     worldBounds,
     zoomLabel,
   } = useProductionCanvasController(storageKey);
+  const persistence = useProductionCanvasRunPersistence({
+    autosaveDelayMs,
+    canvasState,
+    replaceCanvasState,
+  });
   const planner = useProductionCanvasSkillPlanner({
     onNodesCreated: appendNodes,
+    onRunCreated: persistence.setRunId,
   });
 
   return (
@@ -79,8 +91,10 @@ export function ProductionCanvasContent({
             }
           />
           <ProductionCanvasChatBar
+            context={planner.context}
             error={planner.error}
             onCreate={() => void planner.createFromPrompt()}
+            onContextChange={planner.setContextValue}
             onPromptChange={planner.setPrompt}
             prompt={planner.prompt}
             running={planner.running}
@@ -93,6 +107,14 @@ export function ProductionCanvasContent({
             >
               添加便签
             </button>
+            <ProductionCanvasRunControls
+              busy={persistence.busy}
+              runId={persistence.runId}
+              status={persistence.status}
+              onRestore={() => void persistence.restoreCanvas()}
+              onRunIdChange={persistence.setRunId}
+              onSave={() => void persistence.saveCanvas()}
+            />
             <button
               type="button"
               aria-label="缩小"
@@ -151,6 +173,7 @@ export function ProductionCanvasContent({
             >
               <div className="absolute inset-0 bg-[linear-gradient(#e5e7eb_1px,transparent_1px),linear-gradient(90deg,#e5e7eb_1px,transparent_1px)] bg-[size:32px_32px]" />
               <CanvasEdges
+                edges={canvasState.edges}
                 nodes={canvasState.nodes}
                 width={worldBounds.width}
                 height={worldBounds.height}
@@ -178,6 +201,14 @@ export function ProductionCanvasContent({
             executingNodeId={planner.executingNodeId}
             executionError={planner.executionError}
             onExecuteNode={(node) => void planner.executeSkillNode(node)}
+          />
+          <ProductionCanvasNodeTools
+            edges={canvasState.edges}
+            node={selectedNode}
+            nodes={canvasState.nodes}
+            onAddEdge={handleAddEdge}
+            onRemoveEdge={handleRemoveEdge}
+            onUpdateNodeOutputs={handleUpdateNodeOutputs}
           />
           <OperatorPanel className="p-4">
             <div className="text-xs font-semibold text-gray-950">画布操作</div>

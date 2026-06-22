@@ -12,11 +12,15 @@ from app.services.production_canvas.execution_common import (
     load_script,
     skill_definition,
 )
+from app.services.production_canvas.immediate_execution import (
+    execute_asset_selection,
+    execute_brief_compose,
+)
 from app.services.production_canvas.media_execution import (
-    execute_report_summary,
     execute_storyboard_images,
     execute_storyboard_video_candidates,
 )
+from app.services.production_canvas.report_execution import execute_report_summary
 from app.services.script.generation_queue import queue_script_generation_task
 from app.services.script.timeline_pipeline_queue import queue_timeline_pipeline_task
 from app.services.storyboard.generation_queue import queue_storyboard_generation_task
@@ -172,6 +176,10 @@ def execute_canvas_skill(
     user: User,
     request: ProductionCanvasSkillExecuteRequest,
 ) -> ProductionCanvasSkillExecuteResponse:
+    if request.skill == "brief.compose":
+        return execute_brief_compose(request)
+    if request.skill == "asset.select":
+        return execute_asset_selection(db, user, request)
     if request.skill == "script.generate":
         return _execute_script_generation(db, user, request)
     if request.skill == "storyboard.plan":
