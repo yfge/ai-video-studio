@@ -25,16 +25,10 @@ function hasMissingRequiredInputs(node: ProductionCanvasNode) {
   return Array.isArray(requiredInputs) && requiredInputs.length > 0;
 }
 
-const MANUAL_EXECUTION_SKILLS = new Set([
-  "image.candidates",
-  "video.candidates",
-]);
-
 function isAutoExecutableNode(node: ProductionCanvasNode) {
   return Boolean(
     node.skill &&
       node.status === "ready" &&
-      !MANUAL_EXECUTION_SKILLS.has(node.skill) &&
       !hasMissingRequiredInputs(node),
   );
 }

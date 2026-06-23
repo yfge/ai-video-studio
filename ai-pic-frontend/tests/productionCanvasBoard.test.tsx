@@ -549,4 +549,115 @@ describe("ProductionCanvasBoard", () => {
       globalThis.fetch = originalFetch;
     }
   });
+
+  it("automatically executes ready image and video candidate nodes", async () => {
+    const originalFetch = globalThis.fetch;
+    const executeRequests: Record<string, unknown>[] = [];
+    globalThis.fetch = async (input, init) => {
+      const url = String(input);
+      if (url.includes("/production-canvas/execute")) {
+        const executeRequest = JSON.parse(String(init?.body));
+        executeRequests.push(executeRequest);
+        const taskId = executeRequest.skill === "image.candidates" ? 91 : 92;
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: {
+              task_id: taskId,
+              task_status: "pending",
+              skill_result: {
+                skill: executeRequest.skill,
+                label:
+                  executeRequest.skill === "image.candidates"
+                    ? "Image Candidates"
+                    : "Video Candidates",
+                title:
+                  executeRequest.skill === "image.candidates"
+                    ? "已提交现有分镜图片候选任务"
+                    : "已提交现有分镜视频候选任务",
+                status: "running",
+                detail: "后台已通过现有 worker 执行。",
+                outputs: {
+                  script_id: 321,
+                  dispatched_task_id: taskId,
+                  task_status: "pending",
+                  canvas_run_id: "canvas-run-media",
+                },
+                reuse_targets: [],
+              },
+            },
+          }),
+          { headers: { "content-type": "application/json" } },
+        ) as Promise<Response>;
+      }
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: {
+            run_id: "canvas-run-media",
+            task_id: 44,
+            nodes: [
+              {
+                id: "skill-image-candidates",
+                label: "Image Candidates",
+                title: "现有分镜图片候选入口已就绪",
+                status: "ready",
+                x: 420,
+                y: 360,
+                width: 220,
+                kind: "skill_result",
+                skill: "image.candidates",
+                detail: "后台复用现有分镜图片生成队列。",
+                outputs: { script_id: 321, frame_indexes: [1] },
+                reuse_targets: [],
+              },
+              {
+                id: "skill-video-candidates",
+                label: "Video Candidates",
+                title: "现有分镜视频候选入口已就绪",
+                status: "ready",
+                x: 700,
+                y: 360,
+                width: 220,
+                kind: "skill_result",
+                skill: "video.candidates",
+                detail: "后台复用现有分镜视频生成队列。",
+                outputs: { script_id: 321, frame_indexes: [1] },
+                reuse_targets: [],
+              },
+            ],
+            selected_assets: { virtual_ips: [], environments: [] },
+            skill_manifest: { version: "production_canvas.v1" },
+          },
+        }),
+        { headers: { "content-type": "application/json" } },
+      ) as Promise<Response>;
+    };
+
+    try {
+      const utils = render(<ProductionCanvasContent storageKey={null} />, {
+        container: dom.window.document.body,
+      });
+
+      fireEvent.input(utils.getByLabelText("生产目标"), {
+        target: { value: "基于已有分镜整体生成图片和视频候选" },
+      });
+      fireEvent.click(utils.getByRole("button", { name: "整体创建" }));
+
+      await waitFor(() => {
+        assert.equal(executeRequests.length, 2);
+      });
+      assert.deepEqual(
+        executeRequests.map((request) => request.skill),
+        ["image.candidates", "video.candidates"],
+      );
+      assert.equal(executeRequests[0]?.script_id, 321);
+      assert.deepEqual(executeRequests[0]?.frame_indexes, [1]);
+      assert.equal(executeRequests[0]?.run_id, "canvas-run-media");
+      assert.ok(utils.getByLabelText("Task #91 已提交现有分镜图片候选任务"));
+      assert.ok(utils.getByLabelText("Task #92 已提交现有分镜视频候选任务"));
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });

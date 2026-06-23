@@ -52,6 +52,40 @@ SKILL_DEFINITIONS = [
         ],
     ),
     ProductionCanvasSkillDefinition(
+        id="virtual_ip.image",
+        label="Virtual IP Image",
+        description="Queue existing Virtual IP image generation for the selected character asset.",
+        reuse_targets=[
+            _target(
+                "worker",
+                "Virtual IP image worker",
+                "tasks.virtual_ip_image_generate",
+            ),
+            _target(
+                "service",
+                "Virtual IP image generation",
+                "app.services.ai.images_generation.ImageGenerationService.generate_virtual_ip_image",
+            ),
+        ],
+    ),
+    ProductionCanvasSkillDefinition(
+        id="environment.image",
+        label="Environment Image",
+        description="Queue existing environment text-to-image generation for the selected scene asset.",
+        reuse_targets=[
+            _target(
+                "worker",
+                "Environment image worker",
+                "tasks.environment_image_generate",
+            ),
+            _target(
+                "service",
+                "Environment image generation",
+                "app.services.story_structure.environment_image_generation.generate_environment_images",
+            ),
+        ],
+    ),
+    ProductionCanvasSkillDefinition(
         id="script.generate",
         label="Script Skill",
         description="Queue production script generation through the existing script pipeline.",

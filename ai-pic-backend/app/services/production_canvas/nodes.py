@@ -9,12 +9,14 @@ from app.schemas.production_canvas import (
 NODE_LAYOUT = {
     "brief.compose": (80, 360, 210, None, None),
     "asset.select": (340, 360, 240, "/virtual-ip", "检查资产选择"),
-    "script.generate": (620, 360, 240, "/stories", "进入故事生产"),
-    "storyboard.plan": (900, 360, 240, "/tasks", "查看分镜任务"),
-    "image.candidates": (1180, 360, 250, "/tasks", "查看图片任务"),
-    "video.candidates": (1460, 360, 250, "/tasks", "查看视频任务"),
-    "timeline.assemble": (1740, 360, 250, "/tasks", "查看时间线任务"),
-    "report.summarize": (2020, 360, 240, "/tasks", "查看报告证据"),
+    "virtual_ip.image": (620, 360, 240, "/tasks", "查看 IP 图任务"),
+    "environment.image": (900, 360, 240, "/tasks", "查看环境图任务"),
+    "script.generate": (1180, 360, 240, "/stories", "进入故事生产"),
+    "storyboard.plan": (1460, 360, 240, "/tasks", "查看分镜任务"),
+    "image.candidates": (1740, 360, 250, "/tasks", "查看图片任务"),
+    "video.candidates": (2020, 360, 250, "/tasks", "查看视频任务"),
+    "timeline.assemble": (2300, 360, 250, "/tasks", "查看时间线任务"),
+    "report.summarize": (2580, 360, 240, "/tasks", "查看报告证据"),
 }
 
 

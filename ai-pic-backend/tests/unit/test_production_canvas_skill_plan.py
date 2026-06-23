@@ -68,20 +68,30 @@ def test_canvas_skill_plan_selects_existing_ip_and_environment_pool(db_session):
     )
 
     assert plan.skill_manifest.version == "production_canvas.v1"
-    assert [skill.id for skill in plan.skill_manifest.skills[:4]] == [
+    assert [skill.id for skill in plan.skill_manifest.skills[:6]] == [
         "brief.compose",
         "asset.select",
+        "virtual_ip.image",
+        "environment.image",
         "script.generate",
         "storyboard.plan",
     ]
-    assert [result.skill for result in plan.skill_results[:4]] == [
+    assert [result.skill for result in plan.skill_results[:6]] == [
         "brief.compose",
         "asset.select",
+        "virtual_ip.image",
+        "environment.image",
         "script.generate",
         "storyboard.plan",
     ]
     script_result = next(
         result for result in plan.skill_results if result.skill == "script.generate"
+    )
+    virtual_ip_image_result = next(
+        result for result in plan.skill_results if result.skill == "virtual_ip.image"
+    )
+    environment_image_result = next(
+        result for result in plan.skill_results if result.skill == "environment.image"
     )
     assert script_result.reuse_targets[0].target == (
         "app.api.v1.endpoints.scripts_generation_queue.generate_script_async"
@@ -95,6 +105,10 @@ def test_canvas_skill_plan_selects_existing_ip_and_environment_pool(db_session):
     assert plan.nodes[1].outputs["environment_ids"] == [environment.id]
     assert plan.nodes[1].reuse_targets[0].target.endswith("VirtualIPRepository")
     assert plan.nodes[1].outputs["candidate_environment_ids"] == [environment.id]
+    assert virtual_ip_image_result.status == "ready"
+    assert virtual_ip_image_result.outputs["virtual_ip_ids"] == [virtual_ip.id]
+    assert environment_image_result.status == "ready"
+    assert environment_image_result.outputs["environment_ids"] == [environment.id]
     assert script_result.status == "blocked"
     assert script_result.outputs["required_inputs"] == ["episode_id"]
 
@@ -136,6 +150,16 @@ def test_canvas_skill_plan_does_not_fallback_to_unmatched_assets(db_session):
         "candidate_environment_ids": [],
     }
     assert plan.skill_results[1].status == "blocked"
+    virtual_ip_image_result = next(
+        result for result in plan.skill_results if result.skill == "virtual_ip.image"
+    )
+    environment_image_result = next(
+        result for result in plan.skill_results if result.skill == "environment.image"
+    )
+    assert virtual_ip_image_result.status == "blocked"
+    assert virtual_ip_image_result.outputs["required_inputs"] == ["virtual_ip_id"]
+    assert environment_image_result.status == "blocked"
+    assert environment_image_result.outputs["required_inputs"] == ["environment_id"]
 
 
 def test_canvas_skill_plan_can_select_environment_without_ip(db_session):

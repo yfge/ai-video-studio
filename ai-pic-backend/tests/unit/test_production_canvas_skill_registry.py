@@ -9,6 +9,8 @@ def test_canvas_skill_registry_maps_full_short_drama_chain_to_backend_reuse():
     assert [skill.id for skill in skills] == [
         "brief.compose",
         "asset.select",
+        "virtual_ip.image",
+        "environment.image",
         "script.generate",
         "storyboard.plan",
         "image.candidates",
@@ -17,6 +19,8 @@ def test_canvas_skill_registry_maps_full_short_drama_chain_to_backend_reuse():
         "report.summarize",
     ]
     targets = {target.target for skill in skills for target in skill.reuse_targets}
+    assert "tasks.virtual_ip_image_generate" in targets
+    assert "tasks.environment_image_generate" in targets
     assert (
         "app.services.storyboard.storyboard_image_autogen."
         "queue_storyboard_image_generation"

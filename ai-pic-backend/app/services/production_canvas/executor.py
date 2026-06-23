@@ -12,6 +12,10 @@ from app.services.production_canvas.execution_common import (
     load_script,
     skill_definition,
 )
+from app.services.production_canvas.asset_generation import (
+    execute_environment_image_generation,
+    execute_virtual_ip_image_generation,
+)
 from app.services.production_canvas.immediate_execution import (
     execute_asset_selection,
     execute_brief_compose,
@@ -180,6 +184,10 @@ def execute_canvas_skill(
         return execute_brief_compose(request)
     if request.skill == "asset.select":
         return execute_asset_selection(db, user, request)
+    if request.skill == "virtual_ip.image":
+        return execute_virtual_ip_image_generation(db, user, request)
+    if request.skill == "environment.image":
+        return execute_environment_image_generation(db, user, request)
     if request.skill == "script.generate":
         return _execute_script_generation(db, user, request)
     if request.skill == "storyboard.plan":

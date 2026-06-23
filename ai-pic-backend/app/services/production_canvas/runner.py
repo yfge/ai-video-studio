@@ -42,6 +42,10 @@ def _downstream_status(
     selection: CanvasAssetSelection,
     skill_id: str,
 ) -> CanvasNodeStatus:
+    if skill_id == "virtual_ip.image" and selection.selected.virtual_ips:
+        return "ready"
+    if skill_id == "environment.image" and selection.selected.environments:
+        return "ready"
     if skill_id == "script.generate" and request.episode_id:
         return "ready"
     if (
@@ -76,8 +80,13 @@ def _downstream_outputs(
 
 def _required_inputs(
     request: ProductionCanvasPlanRequest,
+    selection: CanvasAssetSelection,
     skill_id: str,
 ) -> list[str]:
+    if skill_id == "virtual_ip.image" and not selection.selected.virtual_ips:
+        return ["virtual_ip_id"]
+    if skill_id == "environment.image" and not selection.selected.environments:
+        return ["environment_id"]
     if skill_id == "script.generate" and request.episode_id is None:
         return ["episode_id"]
     if (
@@ -96,8 +105,12 @@ def _required_inputs(
     return []
 
 
-def _downstream_detail(request: ProductionCanvasPlanRequest, skill_id: str) -> str:
-    if not _required_inputs(request, skill_id):
+def _downstream_detail(
+    request: ProductionCanvasPlanRequest,
+    selection: CanvasAssetSelection,
+    skill_id: str,
+) -> str:
+    if not _required_inputs(request, selection, skill_id):
         return "后台复用现有 API、service 或 worker；前端只展示执行结果。"
     return "需要先补齐执行上下文，之后才会调用现有生成 API、service 或 worker。"
 
@@ -137,7 +150,7 @@ def build_canvas_skill_results(
             )
             continue
         outputs = dict(downstream_outputs)
-        required_inputs = _required_inputs(request, skill.id)
+        required_inputs = _required_inputs(request, selection, skill.id)
         if required_inputs:
             outputs["required_inputs"] = required_inputs
         results.append(
@@ -146,7 +159,7 @@ def build_canvas_skill_results(
                 label=skill.label,
                 status=_downstream_status(request, selection, skill.id),
                 title=skill.description,
-                detail=_downstream_detail(request, skill.id),
+                detail=_downstream_detail(request, selection, skill.id),
                 outputs=outputs,
                 reuse_targets=skill.reuse_targets,
             )

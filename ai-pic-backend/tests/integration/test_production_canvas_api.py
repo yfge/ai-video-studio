@@ -70,9 +70,12 @@ def test_production_canvas_plan_api_reuses_ip_environment_assets(client, db_sess
     assert payload["selected_assets"]["virtual_ips"][0]["name"] == "林妹妹"
     assert payload["selected_assets"]["environments"][0]["name"] == "共享办公区"
     assert payload["skill_results"][1]["skill"] == "asset.select"
-    assert payload["skill_results"][2]["reuse_targets"][0]["target"].endswith(
-        "generate_script_async"
+    script_result = next(
+        result
+        for result in payload["skill_results"]
+        if result["skill"] == "script.generate"
     )
+    assert script_result["reuse_targets"][0]["target"].endswith("generate_script_async")
     assert payload["task_id"]
     assert payload["run_id"]
     assert payload["nodes"][1]["skill"] == "asset.select"
