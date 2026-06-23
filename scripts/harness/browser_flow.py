@@ -52,6 +52,12 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=int(os.getenv("HARNESS_CHROME_DEBUG_PORT", "9222")),
     )
+    parser.add_argument(
+        "--browser-driver-timeout-seconds",
+        type=int,
+        default=int(os.getenv("HARNESS_BROWSER_DRIVER_TIMEOUT_SECONDS", "90")),
+        help="Maximum seconds to wait for each Node browser driver attempt.",
+    )
     return parser.parse_args()
 
 
@@ -93,12 +99,24 @@ def run_browser_driver(
         json.dumps(browser_driver_config(url, screenshot_path, args), ensure_ascii=False),
         engine,
     ]
-    completed = subprocess.run(
-        command,
-        cwd=Path(__file__).resolve().parents[2] / "ai-pic-frontend",
-        text=True,
-        capture_output=True,
-    )
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=Path(__file__).resolve().parents[2] / "ai-pic-frontend",
+            text=True,
+            capture_output=True,
+            timeout=args.browser_driver_timeout_seconds,
+        )
+    except subprocess.TimeoutExpired:
+        return {
+            "engine": engine,
+            "ok": False,
+            "error": (
+                "Browser driver timed out after "
+                f"{args.browser_driver_timeout_seconds}s"
+            ),
+            "timeoutSeconds": args.browser_driver_timeout_seconds,
+        }
     if completed.returncode != 0:
         return {"engine": engine, "ok": False, "error": completed.stderr.strip()}
     return json.loads(completed.stdout or "{}")

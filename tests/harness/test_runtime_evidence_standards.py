@@ -1,4 +1,5 @@
 import sys
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -41,6 +42,37 @@ def test_browser_flow_writes_evidence_standard_metadata(tmp_path, monkeypatch) -
     summary = _common.read_json(run_dir / "summary.json")
     assert browser_artifact["standard_ids"] == ["STD-EVIDENCE-001"]
     assert summary["standard_ids"] == ["STD-EVIDENCE-001"]
+
+
+def test_browser_driver_timeout_is_recorded_as_failed_attempt(
+    tmp_path, monkeypatch
+) -> None:
+    def raise_timeout(*_args, **_kwargs):
+        raise subprocess.TimeoutExpired(cmd=["node", "browser_driver.js"], timeout=7)
+
+    monkeypatch.setattr(browser_flow.subprocess, "run", raise_timeout)
+
+    result = browser_flow.run_browser_driver(
+        "playwright",
+        "http://localhost:8089/canvas",
+        tmp_path / "canvas.png",
+        SimpleNamespace(
+            base_url="http://localhost:8089",
+            browser_driver_timeout_seconds=7,
+            chrome_debug_port=9333,
+            chrome_debug_url="http://127.0.0.1:9333",
+            password="",
+            scenario="canvas_smoke",
+            username="",
+        ),
+    )
+
+    assert result == {
+        "engine": "playwright",
+        "ok": False,
+        "error": "Browser driver timed out after 7s",
+        "timeoutSeconds": 7,
+    }
 
 
 def test_golden_path_missing_input_carries_evidence_standard() -> None:
