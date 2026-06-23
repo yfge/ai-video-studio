@@ -7,6 +7,7 @@ import {
   type ProductionCanvasContextKey,
 } from "./productionCanvasContext";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
+import { applyProductionCanvasContext } from "./productionCanvasState";
 import {
   firstOutputNumber,
   outputBoolean,
@@ -18,6 +19,36 @@ import {
   productionCanvasSkillResultToTaskNode,
   taskOutputNumber,
 } from "./productionCanvasSkillNodes";
+
+function hasMissingRequiredInputs(node: ProductionCanvasNode) {
+  const requiredInputs = node.outputs?.required_inputs;
+  return Array.isArray(requiredInputs) && requiredInputs.length > 0;
+}
+
+const MANUAL_EXECUTION_SKILLS = new Set([
+  "image.candidates",
+  "video.candidates",
+]);
+
+function isAutoExecutableNode(node: ProductionCanvasNode) {
+  return Boolean(
+    node.skill &&
+      node.status === "ready" &&
+      !MANUAL_EXECUTION_SKILLS.has(node.skill) &&
+      !hasMissingRequiredInputs(node),
+  );
+}
+
+function upsertCanvasNodes(
+  currentNodes: ProductionCanvasNode[],
+  incomingNodes: ProductionCanvasNode[],
+) {
+  const incomingIds = new Set(incomingNodes.map((node) => node.id));
+  return applyProductionCanvasContext([
+    ...currentNodes.filter((node) => !incomingIds.has(node.id)),
+    ...incomingNodes,
+  ]);
+}
 
 export function useProductionCanvasSkillPlanner({
   onNodesCreated,
@@ -37,11 +68,78 @@ export function useProductionCanvasSkillPlanner({
     setContext((current) => ({ ...current, [key]: value }));
   };
 
+  const executeSkillRequest = async (
+    node: ProductionCanvasNode,
+    fallbackPrompt?: string,
+  ) => {
+    const response = await productionCanvasAPI.executeSkill({
+      prompt:
+        fallbackPrompt ||
+        prompt.trim() ||
+        outputString(node.outputs, "prompt") ||
+        node.title,
+      skill: node.skill || "",
+      run_id: outputString(node.outputs, "canvas_run_id"),
+      frame_indexes: outputNumberArray(node.outputs, "frame_indexes"),
+      model: outputString(node.outputs, "model"),
+      aspect_ratio: outputString(node.outputs, "aspect_ratio"),
+      require_reference_images: outputBoolean(
+        node.outputs,
+        "require_reference_images",
+      ),
+      duration: outputNumber(node.outputs, "duration"),
+      fps: outputNumber(node.outputs, "fps"),
+      resolution: outputString(node.outputs, "resolution"),
+      ratio: outputString(node.outputs, "ratio"),
+      camera_fixed: outputBoolean(node.outputs, "camera_fixed"),
+      episode_id: outputNumber(node.outputs, "episode_id"),
+      script_id: outputNumber(node.outputs, "script_id"),
+      task_id: taskOutputNumber(node.outputs),
+      virtual_ip_id: firstOutputNumber(node.outputs, "virtual_ip_ids"),
+      environment_id: firstOutputNumber(node.outputs, "environment_ids"),
+    });
+    if (!response.success || !response.data) {
+      throw new Error(response.error || "Skill 执行失败");
+    }
+    const skillNode = productionCanvasSkillResultToNode(
+      node,
+      response.data.skill_result,
+    );
+    const taskNode = productionCanvasSkillResultToTaskNode(
+      node,
+      response.data.skill_result,
+      response.data,
+    );
+    return taskNode ? [skillNode, taskNode] : [skillNode];
+  };
+
+  const executeReadyNodes = async (
+    initialNodes: ProductionCanvasNode[],
+    fallbackPrompt: string,
+  ) => {
+    const attemptedNodeIds = new Set<string>();
+    let workingNodes = initialNodes;
+    while (true) {
+      const node = workingNodes.find(
+        (candidate) =>
+          isAutoExecutableNode(candidate) &&
+          !attemptedNodeIds.has(candidate.id),
+      );
+      if (!node) return;
+      attemptedNodeIds.add(node.id);
+      setExecutingNodeId(node.id);
+      const resultNodes = await executeSkillRequest(node, fallbackPrompt);
+      onNodesCreated(resultNodes);
+      workingNodes = upsertCanvasNodes(workingNodes, resultNodes);
+    }
+  };
+
   const createFromPrompt = async () => {
     const trimmed = prompt.trim();
     if (!trimmed || running) return;
     setRunning(true);
     setError(null);
+    setExecutionError(null);
     try {
       const requestContext = productionCanvasRequestContext(context);
       const response = await productionCanvasAPI.createPlan({
@@ -55,14 +153,15 @@ export function useProductionCanvasSkillPlanner({
       const plan = response.data;
       if (plan.run_id) onRunCreated?.(plan.run_id);
       const contextOutputs = productionCanvasContextOutputs(requestContext);
-      onNodesCreated(
-        plan.nodes.map((node) =>
-          productionCanvasPlanNodeToCanvasNode(node, plan, contextOutputs),
-        ),
+      const createdNodes = plan.nodes.map((node) =>
+        productionCanvasPlanNodeToCanvasNode(node, plan, contextOutputs),
       );
+      onNodesCreated(createdNodes);
+      await executeReadyNodes(createdNodes, trimmed);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
+      setExecutingNodeId(null);
       setRunning(false);
     }
   };
@@ -72,43 +171,7 @@ export function useProductionCanvasSkillPlanner({
     setExecutingNodeId(node.id);
     setExecutionError(null);
     try {
-      const response = await productionCanvasAPI.executeSkill({
-        prompt:
-          prompt.trim() || outputString(node.outputs, "prompt") || node.title,
-        skill: node.skill,
-        run_id: outputString(node.outputs, "canvas_run_id"),
-        frame_indexes: outputNumberArray(node.outputs, "frame_indexes"),
-        model: outputString(node.outputs, "model"),
-        aspect_ratio: outputString(node.outputs, "aspect_ratio"),
-        require_reference_images: outputBoolean(
-          node.outputs,
-          "require_reference_images",
-        ),
-        duration: outputNumber(node.outputs, "duration"),
-        fps: outputNumber(node.outputs, "fps"),
-        resolution: outputString(node.outputs, "resolution"),
-        ratio: outputString(node.outputs, "ratio"),
-        camera_fixed: outputBoolean(node.outputs, "camera_fixed"),
-        episode_id: outputNumber(node.outputs, "episode_id"),
-        script_id: outputNumber(node.outputs, "script_id"),
-        task_id: taskOutputNumber(node.outputs),
-        virtual_ip_id: firstOutputNumber(node.outputs, "virtual_ip_ids"),
-        environment_id: firstOutputNumber(node.outputs, "environment_ids"),
-      });
-      if (!response.success || !response.data) {
-        setExecutionError(response.error || "Skill 执行失败");
-        return;
-      }
-      const skillNode = productionCanvasSkillResultToNode(
-        node,
-        response.data.skill_result,
-      );
-      const taskNode = productionCanvasSkillResultToTaskNode(
-        node,
-        response.data.skill_result,
-        response.data,
-      );
-      onNodesCreated(taskNode ? [skillNode, taskNode] : [skillNode]);
+      onNodesCreated(await executeSkillRequest(node));
     } catch (err) {
       setExecutionError(err instanceof Error ? err.message : String(err));
     } finally {

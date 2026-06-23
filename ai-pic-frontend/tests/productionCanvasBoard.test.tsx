@@ -413,11 +413,11 @@ describe("ProductionCanvasBoard", () => {
       assert.equal(planRequests[0]?.episode_id, 123);
       assert.equal(planRequests[0]?.task_id, 44);
       assert.ok(utils.getAllByText("已选择林妹妹和共享办公区").length >= 1);
-      assert.ok(
-        utils.getAllByText("复用现有 IP：林妹妹；环境：共享办公区").length >= 1,
-      );
       fireEvent.click(
         utils.getByLabelText("Asset Selection 已选择林妹妹和共享办公区"),
+      );
+      assert.ok(
+        utils.getAllByText("复用现有 IP：林妹妹；环境：共享办公区").length >= 1,
       );
       assert.ok(utils.getByText("后台复用"));
       assert.ok(utils.getByText("Environment repository"));
@@ -425,37 +425,22 @@ describe("ProductionCanvasBoard", () => {
       assert.ok(utils.getByText("canvas_run_id: canvas-run-123"));
       assert.ok(utils.getByText("canvas_task_id: 44"));
 
-      fireEvent.click(
-        utils.getByLabelText("Script Skill 现有剧本生成入口已就绪"),
-      );
-      fireEvent.click(
-        utils.getByRole("button", { name: "后台执行 Script Skill" }),
-      );
-      await waitFor(() => assert.ok(utils.getByText("dispatched_task_id: 77")));
+      await waitFor(() => assert.equal(executeRequests.length >= 1, true));
       assert.equal(executeRequests[0]?.skill, "script.generate");
       assert.equal(executeRequests[0]?.episode_id, 123);
       assert.equal(executeRequests[0]?.task_id, 44);
       assert.equal(executeRequests[0]?.run_id, "canvas-run-123");
       assert.ok(utils.getByLabelText("Task #77 已提交现有剧本生成任务"));
-      assert.ok(utils.getByText("Script Celery worker"));
 
-      fireEvent.click(
-        utils.getByLabelText("Storyboard Skill 现有分镜生成入口已就绪"),
-      );
-      fireEvent.click(
-        utils.getByRole("button", { name: "后台执行 Storyboard Skill" }),
-      );
-      await waitFor(() => assert.ok(utils.getByText("dispatched_task_id: 88")));
+      await waitFor(() => assert.equal(executeRequests.length >= 2, true));
       assert.equal(executeRequests[1]?.skill, "storyboard.plan");
       assert.equal(executeRequests[1]?.script_id, 321);
       assert.equal(executeRequests[1]?.task_id, 77);
       assert.equal(executeRequests[1]?.run_id, "canvas-run-123");
-      assert.ok(utils.getByText("Storyboard Celery worker"));
+      assert.ok(utils.getByLabelText("Task #88 已提交现有分镜生成任务"));
 
-      fireEvent.click(
-        utils.getByLabelText("Report Skill 等待汇总画布执行证据"),
-      );
-      fireEvent.click(utils.getByRole("button", { name: "后台执行" }));
+      await waitFor(() => assert.equal(executeRequests.length >= 3, true));
+      fireEvent.click(utils.getByLabelText("Report Skill 已汇总现有任务证据"));
       await waitFor(() =>
         assert.ok(utils.getByText("source_kind: production_canvas_run")),
       );
@@ -463,6 +448,103 @@ describe("ProductionCanvasBoard", () => {
       assert.equal(executeRequests[2]?.task_id, 88);
       assert.equal(executeRequests[2]?.run_id, "canvas-run-123");
       assert.ok(utils.getByText("Task audit endpoint"));
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("automatically executes ready skill nodes after whole-canvas creation", async () => {
+    const originalFetch = globalThis.fetch;
+    const executeRequests: Record<string, unknown>[] = [];
+    globalThis.fetch = async (input, init) => {
+      const url = String(input);
+      if (url.includes("/production-canvas/execute")) {
+        const executeRequest = JSON.parse(String(init?.body));
+        executeRequests.push(executeRequest);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: {
+              task_id: 77,
+              task_status: "pending",
+              skill_result: {
+                skill: "script.generate",
+                label: "Script Skill",
+                title: "已提交现有剧本生成任务",
+                status: "running",
+                detail: "后台已通过现有 SCRIPT_GENERATION Celery worker 执行。",
+                outputs: {
+                  episode_id: 123,
+                  dispatched_task_id: 77,
+                  task_status: "pending",
+                  canvas_run_id: "canvas-run-auto",
+                },
+                reuse_targets: [
+                  {
+                    kind: "worker",
+                    label: "Script Celery worker",
+                    target: "app.services.task_worker.script_generate_task",
+                  },
+                ],
+              },
+            },
+          }),
+          { headers: { "content-type": "application/json" } },
+        ) as Promise<Response>;
+      }
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: {
+            run_id: "canvas-run-auto",
+            task_id: 44,
+            nodes: [
+              {
+                id: "skill-script-generate",
+                label: "Script Skill",
+                title: "现有剧本生成入口已就绪",
+                status: "ready",
+                x: 420,
+                y: 360,
+                width: 220,
+                kind: "skill_result",
+                skill: "script.generate",
+                detail: "后台复用现有剧本生成队列。",
+                outputs: { episode_id: 123 },
+                reuse_targets: [
+                  {
+                    kind: "api",
+                    label: "Script async endpoint",
+                    target:
+                      "app.api.v1.endpoints.scripts_generation_queue.generate_script_async",
+                  },
+                ],
+              },
+            ],
+            selected_assets: { virtual_ips: [], environments: [] },
+            skill_manifest: { version: "production_canvas.v1" },
+          },
+        }),
+        { headers: { "content-type": "application/json" } },
+      ) as Promise<Response>;
+    };
+
+    try {
+      const utils = render(<ProductionCanvasContent storageKey={null} />, {
+        container: dom.window.document.body,
+      });
+
+      fireEvent.input(utils.getByLabelText("生产目标"), {
+        target: { value: "基于林妹妹整体创建短剧" },
+      });
+      fireEvent.click(utils.getByRole("button", { name: "整体创建" }));
+
+      await waitFor(() => {
+        assert.equal(executeRequests.length, 1);
+      });
+      assert.equal(executeRequests[0]?.skill, "script.generate");
+      assert.equal(executeRequests[0]?.run_id, "canvas-run-auto");
+      assert.ok(utils.getByLabelText("Task #77 已提交现有剧本生成任务"));
     } finally {
       globalThis.fetch = originalFetch;
     }
