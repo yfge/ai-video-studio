@@ -40,6 +40,8 @@ export function TimelineClipVideoReworkCard({
   selectedCharacterVirtualIpIds,
   selectedCharacterReferenceUrls,
   selectedEnvironmentReferenceUrls,
+  humanReviewRequired,
+  operatorReviewed,
   videoModels,
   videoModelsLoading,
   submitting,
@@ -56,6 +58,7 @@ export function TimelineClipVideoReworkCard({
   onRatioChange,
   onReasonChange,
   onVideoReferenceChoiceChange,
+  onOperatorReviewedChange,
 }: {
   action: TimelineClipVideoReworkAction;
   prompt: string;
@@ -72,6 +75,8 @@ export function TimelineClipVideoReworkCard({
   selectedCharacterVirtualIpIds: number[];
   selectedCharacterReferenceUrls: string[];
   selectedEnvironmentReferenceUrls: string[];
+  humanReviewRequired: boolean;
+  operatorReviewed: boolean;
   videoModels?: VideoModelOption[];
   videoModelsLoading?: boolean;
   submitting: boolean;
@@ -88,6 +93,7 @@ export function TimelineClipVideoReworkCard({
   onRatioChange: (value: string) => void;
   onReasonChange: (value: string) => void;
   onVideoReferenceChoiceChange: (value: TimelineVideoReferenceChoice) => void;
+  onOperatorReviewedChange: (value: boolean) => void;
 }) {
   return (
     <ClipProductionActionShell
@@ -192,6 +198,23 @@ export function TimelineClipVideoReworkCard({
           manualRefsAvailable={manualReferenceAvailable}
           onChange={onVideoReferenceChoiceChange}
         />
+        {humanReviewRequired ? (
+          <label className="flex items-start gap-2 rounded-md border border-amber-100 bg-amber-50 px-2 py-1.5 text-xs text-amber-800">
+            <input
+              type="checkbox"
+              aria-label="已完成人工复核"
+              checked={operatorReviewed}
+              onChange={(event) =>
+                onOperatorReviewedChange(event.target.checked)
+              }
+              className="mt-0.5"
+            />
+            <span className="grid gap-0.5">
+              <span className="font-semibold">已完成人工复核</span>
+              <span>确认脚本质量、合规风险和关键帧一致性后再生视频。</span>
+            </span>
+          </label>
+        ) : null}
       </div>
       <div className="grid gap-2">
         {!canSubmit && disabledReason ? (

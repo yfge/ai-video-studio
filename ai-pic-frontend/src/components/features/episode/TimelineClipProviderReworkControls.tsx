@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { timelineAPI } from "@/utils/api/endpoints";
+import type { Environment, EpisodeCharacter } from "@/utils/api/types";
 import type {
-  Environment,
-  EpisodeCharacter,
   TimelineClipStoryboardStyle,
   TimelineClipVideoReworkAction,
 } from "@/utils/api/types";
@@ -63,10 +62,12 @@ export function TimelineClipProviderReworkControls({
   const [storyboardStyle, setStoryboardStyle] =
     useState<TimelineClipStoryboardStyle>("live_action");
   const [storyboardPanelCount, setStoryboardPanelCount] = useState("4");
+  const [operatorReviewed, setOperatorReviewed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const isVideoClip = isTimelineVideoClip(item);
-  const productionReadiness = timelineClipProductionReadiness(item);
+  useEffect(() => setOperatorReviewed(false), [clipId]);
+  const productionReadiness = timelineClipProductionReadiness(item, operatorReviewed);
   const parsedDuration = parseOptionalNumber(duration);
   const referenceImages = parseReferenceImagesInput(referenceImagesInput);
   const { selectedStoryboardVirtualIpIds, handleStoryboardVirtualIpToggle } =
@@ -120,11 +121,7 @@ export function TimelineClipProviderReworkControls({
     effectiveReferenceChoice = "start_end";
   }
   const canSubmit = Boolean(
-    timelineId &&
-      timelineVersion &&
-      clipId &&
-      productionReadiness.canGenerateVideo &&
-      !submitting,
+    timelineId && timelineVersion && clipId && productionReadiness.canGenerateVideo && !submitting,
   );
 
   if (!isVideoClip) return null;
@@ -164,6 +161,7 @@ export function TimelineClipProviderReworkControls({
       reason,
       referenceChoice: effectiveReferenceChoice,
       referenceImages,
+      operatorReviewed,
       characterVirtualIpIds: selectedStoryboardVirtualIpIds,
       characterReferenceImages:
         storyboardReferenceSelection.selectedStoryboardCharacterReferenceImages,
@@ -203,6 +201,7 @@ export function TimelineClipProviderReworkControls({
       reason={reason}
       videoReferenceChoice={videoReferenceChoice}
       referenceImagesInput={referenceImagesInput}
+      operatorReviewed={operatorReviewed}
       productionReadiness={productionReadiness}
       manualReferenceAvailable
       storyboardModel={storyboardModel}
@@ -238,6 +237,7 @@ export function TimelineClipProviderReworkControls({
       onReasonChange={setReason}
       onVideoReferenceChoiceChange={setVideoReferenceChoice}
       onReferenceImagesInputChange={setReferenceImagesInput}
+      onOperatorReviewedChange={setOperatorReviewed}
       onStoryboardModelChange={setStoryboardModel}
       onStoryboardStyleChange={setStoryboardStyle}
       onStoryboardPanelCountChange={setStoryboardPanelCount}

@@ -9,14 +9,8 @@ from app.models.task import TaskType
 from app.models.timeline import Timeline
 from app.models.user import User
 from app.repositories.task_repository import TaskRepository
-from app.repositories.timeline_repository import (
-    MediaAssetRepository,
-    TimelineRepository,
-)
-from app.schemas.timeline import (
-    TimelineClipVideoReworkTaskRequest,
-    TimelineClipVideoReworkTaskResponse,
-)
+from app.repositories.timeline_repository import MediaAssetRepository, TimelineRepository
+from app.schemas.timeline import TimelineClipVideoReworkTaskRequest, TimelineClipVideoReworkTaskResponse
 from app.services.timeline_clip_video_grid_reference import (
     build_clip_storyboard_rework_payload,
     build_grid_storyboard_rework_payload,
@@ -33,6 +27,7 @@ from app.services.timeline_clip_video_rework_helpers import (
     clip_prompt,
     dedupe_strings,
     maybe_int,
+    requires_operator_review,
     render_preset,
     story_owner_filter,
     string_value,
@@ -70,6 +65,11 @@ class TimelineClipVideoReworkQueueService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="video rework requires a video clip",
             )
+        if requires_operator_review(clip) and not payload.operator_reviewed:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="operator review required before video generation",
+            )
         task_payload = self._task_payload(timeline, clip_id, clip, payload)
         task = self.tasks.create(
             target_business_id=timeline.business_id,
@@ -84,8 +84,7 @@ class TimelineClipVideoReworkQueueService:
         self.db.refresh(task)
         dispatch_timeline_clip_video_rework_task(task, task_payload, current_user)
         status_value = getattr(task.status, "value", task.status)
-        response = TimelineClipVideoReworkTaskResponse
-        return response(task_id=task.id, status=str(status_value))
+        return TimelineClipVideoReworkTaskResponse(task_id=task.id, status=str(status_value))
 
     def _task_payload(
         self,
@@ -161,6 +160,7 @@ class TimelineClipVideoReworkQueueService:
             "resolution": payload.resolution,
             "ratio": payload.ratio,
             "return_last_frame": payload.return_last_frame,
+            "operator_reviewed": payload.operator_reviewed,
             "auto_render": True,
             "render_type": "final",
             "render_preset": render_preset(timeline),

@@ -111,6 +111,26 @@ describe("timeline clip rework controls", () => {
     );
   });
 
+  it("adds operator review confirmation to provider video payloads", () => {
+    assert.deepEqual(
+      buildTimelineClipVideoReworkTaskPayload({
+        expectedVersion: 5,
+        action: "re_cut",
+        resolution: "720p",
+        operatorReviewed: true,
+      }),
+      {
+        expected_version: 5,
+        action: "re_cut",
+        resolution: "720p",
+        asset_role: "generated_video",
+        use_end_frame: true,
+        return_last_frame: true,
+        operator_reviewed: true,
+      },
+    );
+  });
+
   it("recognizes native Timeline video clips only", () => {
     assert.equal(
       isTimelineVideoClip({
@@ -405,6 +425,51 @@ describe("timeline clip rework controls", () => {
         asset_role: "generated_video",
         use_end_frame: true,
         return_last_frame: true,
+      }),
+    );
+  });
+
+  it("requires operator review for short-drama review-gated video clips", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ task_id: 77, status: "pending" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    const utils = render(
+      React.createElement(TimelineClipProviderReworkControls, {
+        timelineId: 8,
+        timelineVersion: 3,
+        clipId: "video_scene_1_beat_1_001",
+        item: videoClipWithPendingHumanReview(),
+      }),
+      { container: dom.window.document.body },
+    );
+
+    const videoButton = utils.getByRole("button", {
+      name: "生成/重做此片段视频",
+    }) as HTMLButtonElement;
+    assert.equal(videoButton.disabled, true);
+    assert.ok(utils.getByText("先完成人工复核"));
+
+    fireEvent.click(utils.getByLabelText("已完成人工复核"));
+
+    assert.equal(videoButton.disabled, false);
+    fireEvent.click(videoButton);
+    await waitFor(() => assert.equal(calls.length, 1));
+    assert.equal(
+      calls[0].init?.body,
+      JSON.stringify({
+        expected_version: 3,
+        action: "re_cut",
+        resolution: "720p",
+        asset_role: "generated_video",
+        use_end_frame: true,
+        return_last_frame: true,
+        operator_reviewed: true,
       }),
     );
   });
@@ -1223,6 +1288,23 @@ function videoClipWithTimelineShotPlanOnly() {
         timeline_shot_plan: {
           video_prompt: "Timeline shot plan motion prompt",
           motion_timeline: [{ at_ms: 0, action: "open with a tense push-in" }],
+        },
+      },
+    },
+  };
+}
+
+function videoClipWithPendingHumanReview() {
+  const clip = videoClipWithStoryboardPanel();
+  return {
+    ...clip,
+    meta: {
+      ...clip.meta,
+      source_refs: {
+        ...clip.meta.source_refs,
+        human_review: {
+          required: true,
+          status: "pending",
         },
       },
     },

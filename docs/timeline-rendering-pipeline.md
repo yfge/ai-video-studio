@@ -74,6 +74,21 @@ Required envelope fields:
 - `duration_ms`: total playable duration.
 - `tracks`: ordered list of tracks.
 
+Optional short-drama production metadata may live beside `tracks`:
+
+- `production_context`: platform, region, language, aspect ratio, compliance,
+  and business-goal assumptions used by the generated episode.
+- `concept_test_pack`: draft hook/ad variants for operator review before scaling
+  production.
+- `short_drama_quality`: compact scores such as hook, conflict turn,
+  cliffhanger, vertical readability, and compliance risk.
+- `localization_exports`: source language plus planned subtitle/dub variants.
+- `feedback_loop`: post-release metrics expected for manual or CSV import.
+
+This metadata informs prompts, review gates, localization, and later feedback
+analysis. It does not replace Timeline ordering, timing, render state, or export
+state.
+
 Minimum v1 track types:
 
 - `dialogue`: audio clips from scene dialogue or episode audio.
@@ -144,6 +159,14 @@ During transition, clip `asset_ref` may still contain raw legacy URLs or object
 locators; Timeline create/update/import/rollback and render completion sync
 those locators into `media_assets` and `timeline_clip_assets` lineage where the
 current code can resolve them.
+
+Short-drama video clips may also include support metadata under `source_refs`:
+
+- `vertical_visual_contract`: 9:16 mobile-safe framing and readability hints.
+- `short_drama_quality`: clip role such as opening hook, conflict turn, or
+  cliffhanger.
+- `human_review`: operator gate status for script quality, compliance risk, and
+  keyframe identity before expensive video generation.
 
 ### Timeline Shot Plan Prompt Bundle
 

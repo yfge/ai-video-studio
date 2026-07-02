@@ -72,3 +72,15 @@ def dedupe_strings(values: list[Any]) -> list[str]:
         if isinstance(value, str) and value.strip() and value.strip() not in deduped:
             deduped.append(value.strip())
     return deduped
+
+
+def requires_operator_review(clip: dict[str, Any]) -> bool:
+    refs = clip.get("source_refs")
+    review = refs.get("human_review") if isinstance(refs, dict) else None
+    if not isinstance(review, dict) or not review.get("required"):
+        return False
+    return str(review.get("status") or "").lower() not in {
+        "approved",
+        "confirmed",
+        "passed",
+    }

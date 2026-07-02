@@ -168,6 +168,7 @@ export interface TimelineClipVideoReworkTaskRequest {
   reference_mode?: TimelineClipVideoReferenceMode | null;
   use_clip_storyboard?: boolean;
   use_storyboard_grid?: boolean;
+  operator_reviewed?: boolean;
   reference_images?: string[] | null;
   character_virtual_ip_ids?: number[] | null;
   character_reference_images?: string[] | null;

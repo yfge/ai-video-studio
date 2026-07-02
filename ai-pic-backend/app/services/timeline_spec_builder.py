@@ -10,6 +10,8 @@ from app.services.timeline_video_pause_policy import (
     DEFAULT_VIDEO_MIN_PAUSE_DURATION_MS,
     video_track_beats,
 )
+from app.services.timeline_short_drama_metadata import attach_short_drama_video_metadata
+from app.services.timeline_short_drama_metadata import build_short_drama_spec_metadata
 
 
 def build_timeline_spec_from_audio_timeline(
@@ -35,6 +37,16 @@ def build_timeline_spec_from_audio_timeline(
     episode_audio = audio_timeline.get("episode_audio")
     if not isinstance(episode_audio, dict):
         episode_audio = {}
+    short_drama_meta = build_short_drama_spec_metadata(
+        episode, script, normalized_beats, duration_ms=duration_ms
+    )
+    video_clips = [
+        _clip("video", beat, source_version, episode_audio) for beat in video_beats
+    ]
+    attach_short_drama_video_metadata(
+        video_clips,
+        short_drama_meta["production_context"],
+    )
 
     return {
         "spec_version": "timeline.v1",
@@ -66,10 +78,7 @@ def build_timeline_spec_from_audio_timeline(
             },
             {
                 "track_type": "video",
-                "clips": [
-                    _clip("video", beat, source_version, episode_audio)
-                    for beat in video_beats
-                ],
+                "clips": video_clips,
             },
             {
                 "track_type": "subtitle",
@@ -87,6 +96,7 @@ def build_timeline_spec_from_audio_timeline(
                 "source": "timeline.v1",
             }
         },
+        **short_drama_meta,
     }
 
 

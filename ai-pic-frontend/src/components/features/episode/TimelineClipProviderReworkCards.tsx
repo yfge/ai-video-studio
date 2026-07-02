@@ -38,6 +38,7 @@ export function TimelineClipProviderReworkCards({
   reason,
   videoReferenceChoice,
   referenceImagesInput,
+  operatorReviewed,
   productionReadiness,
   manualReferenceAvailable,
   storyboardModel,
@@ -73,6 +74,7 @@ export function TimelineClipProviderReworkCards({
   onReasonChange,
   onVideoReferenceChoiceChange,
   onReferenceImagesInputChange,
+  onOperatorReviewedChange,
   onStoryboardModelChange,
   onStoryboardStyleChange,
   onStoryboardPanelCountChange,
@@ -90,6 +92,7 @@ export function TimelineClipProviderReworkCards({
   reason: string;
   videoReferenceChoice: TimelineVideoReferenceChoice;
   referenceImagesInput: string;
+  operatorReviewed: boolean;
   productionReadiness: TimelineClipProductionReadiness;
   manualReferenceAvailable: boolean;
   storyboardModel: string;
@@ -125,6 +128,7 @@ export function TimelineClipProviderReworkCards({
   onReasonChange: (value: string) => void;
   onVideoReferenceChoiceChange: (value: TimelineVideoReferenceChoice) => void;
   onReferenceImagesInputChange: (value: string) => void;
+  onOperatorReviewedChange: (value: boolean) => void;
   onStoryboardModelChange: (value: string) => void;
   onStoryboardStyleChange: (
     value: "2d_cartoon" | "3d_cartoon" | "live_action",
@@ -214,6 +218,8 @@ export function TimelineClipProviderReworkCards({
             selectedEnvironmentReferenceUrls={
               storyboardReferenceSelection.selectedStoryboardEnvironmentReferenceImages
             }
+            humanReviewRequired={productionReadiness.humanReviewRequired}
+            operatorReviewed={operatorReviewed}
             submitting={submitting}
             submitError={submitError}
             canSubmit={canSubmit}
@@ -230,6 +236,7 @@ export function TimelineClipProviderReworkCards({
             onRatioChange={onRatioChange}
             onReasonChange={onReasonChange}
             onVideoReferenceChoiceChange={onVideoReferenceChoiceChange}
+            onOperatorReviewedChange={onOperatorReviewedChange}
           />
         </div>
       </div>

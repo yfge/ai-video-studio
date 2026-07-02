@@ -181,6 +181,7 @@ class TimelineClipVideoReworkSubmissionService:
             "auto_render": payload.get("auto_render"),
             "render_type": payload.get("render_type"),
             "render_preset": payload.get("render_preset"),
+            "operator_reviewed": payload.get("operator_reviewed"),
             "reference_mode": payload.get("reference_mode"),
             "clip_storyboard": payload.get("clip_storyboard"),
             "storyboard_grid": payload.get("storyboard_grid"),

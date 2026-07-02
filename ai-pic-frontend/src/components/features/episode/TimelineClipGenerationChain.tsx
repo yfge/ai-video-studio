@@ -32,9 +32,17 @@ export function TimelineClipGenerationChain({
       detail: readiness.keyframeStatus.label,
     },
     {
+      label: "人工复核",
+      state: readiness.humanReviewReady ? "ready" : "blocked",
+      detail: readiness.humanReviewLabel,
+    },
+    {
       label: "生视频：片段视频",
       state: readiness.canGenerateVideo ? "ready" : "blocked",
-      detail: readiness.videoGateMessage || "可以生成片段视频",
+      detail:
+        readiness.humanReviewRequired && !readiness.humanReviewReady
+          ? "等待人工复核"
+          : readiness.videoGateMessage || "可以生成片段视频",
     },
   ];
 
@@ -42,7 +50,7 @@ export function TimelineClipGenerationChain({
     <section
       aria-label="片段生图生视频链路"
       data-clip-generation-chain="true"
-      className="mb-2 grid gap-1.5 rounded-md border border-blue-100 bg-blue-50/60 p-2 text-[11px] text-slate-700 min-[760px]:grid-cols-4"
+      className="mb-2 grid gap-1.5 rounded-md border border-blue-100 bg-blue-50/60 p-2 text-[11px] text-slate-700 min-[760px]:grid-cols-5"
     >
       {steps.map((step, index) => (
         <div

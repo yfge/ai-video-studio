@@ -39,6 +39,7 @@ export function buildTimelineClipVideoReworkTaskPayload({
   characterVirtualIpIds,
   characterReferenceImages,
   environmentReferenceImages,
+  operatorReviewed,
 }: {
   expectedVersion: number;
   action: TimelineClipVideoReworkAction;
@@ -54,6 +55,7 @@ export function buildTimelineClipVideoReworkTaskPayload({
   characterVirtualIpIds?: number[] | null;
   characterReferenceImages?: string[] | null;
   environmentReferenceImages?: string[] | null;
+  operatorReviewed?: boolean;
 }): TimelineClipVideoReworkTaskRequest {
   const payload: TimelineClipVideoReworkTaskRequest = {
     expected_version: expectedVersion,
@@ -100,7 +102,20 @@ export function buildTimelineClipVideoReworkTaskPayload({
   if (cleanedEnvironmentRefs.length > 0) {
     payload.environment_reference_images = cleanedEnvironmentRefs;
   }
+  if (operatorReviewed) {
+    payload.operator_reviewed = true;
+  }
   return payload;
+}
+
+export function timelineClipHumanReview(item: TimelineItem | null) {
+  const meta = timelineItemMeta(item);
+  const sourceRefs = asRecord(meta.source_refs);
+  const review = asRecord(sourceRefs?.human_review);
+  const required = review?.required === true;
+  const status = getString(review?.status)?.toLowerCase() ?? "";
+  const approved = ["approved", "confirmed", "passed"].includes(status);
+  return { required, approved };
 }
 
 export function timelineClipStoryboardPanelIndex(item: TimelineItem | null) {
