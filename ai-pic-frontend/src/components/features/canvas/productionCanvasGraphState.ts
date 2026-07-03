@@ -26,6 +26,17 @@ export function removeProductionCanvasEdge(
   return edges.filter((edge) => edge.from !== from || edge.to !== to);
 }
 
+export function removeProductionCanvasNode(
+  nodes: ProductionCanvasNode[],
+  edges: ProductionCanvasEdge[],
+  nodeId: string,
+) {
+  return {
+    edges: edges.filter((edge) => edge.from !== nodeId && edge.to !== nodeId),
+    nodes: nodes.filter((node) => node.id !== nodeId),
+  };
+}
+
 export function updateProductionCanvasNodeOutputs(
   nodes: ProductionCanvasNode[],
   nodeId: string,
@@ -38,5 +49,24 @@ export function updateProductionCanvasNodeOutputs(
       if (outputs[key] === undefined) delete outputs[key];
     });
     return { ...node, outputs };
+  });
+}
+
+export function updateProductionCanvasNode(
+  nodes: ProductionCanvasNode[],
+  nodeId: string,
+  patch: Partial<ProductionCanvasNode>,
+) {
+  return nodes.map((node) => {
+    if (node.id !== nodeId) return node;
+    const outputs = patch.outputs
+      ? { ...(node.outputs || {}), ...patch.outputs }
+      : node.outputs;
+    if (outputs) {
+      Object.keys(outputs).forEach((key) => {
+        if (outputs[key] === undefined) delete outputs[key];
+      });
+    }
+    return { ...node, ...patch, outputs };
   });
 }
