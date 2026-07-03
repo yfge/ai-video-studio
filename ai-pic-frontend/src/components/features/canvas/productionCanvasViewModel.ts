@@ -6,7 +6,13 @@ import {
 import {
   createProductionCanvasState,
   type ProductionCanvasState,
+  type ProductionCanvasViewport,
 } from "./productionCanvasState";
+import {
+  clampProductionCanvasZoom,
+  finiteCanvasNumber,
+  positiveCanvasNumber,
+} from "./productionCanvasGeometry";
 
 export const PRODUCTION_CANVAS_STORAGE_KEY = "production-canvas-layout-v1";
 export const CANVAS_BASE_WIDTH = 1180;
@@ -20,9 +26,10 @@ function isCanvasNode(value: unknown): value is ProductionCanvasNode {
     typeof node.id === "string" &&
     typeof node.label === "string" &&
     typeof node.title === "string" &&
-    typeof node.x === "number" &&
-    typeof node.y === "number" &&
-    typeof node.width === "number" &&
+    Number.isFinite(node.x) &&
+    Number.isFinite(node.y) &&
+    Number.isFinite(node.width) &&
+    (node.height === undefined || Number.isFinite(node.height)) &&
     (node.status === "ready" ||
       node.status === "running" ||
       node.status === "review" ||
@@ -49,8 +56,7 @@ function mergeStoredNodes(nodes: unknown) {
 
 function storedEdges(edges: unknown, fallback: ProductionCanvasState) {
   if (!Array.isArray(edges)) return fallback.edges;
-  const nextEdges = edges.filter(isCanvasEdge);
-  return nextEdges.length ? nextEdges : fallback.edges;
+  return edges.filter(isCanvasEdge);
 }
 
 export function readStoredCanvasState(storageKey: string | null | undefined) {
@@ -63,42 +69,86 @@ export function readStoredCanvasState(storageKey: string | null | undefined) {
     const parsed = JSON.parse(raw) as Partial<ProductionCanvasState>;
     const nodes = mergeStoredNodes(parsed.nodes) || fallback.nodes;
     const edges = storedEdges(parsed.edges, fallback);
-    const viewport =
-      parsed.viewport &&
-      typeof parsed.viewport.x === "number" &&
-      typeof parsed.viewport.y === "number" &&
-      typeof parsed.viewport.zoom === "number"
-        ? parsed.viewport
-        : fallback.viewport;
+    const restored = createProductionCanvasState(nodes, edges);
+    const viewport = {
+      x: finiteCanvasNumber(parsed.viewport?.x, fallback.viewport.x),
+      y: finiteCanvasNumber(parsed.viewport?.y, fallback.viewport.y),
+      zoom: clampProductionCanvasZoom(
+        parsed.viewport?.zoom,
+        fallback.viewport.zoom,
+      ),
+    };
     const selectedNodeId =
       typeof parsed.selectedNodeId === "string" &&
-      nodes.some((node) => node.id === parsed.selectedNodeId)
+      restored.nodes.some((node) => node.id === parsed.selectedNodeId)
         ? parsed.selectedNodeId
-        : nodes[0]?.id || "";
+        : restored.nodes[0]?.id || "";
 
-    return { edges, nodes, viewport, selectedNodeId };
+    return { ...restored, viewport, selectedNodeId };
   } catch {
     return fallback;
   }
 }
 
 export function getNodeHeight(node: ProductionCanvasNode) {
-  if (node.height) return node.height;
+  if (node.height && Number.isFinite(node.height) && node.height > 0)
+    return node.height;
   if (node.skill && node.kind === "skill_result") return 118;
   return DEFAULT_NODE_HEIGHT;
 }
 
+export function displayProductionCanvasNodeTitle(node: ProductionCanvasNode) {
+  const title = node.title.trim();
+  if (title) return title;
+  return node.kind === "note" ? "未命名便签" : "未命名节点";
+}
+
+export function centerProductionCanvasOnNode(
+  viewport: ProductionCanvasViewport,
+  node: ProductionCanvasNode,
+  size: { width: number; height: number },
+) {
+  const zoom = clampProductionCanvasZoom(viewport.zoom, 1);
+  return {
+    ...viewport,
+    zoom,
+    x: Math.round(
+      finiteCanvasNumber(size.width, CANVAS_BASE_WIDTH) / 2 -
+        (finiteCanvasNumber(node.x, 0) +
+          finiteCanvasNumber(node.width, 190) / 2) *
+          zoom,
+    ),
+    y: Math.round(
+      finiteCanvasNumber(size.height, CANVAS_BASE_HEIGHT) / 2 -
+        (finiteCanvasNumber(node.y, 0) + getNodeHeight(node) / 2) * zoom,
+    ),
+  };
+}
+
 export function getWorldBounds(nodes: ProductionCanvasNode[]) {
+  const minX = Math.min(
+    0,
+    ...nodes.map((node) => finiteCanvasNumber(node.x, 0)),
+  );
+  const minY = Math.min(
+    0,
+    ...nodes.map((node) => finiteCanvasNumber(node.y, 0)),
+  );
   const maxX = Math.max(
     CANVAS_BASE_WIDTH,
-    ...nodes.map((node) => node.x + node.width),
+    ...nodes.map(
+      (node) =>
+        finiteCanvasNumber(node.x, 0) + positiveCanvasNumber(node.width, 190),
+    ),
   );
   const maxY = Math.max(
     CANVAS_BASE_HEIGHT,
-    ...nodes.map((node) => node.y + getNodeHeight(node)),
+    ...nodes.map((node) => finiteCanvasNumber(node.y, 0) + getNodeHeight(node)),
   );
   return {
-    width: maxX + 80,
-    height: maxY + 80,
+    minX,
+    minY,
+    width: maxX - minX + 80,
+    height: maxY - minY + 80,
   };
 }

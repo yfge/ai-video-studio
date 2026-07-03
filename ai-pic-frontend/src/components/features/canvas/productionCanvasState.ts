@@ -1,9 +1,14 @@
 import {
   productionCanvasEdges,
   productionCanvasNodes,
-  type ProductionCanvasEdge,
   type ProductionCanvasNode,
 } from "./productionCanvasModel";
+import {
+  clampProductionCanvasZoom,
+  cloneProductionCanvasEdges,
+  cloneProductionCanvasNodes,
+  finiteCanvasNumber,
+} from "./productionCanvasGeometry";
 
 export type ProductionCanvasViewport = {
   x: number;
@@ -23,15 +28,6 @@ export const productionCanvasDefaultViewport: ProductionCanvasViewport = {
   y: 0,
   zoom: 1,
 };
-
-const cloneNodes = (nodes: ProductionCanvasNode[]) =>
-  nodes.map((node) => ({ ...node }));
-
-const cloneEdges = (edges: ProductionCanvasEdge[]) =>
-  edges.map((edge) => ({ ...edge }));
-
-const clampZoom = (zoom: number) =>
-  Math.min(1.6, Math.max(0.5, Number(zoom.toFixed(2))));
 
 function outputNumber(
   outputs: Record<string, unknown> | undefined,
@@ -142,11 +138,12 @@ export function createProductionCanvasState(
   nodes: ProductionCanvasNode[] = productionCanvasNodes,
   edges: ProductionCanvasEdge[] = productionCanvasEdges,
 ): ProductionCanvasState {
+  const clonedNodes = cloneProductionCanvasNodes(nodes);
   return {
-    edges: cloneEdges(edges),
-    nodes: applyProductionCanvasContext(cloneNodes(nodes)),
+    edges: cloneProductionCanvasEdges(clonedNodes, edges),
+    nodes: applyProductionCanvasContext(clonedNodes),
     viewport: { ...productionCanvasDefaultViewport },
-    selectedNodeId: nodes[0]?.id || "",
+    selectedNodeId: clonedNodes[0]?.id || "",
   };
 }
 
@@ -156,12 +153,14 @@ export function moveProductionCanvasNode(
   dx: number,
   dy: number,
 ) {
+  const safeDx = finiteCanvasNumber(dx, 0);
+  const safeDy = finiteCanvasNumber(dy, 0);
   return nodes.map((node) =>
     node.id === nodeId
       ? {
           ...node,
-          x: Math.round(node.x + dx),
-          y: Math.round(node.y + dy),
+          x: Math.round(finiteCanvasNumber(node.x, 0) + safeDx),
+          y: Math.round(finiteCanvasNumber(node.y, 0) + safeDy),
         }
       : node,
   );
@@ -174,8 +173,12 @@ export function panProductionCanvas(
 ): ProductionCanvasViewport {
   return {
     ...viewport,
-    x: Math.round(viewport.x + dx),
-    y: Math.round(viewport.y + dy),
+    x: Math.round(
+      finiteCanvasNumber(viewport.x, 0) + finiteCanvasNumber(dx, 0),
+    ),
+    y: Math.round(
+      finiteCanvasNumber(viewport.y, 0) + finiteCanvasNumber(dy, 0),
+    ),
   };
 }
 
@@ -184,17 +187,29 @@ export function zoomProductionCanvas(
   steps: number,
   anchor?: { x: number; y: number },
 ): ProductionCanvasViewport {
-  const nextZoom = clampZoom(viewport.zoom + steps * 0.1);
-  if (!anchor || nextZoom === viewport.zoom) {
-    return { ...viewport, zoom: nextZoom };
+  const currentZoom = clampProductionCanvasZoom(viewport.zoom);
+  const nextZoom = clampProductionCanvasZoom(
+    currentZoom + finiteCanvasNumber(steps, 0) * 0.1,
+  );
+  const safeViewport = {
+    x: finiteCanvasNumber(viewport.x, 0),
+    y: finiteCanvasNumber(viewport.y, 0),
+    zoom: currentZoom,
+  };
+  const safeAnchor =
+    anchor && Number.isFinite(anchor.x) && Number.isFinite(anchor.y)
+      ? anchor
+      : null;
+  if (!safeAnchor || nextZoom === currentZoom) {
+    return { ...safeViewport, zoom: nextZoom };
   }
 
-  const worldX = (anchor.x - viewport.x) / viewport.zoom;
-  const worldY = (anchor.y - viewport.y) / viewport.zoom;
+  const worldX = (safeAnchor.x - safeViewport.x) / currentZoom;
+  const worldY = (safeAnchor.y - safeViewport.y) / currentZoom;
 
   return {
-    x: Math.round(anchor.x - worldX * nextZoom),
-    y: Math.round(anchor.y - worldY * nextZoom),
+    x: Math.round(safeAnchor.x - worldX * nextZoom),
+    y: Math.round(safeAnchor.y - worldY * nextZoom),
     zoom: nextZoom,
   };
 }
@@ -208,6 +223,8 @@ export function addProductionCanvasNote(
   while (nodes.some((node) => node.id === `note-${index}`)) {
     index += 1;
   }
+  const x = finiteCanvasNumber(position.x, 160);
+  const y = finiteCanvasNumber(position.y, 340);
 
   return [
     ...nodes,
@@ -216,8 +233,8 @@ export function addProductionCanvasNote(
       label: "便签",
       title: "记录这个项目下一步的人工判断",
       status: "review",
-      x: Math.round(position.x),
-      y: Math.round(position.y),
+      x: Math.round(x),
+      y: Math.round(y),
       width: 190,
       height: 96,
       kind: "note",
