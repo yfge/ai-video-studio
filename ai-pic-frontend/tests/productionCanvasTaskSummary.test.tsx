@@ -58,4 +58,26 @@ describe("ProductionCanvasTaskSummary", () => {
     );
     assert.ok(utils.getByText("Task #3 · 已完成 · 任务 3"));
   });
+
+  it("returns focus after selecting a task evidence row", () => {
+    const selectedNodes: string[] = [];
+    let returnedFocus = 0;
+    const utils = render(
+      <ProductionCanvasTaskSummary
+        nodes={[taskNode(8, "completed")]}
+        onReturnFocus={() => {
+          returnedFocus += 1;
+        }}
+        onSelectNode={(nodeId) => {
+          selectedNodes.push(nodeId);
+        }}
+      />,
+      { container: dom.window.document.body },
+    );
+
+    fireEvent.click(utils.getByRole("button", { name: "定位任务 8" }));
+
+    assert.deepEqual(selectedNodes, ["task-8"]);
+    assert.equal(returnedFocus, 1);
+  });
 });

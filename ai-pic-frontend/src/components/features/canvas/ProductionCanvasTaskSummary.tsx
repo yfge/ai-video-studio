@@ -196,7 +196,10 @@ export function ProductionCanvasTaskSummary({
                   type="button"
                   aria-label={`定位任务 ${taskId}`}
                   className="min-w-0 flex-1 rounded-md bg-gray-50 px-2 py-1 text-left text-[11px] text-gray-600 hover:bg-blue-50 hover:text-blue-700"
-                  onClick={() => onSelectNode?.(node.id)}
+                  onClick={() => {
+                    onSelectNode?.(node.id);
+                    onReturnFocus?.();
+                  }}
                 >
                   <span className="block truncate">
                     Task #{taskId} · {taskStatusLabel(node)} · {taskTitle(node)}
