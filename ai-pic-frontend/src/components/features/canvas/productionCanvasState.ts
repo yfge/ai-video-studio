@@ -1,6 +1,7 @@
 import {
   productionCanvasEdges,
   productionCanvasNodes,
+  type ProductionCanvasEdge,
   type ProductionCanvasNode,
 } from "./productionCanvasModel";
 import {
