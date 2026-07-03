@@ -73,6 +73,93 @@ describe("ProductionCanvasRunControls", () => {
     });
   });
 
+  it("falls back when copying a canvas restore link with the current run id", async () => {
+    let copiedText = "";
+    const originalExecCommand = dom.window.document.execCommand;
+    Object.defineProperty(globalThis.navigator, "clipboard", {
+      value: {
+        writeText: async () => {
+          throw new Error("clipboard blocked");
+        },
+      },
+      configurable: true,
+    });
+    Object.defineProperty(dom.window.document, "execCommand", {
+      value: (command: string) => {
+        copiedText = dom.window.document.querySelector("textarea")?.value || "";
+        return command === "copy";
+      },
+      configurable: true,
+    });
+    try {
+      const utils = render(
+        <ProductionCanvasRunControls
+          busy={false}
+          onRestore={() => {}}
+          onRunIdChange={() => {}}
+          onSave={() => {}}
+          runId="canvas-run-1"
+        />,
+        { container: dom.window.document.body },
+      );
+
+      fireEvent.click(utils.getByRole("button", { name: "复制链接" }));
+
+      await waitFor(() => {
+        assert.equal(copiedText, "http://localhost/canvas?run_id=canvas-run-1");
+        assert.equal(utils.getByRole("status").textContent, "已复制链接");
+      });
+    } finally {
+      Object.defineProperty(dom.window.document, "execCommand", {
+        value: originalExecCommand,
+        configurable: true,
+      });
+    }
+  });
+
+  it("shows the restore link when copy primitives are unavailable", async () => {
+    const originalClipboard = globalThis.navigator.clipboard;
+    const originalExecCommand = dom.window.document.execCommand;
+    Object.defineProperty(globalThis.navigator, "clipboard", {
+      value: undefined,
+      configurable: true,
+    });
+    Object.defineProperty(dom.window.document, "execCommand", {
+      value: undefined,
+      configurable: true,
+    });
+    try {
+      const utils = render(
+        <ProductionCanvasRunControls
+          busy={false}
+          onRestore={() => {}}
+          onRunIdChange={() => {}}
+          onSave={() => {}}
+          runId="canvas-run-1"
+        />,
+        { container: dom.window.document.body },
+      );
+
+      fireEvent.click(utils.getByRole("button", { name: "复制链接" }));
+
+      await waitFor(() => {
+        assert.equal(
+          utils.getByRole("status").textContent,
+          "复制失败，链接已生成：http://localhost/canvas?run_id=canvas-run-1",
+        );
+      });
+    } finally {
+      Object.defineProperty(globalThis.navigator, "clipboard", {
+        value: originalClipboard,
+        configurable: true,
+      });
+      Object.defineProperty(dom.window.document, "execCommand", {
+        value: originalExecCommand,
+        configurable: true,
+      });
+    }
+  });
+
   it("marks run save and restore controls busy", () => {
     const utils = render(
       <ProductionCanvasRunControls

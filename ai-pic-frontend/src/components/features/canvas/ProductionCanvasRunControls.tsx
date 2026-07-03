@@ -19,13 +19,50 @@ export function ProductionCanvasRunControls({
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const trimmedRunId = runId.trim();
   useEffect(() => setCopyStatus(null), [runId]);
+  const writeClipboardText = async (text: string) => {
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return;
+      } catch {
+        // Fall through to the DOM copy path for restricted browser contexts.
+      }
+    }
+    if (typeof document.execCommand !== "function") {
+      throw new Error("clipboard copy unavailable");
+    }
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    const copied = document.execCommand("copy");
+    textarea.remove();
+    if (!copied) {
+      throw new Error("clipboard copy failed");
+    }
+  };
   const copyRunId = async () => {
     if (!trimmedRunId) return;
     try {
-      await navigator.clipboard.writeText(trimmedRunId);
+      await writeClipboardText(trimmedRunId);
       setCopyStatus("已复制 Run ID");
     } catch {
       setCopyStatus("复制失败");
+    }
+  };
+  const copyRunLink = async () => {
+    if (!trimmedRunId) return;
+    const url = new URL("/canvas", window.location.origin);
+    url.searchParams.set("run_id", trimmedRunId);
+    const link = url.toString();
+    try {
+      await writeClipboardText(link);
+      setCopyStatus("已复制链接");
+    } catch {
+      setCopyStatus(`复制失败，链接已生成：${link}`);
     }
   };
   const statusText = [status, copyStatus].filter(Boolean).join(" · ");
@@ -69,9 +106,17 @@ export function ProductionCanvasRunControls({
       >
         复制 Run ID
       </button>
+      <button
+        type="button"
+        className={operatorButtonClass("ghost")}
+        disabled={busy || !trimmedRunId}
+        onClick={() => void copyRunLink()}
+      >
+        复制链接
+      </button>
       {statusText ? (
         <div
-          className="h-8 px-1 text-xs leading-8 text-gray-500"
+          className="min-h-8 break-all px-1 py-1 text-xs leading-5 text-gray-500"
           aria-live="polite"
           role="status"
         >
