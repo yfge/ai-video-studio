@@ -15,8 +15,9 @@ import { useProductionCanvasSkillPlanner } from "./useProductionCanvasSkillPlann
 import { useProductionCanvasController } from "./useProductionCanvasController";
 import { useProductionCanvasRunPersistence } from "./useProductionCanvasRunPersistence";
 import { PRODUCTION_CANVAS_STORAGE_KEY } from "./productionCanvasViewModel";
-
-export function ProductionCanvasBoard() {
+export function ProductionCanvasBoard({
+  initialRunId,
+}: { initialRunId?: string | null } = {}) {
   return (
     <OperatorShell
       title="创作画布"
@@ -34,15 +35,17 @@ export function ProductionCanvasBoard() {
         </div>
       }
     >
-      <ProductionCanvasContent />
+      <ProductionCanvasContent initialRunId={initialRunId} />
     </OperatorShell>
   );
 }
 export function ProductionCanvasContent({
   autosaveDelayMs = 1200,
+  initialRunId,
   storageKey = PRODUCTION_CANVAS_STORAGE_KEY,
 }: {
   autosaveDelayMs?: number | null;
+  initialRunId?: string | null;
   storageKey?: string | null;
 } = {}) {
   const {
@@ -70,13 +73,13 @@ export function ProductionCanvasContent({
   const persistence = useProductionCanvasRunPersistence({
     autosaveDelayMs,
     canvasState,
+    initialRunId,
     replaceCanvasState,
   });
   const planner = useProductionCanvasSkillPlanner({
     onNodesCreated: appendNodes,
     onRunCreated: persistence.setRunId,
   });
-
   return (
     <div className="space-y-4">
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
@@ -195,7 +198,6 @@ export function ProductionCanvasContent({
             </div>
           </div>
         </OperatorPanel>
-
         <div className="space-y-3">
           <CanvasInspector
             node={selectedNode}
