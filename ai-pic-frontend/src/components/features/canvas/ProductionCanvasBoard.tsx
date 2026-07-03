@@ -111,7 +111,7 @@ export function ProductionCanvasContent({
               busy={persistence.busy}
               runId={persistence.runId}
               status={persistence.status}
-              onRestore={() => void persistence.restoreCanvas()}
+              onRestore={(runId) => void persistence.restoreCanvas(runId)}
               onRunIdChange={persistence.setRunId}
               onSave={() => void persistence.saveCanvas()}
             />
