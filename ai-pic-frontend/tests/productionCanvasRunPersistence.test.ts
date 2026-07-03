@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { JSDOM } from "jsdom";
 import { createElement } from "react";
 
@@ -138,5 +138,49 @@ describe("productionCanvasRunIdFromInput", () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+
+  it("syncs run id changes into the canvas URL", async () => {
+    function Harness() {
+      const persistence = useProductionCanvasRunPersistence({
+        autosaveDelayMs: null,
+        canvasState: emptyCanvasState,
+        replaceCanvasState: () => {},
+      });
+      return createElement(
+        "div",
+        {},
+        createElement(
+          "button",
+          {
+            onClick: () =>
+              persistence.setRunId("/canvas?run_id=canvas-run-url"),
+            type: "button",
+          },
+          "set run",
+        ),
+        createElement(
+          "button",
+          { onClick: persistence.resetRun, type: "button" },
+          "reset run",
+        ),
+      );
+    }
+
+    const utils = render(createElement(Harness), {
+      container: dom.window.document.body,
+    });
+    fireEvent.click(utils.getByRole("button", { name: "set run" }));
+    await waitFor(() =>
+      assert.equal(
+        window.location.href,
+        "http://localhost/canvas?run_id=canvas-run-url",
+      ),
+    );
+
+    fireEvent.click(utils.getByRole("button", { name: "reset run" }));
+    await waitFor(() =>
+      assert.equal(window.location.href, "http://localhost/canvas"),
+    );
   });
 });
