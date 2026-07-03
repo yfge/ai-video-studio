@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { operatorButtonClass } from "@/components/shared";
 
 export function ProductionCanvasRunControls({
@@ -15,6 +16,20 @@ export function ProductionCanvasRunControls({
   runId: string;
   status?: string | null;
 }) {
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  const trimmedRunId = runId.trim();
+  useEffect(() => setCopyStatus(null), [runId]);
+  const copyRunId = async () => {
+    if (!trimmedRunId) return;
+    try {
+      await navigator.clipboard.writeText(trimmedRunId);
+      setCopyStatus("已复制 Run ID");
+    } catch {
+      setCopyStatus("复制失败");
+    }
+  };
+  const statusText = [status, copyStatus].filter(Boolean).join(" · ");
+
   return (
     <div className="flex flex-wrap items-end gap-2">
       <label className="min-w-40">
@@ -46,12 +61,21 @@ export function ProductionCanvasRunControls({
       >
         恢复画布
       </button>
-      {status ? (
+      <button
+        type="button"
+        className={operatorButtonClass("ghost")}
+        disabled={busy || !trimmedRunId}
+        onClick={() => void copyRunId()}
+      >
+        复制 Run ID
+      </button>
+      {statusText ? (
         <div
           className="h-8 px-1 text-xs leading-8 text-gray-500"
           aria-live="polite"
+          role="status"
         >
-          {status}
+          {statusText}
         </div>
       ) : null}
     </div>
