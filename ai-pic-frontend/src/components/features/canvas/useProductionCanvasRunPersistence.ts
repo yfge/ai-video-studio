@@ -7,6 +7,19 @@ import {
 } from "./productionCanvasPersistence";
 import type { ProductionCanvasState } from "./productionCanvasState";
 
+export function productionCanvasRunIdFromInput(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  try {
+    const parsed = new URL(trimmed, "http://canvas.local");
+    const runId = parsed.searchParams.get("run_id");
+    if (parsed.pathname === "/canvas" && runId === null) return "";
+    return runId === null ? trimmed : runId.trim();
+  } catch {
+    return trimmed;
+  }
+}
+
 export function useProductionCanvasRunPersistence({
   autosaveDelayMs = 1200,
   canvasState,
@@ -16,15 +29,20 @@ export function useProductionCanvasRunPersistence({
   canvasState: ProductionCanvasState;
   replaceCanvasState: (state: ProductionCanvasState) => void;
 }) {
-  const [runId, setRunId] = useState("");
+  const [runId, setRunIdValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const lastSavedSignature = useRef("");
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const setRunId = useCallback(
+    (value: string) => setRunIdValue(productionCanvasRunIdFromInput(value)),
+    [],
+  );
 
   const resolvedRunId = useCallback(
     (state: ProductionCanvasState = canvasState) =>
-      runId.trim() || canvasRunIdFromNodes(state.nodes),
+      productionCanvasRunIdFromInput(runId) ||
+      canvasRunIdFromNodes(state.nodes),
     [canvasState, runId],
   );
 
@@ -63,7 +81,7 @@ export function useProductionCanvasRunPersistence({
         }
         const nextRunId = response.data.run_id || targetRunId;
         lastSavedSignature.current = stateSignature(nextRunId, state);
-        setRunId(nextRunId);
+        setRunIdValue(nextRunId);
         setStatus(mode === "auto" ? "已自动保存" : "已保存");
       } catch (err) {
         setStatus(err instanceof Error ? err.message : String(err));
@@ -122,7 +140,7 @@ export function useProductionCanvasRunPersistence({
       const nextRunId = response.data.run_id || targetRunId;
       replaceCanvasState(restoredState);
       lastSavedSignature.current = stateSignature(nextRunId, restoredState);
-      setRunId(nextRunId);
+      setRunIdValue(nextRunId);
       setStatus("已恢复");
     } catch (err) {
       setStatus(err instanceof Error ? err.message : String(err));
