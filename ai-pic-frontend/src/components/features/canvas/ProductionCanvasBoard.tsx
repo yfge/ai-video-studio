@@ -155,6 +155,7 @@ export function ProductionCanvasContent({
             ref={canvasRef}
             className="relative h-[560px] overflow-hidden touch-none bg-[#f8fafc]"
             data-production-canvas="infinite-canvas"
+            tabIndex={-1}
             onPointerDown={handleCanvasPointerDown}
             onPointerMove={handleCanvasPointerMove}
             onPointerUp={handleCanvasPointerUp}

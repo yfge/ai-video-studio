@@ -160,6 +160,54 @@ describe("ProductionCanvasRunControls", () => {
     }
   });
 
+  it("returns focus after a copy attempt", async () => {
+    const container = dom.window.document.createElement("div");
+    dom.window.document.body.appendChild(container);
+    const canvas = dom.window.document.createElement("div");
+    canvas.dataset.productionCanvas = "infinite-canvas";
+    canvas.tabIndex = -1;
+    dom.window.document.body.appendChild(canvas);
+    const originalClipboard = globalThis.navigator.clipboard;
+    const originalExecCommand = dom.window.document.execCommand;
+    Object.defineProperty(globalThis.navigator, "clipboard", {
+      value: undefined,
+      configurable: true,
+    });
+    Object.defineProperty(dom.window.document, "execCommand", {
+      value: undefined,
+      configurable: true,
+    });
+    try {
+      const utils = render(
+        <ProductionCanvasRunControls
+          busy={false}
+          onRestore={() => {}}
+          onRunIdChange={() => {}}
+          onSave={() => {}}
+          runId="canvas-run-1"
+        />,
+        { container },
+      );
+
+      fireEvent.click(utils.getByRole("button", { name: "复制 Run ID" }));
+
+      await waitFor(() =>
+        assert.equal(dom.window.document.activeElement, canvas),
+      );
+    } finally {
+      canvas.remove();
+      container.remove();
+      Object.defineProperty(globalThis.navigator, "clipboard", {
+        value: originalClipboard,
+        configurable: true,
+      });
+      Object.defineProperty(dom.window.document, "execCommand", {
+        value: originalExecCommand,
+        configurable: true,
+      });
+    }
+  });
+
   it("marks run save and restore controls busy", () => {
     const utils = render(
       <ProductionCanvasRunControls

@@ -44,6 +44,11 @@ export function ProductionCanvasRunControls({
       throw new Error("clipboard copy failed");
     }
   };
+  const returnFocusToCanvas = () => {
+    document
+      .querySelector<HTMLElement>('[data-production-canvas="infinite-canvas"]')
+      ?.focus({ preventScroll: true });
+  };
   const copyRunId = async () => {
     if (!trimmedRunId) return;
     try {
@@ -51,6 +56,8 @@ export function ProductionCanvasRunControls({
       setCopyStatus("已复制 Run ID");
     } catch {
       setCopyStatus("复制失败");
+    } finally {
+      returnFocusToCanvas();
     }
   };
   const copyRunLink = async () => {
@@ -63,6 +70,8 @@ export function ProductionCanvasRunControls({
       setCopyStatus("已复制链接");
     } catch {
       setCopyStatus(`复制失败，链接已生成：${link}`);
+    } finally {
+      returnFocusToCanvas();
     }
   };
   const statusText = [status, copyStatus].filter(Boolean).join(" · ");
