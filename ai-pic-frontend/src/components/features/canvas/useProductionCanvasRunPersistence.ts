@@ -23,15 +23,19 @@ export function productionCanvasRunIdFromInput(value: string) {
 export function useProductionCanvasRunPersistence({
   autosaveDelayMs = 1200,
   canvasState,
+  initialRunId,
   replaceCanvasState,
 }: {
   autosaveDelayMs?: number | null;
   canvasState: ProductionCanvasState;
+  initialRunId?: string | null;
   replaceCanvasState: (state: ProductionCanvasState) => void;
 }) {
-  const [runId, setRunIdValue] = useState("");
+  const initialRunIdValue = productionCanvasRunIdFromInput(initialRunId || "");
+  const [runId, setRunIdValue] = useState(initialRunIdValue);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const restoredInitialRunId = useRef("");
   const lastSavedSignature = useRef("");
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const setRunId = useCallback(
@@ -103,6 +107,7 @@ export function useProductionCanvasRunPersistence({
 
   useEffect(() => {
     if (autosaveDelayMs === null || autosaveDelayMs < 0 || busy) return;
+    if (initialRunIdValue && !lastSavedSignature.current) return;
     const targetRunId = resolvedRunId();
     if (!targetRunId) return;
     const signature = stateSignature(targetRunId, canvasState);
@@ -117,37 +122,55 @@ export function useProductionCanvasRunPersistence({
     autosaveDelayMs,
     busy,
     canvasState,
+    initialRunIdValue,
     resolvedRunId,
     saveCanvasState,
     stateSignature,
   ]);
 
-  const restoreCanvas = async () => {
-    const targetRunId = resolvedRunId();
-    if (!targetRunId || busy) {
-      setStatus("缺少 Run ID");
-      return;
-    }
-    setBusy(true);
-    setStatus("恢复中");
-    try {
-      const response = await productionCanvasAPI.getRun(targetRunId);
-      if (!response.success || !response.data) {
-        setStatus(response.error || "恢复失败");
+  const restoreCanvas = useCallback(
+    async (requestedRunId?: string) => {
+      const targetRunId = productionCanvasRunIdFromInput(
+        requestedRunId || resolvedRunId(),
+      );
+      if (!targetRunId || busy) {
+        setStatus("缺少 Run ID");
         return;
       }
-      const restoredState = productionCanvasStateFromRun(response.data);
-      const nextRunId = response.data.run_id || targetRunId;
-      replaceCanvasState(restoredState);
-      lastSavedSignature.current = stateSignature(nextRunId, restoredState);
-      setRunIdValue(nextRunId);
-      setStatus("已恢复");
-    } catch (err) {
-      setStatus(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
+      setBusy(true);
+      setStatus("恢复中");
+      try {
+        const response = await productionCanvasAPI.getRun(targetRunId);
+        if (!response.success || !response.data) {
+          setStatus(response.error || "恢复失败");
+          return;
+        }
+        const restoredState = productionCanvasStateFromRun(response.data);
+        const nextRunId = response.data.run_id || targetRunId;
+        replaceCanvasState(restoredState);
+        lastSavedSignature.current = stateSignature(nextRunId, restoredState);
+        setRunIdValue(nextRunId);
+        setStatus("已恢复");
+      } catch (err) {
+        setStatus(err instanceof Error ? err.message : String(err));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [busy, replaceCanvasState, resolvedRunId, stateSignature],
+  );
+
+  useEffect(() => {
+    if (
+      !initialRunIdValue ||
+      restoredInitialRunId.current === initialRunIdValue
+    ) {
+      return;
     }
-  };
+    restoredInitialRunId.current = initialRunIdValue;
+    setRunIdValue(initialRunIdValue);
+    void restoreCanvas(initialRunIdValue);
+  }, [initialRunIdValue, restoreCanvas]);
 
   return {
     busy,
