@@ -208,6 +208,7 @@ export function ProductionCanvasContent({
             nodes={canvasState.nodes}
             onAddEdge={handleAddEdge}
             onRemoveEdge={handleRemoveEdge}
+            onSelectNode={handleSelectNode}
             onUpdateNodeOutputs={handleUpdateNodeOutputs}
           />
           <OperatorPanel className="p-4">
