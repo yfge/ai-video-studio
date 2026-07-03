@@ -5,6 +5,8 @@ import {
   type ProductionCanvasContextKey,
 } from "./productionCanvasContext";
 
+const digitsOnly = (value: string) => value.replace(/\D/g, "");
+
 export function ProductionCanvasChatBar({
   context,
   error,
@@ -38,6 +40,7 @@ export function ProductionCanvasChatBar({
         </label>
         <button
           type="button"
+          aria-busy={running || undefined}
           className={operatorButtonClass("primary", "lg:mb-0.5")}
           disabled={running || !prompt.trim()}
           onClick={onCreate}
@@ -56,10 +59,13 @@ export function ProductionCanvasChatBar({
               inputMode="numeric"
               value={context[field.key]}
               onChange={(event) =>
-                onContextChange(field.key, event.target.value)
+                onContextChange(field.key, digitsOnly(event.target.value))
               }
               onInput={(event) =>
-                onContextChange(field.key, event.currentTarget.value)
+                onContextChange(
+                  field.key,
+                  digitsOnly(event.currentTarget.value),
+                )
               }
               placeholder={field.placeholder}
               className="mt-1 h-8 w-full rounded-md border border-gray-200 bg-white px-2 text-xs text-gray-800 placeholder:text-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
@@ -67,7 +73,11 @@ export function ProductionCanvasChatBar({
           </label>
         ))}
       </div>
-      {error ? <div className="mt-2 text-xs text-red-600">{error}</div> : null}
+      {error ? (
+        <div className="mt-2 text-xs text-red-600" role="alert">
+          {error}
+        </div>
+      ) : null}
     </div>
   );
 }
