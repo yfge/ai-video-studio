@@ -15,7 +15,11 @@ const dom = new JSDOM("<!doctype html><html><body></body></html>", {
 (globalThis as any).SVGElement = dom.window.SVGElement;
 (globalThis as any).Event = dom.window.Event;
 
-const taskNode = (taskId: number, status: string) => ({
+const taskNode = (
+  taskId: number,
+  status: string,
+  patch: Record<string, unknown> = {},
+) => ({
   id: `task-${taskId}`,
   label: `Task #${taskId}`,
   title: `任务 ${taskId}`,
@@ -29,6 +33,7 @@ const taskNode = (taskId: number, status: string) => ({
     task_status: status,
     task_title: `任务 ${taskId}`,
   },
+  ...patch,
 });
 
 describe("ProductionCanvasTaskSummary", () => {
@@ -79,5 +84,16 @@ describe("ProductionCanvasTaskSummary", () => {
 
     assert.deepEqual(selectedNodes, ["task-8"]);
     assert.equal(returnedFocus, 1);
+  });
+
+  it("uses task action labels on task evidence links", () => {
+    const utils = render(
+      <ProductionCanvasTaskSummary
+        nodes={[taskNode(9, "completed", { actionLabel: "查看任务" })]}
+      />,
+      { container: dom.window.document.body },
+    );
+
+    assert.ok(utils.getByRole("link", { name: "查看任务 9" }));
   });
 });

@@ -6,6 +6,7 @@ import {
   COLLAPSED_TASK_LIMIT,
   EXPANDED_TASK_LIMIT,
   type TaskSummaryFilter,
+  taskAction,
   taskExtra,
   taskStatus,
   taskStatusLabel,
@@ -123,7 +124,6 @@ export function ProductionCanvasTaskSummary({
       data-canvas-task-summary="true"
       data-completed-tasks={completedNodes.length}
       data-failed-tasks={failedNodes.length}
-      data-running-tasks={runningNodes.length}
     >
       <div className="flex items-center justify-between gap-2">
         <div className="text-xs font-semibold text-gray-950">任务证据</div>
@@ -189,6 +189,7 @@ export function ProductionCanvasTaskSummary({
             const taskId = taskOutputNumber(node.outputs);
             if (!taskId) return null;
             const href = node.actionHref || `/tasks?task_id=${taskId}`;
+            const action = taskAction(node, taskId);
             const extra = taskExtra(node);
             return (
               <div key={node.id} className="flex items-center gap-1">
@@ -216,10 +217,10 @@ export function ProductionCanvasTaskSummary({
                 </button>
                 <a
                   href={href}
-                  aria-label={`打开任务 ${taskId}`}
+                  aria-label={action.ariaLabel}
                   className="rounded-md px-2 py-1 text-[11px] font-medium text-blue-600 hover:bg-blue-50"
                 >
-                  打开
+                  {action.label}
                 </a>
               </div>
             );

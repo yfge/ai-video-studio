@@ -42,3 +42,11 @@ export function taskExtra(node: ProductionCanvasNode) {
   }
   return null;
 }
+
+export function taskAction(node: ProductionCanvasNode, taskId: number) {
+  const label = node.actionLabel || "打开";
+  return {
+    ariaLabel: node.actionLabel ? `${label} ${taskId}` : `打开任务 ${taskId}`,
+    label,
+  };
+}
