@@ -9,6 +9,10 @@ import type {
   ProductionCanvasNode,
 } from "./productionCanvasModel";
 import {
+  clampProductionCanvasZoom,
+  finiteCanvasNumber,
+} from "./productionCanvasGeometry";
+import {
   createProductionCanvasState,
   type ProductionCanvasState,
 } from "./productionCanvasState";
@@ -29,10 +33,13 @@ function planNodeToCanvasNode(
     label: node.label,
     title: node.title,
     status: node.status,
-    x: node.x,
-    y: node.y,
-    width: node.width,
-    height: node.height,
+    x: finiteCanvasNumber(node.x, 0),
+    y: finiteCanvasNumber(node.y, 0),
+    width: finiteCanvasNumber(node.width, 220),
+    height:
+      node.height === undefined
+        ? undefined
+        : finiteCanvasNumber(node.height, 118),
     kind: node.kind || "skill_result",
     skill: node.skill,
     detail: node.detail,
@@ -43,16 +50,18 @@ function planNodeToCanvasNode(
   };
 }
 
-function savedNodeToCanvasNode(node: ProductionCanvasSavedNode): ProductionCanvasNode {
+function savedNodeToCanvasNode(
+  node: ProductionCanvasSavedNode,
+): ProductionCanvasNode {
   return {
     id: node.id,
     label: node.label,
     title: node.title,
     status: node.status,
-    x: node.x,
-    y: node.y,
-    width: node.width,
-    height: node.height || undefined,
+    x: finiteCanvasNumber(node.x, 0),
+    y: finiteCanvasNumber(node.y, 0),
+    width: finiteCanvasNumber(node.width, 190),
+    height: node.height ? finiteCanvasNumber(node.height, 96) : undefined,
     kind: node.kind || undefined,
     skill: node.skill || undefined,
     detail: node.detail || undefined,
@@ -63,7 +72,9 @@ function savedNodeToCanvasNode(node: ProductionCanvasSavedNode): ProductionCanva
   };
 }
 
-function canvasNodeToSavedNode(node: ProductionCanvasNode): ProductionCanvasSavedNode {
+function canvasNodeToSavedNode(
+  node: ProductionCanvasNode,
+): ProductionCanvasSavedNode {
   return {
     id: node.id,
     label: node.label,
@@ -91,7 +102,10 @@ function canvasEdgesToSavedEdges(edges: ProductionCanvasEdge[]) {
   return edges.map((edge) => ({ from: edge.from, to: edge.to }));
 }
 
-function selectedNodeId(nodes: ProductionCanvasNode[], requested?: string | null) {
+function selectedNodeId(
+  nodes: ProductionCanvasNode[],
+  requested?: string | null,
+) {
   if (requested && nodes.some((node) => node.id === requested)) {
     return requested;
   }
@@ -122,12 +136,23 @@ export function productionCanvasStateFromRun(
 ): ProductionCanvasState {
   const saved = run.saved_state;
   if (saved?.nodes?.length) {
+    const fallback = createProductionCanvasState();
     const nodes = saved.nodes.map(savedNodeToCanvasNode);
-    return {
-      edges: savedEdges(saved.edges),
+    const restored = createProductionCanvasState(
       nodes,
-      viewport: saved.viewport,
-      selectedNodeId: selectedNodeId(nodes, saved.selected_node_id),
+      savedEdges(saved.edges),
+    );
+    return {
+      ...restored,
+      viewport: {
+        x: finiteCanvasNumber(saved.viewport?.x, fallback.viewport.x),
+        y: finiteCanvasNumber(saved.viewport?.y, fallback.viewport.y),
+        zoom: clampProductionCanvasZoom(
+          saved.viewport?.zoom,
+          fallback.viewport.zoom,
+        ),
+      },
+      selectedNodeId: selectedNodeId(restored.nodes, saved.selected_node_id),
     };
   }
 
