@@ -133,7 +133,9 @@ export function ProductionCanvasRunControls({
           aria-live="polite"
           role="status"
         >
-          {statusText}
+          {status ? <span>{status}</span> : null}
+          {status && copyStatus ? <span aria-hidden="true"> · </span> : null}
+          {copyStatus ? <span>{copyStatus}</span> : null}
         </div>
       ) : null}
     </div>
