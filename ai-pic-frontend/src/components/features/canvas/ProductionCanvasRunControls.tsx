@@ -10,7 +10,7 @@ export function ProductionCanvasRunControls({
   status,
 }: {
   busy: boolean;
-  onRestore: () => void;
+  onRestore: (runId?: string) => void;
   onRunIdChange: (value: string) => void;
   onSave: () => void;
   runId: string;
@@ -78,6 +78,10 @@ export function ProductionCanvasRunControls({
           placeholder="创建后自动填入"
           disabled={busy}
           onChange={(event) => onRunIdChange(event.currentTarget.value)}
+          onKeyUp={(event) => {
+            if (event.key === "Enter" && !busy)
+              onRestore(event.currentTarget.value || runId);
+          }}
         />
       </label>
       <button
@@ -94,7 +98,7 @@ export function ProductionCanvasRunControls({
         aria-busy={busy || undefined}
         className={operatorButtonClass("ghost")}
         disabled={busy}
-        onClick={onRestore}
+        onClick={() => onRestore()}
       >
         恢复画布
       </button>
