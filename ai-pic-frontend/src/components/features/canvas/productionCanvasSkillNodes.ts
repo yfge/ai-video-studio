@@ -4,7 +4,11 @@ import type {
   ProductionCanvasSkillExecuteResponse,
   ProductionCanvasSkillResult,
 } from "@/utils/api/types";
-import type { ProductionCanvasNode } from "./productionCanvasModel";
+import {
+  productionCanvasStatusMeta,
+  type ProductionCanvasNode,
+} from "./productionCanvasModel";
+import { taskStatusLabelForStatus } from "./productionCanvasTaskSummaryModel";
 
 function runOutputs(response: ProductionCanvasPlanResponse) {
   return {
@@ -91,6 +95,43 @@ export function taskOutputNumber(outputs: Record<string, unknown> | undefined) {
   );
 }
 
+export function productionCanvasTaskStatusLabel(status: string) {
+  return taskStatusLabelForStatus(status);
+}
+
+export function productionCanvasNodeStatusMeta(node: ProductionCanvasNode) {
+  const taskStatus =
+    node.kind === "note" && taskOutputNumber(node.outputs)
+      ? outputString(node.outputs, "task_status")
+      : undefined;
+  if (!taskStatus) return productionCanvasStatusMeta[node.status];
+
+  const taskStatusTones: Record<
+    string,
+    "blue" | "green" | "amber" | "red" | "gray"
+  > = {
+    blocked: "red",
+    cancelled: "red",
+    completed: "green",
+    failed: "red",
+    pending: "blue",
+    processing: "amber",
+    ready: "green",
+    review: "blue",
+    running: "amber",
+  };
+  return {
+    label: productionCanvasTaskStatusLabel(taskStatus),
+    tone: taskStatusTones[taskStatus] || "gray",
+  };
+}
+
+export function isManualProductionCanvasNote(
+  node?: ProductionCanvasNode,
+): node is ProductionCanvasNode & { kind: "note" } {
+  return Boolean(node?.kind === "note" && !taskOutputNumber(node.outputs));
+}
+
 export function productionCanvasSkillResultToNode(
   node: ProductionCanvasNode,
   result: ProductionCanvasSkillResult,
@@ -131,7 +172,7 @@ export function productionCanvasSkillResultToTaskNode(
       ...result.outputs,
     },
     reuseTargets: result.reuse_targets,
-    actionHref: "/tasks",
+    actionHref: `/tasks?task_id=${taskId}`,
     actionLabel: "查看任务",
   };
 }

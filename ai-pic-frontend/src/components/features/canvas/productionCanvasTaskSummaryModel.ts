@@ -16,14 +16,17 @@ const taskStatusLabels: Record<string, string> = {
   running: "生成中",
 };
 
+export function taskStatusLabelForStatus(status: string) {
+  return taskStatusLabels[status] || status;
+}
+
 export function taskStatus(node: ProductionCanvasNode) {
   const value = node.outputs?.task_status;
   return typeof value === "string" ? value : node.status;
 }
 
 export function taskStatusLabel(node: ProductionCanvasNode) {
-  const status = taskStatus(node);
-  return taskStatusLabels[status] || status;
+  return taskStatusLabelForStatus(taskStatus(node));
 }
 
 export function taskTitle(node: ProductionCanvasNode) {
