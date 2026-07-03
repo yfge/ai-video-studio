@@ -76,6 +76,7 @@ export function ProductionCanvasContent({
     replaceCanvasState,
   });
   const planner = useProductionCanvasSkillPlanner({
+    currentRunId: persistence.runId,
     onNodesCreated: appendNodes,
     onRunCreated: persistence.setRunId,
   });

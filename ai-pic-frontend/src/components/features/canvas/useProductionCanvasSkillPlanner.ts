@@ -27,9 +27,7 @@ function hasMissingRequiredInputs(node: ProductionCanvasNode) {
 
 function isAutoExecutableNode(node: ProductionCanvasNode) {
   return Boolean(
-    node.skill &&
-      node.status === "ready" &&
-      !hasMissingRequiredInputs(node),
+    node.skill && node.status === "ready" && !hasMissingRequiredInputs(node),
   );
 }
 
@@ -45,9 +43,11 @@ function upsertCanvasNodes(
 }
 
 export function useProductionCanvasSkillPlanner({
+  currentRunId,
   onNodesCreated,
   onRunCreated,
 }: {
+  currentRunId?: string | null;
   onNodesCreated: (nodes: ProductionCanvasNode[]) => void;
   onRunCreated?: (runId: string) => void;
 }) {
@@ -73,7 +73,9 @@ export function useProductionCanvasSkillPlanner({
         outputString(node.outputs, "prompt") ||
         node.title,
       skill: node.skill || "",
-      run_id: outputString(node.outputs, "canvas_run_id"),
+      run_id:
+        (currentRunId || "").trim() ||
+        outputString(node.outputs, "canvas_run_id"),
       frame_indexes: outputNumberArray(node.outputs, "frame_indexes"),
       model: outputString(node.outputs, "model"),
       aspect_ratio: outputString(node.outputs, "aspect_ratio"),
