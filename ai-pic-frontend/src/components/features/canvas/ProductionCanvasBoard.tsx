@@ -15,9 +15,8 @@ import { useProductionCanvasSkillPlanner } from "./useProductionCanvasSkillPlann
 import { useProductionCanvasController } from "./useProductionCanvasController";
 import { useProductionCanvasRunPersistence } from "./useProductionCanvasRunPersistence";
 import { PRODUCTION_CANVAS_STORAGE_KEY } from "./productionCanvasViewModel";
-export function ProductionCanvasBoard({
-  initialRunId,
-}: { initialRunId?: string | null } = {}) {
+type ProductionCanvasBoardProps = { initialRunId?: string | null };
+export function ProductionCanvasBoard(props: ProductionCanvasBoardProps = {}) {
   return (
     <OperatorShell
       title="创作画布"
@@ -35,7 +34,7 @@ export function ProductionCanvasBoard({
         </div>
       }
     >
-      <ProductionCanvasContent initialRunId={initialRunId} />
+      <ProductionCanvasContent initialRunId={props.initialRunId} />
     </OperatorShell>
   );
 }
@@ -80,6 +79,7 @@ export function ProductionCanvasContent({
     onNodesCreated: appendNodes,
     onRunCreated: persistence.setRunId,
   });
+  const resetCanvas = () => (handleReset(), persistence.resetRun());
   return (
     <div className="space-y-4">
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
@@ -149,7 +149,7 @@ export function ProductionCanvasContent({
             <button
               type="button"
               className={operatorButtonClass("ghost")}
-              onClick={handleReset}
+              onClick={resetCanvas}
             >
               重置
             </button>
@@ -224,7 +224,6 @@ export function ProductionCanvasContent({
           </OperatorPanel>
         </div>
       </div>
-
       <div className="grid gap-3 lg:grid-cols-3">
         <OperatorPanel className="p-4">
           <div className="text-xs font-semibold text-gray-950">引用对象</div>
