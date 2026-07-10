@@ -62,6 +62,7 @@ export function ProductionCanvasContent({
     handleCanvasPointerDown,
     handleCanvasPointerMove,
     handleCanvasPointerUp,
+    handleDuplicateNote,
     handleFit,
     handleFocusSelectedNode,
     handleNodePointerDown,
@@ -88,13 +89,11 @@ export function ProductionCanvasContent({
     onNodesCreated: appendNodes,
     onRunCreated: persistence.setRunId,
   });
-  const resetCanvas = () => (handleReset(), persistence.resetRun());
   const handleCanvasDoubleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
     const nodeId = nodeIdFromCanvasDoubleClick(event);
     if (nodeId) return handleFocusSelectedNode(nodeId);
-    handleAddNote(
-      notePositionFromCanvasDoubleClick(event, canvasState.viewport),
-    );
+    const { viewport } = canvasState;
+    handleAddNote(notePositionFromCanvasDoubleClick(event, viewport));
   };
   return (
     <div className="space-y-4">
@@ -173,7 +172,7 @@ export function ProductionCanvasContent({
             <button
               type="button"
               className={operatorButtonClass("ghost")}
-              onClick={resetCanvas}
+              onClick={() => (handleReset(), persistence.resetRun())}
             >
               重置
             </button>
@@ -209,6 +208,7 @@ export function ProductionCanvasContent({
             node={selectedNode}
             nodes={canvasState.nodes}
             onAddEdge={handleAddEdge}
+            onDuplicateNote={handleDuplicateNote}
             onRemoveEdge={handleRemoveEdge}
             onSelectNode={handleSelectNode}
             onUpdateNode={handleUpdateNode}

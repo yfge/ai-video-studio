@@ -1,11 +1,14 @@
+import { operatorButtonClass } from "@/components/shared";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
 import { isManualProductionCanvasNote } from "./productionCanvasSkillNodes";
 
 export function ProductionCanvasNoteControls({
   node,
+  onDuplicateNote,
   onUpdateNode,
 }: {
   node?: ProductionCanvasNode;
+  onDuplicateNote: (nodeId: string) => void;
   onUpdateNode: (nodeId: string, patch: Partial<ProductionCanvasNode>) => void;
 }) {
   if (!isManualProductionCanvasNote(node)) return null;
@@ -40,6 +43,13 @@ export function ProductionCanvasNoteControls({
             }
           />
         </label>
+        <button
+          type="button"
+          className={operatorButtonClass("secondary", "justify-center")}
+          onClick={() => onDuplicateNote(node.id)}
+        >
+          复制便签
+        </button>
       </div>
     </div>
   );

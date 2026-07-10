@@ -25,6 +25,8 @@ import {
   applyProductionCanvasKeyboardNudge,
   getProductionCanvasKeyboardNudge,
 } from "./productionCanvasKeyboard";
+import { duplicateManualProductionCanvasNote } from "./productionCanvasNoteActions";
+import { isManualProductionCanvasNote } from "./productionCanvasSkillNodes";
 
 export function useProductionCanvasController(storageKey?: string | null) {
   const [canvasState, setCanvasState] = useState(createProductionCanvasState);
@@ -84,10 +86,28 @@ export function useProductionCanvasController(storageKey?: string | null) {
     canvasRef.current?.focus({ preventScroll: true });
   };
 
+  const handleDuplicateNote = (nodeId: string) => {
+    setCanvasState((state) =>
+      duplicateManualProductionCanvasNote(state, nodeId),
+    );
+    canvasRef.current?.focus({ preventScroll: true });
+  };
+
   const handleCanvasKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Escape") {
       event.preventDefault();
       handleSelectNode("");
+      return;
+    }
+    if (
+      (event.ctrlKey || event.metaKey) &&
+      !event.altKey &&
+      !event.shiftKey &&
+      event.key.toLowerCase() === "d" &&
+      isManualProductionCanvasNote(selectedNode)
+    ) {
+      event.preventDefault();
+      handleDuplicateNote(selectedNode.id);
       return;
     }
     if (event.altKey || event.ctrlKey || event.metaKey) return;
@@ -200,6 +220,7 @@ export function useProductionCanvasController(storageKey?: string | null) {
     handleCanvasPointerDown,
     handleCanvasPointerMove,
     handleCanvasPointerUp,
+    handleDuplicateNote,
     handleFit,
     handleFocusSelectedNode,
     handleNodePointerDown,
