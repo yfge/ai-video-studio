@@ -19,6 +19,7 @@ import {
 import { useProductionCanvasSkillPlanner } from "./useProductionCanvasSkillPlanner";
 import { useProductionCanvasController } from "./useProductionCanvasController";
 import { useProductionCanvasRunPersistence } from "./useProductionCanvasRunPersistence";
+import type { ProductionCanvasNode } from "./productionCanvasModel";
 import { PRODUCTION_CANVAS_STORAGE_KEY } from "./productionCanvasViewModel";
 type ProductionCanvasBoardProps = { initialRunId?: string | null };
 export function ProductionCanvasBoard(props: ProductionCanvasBoardProps = {}) {
@@ -91,6 +92,10 @@ export function ProductionCanvasContent({
     onRunCreated: persistence.setRunId,
   });
   const focusCanvas = () => canvasRef.current?.focus({ preventScroll: true });
+  const handleExecuteNode = (node: ProductionCanvasNode) => {
+    void planner.executeSkillNode(node);
+    focusCanvas();
+  };
   const handleCanvasDoubleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
     const nodeId = nodeIdFromCanvasDoubleClick(event);
     if (nodeId) return handleFocusSelectedNode(nodeId);
@@ -147,7 +152,7 @@ export function ProductionCanvasContent({
             onCanvasPointerMove={handleCanvasPointerMove}
             onCanvasPointerUp={handleCanvasPointerUp}
             onCanvasWheel={handleWheel}
-            onExecuteNode={(node) => void planner.executeSkillNode(node)}
+            onExecuteNode={handleExecuteNode}
             onNodePointerDown={handleNodePointerDown}
             onSelectNode={handleSelectNode}
           />
@@ -157,7 +162,7 @@ export function ProductionCanvasContent({
             node={selectedNode}
             executingNodeId={planner.executingNodeId}
             executionError={planner.executionError}
-            onExecuteNode={(node) => void planner.executeSkillNode(node)}
+            onExecuteNode={handleExecuteNode}
           />
           <ProductionCanvasNodeTools
             edges={canvasState.edges}
