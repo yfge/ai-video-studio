@@ -67,6 +67,7 @@ export function useProductionCanvasSkillPlanner({
     maxPollMs: taskMaxPollMs,
     onNodesCreated,
     pollIntervalMs: taskPollIntervalMs,
+    runId: currentRunId,
   });
 
   const setContextValue = (key: ProductionCanvasContextKey, value: string) => {

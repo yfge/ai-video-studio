@@ -199,4 +199,107 @@ describe("useProductionCanvasExecutionTracker", () => {
       globalThis.fetch = originalFetch;
     }
   });
+
+  it("resumes an active RenderJob from restored run state", async () => {
+    const originalFetch = globalThis.fetch;
+    const updates: ProductionCanvasNode[][] = [];
+    const requests: string[] = [];
+    globalThis.fetch = async (input) => {
+      const url = String(input);
+      requests.push(url);
+      if (url === "/api/v1/production-canvas/runs/canvas-run-active") {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: {
+              prompt: "restore active render",
+              run_id: "canvas-run-active",
+              task_id: 900,
+              skill_manifest: { version: "production_canvas.v1" },
+              selected_assets: { virtual_ips: [], environments: [] },
+              nodes: [],
+              saved_state: {
+                nodes: [
+                  {
+                    ...renderSkillNode,
+                    outputs: {
+                      ...renderSkillNode.outputs,
+                      canvas_run_id: "canvas-run-active",
+                    },
+                  },
+                  {
+                    ...renderNode,
+                    outputs: {
+                      ...renderNode.outputs,
+                      canvas_run_id: "canvas-run-active",
+                    },
+                  },
+                ],
+                edges: [],
+                viewport: { x: 0, y: 0, zoom: 1 },
+                selected_node_id: renderSkillNode.id,
+              },
+            },
+          }),
+          { headers: { "content-type": "application/json" } },
+        );
+      }
+      assert.equal(url, "/api/v1/timelines/71/render-jobs");
+      return new Response(
+        JSON.stringify({
+          items: [
+            {
+              id: 122,
+              business_id: "render-122",
+              timeline_id: 71,
+              timeline_version: 6,
+              render_type: "final",
+              preset_hash: "preset",
+              preset: { fps: 24 },
+              status: "succeeded",
+              progress: 100,
+              output_asset_id: 375,
+              output_asset: {
+                id: 375,
+                business_id: "asset-375",
+                asset_type: "video",
+                origin: "timeline_render",
+                file_url: "/media/restored-final.mp4",
+                created_at: "2026-07-10T10:00:00Z",
+                updated_at: "2026-07-10T10:00:00Z",
+              },
+              created_at: "2026-07-10T10:00:00Z",
+              updated_at: "2026-07-10T10:00:01Z",
+            },
+          ],
+        }),
+        { headers: { "content-type": "application/json" } },
+      );
+    };
+
+    function Harness() {
+      useProductionCanvasExecutionTracker({
+        onNodesCreated: (nodes) => updates.push(nodes),
+        pollIntervalMs: 5,
+        maxPollMs: 500,
+        runId: "canvas-run-active",
+      });
+      return null;
+    }
+
+    try {
+      render(<Harness />, { container: dom.window.document.body });
+
+      await waitFor(() => assert.equal(updates.length, 1));
+      assert.deepEqual(requests, [
+        "/api/v1/production-canvas/runs/canvas-run-active",
+        "/api/v1/timelines/71/render-jobs",
+      ]);
+      assert.equal(updates[0][0].status, "ready");
+      assert.equal(updates[0][1].outputs?.render_status, "succeeded");
+      assert.equal(updates[0][0].actionHref, "/media/restored-final.mp4");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });
