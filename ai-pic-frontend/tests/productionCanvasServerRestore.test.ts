@@ -106,6 +106,83 @@ describe("productionCanvasStateFromRun", () => {
     assert.deepEqual(asset?.outputs?.required_inputs, ["virtual_ip_id"]);
   });
 
+  it("drops unscoped saved task evidence from server run restore", () => {
+    const restored = productionCanvasStateFromRun({
+      run_id: "canvas-run-current",
+      task_id: 6266,
+      nodes: [
+        {
+          id: "skill-asset-select",
+          label: "Asset Selection",
+          title: "Asset plan",
+          status: "blocked",
+          x: 200,
+          y: 100,
+          width: 220,
+          kind: "skill_result",
+          skill: "asset.select",
+          outputs: { required_inputs: ["virtual_ip_id", "environment_id"] },
+        },
+      ],
+      selected_assets: { virtual_ips: [], environments: [] },
+      skill_manifest: { version: "production_canvas.v1" },
+      saved_state: {
+        edges: [],
+        nodes: [
+          {
+            id: "summary-task-2",
+            label: "Task #102",
+            title: "Unscoped task",
+            status: "blocked",
+            x: 100,
+            y: 220,
+            width: 220,
+            kind: "note",
+            outputs: {
+              task_id: 102,
+              task_status: "failed",
+              task_title: "Unscoped task",
+            },
+          },
+          {
+            id: "skill-asset-select",
+            label: "Asset Selection",
+            title: "Stale unscoped asset result",
+            status: "review",
+            x: 240,
+            y: 160,
+            width: 240,
+            kind: "skill_result",
+            skill: "asset.select",
+            outputs: {
+              task_id: 102,
+              required_inputs: ["virtual_ip_id", "environment_id"],
+            },
+          },
+        ],
+        selected_node_id: "summary-task-2",
+        viewport: { x: 0, y: 0, zoom: 1 },
+      },
+    } as any);
+
+    assert.deepEqual(
+      restored.nodes.map((node) => node.id),
+      ["skill-asset-select"],
+    );
+    assert.equal(restored.selectedNodeId, "skill-asset-select");
+
+    const asset = restored.nodes[0];
+    assert.equal(asset?.title, "Asset plan");
+    assert.equal(asset?.x, 240);
+    assert.equal(asset?.outputs?.canvas_run_id, "canvas-run-current");
+    assert.equal(asset?.outputs?.canvas_task_id, 6266);
+    assert.equal(asset?.outputs?.task_id, undefined);
+    assert.deepEqual(asset?.outputs?.required_inputs, [
+      "virtual_ip_id",
+      "environment_id",
+    ]);
+  });
+
   it("drops saved task evidence from another canvas run", () => {
     const restored = productionCanvasStateFromRun({
       run_id: "canvas-run-current",

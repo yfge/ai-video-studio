@@ -89,6 +89,22 @@ function isSavedNodeFromDifferentRun(
   return Boolean(currentRunId && nodeRunId && nodeRunId !== currentRunId);
 }
 
+function savedTaskContextId(node: ProductionCanvasSavedNode) {
+  return (
+    savedOutputNumber(node.outputs, "dispatched_task_id") ??
+    savedOutputNumber(node.outputs, "task_id")
+  );
+}
+
+function isSavedNodeUnscopedToRun(
+  node: ProductionCanvasSavedNode,
+  run: ProductionCanvasRunResponse,
+) {
+  const currentRunId = run.run_id?.trim();
+  const nodeRunId = savedOutputString(node.outputs, "canvas_run_id");
+  return Boolean(currentRunId && !nodeRunId && savedTaskContextId(node));
+}
+
 function normalizeSavedNodeOutputsForRun(
   node: ProductionCanvasSavedNode,
   run?: ProductionCanvasRunResponse,
@@ -140,7 +156,10 @@ export function restoredSavedNode(
   run: ProductionCanvasRunResponse,
   planNodesById: Map<string, ProductionCanvasPlanNode>,
 ) {
-  if (!isSavedNodeFromDifferentRun(node, run)) {
+  if (
+    !isSavedNodeFromDifferentRun(node, run) &&
+    !isSavedNodeUnscopedToRun(node, run)
+  ) {
     return savedNodeToCanvasNode(node, run);
   }
 
