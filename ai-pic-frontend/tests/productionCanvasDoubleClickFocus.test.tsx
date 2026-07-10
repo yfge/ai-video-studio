@@ -48,25 +48,14 @@ describe("ProductionCanvas node double-click focus", () => {
     assert.ok(utils.getAllByText("Report").length >= 2);
   });
 
-  it("leaves blank-canvas double clicks available for later commands", () => {
+  it("does not add a note when double-clicking a node", () => {
     const utils = render(<ProductionCanvasContent storageKey={null} />, {
       container: dom.window.document.body,
     });
-    const canvas = utils.container.querySelector<HTMLElement>(
-      "[data-production-canvas='infinite-canvas']",
-    );
-    const world = utils.container.querySelector<HTMLElement>(
-      "[data-production-canvas-world='true']",
+    fireEvent.doubleClick(
+      utils.getByLabelText("Report 成本、质量、provider lineage"),
     );
 
-    assert.ok(canvas);
-    assert.ok(world);
-    fireEvent.doubleClick(canvas, { clientX: 500, clientY: 300 });
-
-    assert.equal(
-      world.style.transform,
-      "translate(0px, 0px) scale(1) translate(0px, 0px)",
-    );
     assert.equal(
       utils.container.querySelectorAll("[data-canvas-node^='note-']").length,
       0,

@@ -12,7 +12,10 @@ import { ProductionCanvasNodeTools } from "./ProductionCanvasNodeTools";
 import { ProductionCanvasChatBar } from "./ProductionCanvasChatBar";
 import { ProductionCanvasRunControls } from "./ProductionCanvasRunControls";
 import { ProductionCanvasSurface } from "./ProductionCanvasSurface";
-import { nodeIdFromCanvasDoubleClick } from "./productionCanvasDoubleClick";
+import {
+  nodeIdFromCanvasDoubleClick,
+  notePositionFromCanvasDoubleClick,
+} from "./productionCanvasDoubleClick";
 import { useProductionCanvasSkillPlanner } from "./useProductionCanvasSkillPlanner";
 import { useProductionCanvasController } from "./useProductionCanvasController";
 import { useProductionCanvasRunPersistence } from "./useProductionCanvasRunPersistence";
@@ -87,7 +90,10 @@ export function ProductionCanvasContent({
   const resetCanvas = () => (handleReset(), persistence.resetRun());
   const handleCanvasDoubleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
     const nodeId = nodeIdFromCanvasDoubleClick(event);
-    if (nodeId) handleFocusSelectedNode(nodeId);
+    if (nodeId) return handleFocusSelectedNode(nodeId);
+    handleAddNote(
+      notePositionFromCanvasDoubleClick(event, canvasState.viewport),
+    );
   };
   return (
     <div className="space-y-4">
@@ -115,7 +121,7 @@ export function ProductionCanvasContent({
             <button
               type="button"
               className={operatorButtonClass("primary")}
-              onClick={handleAddNote}
+              onClick={() => handleAddNote()}
             >
               添加便签
             </button>

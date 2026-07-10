@@ -138,10 +138,10 @@ export function useProductionCanvasController(storageKey?: string | null) {
     }
   };
 
-  const handleAddNote = () => {
+  const handleAddNote = (targetPosition?: { x: number; y: number }) => {
     const rect = canvasRef.current?.getBoundingClientRect();
     setCanvasState((state) => {
-      const position = {
+      const position = targetPosition || {
         x:
           ((rect?.width || 720) / 2 - state.viewport.x) / state.viewport.zoom -
           95,
@@ -158,6 +158,7 @@ export function useProductionCanvasController(storageKey?: string | null) {
         selectedNodeId: nodes[nodes.length - 1]?.id || state.selectedNodeId,
       };
     });
+    canvasRef.current?.focus({ preventScroll: true });
   };
 
   const appendNodes = (nodes: ProductionCanvasNode[]) => {
