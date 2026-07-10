@@ -6,6 +6,7 @@ from app.models.task import TaskStatus
 from app.models.video_generation_task import VideoGenerationTaskStatus
 from app.repositories.task_repository import TaskRepository
 from app.services.task_agent_run import persist_task_agent_run
+from app.services.video.video_task_utils import load_parameters
 
 
 def refresh_parent_task_status(db, video_task_repo, task_id: Optional[int]) -> None:
@@ -45,6 +46,9 @@ def refresh_parent_task_status(db, video_task_repo, task_id: Optional[int]) -> N
                     break
     else:
         task.status = TaskStatus.COMPLETED
+        result_ref = _storyboard_video_result_ref(task, tasks)
+        if result_ref:
+            task.result_file_path = result_ref
     db.commit()
 
     if task.status in {
@@ -58,3 +62,19 @@ def refresh_parent_task_status(db, video_task_repo, task_id: Optional[int]) -> N
             kind="video_generation",
             db_session=db,
         )
+
+
+def _storyboard_video_result_ref(task, video_tasks) -> str | None:
+    params = load_parameters(task.parameters)
+    if params.get("timeline_rework"):
+        return None
+    try:
+        script_id = int(params.get("script_id"))
+    except (TypeError, ValueError):
+        return None
+    if not all(
+        item.script_id == script_id and item.frame_index is not None
+        for item in video_tasks
+    ):
+        return None
+    return f"storyboard_videos:{script_id}:{len(video_tasks)}"

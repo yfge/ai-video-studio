@@ -25,6 +25,10 @@ def _storyboard_frames() -> list[dict]:
             "duration_seconds": 2.8,
             "reference_images": ["https://example.com/device-ref.png"],
             "image_url": "https://example.com/start-frame-2.png",
+            "start_image_urls": [
+                "https://example.com/start-frame-2.png",
+                "https://example.com/start-frame-2-latest.png",
+            ],
         },
     ]
 
@@ -146,6 +150,7 @@ def test_production_canvas_execute_video_skill_dispatches_existing_task(
     assert payload["task_status"] == "pending"
     assert payload["skill_result"]["skill"] == "video.candidates"
     assert payload["skill_result"]["outputs"]["frame_count"] == 2
+    assert payload["skill_result"]["outputs"]["selected_candidate_count"] == 1
     assert (
         payload["skill_result"]["outputs"]["dispatched_task_id"] == payload["task_id"]
     )
@@ -163,6 +168,12 @@ def test_production_canvas_execute_video_skill_dispatches_existing_task(
     assert params["ratio"] == "16:9"
     assert params["camera_fixed"] is True
     assert params["return_last_frame"] is True
+    assert params["selections"] == [
+        {
+            "frame_index": 1,
+            "start_image_url": "https://example.com/start-frame-2-latest.png",
+        }
+    ]
     assert dispatched["task_id"] == task.id
     assert dispatched["params"]["script_id"] == script.id
 

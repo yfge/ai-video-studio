@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 class StoryboardVideoQueueResult:
     task: Task
     frame_count: int
+    selected_candidate_count: int
 
 
 def queue_storyboard_video_generation_task(
@@ -41,11 +42,12 @@ def queue_storyboard_video_generation_task(
         raise ValueError("no_storyboard_frames")
 
     indexes = _normalize_frame_indexes(frame_indexes, len(frames))
+    selections = _latest_candidate_selections(frames, indexes)
     payload = {
         "script_id": int(script.id),
         "frame_indexes": indexes,
         "frames": indexes,
-        "selections": None,
+        "selections": selections or None,
         "prompt": prompt,
         "model": model,
         "duration": duration,
@@ -74,7 +76,37 @@ def queue_storyboard_video_generation_task(
     db.commit()
     db.refresh(task)
     storyboard_video_generate_task.delay(task.id, payload, user.id)
-    return StoryboardVideoQueueResult(task=task, frame_count=len(frames))
+    return StoryboardVideoQueueResult(
+        task=task,
+        frame_count=len(frames),
+        selected_candidate_count=len(selections),
+    )
+
+
+def _latest_candidate_selections(
+    frames: list[dict],
+    indexes: list[int] | None,
+) -> list[dict]:
+    target_indexes = indexes if indexes is not None else list(range(len(frames)))
+    selections: list[dict] = []
+    for index in target_indexes:
+        frame = frames[index]
+        candidates = frame.get("start_image_urls")
+        latest = (
+            next(
+                (
+                    item.strip()
+                    for item in reversed(candidates)
+                    if isinstance(item, str) and item.strip()
+                ),
+                None,
+            )
+            if isinstance(candidates, list)
+            else None
+        )
+        if latest:
+            selections.append({"frame_index": index, "start_image_url": latest})
+    return selections
 
 
 def _normalize_frame_indexes(

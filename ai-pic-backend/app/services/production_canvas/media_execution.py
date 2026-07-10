@@ -163,6 +163,7 @@ def execute_storyboard_video_candidates(
                 "dispatched_task_id": task.id,
                 "task_status": task.status.value,
                 "frame_count": queue_result.frame_count,
+                "selected_candidate_count": queue_result.selected_candidate_count,
                 "frame_indexes": request.frame_indexes,
                 "model": request.model,
                 "duration": request.duration,
