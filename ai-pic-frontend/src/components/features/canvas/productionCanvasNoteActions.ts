@@ -1,5 +1,6 @@
 import type { ProductionCanvasState } from "./productionCanvasState";
 import { addProductionCanvasNote } from "./productionCanvasState";
+import { removeProductionCanvasNode } from "./productionCanvasGraphState";
 import { isManualProductionCanvasNote } from "./productionCanvasSkillNodes";
 
 export function duplicateManualProductionCanvasNote(
@@ -32,5 +33,23 @@ export function duplicateManualProductionCanvasNote(
         : node,
     ),
     selectedNodeId: duplicateId,
+  };
+}
+
+export function removeManualProductionCanvasNote(
+  state: ProductionCanvasState,
+  nodeId: string,
+): ProductionCanvasState {
+  const note = state.nodes.find((node) => node.id === nodeId);
+  if (!isManualProductionCanvasNote(note)) return state;
+
+  const next = removeProductionCanvasNode(state.nodes, state.edges, nodeId);
+  return {
+    ...state,
+    ...next,
+    selectedNodeId:
+      state.selectedNodeId === nodeId
+        ? next.nodes[0]?.id || ""
+        : state.selectedNodeId,
   };
 }

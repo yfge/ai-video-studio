@@ -5,10 +5,12 @@ import { isManualProductionCanvasNote } from "./productionCanvasSkillNodes";
 export function ProductionCanvasNoteControls({
   node,
   onDuplicateNote,
+  onRemoveNote,
   onUpdateNode,
 }: {
   node?: ProductionCanvasNode;
   onDuplicateNote: (nodeId: string) => void;
+  onRemoveNote: (nodeId: string) => void;
   onUpdateNode: (nodeId: string, patch: Partial<ProductionCanvasNode>) => void;
 }) {
   if (!isManualProductionCanvasNote(node)) return null;
@@ -49,6 +51,16 @@ export function ProductionCanvasNoteControls({
           onClick={() => onDuplicateNote(node.id)}
         >
           复制便签
+        </button>
+        <button
+          type="button"
+          className={operatorButtonClass(
+            "ghost",
+            "justify-center text-red-600 hover:bg-red-50 hover:text-red-700",
+          )}
+          onClick={() => onRemoveNote(node.id)}
+        >
+          删除便签
         </button>
       </div>
     </div>

@@ -25,8 +25,8 @@ import {
   applyProductionCanvasKeyboardNudge,
   getProductionCanvasKeyboardNudge,
 } from "./productionCanvasKeyboard";
-import { duplicateManualProductionCanvasNote } from "./productionCanvasNoteActions";
 import { isManualProductionCanvasNote } from "./productionCanvasSkillNodes";
+import { useProductionCanvasNoteCommands } from "./useProductionCanvasNoteCommands";
 
 export function useProductionCanvasController(storageKey?: string | null) {
   const [canvasState, setCanvasState] = useState(createProductionCanvasState);
@@ -53,6 +53,8 @@ export function useProductionCanvasController(storageKey?: string | null) {
     canvasState,
     setCanvasState,
   });
+  const { handleDuplicateNote, handleRemoveNote } =
+    useProductionCanvasNoteCommands({ canvasRef, setCanvasState });
 
   useEffect(() => {
     setCanvasState(readStoredCanvasState(storageKey));
@@ -86,17 +88,19 @@ export function useProductionCanvasController(storageKey?: string | null) {
     canvasRef.current?.focus({ preventScroll: true });
   };
 
-  const handleDuplicateNote = (nodeId: string) => {
-    setCanvasState((state) =>
-      duplicateManualProductionCanvasNote(state, nodeId),
-    );
-    canvasRef.current?.focus({ preventScroll: true });
-  };
-
   const handleCanvasKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Escape") {
       event.preventDefault();
       handleSelectNode("");
+      return;
+    }
+    if (
+      (event.key === "Delete" || event.key === "Backspace") &&
+      isManualProductionCanvasNote(selectedNode)
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      handleRemoveNote(selectedNode.id);
       return;
     }
     if (
@@ -226,6 +230,7 @@ export function useProductionCanvasController(storageKey?: string | null) {
     handleNodePointerDown,
     handleReset,
     handleRemoveEdge,
+    handleRemoveNote,
     handleSelectNode,
     handleUpdateNode,
     handleUpdateNodeOutputs,

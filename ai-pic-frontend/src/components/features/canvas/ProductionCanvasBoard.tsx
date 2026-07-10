@@ -68,6 +68,7 @@ export function ProductionCanvasContent({
     handleNodePointerDown,
     handleReset,
     handleRemoveEdge,
+    handleRemoveNote,
     handleSelectNode,
     handleUpdateNode,
     handleUpdateNodeOutputs,
@@ -189,9 +190,7 @@ export function ProductionCanvasContent({
             onCanvasPointerMove={handleCanvasPointerMove}
             onCanvasPointerUp={handleCanvasPointerUp}
             onCanvasWheel={handleWheel}
-            onExecuteNode={(nodeToExecute) =>
-              void planner.executeSkillNode(nodeToExecute)
-            }
+            onExecuteNode={(node) => void planner.executeSkillNode(node)}
             onNodePointerDown={handleNodePointerDown}
             onSelectNode={handleSelectNode}
           />
@@ -210,6 +209,7 @@ export function ProductionCanvasContent({
             onAddEdge={handleAddEdge}
             onDuplicateNote={handleDuplicateNote}
             onRemoveEdge={handleRemoveEdge}
+            onRemoveNote={handleRemoveNote}
             onSelectNode={handleSelectNode}
             onUpdateNode={handleUpdateNode}
             onUpdateNodeOutputs={handleUpdateNodeOutputs}

@@ -43,6 +43,7 @@ describe("ProductionCanvasNodeTools", () => {
         onAddEdge={() => undefined}
         onDuplicateNote={() => undefined}
         onRemoveEdge={() => undefined}
+        onRemoveNote={() => undefined}
         onUpdateNode={() => undefined}
         onUpdateNodeOutputs={() => undefined}
       />,

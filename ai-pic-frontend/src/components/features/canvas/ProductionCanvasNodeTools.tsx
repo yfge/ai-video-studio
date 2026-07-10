@@ -22,6 +22,7 @@ export function ProductionCanvasNodeTools({
   onReturnFocus,
   onRefreshTasks,
   onRemoveEdge,
+  onRemoveNote,
   onSelectNode,
   onUpdateNode,
   onUpdateNodeOutputs,
@@ -36,6 +37,7 @@ export function ProductionCanvasNodeTools({
   onReturnFocus?: () => void;
   onRefreshTasks?: (nodes: ProductionCanvasNode[]) => void;
   onRemoveEdge: (from: string, to: string) => void;
+  onRemoveNote: (nodeId: string) => void;
   onSelectNode?: (nodeId: string) => void;
   onUpdateNode: (nodeId: string, patch: Partial<ProductionCanvasNode>) => void;
   onUpdateNodeOutputs: (nodeId: string, patch: OutputPatch) => void;
@@ -66,6 +68,7 @@ export function ProductionCanvasNodeTools({
       <ProductionCanvasNoteControls
         node={node}
         onDuplicateNote={onDuplicateNote}
+        onRemoveNote={onRemoveNote}
         onUpdateNode={onUpdateNode}
       />
     </OperatorPanel>
