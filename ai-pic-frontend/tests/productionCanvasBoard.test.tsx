@@ -152,11 +152,26 @@ describe("ProductionCanvasBoard", () => {
     assert.ok(
       utils.container.querySelector("[data-canvas-edge='brief-report']"),
     );
+    const canvas = utils.container.querySelector<HTMLElement>(
+      "[data-production-canvas='infinite-canvas']",
+    );
+    const brief = utils.container.querySelector<HTMLElement>(
+      "[data-canvas-node='brief']",
+    );
+    assert.ok(canvas);
+    assert.ok(brief);
+    assert.equal(dom.window.document.activeElement, canvas);
+    fireEvent.keyDown(canvas, { key: "ArrowRight" });
+    assert.equal(brief.style.left, "56px");
+
     fireEvent.click(utils.getByRole("button", { name: "移除连线 Report" }));
     assert.equal(
       utils.container.querySelector("[data-canvas-edge='brief-report']"),
       null,
     );
+    assert.equal(dom.window.document.activeElement, canvas);
+    fireEvent.keyDown(canvas, { key: "ArrowRight" });
+    assert.equal(brief.style.left, "72px");
   });
 
   it("creates dynamic canvas nodes from a chat skill execution result", async () => {
