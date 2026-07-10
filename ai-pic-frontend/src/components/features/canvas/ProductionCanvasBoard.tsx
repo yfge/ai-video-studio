@@ -173,6 +173,7 @@ export function ProductionCanvasContent({
             nodes={canvasState.nodes}
             onAddEdge={handleAddEdge}
             onDuplicateNote={handleDuplicateNote}
+            onReturnFocus={focusCanvas}
             onRemoveEdge={handleRemoveEdge}
             onRemoveNote={handleRemoveNote}
             onSelectNode={handleSelectNode}

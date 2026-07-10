@@ -24,7 +24,7 @@ describe("ProductionCanvasBoard task summary", () => {
     window.localStorage.removeItem(storageKey);
   });
 
-  it("selects task evidence nodes from the side summary", async () => {
+  it("selects task evidence and keeps keyboard control", async () => {
     window.localStorage.setItem(
       storageKey,
       JSON.stringify({
@@ -74,5 +74,16 @@ describe("ProductionCanvasBoard task summary", () => {
         /ring-blue-500/,
       ),
     );
+    const canvas = utils.container.querySelector<HTMLElement>(
+      "[data-production-canvas='infinite-canvas']",
+    );
+    const taskNode = utils.container.querySelector<HTMLElement>(
+      "[data-canvas-node='task-909']",
+    );
+    assert.ok(canvas);
+    assert.ok(taskNode);
+    assert.equal(dom.window.document.activeElement, canvas);
+    fireEvent.keyDown(canvas, { key: "ArrowRight" });
+    assert.equal(taskNode.style.left, "296px");
   });
 });
