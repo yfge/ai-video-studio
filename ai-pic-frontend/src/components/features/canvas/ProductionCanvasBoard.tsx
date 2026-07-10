@@ -6,11 +6,11 @@ import {
   OperatorShell,
   operatorButtonClass,
 } from "@/components/shared";
-import { CanvasEdges, CanvasInspector } from "./ProductionCanvasElements";
+import { CanvasInspector } from "./ProductionCanvasElements";
 import { ProductionCanvasNodeTools } from "./ProductionCanvasNodeTools";
-import { CanvasNodeCard } from "./ProductionCanvasNodeCard";
 import { ProductionCanvasChatBar } from "./ProductionCanvasChatBar";
 import { ProductionCanvasRunControls } from "./ProductionCanvasRunControls";
+import { ProductionCanvasSurface } from "./ProductionCanvasSurface";
 import { useProductionCanvasSkillPlanner } from "./useProductionCanvasSkillPlanner";
 import { useProductionCanvasController } from "./useProductionCanvasController";
 import { useProductionCanvasRunPersistence } from "./useProductionCanvasRunPersistence";
@@ -155,49 +155,22 @@ export function ProductionCanvasContent({
               重置
             </button>
           </div>
-          <div
-            ref={canvasRef}
-            className="relative h-[560px] overflow-hidden touch-none bg-[#f8fafc]"
-            data-production-canvas="infinite-canvas"
-            tabIndex={-1}
-            onPointerDown={handleCanvasPointerDown}
-            onPointerMove={handleCanvasPointerMove}
-            onPointerUp={handleCanvasPointerUp}
-            onPointerCancel={handleCanvasPointerUp}
-            onWheel={handleWheel}
-          >
-            <div
-              className="absolute left-0 top-0"
-              data-production-canvas-world="true"
-              style={{
-                width: worldBounds.width,
-                height: worldBounds.height,
-                transform: `translate(${canvasState.viewport.x}px, ${canvasState.viewport.y}px) scale(${canvasState.viewport.zoom}) translate(${worldBounds.minX}px, ${worldBounds.minY}px)`,
-                transformOrigin: "0 0",
-              }}
-            >
-              <div className="absolute inset-0 bg-[linear-gradient(#e5e7eb_1px,transparent_1px),linear-gradient(90deg,#e5e7eb_1px,transparent_1px)] bg-[size:32px_32px]" />
-              <CanvasEdges
-                edges={canvasState.edges}
-                nodes={canvasState.nodes}
-                worldBounds={worldBounds}
-              />
-              {canvasState.nodes.map((node) => (
-                <CanvasNodeCard
-                  key={node.id}
-                  executing={planner.executingNodeId === node.id}
-                  node={node}
-                  selected={node.id === selectedNode?.id}
-                  worldBounds={worldBounds}
-                  onExecuteNode={(nodeToExecute) =>
-                    void planner.executeSkillNode(nodeToExecute)
-                  }
-                  onSelect={handleSelectNode}
-                  onPointerDown={handleNodePointerDown}
-                />
-              ))}
-            </div>
-          </div>
+          <ProductionCanvasSurface
+            canvasRef={canvasRef}
+            canvasState={canvasState}
+            executingNodeId={planner.executingNodeId}
+            selectedNodeId={selectedNode?.id}
+            worldBounds={worldBounds}
+            onCanvasPointerDown={handleCanvasPointerDown}
+            onCanvasPointerMove={handleCanvasPointerMove}
+            onCanvasPointerUp={handleCanvasPointerUp}
+            onCanvasWheel={handleWheel}
+            onExecuteNode={(nodeToExecute) =>
+              void planner.executeSkillNode(nodeToExecute)
+            }
+            onNodePointerDown={handleNodePointerDown}
+            onSelectNode={handleSelectNode}
+          />
         </OperatorPanel>
         <div className="space-y-3">
           <CanvasInspector
