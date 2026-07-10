@@ -111,3 +111,57 @@ def test_production_canvas_image_skill_resolves_generated_asset_artifacts(
         "https://example.com/generated-office.png",
     ]
     assert dispatched["params"]["reference_images"] == params["reference_images"]
+
+
+def test_production_canvas_timeline_skill_forwards_resolved_reference_artifacts(
+    client,
+    db_session,
+    monkeypatch,
+):
+    user = db_session.query(User).filter(User.username == "test_admin").first()
+    script = _create_script_without_references(db_session, user)
+    environment = Environment(
+        user_id=user.id,
+        name="共享办公区",
+        reference_images=["https://example.com/generated-office.png"],
+    )
+    db_session.add(environment)
+    db_session.commit()
+    db_session.refresh(environment)
+
+    dispatched = {}
+
+    def fake_delay(task_id, params, user_id):
+        dispatched["task_id"] = task_id
+        dispatched["params"] = params
+        dispatched["user_id"] = user_id
+
+    monkeypatch.setattr(
+        "app.services.script.timeline_pipeline_queue."
+        "timeline_pipeline_generate_task.delay",
+        fake_delay,
+    )
+    artifact = f"environment_images:{environment.id}:1"
+
+    response = client.post(
+        "/api/v1/production-canvas/execute",
+        json={
+            "prompt": "用画布资产组装 Timeline",
+            "skill": "timeline.assemble",
+            "script_id": script.id,
+            "reference_artifacts": [artifact],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()["data"]
+    outputs = payload["skill_result"]["outputs"]
+    assert outputs["reference_artifacts"] == [artifact]
+    assert outputs["reference_image_count"] == 1
+    assert outputs["unresolved_reference_artifacts"] == []
+
+    task = db_session.get(Task, payload["task_id"])
+    params = json.loads(task.parameters)
+    assert params["overwrite_storyboard"] is True
+    assert params["reference_images"] == ["https://example.com/generated-office.png"]
+    assert dispatched["params"]["reference_images"] == params["reference_images"]

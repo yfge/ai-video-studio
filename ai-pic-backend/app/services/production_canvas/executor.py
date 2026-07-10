@@ -7,14 +7,14 @@ from app.schemas.production_canvas import (
     ProductionCanvasSkillExecuteResponse,
     ProductionCanvasSkillResult,
 )
+from app.services.production_canvas.asset_generation import (
+    execute_environment_image_generation,
+    execute_virtual_ip_image_generation,
+)
 from app.services.production_canvas.execution_common import (
     blocked_result,
     load_script,
     skill_definition,
-)
-from app.services.production_canvas.asset_generation import (
-    execute_environment_image_generation,
-    execute_virtual_ip_image_generation,
 )
 from app.services.production_canvas.immediate_execution import (
     execute_asset_selection,
@@ -23,6 +23,9 @@ from app.services.production_canvas.immediate_execution import (
 from app.services.production_canvas.media_execution import (
     execute_storyboard_images,
     execute_storyboard_video_candidates,
+)
+from app.services.production_canvas.reference_artifacts import (
+    resolve_canvas_reference_artifacts,
 )
 from app.services.production_canvas.report_execution import execute_report_summary
 from app.services.script.generation_queue import queue_script_generation_task
@@ -123,10 +126,19 @@ def _execute_timeline_pipeline(
             required_inputs=["script_id"],
         )
 
+    references = resolve_canvas_reference_artifacts(
+        db,
+        user,
+        request.reference_artifacts,
+    )
     task = queue_timeline_pipeline_task(
         db,
         user,
         script,
+        params={
+            "overwrite_storyboard": True,
+            "reference_images": references.image_urls,
+        },
         title=f"生产画布执行 Timeline Skill - 剧本{script.id}",
         description="Production canvas timeline.assemble skill dispatch",
         prompt=request.prompt,
@@ -138,7 +150,13 @@ def _execute_timeline_pipeline(
         title="已提交现有时间线流水线任务",
         detail="后台已通过现有 TIMELINE_PIPELINE Celery worker 执行。",
         task=task,
-        outputs={"script_id": script.id, "episode_id": script.episode_id},
+        outputs={
+            "script_id": script.id,
+            "episode_id": script.episode_id,
+            "reference_artifacts": references.artifacts,
+            "reference_image_count": len(references.image_urls),
+            "unresolved_reference_artifacts": references.unresolved,
+        },
         reuse_targets=skill.reuse_targets if skill else [],
         canvas_run_id=request.run_id,
     )

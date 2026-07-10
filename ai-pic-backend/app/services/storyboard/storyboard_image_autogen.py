@@ -9,14 +9,13 @@ from typing import Any, Sequence
 from app.models.task import Task, TaskType
 from app.repositories.storyboard_media_repository import load_storyboard_frames
 from app.services.task_worker import storyboard_image_generate_task
+from app.utils.model_utils import DEFAULT_OPENAI_IMAGE_MODEL
 
 STORYBOARD_IMAGE_METADATA_KEY = "storyboard_image_generation"
 
 
 @dataclass(frozen=True)
 class StoryboardImageQueueResult:
-    """Result of attempting to queue follow-up storyboard image generation."""
-
     status: str
     child_task_id: int | None
     queued_frame_indexes: list[int]
@@ -113,18 +112,18 @@ def queue_storyboard_image_generation(
         "script_id": script_id,
         "frame_indexes": queued_indexes,
         "frames": queued_indexes,
-        "model": model,
+        "model": model or DEFAULT_OPENAI_IMAGE_MODEL,
         "aspect_ratio": aspect_ratio,
         "reference_images": global_reference_images,
-        "keyframe_mode": "start_end",
+        "keyframe_mode": "single",
         "start_enabled": True,
-        "end_enabled": True,
-        "count": 4,
+        "end_enabled": False,
+        "count": 1,
         "require_reference_images": require_reference_images,
     }
     task = Task(
         title=f"分镜画面生成 - 剧本{script_id}",
-        description="分镜生成后的自动画面任务，使用场景/角色参考图生成首尾帧",
+        description="分镜生成后的自动画面任务，使用场景/角色参考图生成镜头支撑帧",
         task_type=TaskType.STORYBOARD_IMAGE_GENERATION,
         prompt=f"Storyboard image generation for script {script_id}",
         parameters=json.dumps(payload, ensure_ascii=False),
@@ -167,6 +166,7 @@ def queue_storyboard_image_generation_for_parent_task(
     user_id: int | None,
     frames: Sequence[dict[str, Any]] | None = None,
     aspect_ratio: str | None = None,
+    reference_images: Sequence[str] | None = None,
 ) -> StoryboardImageQueueResult:
     result = queue_storyboard_image_generation(
         db,
@@ -174,6 +174,7 @@ def queue_storyboard_image_generation_for_parent_task(
         user_id=user_id,
         frames=frames,
         aspect_ratio=aspect_ratio,
+        reference_images=reference_images,
         require_reference_images=True,
     )
     record_storyboard_image_queue_metadata(db, parent_task, result)

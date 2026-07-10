@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Sequence
+
 from app.models.script import Episode, Script
 from app.models.task import Task
 from app.models.timeline import Timeline
@@ -24,6 +26,7 @@ def generate_storyboard_placeholders_and_queue_images(
     user_id: int,
     overwrite_storyboard: bool,
     min_pause_ms: int,
+    reference_images: Sequence[str] | None = None,
 ) -> StoryboardImageQueueResult:
     existing_storyboard = (
         (script.extra_metadata or {}).get("storyboard")
@@ -62,4 +65,5 @@ def generate_storyboard_placeholders_and_queue_images(
         user_id=user_id,
         frames=storyboard.get("frames") or [],
         aspect_ratio=getattr(episode, "aspect_ratio", None),
+        reference_images=reference_images,
     )

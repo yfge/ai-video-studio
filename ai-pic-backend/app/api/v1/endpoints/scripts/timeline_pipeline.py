@@ -91,6 +91,7 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
         min_pause_seconds = float(payload.get("min_pause_seconds") or 1.5)
         min_pause_ms = max(0, int(round(min_pause_seconds * 1000)))
         use_duration_control = bool(payload.get("use_duration_control", False))
+        reference_images = payload.get("reference_images")
 
         async def _run():
             user = UserRepository(db).get_by_id(user_id)
@@ -138,6 +139,7 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
                 user_id=user.id,
                 overwrite_storyboard=overwrite_storyboard,
                 min_pause_ms=min_pause_ms,
+                reference_images=reference_images,
             )
             update_task_progress(
                 db,

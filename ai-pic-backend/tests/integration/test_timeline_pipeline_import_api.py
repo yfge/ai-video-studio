@@ -232,6 +232,7 @@ def test_process_timeline_pipeline_imports_audio_timeline_to_timeline_spec(
             "script_id": script.id,
             "use_duration_control": True,
             "min_pause_seconds": 2.25,
+            "reference_images": ["https://example.com/canvas-ref.png"],
         },
         user.id,
     )
@@ -245,10 +246,16 @@ def test_process_timeline_pipeline_imports_audio_timeline_to_timeline_spec(
         image_meta = params[STORYBOARD_IMAGE_METADATA_KEY]
         assert image_meta["status"] == "queued"
         assert image_meta["child_task_id"] == queued_image_task["task_id"]
-        assert image_meta["queued_frame_indexes"] == [0]
-        assert image_meta["skipped_frame_indexes"] == [1]
+        assert image_meta["queued_frame_indexes"] == [0, 1]
+        assert image_meta["skipped_frame_indexes"] == []
         assert queued_image_task["payload"]["script_id"] == script.id
-        assert queued_image_task["payload"]["frame_indexes"] == [0]
+        assert queued_image_task["payload"]["frame_indexes"] == [0, 1]
+        assert queued_image_task["payload"]["reference_images"] == [
+            "https://example.com/canvas-ref.png"
+        ]
+        assert queued_image_task["payload"]["model"] == "gpt-image-2"
+        assert queued_image_task["payload"]["keyframe_mode"] == "single"
+        assert queued_image_task["payload"]["count"] == 1
         assert queued_image_task["payload"]["require_reference_images"] is True
         assert queued_image_task["user_id"] == user.id
         timeline = (

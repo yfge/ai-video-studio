@@ -207,6 +207,9 @@ def test_queue_storyboard_image_generation_filters_frames_without_references(
     assert result.queued_frame_indexes == [0]
     assert result.skipped_frame_indexes == [1]
     assert captured["payload"]["frame_indexes"] == [0]
+    assert captured["payload"]["model"] == "gpt-image-2"
+    assert captured["payload"]["keyframe_mode"] == "single"
+    assert captured["payload"]["count"] == 1
     assert captured["payload"]["require_reference_images"] is True
     assert captured["user_id"] == user.id
 

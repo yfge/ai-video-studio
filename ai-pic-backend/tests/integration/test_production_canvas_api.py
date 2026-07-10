@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 
 from app.models.script import Episode, Script, Story
-from app.models.task import Task, TaskStatus, TaskType
 from app.models.story_structure import Environment
+from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP, VirtualIPEnvironment
 
@@ -274,5 +274,7 @@ def test_production_canvas_execute_timeline_skill_dispatches_existing_task(
     assert params["script_id"] == script.id
     assert params["overwrite_audio"] is False
     assert params["overwrite_timeline"] is False
+    assert params["overwrite_storyboard"] is True
     assert dispatched["task_id"] == task.id
     assert dispatched["params"]["script_id"] == script.id
+    assert dispatched["params"]["overwrite_storyboard"] is True
