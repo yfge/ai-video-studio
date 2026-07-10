@@ -10,8 +10,8 @@ import {
 import { CanvasInspector } from "./ProductionCanvasElements";
 import { ProductionCanvasNodeTools } from "./ProductionCanvasNodeTools";
 import { ProductionCanvasChatBar } from "./ProductionCanvasChatBar";
-import { ProductionCanvasRunControls } from "./ProductionCanvasRunControls";
 import { ProductionCanvasSurface } from "./ProductionCanvasSurface";
+import { ProductionCanvasToolbar } from "./ProductionCanvasToolbar";
 import {
   nodeIdFromCanvasDoubleClick,
   notePositionFromCanvasDoubleClick,
@@ -90,6 +90,7 @@ export function ProductionCanvasContent({
     onNodesCreated: appendNodes,
     onRunCreated: persistence.setRunId,
   });
+  const focusCanvas = () => canvasRef.current?.focus({ preventScroll: true });
   const handleCanvasDoubleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
     const nodeId = nodeIdFromCanvasDoubleClick(event);
     if (nodeId) return handleFocusSelectedNode(nodeId);
@@ -118,66 +119,22 @@ export function ProductionCanvasContent({
             prompt={planner.prompt}
             running={planner.running}
           />
-          <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 px-4 py-2">
-            <button
-              type="button"
-              className={operatorButtonClass("primary")}
-              onClick={() => handleAddNote()}
-            >
-              添加便签
-            </button>
-            <ProductionCanvasRunControls
-              busy={persistence.busy}
-              runId={persistence.runId}
-              status={persistence.status}
-              onRestore={(runId) => void persistence.restoreCanvas(runId)}
-              onRunIdChange={persistence.setRunId}
-              onSave={() => void persistence.saveCanvas()}
-            />
-            <button
-              type="button"
-              aria-label="缩小"
-              title="缩小"
-              className={operatorButtonClass("secondary", "w-8 px-0")}
-              onClick={() => handleZoomButton(-1)}
-            >
-              -
-            </button>
-            <div className="flex h-8 min-w-14 items-center justify-center rounded-md border border-gray-200 bg-white px-2 text-xs font-medium text-gray-700">
-              {zoomLabel}
-            </div>
-            <button
-              type="button"
-              aria-label="放大"
-              title="放大"
-              className={operatorButtonClass("secondary", "w-8 px-0")}
-              onClick={() => handleZoomButton(1)}
-            >
-              +
-            </button>
-            <button
-              type="button"
-              className={operatorButtonClass("secondary")}
-              disabled={!selectedNode}
-              onClick={() => handleFocusSelectedNode()}
-            >
-              定位选中
-            </button>
-            <button
-              type="button"
-              className={operatorButtonClass("secondary")}
-              onClick={handleFit}
-            >
-              适配
-            </button>
-            <button
-              type="button"
-              className={operatorButtonClass("ghost")}
-              onClick={() => (handleReset(), persistence.resetRun())}
-            >
-              重置
-            </button>
-          </div>
+          <ProductionCanvasToolbar
+            busy={persistence.busy}
+            hasSelectedNode={Boolean(selectedNode)}
+            runId={persistence.runId}
+            status={persistence.status}
+            zoomLabel={zoomLabel}
+            onAddNote={() => handleAddNote()}
+            onFit={handleFit}
+            onFocusSelected={() => handleFocusSelectedNode()}
+            onReset={() => (handleReset(), persistence.resetRun())}
+            onRestore={(runId) => void persistence.restoreCanvas(runId)}
+            onReturnFocus={focusCanvas}
+            onRunIdChange={persistence.setRunId}
+            onSave={() => void persistence.saveCanvas()}
+            onZoom={handleZoomButton}
+          />
           <ProductionCanvasSurface
             canvasRef={canvasRef}
             canvasState={canvasState}

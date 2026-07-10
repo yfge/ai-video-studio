@@ -1,0 +1,102 @@
+import { operatorButtonClass } from "@/components/shared";
+import { ProductionCanvasRunControls } from "./ProductionCanvasRunControls";
+
+export function ProductionCanvasToolbar({
+  busy,
+  hasSelectedNode,
+  onAddNote,
+  onFit,
+  onFocusSelected,
+  onReset,
+  onRestore,
+  onReturnFocus,
+  onRunIdChange,
+  onSave,
+  onZoom,
+  runId,
+  status,
+  zoomLabel,
+}: {
+  busy: boolean;
+  hasSelectedNode: boolean;
+  onAddNote: () => void;
+  onFit: () => void;
+  onFocusSelected: () => void;
+  onReset: () => void;
+  onRestore: (runId?: string) => void;
+  onReturnFocus: () => void;
+  onRunIdChange: (value: string) => void;
+  onSave: () => void;
+  onZoom: (steps: number) => void;
+  runId: string;
+  status?: string | null;
+  zoomLabel: string;
+}) {
+  const runCommand = (command: () => void) => {
+    command();
+    onReturnFocus();
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 px-4 py-2">
+      <button
+        type="button"
+        className={operatorButtonClass("primary")}
+        onClick={() => runCommand(onAddNote)}
+      >
+        添加便签
+      </button>
+      <ProductionCanvasRunControls
+        busy={busy}
+        runId={runId}
+        status={status}
+        onRestore={onRestore}
+        onRunIdChange={onRunIdChange}
+        onSave={onSave}
+      />
+      <button
+        type="button"
+        aria-label="缩小"
+        title="缩小"
+        className={operatorButtonClass("secondary", "w-8 px-0")}
+        onClick={() => runCommand(() => onZoom(-1))}
+      >
+        -
+      </button>
+      <div className="flex h-8 min-w-14 items-center justify-center rounded-md border border-gray-200 bg-white px-2 text-xs font-medium text-gray-700">
+        {zoomLabel}
+      </div>
+      <button
+        type="button"
+        aria-label="放大"
+        title="放大"
+        className={operatorButtonClass("secondary", "w-8 px-0")}
+        onClick={() => runCommand(() => onZoom(1))}
+      >
+        +
+      </button>
+      <button
+        type="button"
+        disabled={!hasSelectedNode}
+        className={operatorButtonClass("secondary")}
+        onClick={() => runCommand(onFocusSelected)}
+      >
+        定位选中
+      </button>
+      <button
+        type="button"
+        className={operatorButtonClass("secondary")}
+        onClick={() => runCommand(onFit)}
+      >
+        适配
+      </button>
+      <button
+        type="button"
+        className={operatorButtonClass("ghost")}
+        onClick={() => runCommand(onReset)}
+      >
+        重置
+      </button>
+    </div>
+  );
+}
