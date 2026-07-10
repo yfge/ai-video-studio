@@ -21,6 +21,7 @@ class ProductionCanvasPlanRequest(BaseModel):
 class ProductionCanvasSkillExecuteRequest(ProductionCanvasPlanRequest):
     skill: str = Field(..., min_length=1, max_length=80)
     run_id: str | None = Field(None, max_length=32)
+    reference_artifacts: list[str] = Field(default_factory=list, max_length=20)
     frame_indexes: list[int] | None = None
     model: str | None = Field(None, max_length=120)
     aspect_ratio: str | None = Field(None, max_length=16)

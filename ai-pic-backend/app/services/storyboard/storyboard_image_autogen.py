@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
+from dataclasses import dataclass
 from typing import Any, Sequence
 
 from app.models.task import Task, TaskType
@@ -48,6 +48,7 @@ def queue_storyboard_image_generation(
     frame_indexes: Sequence[int] | None = None,
     model: str | None = None,
     aspect_ratio: str | None = None,
+    reference_images: Sequence[str] | None = None,
     require_reference_images: bool = True,
 ) -> StoryboardImageQueueResult:
     """Create the follow-up task that turns storyboard frames into images.
@@ -80,7 +81,14 @@ def queue_storyboard_image_generation(
             reason="no_storyboard_frames",
         )
 
-    if require_reference_images:
+    global_reference_images = list(
+        dict.fromkeys(
+            item.strip()
+            for item in (reference_images or [])
+            if isinstance(item, str) and item.strip()
+        )
+    )
+    if require_reference_images and not global_reference_images:
         queued_indexes = [
             idx
             for idx in target_indexes
@@ -107,6 +115,7 @@ def queue_storyboard_image_generation(
         "frames": queued_indexes,
         "model": model,
         "aspect_ratio": aspect_ratio,
+        "reference_images": global_reference_images,
         "keyframe_mode": "start_end",
         "start_enabled": True,
         "end_enabled": True,

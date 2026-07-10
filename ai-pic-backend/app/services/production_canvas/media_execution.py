@@ -12,6 +12,9 @@ from app.services.production_canvas.execution_common import (
     load_script,
     skill_definition,
 )
+from app.services.production_canvas.reference_artifacts import (
+    resolve_canvas_reference_artifacts,
+)
 from app.services.storyboard.storyboard_image_autogen import (
     queue_storyboard_image_generation,
 )
@@ -36,6 +39,11 @@ def execute_storyboard_images(
             required_inputs=["script_id"],
         )
 
+    references = resolve_canvas_reference_artifacts(
+        db,
+        user,
+        request.reference_artifacts,
+    )
     queue_result = queue_storyboard_image_generation(
         db,
         script_id=script.id,
@@ -43,6 +51,7 @@ def execute_storyboard_images(
         frame_indexes=request.frame_indexes,
         model=request.model,
         aspect_ratio=request.aspect_ratio,
+        reference_images=references.image_urls,
         require_reference_images=(
             request.require_reference_images
             if request.require_reference_images is not None
@@ -87,6 +96,9 @@ def execute_storyboard_images(
                 "skipped_frame_indexes": queue_result.skipped_frame_indexes,
                 "model": request.model,
                 "aspect_ratio": request.aspect_ratio,
+                "reference_artifacts": references.artifacts,
+                "reference_image_count": len(references.image_urls),
+                "unresolved_reference_artifacts": references.unresolved,
                 "require_reference_images": queue_result.require_reference_images,
                 **({"canvas_run_id": request.run_id} if request.run_id else {}),
             },

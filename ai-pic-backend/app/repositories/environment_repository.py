@@ -35,6 +35,9 @@ class EnvironmentRepository(BaseRepository[Environment]):
             raise NotFoundError("环境", env_id)
         return env
 
+    def find_accessible_by_id(self, env_id: int, user: User) -> Environment | None:
+        return self._owned_query(user).filter(self.model.id == env_id).first()
+
     def list_accessible(
         self,
         *,
