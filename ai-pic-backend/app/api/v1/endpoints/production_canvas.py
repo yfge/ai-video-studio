@@ -16,6 +16,7 @@ from app.services.production_canvas import (
     execute_canvas_skill,
     load_canvas_skill_run,
     persist_canvas_skill_run,
+    save_canvas_skill_result,
     save_canvas_state,
 )
 from fastapi import APIRouter, Depends, HTTPException
@@ -51,6 +52,8 @@ async def execute_production_canvas_skill(
         current_user,
         request,
     )
+    if request.run_id:
+        save_canvas_skill_result(db, current_user, request.run_id, result.skill_result)
     return {"success": True, "data": result.model_dump()}
 
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useGenerationTaskTracker } from "@/hooks/useGenerationTaskTracker";
 import { productionCanvasAPI, timelineAPI } from "@/utils/api/endpoints";
+import { activeRenderExecutionsFromRun } from "./productionCanvasActiveRenderExecutions";
 import {
   productionCanvasExecutionFailure,
   productionCanvasExecutionFromRenderJob,
@@ -8,7 +9,6 @@ import {
   type TrackedProductionCanvasExecution,
 } from "./productionCanvasExecutionTracking";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
-import { productionCanvasStateFromRun } from "./productionCanvasPersistence";
 import {
   outputNumber,
   outputString,
@@ -17,44 +17,6 @@ import {
 
 const DEFAULT_POLL_INTERVAL_MS = 4000;
 const DEFAULT_MAX_POLL_MS = 15 * 60 * 1000;
-
-function activeRenderExecutions(nodes: ProductionCanvasNode[]) {
-  const nodesById = new Map(nodes.map((node) => [node.id, node]));
-  const latestBySource = new Map<
-    string,
-    TrackedProductionCanvasExecution & {
-      renderJobId: number;
-      timelineId: number;
-    }
-  >();
-  for (const taskNode of nodes) {
-    const sourceNodeId = outputString(taskNode.outputs, "source_node_id");
-    const renderJobId = outputNumber(taskNode.outputs, "render_job_id");
-    const timelineId = outputNumber(taskNode.outputs, "timeline_id");
-    const renderStatus = outputString(taskNode.outputs, "render_status");
-    const skillNode = sourceNodeId ? nodesById.get(sourceNodeId) : undefined;
-    if (
-      taskNode.kind !== "note" ||
-      !sourceNodeId ||
-      !skillNode ||
-      !renderJobId ||
-      !timelineId ||
-      (renderStatus !== "queued" && renderStatus !== "running")
-    ) {
-      continue;
-    }
-    const current = latestBySource.get(sourceNodeId);
-    if (!current || current.renderJobId < renderJobId) {
-      latestBySource.set(sourceNodeId, {
-        renderJobId,
-        skillNode,
-        taskNode,
-        timelineId,
-      });
-    }
-  }
-  return latestBySource;
-}
 
 export function useProductionCanvasExecutionTracker({
   maxPollMs = DEFAULT_MAX_POLL_MS,
@@ -156,9 +118,7 @@ export function useProductionCanvasExecutionTracker({
       ) {
         return;
       }
-      const executions = activeRenderExecutions(
-        productionCanvasStateFromRun(response.data).nodes,
-      );
+      const executions = activeRenderExecutionsFromRun(response.data);
       for (const [nodeId, execution] of executions) {
         if (trackedExecutions.current.has(nodeId)) continue;
         trackedExecutions.current.set(nodeId, execution);

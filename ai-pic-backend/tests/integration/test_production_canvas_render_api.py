@@ -71,12 +71,16 @@ def test_canvas_render_and_export_reuse_current_timeline_job(
         "app.services.timeline_service.dispatch_timeline_render_job",
         lambda *_args, **_kwargs: None,
     )
+    created = client.post(
+        "/api/v1/production-canvas/plan",
+        json={"prompt": "渲染当前成片", "script_id": script.id},
+    ).json()["data"]
 
     request = {
         "prompt": "渲染当前成片",
         "skill": "timeline.render",
         "script_id": script.id,
-        "run_id": "abcdabcdabcdabcdabcdabcdabcdabcd",
+        "run_id": created["run_id"],
     }
     response = client.post("/api/v1/production-canvas/execute", json=request)
 
@@ -90,6 +94,19 @@ def test_canvas_render_and_export_reuse_current_timeline_job(
     job = db_session.get(RenderJob, render_job_id)
     assert job.render_type == "final"
     assert job.preset == {"fps": 24, "resolution": "768x768"}
+    restored = client.get(f"/api/v1/production-canvas/runs/{created['run_id']}").json()[
+        "data"
+    ]
+    persisted_result = next(
+        item for item in restored["skill_results"] if item["skill"] == "timeline.render"
+    )
+    persisted_node = next(
+        item for item in restored["nodes"] if item["skill"] == "timeline.render"
+    )
+    assert restored["saved_state"] is None
+    assert persisted_result["status"] == "running"
+    assert persisted_result["outputs"]["render_job_id"] == render_job_id
+    assert persisted_node["outputs"]["render_job_id"] == render_job_id
 
     repeated = client.post("/api/v1/production-canvas/execute", json=request)
     assert (
