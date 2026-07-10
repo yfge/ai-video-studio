@@ -241,7 +241,6 @@ def test_process_timeline_pipeline_imports_audio_timeline_to_timeline_spec(
         refreshed = session.query(Task).filter(Task.id == task.id).first()
         assert refreshed is not None
         assert refreshed.status == TaskStatus.COMPLETED
-        assert refreshed.result_file_path == f"script:{script.id}:timeline_pipeline"
         params = json.loads(refreshed.parameters)
         image_meta = params[STORYBOARD_IMAGE_METADATA_KEY]
         assert image_meta["status"] == "queued"
@@ -257,6 +256,9 @@ def test_process_timeline_pipeline_imports_audio_timeline_to_timeline_spec(
             .filter(Timeline.episode_id == script.episode_id)
             .filter(Timeline.script_id == script.id)
             .one()
+        )
+        assert (
+            refreshed.result_file_path == f"timeline:{timeline.id}:v{timeline.version}"
         )
         assert timeline.source_audio_timeline_version == 7
         tracks = {track["track_type"]: track for track in timeline.spec["tracks"]}

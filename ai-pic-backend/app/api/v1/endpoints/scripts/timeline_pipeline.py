@@ -92,7 +92,7 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
         min_pause_ms = max(0, int(round(min_pause_seconds * 1000)))
         use_duration_control = bool(payload.get("use_duration_control", False))
 
-        async def _run() -> None:
+        async def _run():
             user = UserRepository(db).get_by_id(user_id)
             if not user:
                 raise RuntimeError("user_not_found")
@@ -147,12 +147,13 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
                     prefix="步骤 5/5",
                 ),
             )
+            return timeline
 
-        run_async_task_sync(_run)
+        timeline = run_async_task_sync(_run)
 
         if task:
             task.status = TaskStatus.COMPLETED
-            task.result_file_path = f"script:{script_id}:timeline_pipeline"
+            task.result_file_path = f"timeline:{timeline.id}:v{timeline.version}"
             update_task_progress(db, task, "一键时间轴流水线完成")
     except Exception as exc:
         task = TaskRepository(db).get_by_id(task_id)
