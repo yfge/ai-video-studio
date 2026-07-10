@@ -17,6 +17,7 @@ import {
 import {
   CANVAS_BASE_HEIGHT,
   CANVAS_BASE_WIDTH,
+  getWorldBounds,
 } from "./productionCanvasViewModel";
 
 type CanvasDragState =
@@ -145,19 +146,29 @@ export function useProductionCanvasInteractionControls({
   const handleFit = () => {
     const width = canvasRef.current?.clientWidth || CANVAS_BASE_WIDTH;
     const height = canvasRef.current?.clientHeight || CANVAS_BASE_HEIGHT;
-    const zoom = Math.min(
-      1,
-      Math.max(
-        0.5,
-        Number(
-          Math.min(
-            (width - 48) / CANVAS_BASE_WIDTH,
-            (height - 48) / CANVAS_BASE_HEIGHT,
-          ).toFixed(2),
+    setCanvasState((state) => {
+      const bounds = getWorldBounds(state.nodes);
+      const zoom = Math.min(
+        1,
+        Math.max(
+          0.5,
+          Number(
+            Math.min(
+              (width - 48) / bounds.width,
+              (height - 48) / bounds.height,
+            ).toFixed(2),
+          ),
         ),
-      ),
-    );
-    setCanvasState((state) => ({ ...state, viewport: { x: 24, y: 24, zoom } }));
+      );
+      return {
+        ...state,
+        viewport: {
+          x: Math.round(24 - bounds.minX * zoom),
+          y: Math.round(24 - bounds.minY * zoom),
+          zoom,
+        },
+      };
+    });
   };
 
   return {
