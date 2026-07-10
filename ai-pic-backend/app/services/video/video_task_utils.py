@@ -181,6 +181,7 @@ def build_parameters_payload(
     *,
     target_duration_seconds: float | None = None,
     provider_duration_seconds: int | None = None,
+    timeline_rework: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     payload = {
         "prompt": prompt,
@@ -208,4 +209,16 @@ def build_parameters_payload(
         payload.pop("target_duration_seconds", None)
     if payload.get("reference_images") is None:
         payload.pop("reference_images", None)
+    if timeline_rework:
+        payload["timeline_rework"] = timeline_rework
     return payload
+
+
+def timeline_rework_for_frame(
+    options: Dict[str, Any], frame_index: int
+) -> Dict[str, Any] | None:
+    contexts = options.get("timeline_rework_by_frame")
+    if not isinstance(contexts, dict):
+        return None
+    context = contexts.get(str(frame_index)) or contexts.get(frame_index)
+    return dict(context) if isinstance(context, dict) else None

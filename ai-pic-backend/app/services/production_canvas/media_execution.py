@@ -127,7 +127,7 @@ def execute_storyboard_video_candidates(
             db,
             user,
             script,
-            prompt=request.prompt,
+            prompt=None,
             frame_indexes=request.frame_indexes,
             model=request.model,
             duration=request.duration,
@@ -138,12 +138,23 @@ def execute_storyboard_video_candidates(
             target_business_id=request.run_id,
         )
     except ValueError as exc:
-        if str(exc) == "no_storyboard_frames":
+        reason = str(exc)
+        if reason == "no_storyboard_frames":
             return blocked_result(
                 request,
                 title="Video Candidates 等待分镜帧",
                 detail="需要先生成 storyboard.frames，之后才会提交现有视频候选任务。",
                 required_inputs=["storyboard_frames"],
+            )
+        if reason in {"timeline_not_found", "timeline_clip_mapping_missing"}:
+            return blocked_result(
+                request,
+                title="Video Candidates 等待当前 Timeline clips",
+                detail=(
+                    "需要先执行 Timeline Skill，并确保 storyboard 支撑帧来自当前 "
+                    f"Timeline 版本。 reason={reason}"
+                ),
+                required_inputs=["timeline_clips", "storyboard_support_frames"],
             )
         raise
 
@@ -164,6 +175,9 @@ def execute_storyboard_video_candidates(
                 "task_status": task.status.value,
                 "frame_count": queue_result.frame_count,
                 "selected_candidate_count": queue_result.selected_candidate_count,
+                "timeline_id": queue_result.timeline_id,
+                "timeline_version": queue_result.timeline_version,
+                "mapped_clip_count": queue_result.mapped_clip_count,
                 "frame_indexes": request.frame_indexes,
                 "model": request.model,
                 "duration": request.duration,

@@ -4,10 +4,10 @@ import json
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-from app.core.logging import get_logger
-from app.models.script import Script
 from app.models.task import Task, TaskStatus
 from app.models.video_generation_task import VideoGenerationTaskStatus
+from app.repositories.script_repository import ScriptRepository
+from app.repositories.task_repository import TaskRepository
 from app.repositories.video_generation_task_repository import (
     VideoGenerationTaskRepository,
 )
@@ -27,6 +27,7 @@ from app.services.video.video_task_utils import (
     normalize_submission_options,
     resolve_frame_urls,
     resolve_prompt,
+    timeline_rework_for_frame,
 )
 
 VIDEO_TASK_TIMEOUT = timedelta(hours=1)
@@ -37,7 +38,6 @@ class VideoTaskSubmissionService:
         self.db = db
         self.repo = VideoGenerationTaskRepository(db)
         self.dispatcher = VideoTaskDispatcher(ai_manager)
-        self.logger = get_logger("video_task_submission")
 
     def submit_storyboard_video_tasks(
         self,
@@ -74,7 +74,7 @@ class VideoTaskSubmissionService:
         self._finalize_submission(task, submitted, failures)
 
     def _load_task(self, task_id: int) -> Task:
-        task = self.db.query(Task).filter(Task.id == task_id).first()
+        task = TaskRepository(self.db).get_by_id(task_id)
         if not task:
             raise RuntimeError("任务不存在")
         task.status = TaskStatus.PROCESSING
@@ -82,7 +82,7 @@ class VideoTaskSubmissionService:
         return task
 
     def _load_storyboard_frames(self, script_id: int) -> List[Dict[str, Any]]:
-        script = self.db.query(Script).filter(Script.id == script_id).first()
+        script = ScriptRepository(self.db).get_by_id(script_id)
         if not script:
             raise RuntimeError("剧本不存在")
         storyboard = (script.extra_metadata or {}).get("storyboard") or {}
@@ -189,6 +189,7 @@ class VideoTaskSubmissionService:
             opts,
             target_duration_seconds=round(float(target_duration_seconds), 3),
             provider_duration_seconds=provider_duration_seconds,
+            timeline_rework=timeline_rework_for_frame(opts, frame_index),
         )
         self.repo.create(
             task_id=task.id,

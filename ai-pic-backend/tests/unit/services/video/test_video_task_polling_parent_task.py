@@ -99,6 +99,42 @@ def test_timeline_rework_parent_does_not_record_storyboard_result(monkeypatch):
     assert task.result_file_path is None
 
 
+def test_timeline_batch_parent_records_timeline_video_result(monkeypatch):
+    task = SimpleNamespace(
+        id=45,
+        user_id=7,
+        parameters=json.dumps(
+            {
+                "script_id": 130,
+                "timeline_id": 71,
+                "timeline_version": 6,
+                "timeline_rework_by_frame": {"0": {"clip_id": "clip-1"}},
+            }
+        ),
+        status=TaskStatus.PROCESSING,
+        result_file_path=None,
+        error_message=None,
+    )
+    children = [
+        SimpleNamespace(
+            status=VideoGenerationTaskStatus.SUCCEEDED,
+            script_id=130,
+            frame_index=0,
+            error_message=None,
+        )
+    ]
+    _patch_parent_dependencies(monkeypatch, task)
+
+    parent_status.refresh_parent_task_status(
+        MagicMock(),
+        SimpleNamespace(list_by_task_id=lambda _task_id: children),
+        task.id,
+    )
+
+    assert task.status is TaskStatus.COMPLETED
+    assert task.result_file_path == "timeline_videos:71:v6:1"
+
+
 def _patch_parent_dependencies(monkeypatch, task):
     monkeypatch.setattr(
         parent_status,

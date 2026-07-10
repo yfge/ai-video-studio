@@ -68,6 +68,10 @@ def _storyboard_video_result_ref(task, video_tasks) -> str | None:
     params = load_parameters(task.parameters)
     if params.get("timeline_rework"):
         return None
+    timeline_id = params.get("timeline_id")
+    timeline_version = params.get("timeline_version")
+    if timeline_id and timeline_version and params.get("timeline_rework_by_frame"):
+        return f"timeline_videos:{timeline_id}:v{timeline_version}:{len(video_tasks)}"
     try:
         script_id = int(params.get("script_id"))
     except (TypeError, ValueError):

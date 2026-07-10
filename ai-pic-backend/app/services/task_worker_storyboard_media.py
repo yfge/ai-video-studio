@@ -108,6 +108,7 @@ def storyboard_video_generate_task(
         "camera_control": payload.get("camera_control"),
         # Preserve endpoint contract: allow callers to disable/enable end-frame usage.
         "use_end_frame": payload.get("use_end_frame"),
+        "timeline_rework_by_frame": payload.get("timeline_rework_by_frame"),
     }
     try:
         _process_storyboard_video_task(

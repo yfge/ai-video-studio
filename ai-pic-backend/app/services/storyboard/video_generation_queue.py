@@ -6,11 +6,13 @@ from typing import Sequence
 
 from app.models.script import Script
 from app.models.task import Task, TaskType
+from app.models.timeline import Timeline
 from app.models.user import User
 from app.repositories.storyboard_media_repository import (
     load_storyboard_frames,
     resolve_storyboard_aspect_ratio,
 )
+from app.repositories.timeline_repository import TimelineRepository
 from app.services.task_worker import storyboard_video_generate_task
 from sqlalchemy.orm import Session
 
@@ -20,6 +22,9 @@ class StoryboardVideoQueueResult:
     task: Task
     frame_count: int
     selected_candidate_count: int
+    timeline_id: int
+    timeline_version: int
+    mapped_clip_count: int
 
 
 def queue_storyboard_video_generation_task(
@@ -43,6 +48,17 @@ def queue_storyboard_video_generation_task(
 
     indexes = _normalize_frame_indexes(frame_indexes, len(frames))
     selections = _latest_candidate_selections(frames, indexes)
+    timeline = TimelineRepository(db).get_latest_for_episode_script(
+        episode_id=int(script.episode_id),
+        script_id=int(script.id),
+    )
+    if timeline is None:
+        raise ValueError("timeline_not_found")
+    timeline_rework_by_frame = _timeline_rework_contexts(
+        frames,
+        indexes,
+        timeline,
+    )
     payload = {
         "script_id": int(script.id),
         "frame_indexes": indexes,
@@ -62,6 +78,9 @@ def queue_storyboard_video_generation_task(
         "execution_expires_after": None,
         "return_last_frame": True,
         "use_end_frame": False,
+        "timeline_id": timeline.id,
+        "timeline_version": timeline.version,
+        "timeline_rework_by_frame": timeline_rework_by_frame,
     }
     task = Task(
         title=f"分镜视频候选生成 - 剧本{script.id}",
@@ -80,7 +99,53 @@ def queue_storyboard_video_generation_task(
         task=task,
         frame_count=len(frames),
         selected_candidate_count=len(selections),
+        timeline_id=int(timeline.id),
+        timeline_version=int(timeline.version),
+        mapped_clip_count=len(timeline_rework_by_frame),
     )
+
+
+def _timeline_rework_contexts(
+    frames: list[dict],
+    indexes: list[int] | None,
+    timeline: Timeline,
+) -> dict[str, dict]:
+    target_indexes = indexes if indexes is not None else list(range(len(frames)))
+    clip_ids = _video_clip_ids(timeline)
+    contexts: dict[str, dict] = {}
+    for index in target_indexes:
+        source = frames[index].get("source")
+        source = source if isinstance(source, dict) else {}
+        clip_id = source.get("clip_id")
+        if (
+            source.get("timeline_id") != timeline.id
+            or source.get("timeline_version") != timeline.version
+            or clip_id not in clip_ids
+        ):
+            raise ValueError("timeline_clip_mapping_missing")
+        contexts[str(index)] = {
+            "timeline_id": timeline.id,
+            "timeline_business_id": timeline.business_id,
+            "timeline_version": timeline.version,
+            "clip_id": clip_id,
+            "action": "re_render",
+            "asset_role": "generated_video",
+            "reason": "production_canvas_video_candidates",
+            "auto_render": False,
+        }
+    return contexts
+
+
+def _video_clip_ids(timeline: Timeline) -> set[str]:
+    spec = timeline.spec if isinstance(timeline.spec, dict) else {}
+    return {
+        str(clip.get("clip_id"))
+        for track in spec.get("tracks") or []
+        if isinstance(track, dict)
+        and (track.get("track_type") or track.get("type")) == "video"
+        for clip in track.get("clips") or []
+        if isinstance(clip, dict) and clip.get("clip_id")
+    }
 
 
 def _latest_candidate_selections(

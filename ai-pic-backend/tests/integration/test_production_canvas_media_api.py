@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import copy
 import json
 
 from app.models.script import Episode, Script, Story
 from app.models.task import Task, TaskStatus, TaskType
+from app.models.timeline import Timeline
 from app.models.user import User
 
 
@@ -17,6 +19,12 @@ def _storyboard_frames() -> list[dict]:
             "reference_images": ["https://example.com/office-ref.png"],
             "image_url": "https://example.com/start-frame.png",
             "end_image_url": "https://example.com/end-frame.png",
+            "source": {
+                "kind": "timeline_clip",
+                "timeline_id": None,
+                "timeline_version": 1,
+                "clip_id": "video_scene_001_beat_001_001",
+            },
         },
         {
             "scene_number": 1,
@@ -29,6 +37,12 @@ def _storyboard_frames() -> list[dict]:
                 "https://example.com/start-frame-2.png",
                 "https://example.com/start-frame-2-latest.png",
             ],
+            "source": {
+                "kind": "timeline_clip",
+                "timeline_id": None,
+                "timeline_version": 1,
+                "clip_id": "video_scene_001_beat_002_002",
+            },
         },
     ]
 
@@ -46,6 +60,51 @@ def _create_storyboard_script(db_session, user: User) -> Script:
         content="办公室轻喜剧",
         extra_metadata={"storyboard": {"frames": _storyboard_frames()}},
     )
+    db_session.add(script)
+    db_session.commit()
+    db_session.refresh(script)
+    timeline = Timeline(
+        episode_id=episode.id,
+        script_id=script.id,
+        title="智能生活 Timeline",
+        status="draft",
+        version=1,
+        spec={
+            "spec_version": "timeline.v1",
+            "episode_id": episode.id,
+            "script_id": script.id,
+            "version": 1,
+            "fps": 24,
+            "resolution": "1080x1920",
+            "duration_ms": 6000,
+            "tracks": [
+                {
+                    "track_type": "video",
+                    "clips": [
+                        {
+                            "clip_id": "video_scene_001_beat_001_001",
+                            "start_ms": 0,
+                            "end_ms": 3200,
+                        },
+                        {
+                            "clip_id": "video_scene_001_beat_002_002",
+                            "start_ms": 3200,
+                            "end_ms": 6000,
+                        },
+                    ],
+                }
+            ],
+        },
+        created_by=user.id,
+        updated_by=user.id,
+    )
+    db_session.add(timeline)
+    db_session.commit()
+    db_session.refresh(timeline)
+    frames = copy.deepcopy(script.extra_metadata["storyboard"]["frames"])
+    for frame in frames:
+        frame["source"]["timeline_id"] = timeline.id
+    script.extra_metadata = {"storyboard": {"frames": frames}}
     db_session.add(script)
     db_session.commit()
     db_session.refresh(script)
@@ -151,6 +210,7 @@ def test_production_canvas_execute_video_skill_dispatches_existing_task(
     assert payload["skill_result"]["skill"] == "video.candidates"
     assert payload["skill_result"]["outputs"]["frame_count"] == 2
     assert payload["skill_result"]["outputs"]["selected_candidate_count"] == 1
+    assert payload["skill_result"]["outputs"]["mapped_clip_count"] == 1
     assert (
         payload["skill_result"]["outputs"]["dispatched_task_id"] == payload["task_id"]
     )
@@ -160,6 +220,7 @@ def test_production_canvas_execute_video_skill_dispatches_existing_task(
     assert task.task_type == TaskType.VIDEO_GENERATION
     assert task.target_business_id == "abcdabcdabcdabcdabcdabcdabcdabcd"
     assert params["script_id"] == script.id
+    assert params["prompt"] is None
     assert params["frame_indexes"] == [1]
     assert params["model"] == "minimax:video-01"
     assert params["duration"] == 6
@@ -168,6 +229,12 @@ def test_production_canvas_execute_video_skill_dispatches_existing_task(
     assert params["ratio"] == "16:9"
     assert params["camera_fixed"] is True
     assert params["return_last_frame"] is True
+    assert params["timeline_id"] == payload["skill_result"]["outputs"]["timeline_id"]
+    assert params["timeline_version"] == 1
+    assert params["timeline_rework_by_frame"]["1"]["clip_id"] == (
+        "video_scene_001_beat_002_002"
+    )
+    assert params["timeline_rework_by_frame"]["1"]["auto_render"] is False
     assert params["selections"] == [
         {
             "frame_index": 1,
