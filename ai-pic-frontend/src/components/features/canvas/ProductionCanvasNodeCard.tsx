@@ -52,7 +52,12 @@ export function CanvasNodeCard({
           canExecute ? "pb-11" : ""
         }`}
         aria-label={`${node.label} ${node.title}`}
-        onClick={() => onSelect(node.id)}
+        onClick={(event) => {
+          onSelect(node.id);
+          event.currentTarget
+            .closest<HTMLElement>("[data-production-canvas='infinite-canvas']")
+            ?.focus({ preventScroll: true });
+        }}
         onPointerDown={(event) => onPointerDown(event, node.id)}
       >
         <div className="flex items-center justify-between gap-2">

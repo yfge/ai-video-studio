@@ -1,4 +1,5 @@
 import type {
+  KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
   RefObject,
   WheelEvent as ReactWheelEvent,
@@ -19,6 +20,7 @@ export function ProductionCanvasSurface({
   canvasRef,
   canvasState,
   executingNodeId,
+  onCanvasKeyDown,
   onCanvasPointerDown,
   onCanvasPointerMove,
   onCanvasPointerUp,
@@ -32,6 +34,7 @@ export function ProductionCanvasSurface({
   canvasRef: RefObject<HTMLDivElement | null>;
   canvasState: ProductionCanvasState;
   executingNodeId?: string | null;
+  onCanvasKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>) => void;
   onCanvasPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onCanvasPointerMove: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onCanvasPointerUp: (event: ReactPointerEvent<HTMLDivElement>) => void;
@@ -48,9 +51,12 @@ export function ProductionCanvasSurface({
   return (
     <div
       ref={canvasRef}
+      aria-label="短剧生产链路无限画布"
       className="relative h-[560px] overflow-hidden touch-none bg-[#f8fafc]"
       data-production-canvas="infinite-canvas"
-      tabIndex={-1}
+      role="region"
+      tabIndex={0}
+      onKeyDown={onCanvasKeyDown}
       onPointerDown={onCanvasPointerDown}
       onPointerMove={onCanvasPointerMove}
       onPointerUp={onCanvasPointerUp}

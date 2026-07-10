@@ -53,6 +53,7 @@ export function ProductionCanvasContent({
     canvasState,
     handleAddEdge,
     handleAddNote,
+    handleCanvasKeyDown,
     handleCanvasPointerDown,
     handleCanvasPointerMove,
     handleCanvasPointerUp,
@@ -161,6 +162,7 @@ export function ProductionCanvasContent({
             executingNodeId={planner.executingNodeId}
             selectedNodeId={selectedNode?.id}
             worldBounds={worldBounds}
+            onCanvasKeyDown={handleCanvasKeyDown}
             onCanvasPointerDown={handleCanvasPointerDown}
             onCanvasPointerMove={handleCanvasPointerMove}
             onCanvasPointerUp={handleCanvasPointerUp}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
 import {
   addProductionCanvasEdge,
@@ -16,6 +17,10 @@ import {
   readStoredCanvasState,
 } from "./productionCanvasViewModel";
 import { useProductionCanvasInteractionControls } from "./useProductionCanvasInteractionControls";
+import {
+  applyProductionCanvasKeyboardNudge,
+  getProductionCanvasKeyboardNudge,
+} from "./productionCanvasKeyboard";
 
 export function useProductionCanvasController(storageKey?: string | null) {
   const [canvasState, setCanvasState] = useState(createProductionCanvasState);
@@ -25,9 +30,9 @@ export function useProductionCanvasController(storageKey?: string | null) {
     () => getWorldBounds(canvasState.nodes),
     [canvasState.nodes],
   );
-  const selectedNode =
-    canvasState.nodes.find((node) => node.id === canvasState.selectedNodeId) ||
-    canvasState.nodes[0];
+  const selectedNode = canvasState.nodes.find(
+    (node) => node.id === canvasState.selectedNodeId,
+  );
   const zoomLabel = `${Math.round(canvasState.viewport.zoom * 100)}%`;
   const {
     handleCanvasPointerDown,
@@ -55,6 +60,19 @@ export function useProductionCanvasController(storageKey?: string | null) {
 
   const handleSelectNode = (nodeId: string) =>
     setCanvasState((state) => ({ ...state, selectedNodeId: nodeId }));
+
+  const handleCanvasKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      handleSelectNode("");
+      return;
+    }
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const nudge = getProductionCanvasKeyboardNudge(event.key, event.shiftKey);
+    if (!nudge) return;
+    event.preventDefault();
+    setCanvasState((state) => applyProductionCanvasKeyboardNudge(state, nudge));
+  };
 
   const handleAddEdge = (from: string, to: string) =>
     setCanvasState((state) => ({
@@ -130,6 +148,7 @@ export function useProductionCanvasController(storageKey?: string | null) {
     canvasState,
     handleAddNote,
     handleAddEdge,
+    handleCanvasKeyDown,
     handleCanvasPointerDown,
     handleCanvasPointerMove,
     handleCanvasPointerUp,
