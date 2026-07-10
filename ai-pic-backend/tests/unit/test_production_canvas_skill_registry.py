@@ -12,10 +12,12 @@ def test_canvas_skill_registry_maps_full_short_drama_chain_to_backend_reuse():
         "virtual_ip.image",
         "environment.image",
         "script.generate",
+        "timeline.assemble",
         "storyboard.plan",
         "image.candidates",
         "video.candidates",
-        "timeline.assemble",
+        "timeline.render",
+        "timeline.export",
         "report.summarize",
     ]
     targets = {target.target for skill in skills for target in skill.reuse_targets}
@@ -30,6 +32,8 @@ def test_canvas_skill_registry_maps_full_short_drama_chain_to_backend_reuse():
         "queue_storyboard_video_generation_task"
     ) in targets
     assert "app.services.timeline_pipeline_runner.run_timeline_main_chain" in targets
+    assert "app.services.timeline_service.TimelineService.queue_render_job" in targets
+    assert "app.repositories.timeline_repository.RenderJobRepository" in targets
     assert (
         "app.services.timeline_render_dispatch.dispatch_timeline_render_job" in targets
     )

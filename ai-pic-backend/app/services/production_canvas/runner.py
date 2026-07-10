@@ -59,6 +59,8 @@ def _downstream_status(
         and request.script_id
     ):
         return "ready"
+    if skill_id in {"timeline.render", "timeline.export"} and request.script_id:
+        return "review"
     if skill_id == "report.summarize" and request.task_id:
         return "ready"
     return "blocked"
@@ -96,6 +98,8 @@ def _required_inputs(
             "image.candidates",
             "video.candidates",
             "timeline.assemble",
+            "timeline.render",
+            "timeline.export",
         }
         and request.script_id is None
     ):
@@ -110,6 +114,10 @@ def _downstream_detail(
     selection: CanvasAssetSelection,
     skill_id: str,
 ) -> str:
+    if skill_id in {"timeline.render", "timeline.export"} and not _required_inputs(
+        request, selection, skill_id
+    ):
+        return "人工触发后复用当前 Timeline 版本，保留 RenderJob 和成片资产证据。"
     if not _required_inputs(request, selection, skill_id):
         return "后台复用现有 API、service 或 worker；前端只展示执行结果。"
     return "需要先补齐执行上下文，之后才会调用现有生成 API、service 或 worker。"

@@ -27,6 +27,10 @@ from app.services.production_canvas.media_execution import (
 from app.services.production_canvas.reference_artifacts import (
     resolve_canvas_reference_artifacts,
 )
+from app.services.production_canvas.render_execution import (
+    execute_timeline_export,
+    execute_timeline_render,
+)
 from app.services.production_canvas.report_execution import execute_report_summary
 from app.services.script.generation_queue import queue_script_generation_task
 from app.services.script.timeline_pipeline_queue import queue_timeline_pipeline_task
@@ -216,6 +220,10 @@ def execute_canvas_skill(
         return execute_storyboard_video_candidates(db, user, request)
     if request.skill == "timeline.assemble":
         return _execute_timeline_pipeline(db, user, request)
+    if request.skill == "timeline.render":
+        return execute_timeline_render(db, user, request)
+    if request.skill == "timeline.export":
+        return execute_timeline_export(db, user, request)
     if request.skill == "report.summarize":
         return execute_report_summary(db, user, request)
 

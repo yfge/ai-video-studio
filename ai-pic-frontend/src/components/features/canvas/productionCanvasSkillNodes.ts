@@ -148,6 +148,7 @@ export function productionCanvasSkillResultToNode(
   node: ProductionCanvasNode,
   result: ProductionCanvasSkillResult,
 ): ProductionCanvasNode {
+  const outputUrl = outputString(result.outputs, "output_url");
   return {
     ...node,
     label: result.label,
@@ -156,6 +157,8 @@ export function productionCanvasSkillResultToNode(
     detail: result.detail,
     outputs: { ...node.outputs, ...result.outputs },
     reuseTargets: result.reuse_targets,
+    actionHref: outputUrl || node.actionHref,
+    actionLabel: outputUrl ? "打开成片" : node.actionLabel,
   };
 }
 
@@ -166,10 +169,13 @@ export function productionCanvasSkillResultToTaskNode(
 ): ProductionCanvasNode | null {
   const taskId =
     response.task_id ?? outputNumber(result.outputs, "dispatched_task_id");
-  if (!taskId) return null;
+  const renderJobId = outputNumber(result.outputs, "render_job_id");
+  if (!taskId && !renderJobId) return null;
+  const evidenceId = taskId || renderJobId;
+  const outputUrl = outputString(result.outputs, "output_url");
   return {
-    id: `${node.id}-task-${taskId}`,
-    label: `Task #${taskId}`,
+    id: `${node.id}-${taskId ? "task" : "render"}-${evidenceId}`,
+    label: taskId ? `Task #${taskId}` : `Render #${renderJobId}`,
     title: result.title,
     status: result.status,
     x: node.x + 36,
@@ -180,12 +186,13 @@ export function productionCanvasSkillResultToTaskNode(
     outputs: {
       source_node_id: node.id,
       skill: result.skill,
-      task_id: taskId,
-      task_status: response.task_status,
+      ...(taskId
+        ? { task_id: taskId, task_status: response.task_status }
+        : { render_job_id: renderJobId }),
       ...result.outputs,
     },
     reuseTargets: result.reuse_targets,
-    actionHref: `/tasks?task_id=${taskId}`,
-    actionLabel: "查看任务",
+    actionHref: outputUrl || (taskId ? `/tasks?task_id=${taskId}` : "/stories"),
+    actionLabel: outputUrl ? "打开成片" : taskId ? "查看任务" : "查看渲染",
   };
 }

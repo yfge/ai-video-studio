@@ -87,7 +87,7 @@ export function ProductionCanvasContent({
         <OperatorPanel className="overflow-hidden">
           <OperatorSectionHeader
             title="短剧生产链路"
-            subtitle="Brief -> Script -> Storyboard -> Image Candidates -> Video Candidates -> Timeline -> Report"
+            subtitle="Brief -> Script -> Audio + Timeline -> Storyboard Support -> Image Candidates -> Video Candidates -> Render -> Export -> Report"
             action={
               <Link href="/tasks" className={operatorButtonClass("ghost")}>
                 查看任务

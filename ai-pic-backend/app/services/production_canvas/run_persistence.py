@@ -10,7 +10,10 @@ from app.schemas.production_canvas import (
     ProductionCanvasPlanResponse,
     ProductionCanvasRunResponse,
     ProductionCanvasSavedState,
+    ProductionCanvasSkillResult,
 )
+from app.services.production_canvas.nodes import build_plan_nodes
+from app.services.production_canvas.skills import list_canvas_skill_definitions
 from sqlalchemy.orm import Session
 
 
@@ -26,6 +29,68 @@ def _canvas_run_payload(task: Task) -> dict | None:
     return payload
 
 
+def _run_context(payload: dict) -> dict:
+    keys = {"episode_id", "script_id", "timeline_id", "timeline_version"}
+    context = {
+        key: value
+        for key, value in (payload.get("requested_asset_ids") or {}).items()
+        if key in keys and value is not None
+    }
+    sources = list(payload.get("skill_results") or [])
+    saved_state = payload.get("saved_state") or {}
+    sources.extend(saved_state.get("nodes") or [])
+    for source in sources:
+        outputs = source.get("outputs") if isinstance(source, dict) else None
+        if not isinstance(outputs, dict):
+            continue
+        context.update(
+            {key: outputs[key] for key in keys if outputs.get(key) is not None}
+        )
+    return context
+
+
+def _current_run_payload(payload: dict) -> dict:
+    definitions = list_canvas_skill_definitions()
+    existing = {
+        item.get("skill"): ProductionCanvasSkillResult.model_validate(item)
+        for item in payload.get("skill_results") or []
+        if isinstance(item, dict) and item.get("skill")
+    }
+    context = _run_context(payload)
+    results: list[ProductionCanvasSkillResult] = []
+    for skill in definitions:
+        result = existing.get(skill.id)
+        if result is not None:
+            results.append(result)
+            continue
+        required_inputs = [] if context.get("script_id") else ["script_id"]
+        outputs = dict(context)
+        if required_inputs:
+            outputs["required_inputs"] = required_inputs
+        results.append(
+            ProductionCanvasSkillResult(
+                skill=skill.id,
+                label=skill.label,
+                status="review" if not required_inputs else "blocked",
+                title=skill.description,
+                detail=(
+                    "人工触发后复用当前 Timeline 版本。"
+                    if not required_inputs
+                    else "需要先绑定 script_id。"
+                ),
+                outputs=outputs,
+                reuse_targets=skill.reuse_targets,
+            )
+        )
+    current = dict(payload)
+    manifest = dict(current.get("skill_manifest") or {})
+    manifest["skills"] = [item.model_dump() for item in definitions]
+    current["skill_manifest"] = manifest
+    current["skill_results"] = [item.model_dump() for item in results]
+    current["nodes"] = [item.model_dump() for item in build_plan_nodes(results)]
+    return current
+
+
 def _run_response_from_task(
     task: Task,
     payload: dict,
@@ -35,7 +100,7 @@ def _run_response_from_task(
     if isinstance(raw_saved_state, dict):
         saved_state = ProductionCanvasSavedState.model_validate(raw_saved_state)
 
-    plan = ProductionCanvasPlanResponse.model_validate(payload)
+    plan = ProductionCanvasPlanResponse.model_validate(_current_run_payload(payload))
     data = plan.model_dump()
     data.update(
         {

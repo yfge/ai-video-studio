@@ -90,6 +90,12 @@ export function productionCanvasStateFromRun(
     const nodes = saved.nodes
       .map((node) => restoredSavedNode(node, run, planNodesById))
       .filter((node): node is ProductionCanvasNode => Boolean(node));
+    const restoredIds = new Set(nodes.map((node) => node.id));
+    nodes.push(
+      ...run.nodes
+        .filter((node) => !restoredIds.has(node.id))
+        .map((node) => planNodeToCanvasNode(node, run)),
+    );
     const restored = createProductionCanvasState(
       reconcileProductionCanvasExecutionTasks(nodes),
       savedEdges(saved.edges),

@@ -103,6 +103,28 @@ SKILL_DEFINITIONS = [
         ],
     ),
     ProductionCanvasSkillDefinition(
+        id="timeline.assemble",
+        label="Timeline Skill",
+        description="Reuse the shared audio, Timeline Spec, and shot-plan main chain.",
+        reuse_targets=[
+            _target(
+                "service",
+                "Timeline pipeline queue",
+                "app.services.script.timeline_pipeline_queue.queue_timeline_pipeline_task",
+            ),
+            _target(
+                "service",
+                "Timeline main chain",
+                "app.services.timeline_pipeline_runner.run_timeline_main_chain",
+            ),
+            _target(
+                "service",
+                "Timeline import",
+                "app.services.timeline_import_service.import_audio_timeline_to_timeline_spec",
+            ),
+        ],
+    ),
+    ProductionCanvasSkillDefinition(
         id="storyboard.plan",
         label="Storyboard Skill",
         description="Reuse storyboard generation and production storyboard placeholder logic.",
@@ -159,24 +181,26 @@ SKILL_DEFINITIONS = [
         ],
     ),
     ProductionCanvasSkillDefinition(
-        id="timeline.assemble",
-        label="Timeline Skill",
-        description="Reuse the shared audio, Timeline Spec, and shot-plan main chain.",
+        id="timeline.render",
+        label="Render Skill",
+        description="Render the current Timeline version after all clip videos are ready.",
         reuse_targets=[
             _target(
                 "service",
-                "Timeline pipeline queue",
-                "app.services.script.timeline_pipeline_queue.queue_timeline_pipeline_task",
+                "Timeline render",
+                "app.services.timeline_service.TimelineService.queue_render_job",
             ),
+        ],
+    ),
+    ProductionCanvasSkillDefinition(
+        id="timeline.export",
+        label="Export Skill",
+        description="Expose the successful final render as a downloadable production asset.",
+        reuse_targets=[
             _target(
-                "service",
-                "Timeline main chain",
-                "app.services.timeline_pipeline_runner.run_timeline_main_chain",
-            ),
-            _target(
-                "service",
-                "Timeline import",
-                "app.services.timeline_import_service.import_audio_timeline_to_timeline_spec",
+                "repository",
+                "Render jobs",
+                "app.repositories.timeline_repository.RenderJobRepository",
             ),
         ],
     ),

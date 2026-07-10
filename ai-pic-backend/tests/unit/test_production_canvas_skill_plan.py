@@ -68,20 +68,22 @@ def test_canvas_skill_plan_selects_existing_ip_and_environment_pool(db_session):
     )
 
     assert plan.skill_manifest.version == "production_canvas.v1"
-    assert [skill.id for skill in plan.skill_manifest.skills[:6]] == [
+    assert [skill.id for skill in plan.skill_manifest.skills[:7]] == [
         "brief.compose",
         "asset.select",
         "virtual_ip.image",
         "environment.image",
         "script.generate",
+        "timeline.assemble",
         "storyboard.plan",
     ]
-    assert [result.skill for result in plan.skill_results[:6]] == [
+    assert [result.skill for result in plan.skill_results[:7]] == [
         "brief.compose",
         "asset.select",
         "virtual_ip.image",
         "environment.image",
         "script.generate",
+        "timeline.assemble",
         "storyboard.plan",
     ]
     script_result = next(
