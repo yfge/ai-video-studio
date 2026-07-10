@@ -76,4 +76,37 @@ describe("ProductionCanvasChatBar", () => {
 
     assert.deepEqual(changes, [["episode_id", "123"]]);
   });
+
+  it("selects canvas assets by name while emitting their numeric ids", () => {
+    const changes: Array<[string, string]> = [];
+    const utils = render(
+      <ProductionCanvasChatBar
+        assetOptions={{
+          environments: [{ id: 22, name: "办公室" }],
+          error: null,
+          loading: false,
+          virtualIPs: [{ id: 11, name: "林晚" }],
+        }}
+        context={emptyProductionCanvasContext}
+        onCreate={() => {}}
+        onContextChange={(key, value) => changes.push([key, value])}
+        onPromptChange={() => {}}
+        prompt="生成短剧画布"
+        running={false}
+      />,
+      { container: dom.window.document.body },
+    );
+
+    fireEvent.change(utils.getByLabelText("IP 资产"), {
+      target: { value: "11" },
+    });
+    fireEvent.change(utils.getByLabelText("环境资产"), {
+      target: { value: "22" },
+    });
+
+    assert.deepEqual(changes, [
+      ["virtual_ip_id", "11"],
+      ["environment_id", "22"],
+    ]);
+  });
 });

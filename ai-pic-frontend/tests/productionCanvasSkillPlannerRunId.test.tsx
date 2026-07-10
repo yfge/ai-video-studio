@@ -28,7 +28,9 @@ const staleRunNode: ProductionCanvasNode = {
   label: "Asset Selection",
   outputs: {
     canvas_run_id: "stale-run",
+    environment_ids: [2],
     task_id: 6267,
+    virtual_ip_ids: [1],
   },
   reuse_targets: [],
   skill: "asset.select",
@@ -42,7 +44,7 @@ const staleRunNode: ProductionCanvasNode = {
 describe("useProductionCanvasSkillPlanner run id routing", () => {
   afterEach(() => cleanup());
 
-  it("prefers the active canvas run id over stale node output when executing", async () => {
+  it("prefers active run and draft context over stale node output", async () => {
     const originalFetch = globalThis.fetch;
     const executeRequests: Record<string, unknown>[] = [];
     globalThis.fetch = async (input, init) => {
@@ -75,12 +77,26 @@ describe("useProductionCanvasSkillPlanner run id routing", () => {
         onNodesCreated: () => {},
       });
       return (
-        <button
-          type="button"
-          onClick={() => void planner.executeSkillNode(staleRunNode)}
-        >
-          execute
-        </button>
+        <>
+          <button
+            type="button"
+            onClick={() => planner.setContextValue("virtual_ip_id", "11")}
+          >
+            select ip
+          </button>
+          <button
+            type="button"
+            onClick={() => planner.setContextValue("environment_id", "22")}
+          >
+            select environment
+          </button>
+          <button
+            type="button"
+            onClick={() => void planner.executeSkillNode(staleRunNode)}
+          >
+            execute
+          </button>
+        </>
       );
     }
 
@@ -89,10 +105,16 @@ describe("useProductionCanvasSkillPlanner run id routing", () => {
         container: dom.window.document.body,
       });
 
+      fireEvent.click(utils.getByRole("button", { name: "select ip" }));
+      fireEvent.click(
+        utils.getByRole("button", { name: "select environment" }),
+      );
       fireEvent.click(utils.getByRole("button", { name: "execute" }));
 
       await waitFor(() => assert.equal(executeRequests.length, 1));
       assert.equal(executeRequests[0]?.run_id, "current-run");
+      assert.equal(executeRequests[0]?.virtual_ip_id, 11);
+      assert.equal(executeRequests[0]?.environment_id, 22);
     } finally {
       globalThis.fetch = originalFetch;
     }

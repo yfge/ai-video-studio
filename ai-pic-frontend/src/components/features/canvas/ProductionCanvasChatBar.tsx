@@ -4,10 +4,15 @@ import {
   type ProductionCanvasContextDraft,
   type ProductionCanvasContextKey,
 } from "./productionCanvasContext";
+import {
+  useProductionCanvasAssetOptions,
+  type ProductionCanvasAssetOption,
+} from "./useProductionCanvasAssetOptions";
 
 const digitsOnly = (value: string) => value.replace(/\D/g, "");
 
 export function ProductionCanvasChatBar({
+  assetOptions: providedAssetOptions,
   context,
   error,
   onCreate,
@@ -16,6 +21,13 @@ export function ProductionCanvasChatBar({
   prompt,
   running,
 }: {
+  assetOptions?: {
+    environments: ProductionCanvasAssetOption[];
+    error: string | null;
+    load?: () => Promise<void>;
+    loading: boolean;
+    virtualIPs: ProductionCanvasAssetOption[];
+  };
   context: ProductionCanvasContextDraft;
   error?: string | null;
   onCreate: () => void;
@@ -24,6 +36,10 @@ export function ProductionCanvasChatBar({
   prompt: string;
   running: boolean;
 }) {
+  const loadedAssetOptions = useProductionCanvasAssetOptions(
+    providedAssetOptions === undefined,
+  );
+  const assetOptions = providedAssetOptions || loadedAssetOptions;
   return (
     <div className="border-b border-gray-200 bg-white px-4 py-3">
       <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
@@ -49,7 +65,36 @@ export function ProductionCanvasChatBar({
         </button>
       </div>
       <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-        {productionCanvasContextFields.map((field) => (
+        {(
+          [
+            ["virtual_ip_id", "IP 资产", assetOptions.virtualIPs],
+            ["environment_id", "环境资产", assetOptions.environments],
+          ] as const
+        ).map(([key, label, options]) => (
+          <label key={key} className="min-w-0">
+            <span className="text-[11px] font-semibold text-gray-600">
+              {label}
+            </span>
+            <select
+              aria-label={label}
+              value={context[key]}
+              disabled={assetOptions.loading}
+              onFocus={() => void assetOptions.load?.()}
+              onChange={(event) => onContextChange(key, event.target.value)}
+              className="mt-1 h-8 w-full rounded-md border border-gray-200 bg-white px-2 text-xs text-gray-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 disabled:text-gray-400"
+            >
+              <option value="">
+                {assetOptions.loading ? "加载中" : `选择${label}`}
+              </option>
+              {options.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.name} (#{option.id})
+                </option>
+              ))}
+            </select>
+          </label>
+        ))}
+        {productionCanvasContextFields.slice(2).map((field) => (
           <label key={field.key} className="min-w-0">
             <span className="text-[11px] font-semibold text-gray-600">
               {field.label}
@@ -73,9 +118,9 @@ export function ProductionCanvasChatBar({
           </label>
         ))}
       </div>
-      {error ? (
+      {error || assetOptions.error ? (
         <div className="mt-2 text-xs text-red-600" role="alert">
-          {error}
+          {error || assetOptions.error}
         </div>
       ) : null}
     </div>

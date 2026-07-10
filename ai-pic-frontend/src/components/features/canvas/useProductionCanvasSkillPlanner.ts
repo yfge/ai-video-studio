@@ -66,6 +66,9 @@ export function useProductionCanvasSkillPlanner({
     node: ProductionCanvasNode,
     fallbackPrompt?: string,
   ) => {
+    const requestContext = productionCanvasRequestContext(
+      fallbackPrompt ? emptyProductionCanvasContext : context,
+    );
     const response = await productionCanvasAPI.executeSkill({
       prompt:
         fallbackPrompt ||
@@ -88,11 +91,17 @@ export function useProductionCanvasSkillPlanner({
       resolution: outputString(node.outputs, "resolution"),
       ratio: outputString(node.outputs, "ratio"),
       camera_fixed: outputBoolean(node.outputs, "camera_fixed"),
-      episode_id: outputNumber(node.outputs, "episode_id"),
-      script_id: outputNumber(node.outputs, "script_id"),
-      task_id: taskOutputNumber(node.outputs),
-      virtual_ip_id: firstOutputNumber(node.outputs, "virtual_ip_ids"),
-      environment_id: firstOutputNumber(node.outputs, "environment_ids"),
+      episode_id:
+        requestContext.episode_id || outputNumber(node.outputs, "episode_id"),
+      script_id:
+        requestContext.script_id || outputNumber(node.outputs, "script_id"),
+      task_id: requestContext.task_id || taskOutputNumber(node.outputs),
+      virtual_ip_id:
+        requestContext.virtual_ip_id ||
+        firstOutputNumber(node.outputs, "virtual_ip_ids"),
+      environment_id:
+        requestContext.environment_id ||
+        firstOutputNumber(node.outputs, "environment_ids"),
     });
     if (!response.success || !response.data) {
       throw new Error(response.error || "Skill 执行失败");
