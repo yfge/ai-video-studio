@@ -6,7 +6,16 @@ import type { Task as APITask } from "@/utils/api/types";
 
 type LoadOptions = { silent?: boolean };
 
-export function useTasks() {
+function normalizeTask(task: APITask): APITask | null {
+  const taskId = typeof task.id === "number" ? task.id : Number(task.id);
+  if (!Number.isInteger(taskId)) {
+    console.warn("跳过无效任务ID", task.id);
+    return null;
+  }
+  return { ...task, id: taskId };
+}
+
+export function useTasks({ taskId }: { taskId?: number | null } = {}) {
   const [tasks, setTasks] = useState<APITask[]>([]);
   const [loading, setLoading] = useState(true);
   const [poll, setPoll] = useState(false);
@@ -27,6 +36,22 @@ export function useTasks() {
         setLoading(true);
       }
       try {
+        if (taskId) {
+          const res = await taskAPI.getTask(String(taskId));
+          if (res.success && res.data) {
+            const task = normalizeTask(res.data);
+            setTasks(task ? [task] : []);
+            setTotal(task ? 1 : 0);
+            setPage(1);
+            setFetchError(task ? null : "任务编号无效");
+          } else {
+            setTasks([]);
+            setTotal(0);
+            setFetchError(res.error || `未找到任务 #${taskId}`);
+          }
+          return;
+        }
+
         const res = await taskAPI.getTasks({
           page,
           size,
@@ -36,13 +61,8 @@ export function useTasks() {
           const tasksData = res.data.tasks ?? [];
           const normalizedTasks = tasksData
             .reduce<APITask[]>((acc, task) => {
-              const taskId =
-                typeof task.id === "number" ? task.id : Number(task.id);
-              if (!Number.isInteger(taskId)) {
-                console.warn("跳过无效任务ID", task.id);
-                return acc;
-              }
-              acc.push({ ...task, id: taskId });
+              const normalizedTask = normalizeTask(task);
+              if (normalizedTask) acc.push(normalizedTask);
               return acc;
             }, [])
             .sort((a, b) => b.id - a.id);
@@ -69,7 +89,7 @@ export function useTasks() {
         }
       }
     },
-    [page, size, taskTypeFilter],
+    [page, size, taskId, taskTypeFilter],
   );
 
   useEffect(() => {

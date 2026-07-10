@@ -25,6 +25,7 @@ type TasksListProps = {
   onStart: (taskId: number) => void;
   onCancel: (taskId: number) => void;
   onDelete: (taskId: number) => void;
+  focusedTaskId?: number | null;
 };
 
 const getStatusText = (status: APITask["status"]) => {
@@ -65,6 +66,7 @@ export function TasksList({
   onStart,
   onCancel,
   onDelete,
+  focusedTaskId,
 }: TasksListProps) {
   if (!loading && !fetchError && tasks.length === 0) {
     return <div className="p-6 text-sm text-gray-500">暂无任务。</div>;
@@ -73,7 +75,15 @@ export function TasksList({
   return (
     <div className="divide-y divide-gray-100">
       {tasks.map((task) => (
-        <div key={task.id} className="px-4 py-3">
+        <div
+          key={task.id}
+          className={`px-4 py-3 ${
+            focusedTaskId === task.id
+              ? "bg-blue-50/70 ring-1 ring-blue-100"
+              : ""
+          }`}
+          data-focused-task={focusedTaskId === task.id ? "true" : undefined}
+        >
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <div className="mb-2 flex items-center gap-2">
@@ -133,8 +143,7 @@ export function TasksList({
                   {isStartingId === task.id ? "启动中..." : "开始"}
                 </button>
               )}
-              {(task.status === "pending" ||
-                task.status === "processing") && (
+              {(task.status === "pending" || task.status === "processing") && (
                 <button
                   onClick={() => onCancel(task.id)}
                   disabled={cancellingTaskId === task.id}

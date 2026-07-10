@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
+import { useEffect } from "react";
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 import {
   OperatorPanel,
   OperatorSectionHeader,
   OperatorShell,
   OperatorState,
+  operatorButtonClass,
 } from "@/components/shared";
 import type { Task as APITask } from "@/utils/api/types";
 
@@ -20,7 +23,11 @@ const toTaskId = (id: APITask["id"]): number | null => {
   return Number.isInteger(taskId) ? taskId : null;
 };
 
-export function TasksPage() {
+export function TasksPage({
+  targetTaskId = null,
+}: {
+  targetTaskId?: number | null;
+}) {
   const { showAlert } = useAlertModal();
   const {
     tasks,
@@ -42,10 +49,19 @@ export function TasksPage() {
     startTask,
     cancelTask,
     deleteTask,
-  } = useTasks();
+  } = useTasks({ taskId: targetTaskId });
 
   const { expanded, toggleExpanded, persistedStyle, persistedLoading } =
     useTaskPersistedStyle();
+  const targetTask = targetTaskId
+    ? tasks.find((task) => task.id === targetTaskId)
+    : null;
+
+  useEffect(() => {
+    if (targetTaskId && targetTask && !expanded[targetTaskId]) {
+      toggleExpanded(targetTask);
+    }
+  }, [expanded, targetTask, targetTaskId, toggleExpanded]);
 
   const handleCancel = (id: APITask["id"]) => {
     const taskId = toTaskId(id);
@@ -118,21 +134,33 @@ export function TasksPage() {
       breadcrumb={["IP 中心", "任务"]}
     >
       <div className="space-y-4">
+        {targetTaskId ? (
+          <OperatorPanel className="flex flex-wrap items-center justify-between gap-3 p-3">
+            <div className="text-sm font-medium text-gray-800">
+              正在查看任务 #{targetTaskId}
+            </div>
+            <Link href="/tasks" className={operatorButtonClass("secondary")}>
+              查看全部任务
+            </Link>
+          </OperatorPanel>
+        ) : null}
         <OperatorPanel>
           <OperatorSectionHeader
             title="任务队列"
-            subtitle={`共 ${total} 个任务，当前第 ${page} / ${totalPages || 1} 页`}
+            subtitle={`共 ${total} 个任务，当前第 ${page} / ${
+              totalPages || 1
+            } 页`}
             action={
-          <TasksToolbar
-            poll={poll}
-            onPollChange={setPoll}
-            onRefresh={() => void refresh()}
-            taskTypeFilter={taskTypeFilter}
-            onTaskTypeFilterChange={(next) => {
-              setTaskTypeFilter(next);
-              setPage(1);
-            }}
-          />
+              <TasksToolbar
+                poll={poll}
+                onPollChange={setPoll}
+                onRefresh={() => void refresh()}
+                taskTypeFilter={taskTypeFilter}
+                onTaskTypeFilterChange={(next) => {
+                  setTaskTypeFilter(next);
+                  setPage(1);
+                }}
+              />
             }
           />
           {fetchError ? (
@@ -159,6 +187,7 @@ export function TasksPage() {
             onStart={(taskId) => void handleStart(taskId)}
             onCancel={handleCancel}
             onDelete={handleDelete}
+            focusedTaskId={targetTaskId}
           />
           {!loading && !fetchError && tasks.length > 0 ? (
             <TasksPagination
