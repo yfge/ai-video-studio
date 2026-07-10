@@ -10,6 +10,7 @@ import {
   cloneProductionCanvasNodes,
   finiteCanvasNumber,
 } from "./productionCanvasGeometry";
+import { outputTaskContext } from "./productionCanvasTaskContext";
 
 export type ProductionCanvasViewport = {
   x: number;
@@ -58,17 +59,13 @@ function collectCanvasContext(nodes: ProductionCanvasNode[]) {
     const environmentId = firstOutputNumber(outputs, "environment_ids");
     const episodeId = outputNumber(outputs, "episode_id");
     const scriptId = outputNumber(outputs, "script_id");
-    const dispatchedTaskId = outputNumber(outputs, "dispatched_task_id");
-    const taskId = outputNumber(outputs, "task_id");
-    const canvasTaskId = outputNumber(outputs, "canvas_task_id");
+    const taskContextId = outputTaskContext(outputs);
 
     if (virtualIpId) context.virtual_ip_id = virtualIpId;
     if (environmentId) context.environment_id = environmentId;
     if (episodeId) context.episode_id = episodeId;
     if (scriptId) context.script_id = scriptId;
-    if (dispatchedTaskId) context.task_id = dispatchedTaskId;
-    else if (taskId) context.task_id = taskId;
-    else if (canvasTaskId && !context.task_id) context.task_id = canvasTaskId;
+    if (taskContextId) context.task_id = taskContextId;
   }
   return context;
 }

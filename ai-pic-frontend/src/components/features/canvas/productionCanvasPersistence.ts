@@ -1,5 +1,4 @@
 import type {
-  ProductionCanvasPlanNode,
   ProductionCanvasRunResponse,
   ProductionCanvasSavedNode,
   ProductionCanvasSavedState,
@@ -13,64 +12,13 @@ import {
   finiteCanvasNumber,
 } from "./productionCanvasGeometry";
 import {
+  planNodeToCanvasNode,
+  restoredSavedNode,
+} from "./productionCanvasRunNodes";
+import {
   createProductionCanvasState,
   type ProductionCanvasState,
 } from "./productionCanvasState";
-
-function runOutputs(run: ProductionCanvasRunResponse) {
-  return {
-    ...(run.run_id ? { canvas_run_id: run.run_id } : {}),
-    ...(run.task_id ? { canvas_task_id: run.task_id } : {}),
-  };
-}
-
-function planNodeToCanvasNode(
-  node: ProductionCanvasPlanNode,
-  run: ProductionCanvasRunResponse,
-): ProductionCanvasNode {
-  return {
-    id: node.id,
-    label: node.label,
-    title: node.title,
-    status: node.status,
-    x: finiteCanvasNumber(node.x, 0),
-    y: finiteCanvasNumber(node.y, 0),
-    width: finiteCanvasNumber(node.width, 220),
-    height:
-      node.height === undefined
-        ? undefined
-        : finiteCanvasNumber(node.height, 118),
-    kind: node.kind || "skill_result",
-    skill: node.skill,
-    detail: node.detail,
-    outputs: { ...node.outputs, ...runOutputs(run) },
-    reuseTargets: node.reuse_targets,
-    actionHref: node.action_href || undefined,
-    actionLabel: node.action_label || undefined,
-  };
-}
-
-function savedNodeToCanvasNode(
-  node: ProductionCanvasSavedNode,
-): ProductionCanvasNode {
-  return {
-    id: node.id,
-    label: node.label,
-    title: node.title,
-    status: node.status,
-    x: finiteCanvasNumber(node.x, 0),
-    y: finiteCanvasNumber(node.y, 0),
-    width: finiteCanvasNumber(node.width, 190),
-    height: node.height ? finiteCanvasNumber(node.height, 96) : undefined,
-    kind: node.kind || undefined,
-    skill: node.skill || undefined,
-    detail: node.detail || undefined,
-    outputs: node.outputs,
-    reuseTargets: node.reuse_targets,
-    actionHref: node.action_href || undefined,
-    actionLabel: node.action_label || undefined,
-  };
-}
 
 function canvasNodeToSavedNode(
   node: ProductionCanvasNode,
@@ -137,7 +85,10 @@ export function productionCanvasStateFromRun(
   const saved = run.saved_state;
   if (saved?.nodes?.length) {
     const fallback = createProductionCanvasState();
-    const nodes = saved.nodes.map(savedNodeToCanvasNode);
+    const planNodesById = new Map(run.nodes.map((node) => [node.id, node]));
+    const nodes = saved.nodes
+      .map((node) => restoredSavedNode(node, run, planNodesById))
+      .filter((node): node is ProductionCanvasNode => Boolean(node));
     const restored = createProductionCanvasState(
       nodes,
       savedEdges(saved.edges),

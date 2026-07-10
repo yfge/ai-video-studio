@@ -4,6 +4,224 @@ import { describe, it } from "node:test";
 import { productionCanvasStateFromRun } from "../src/components/features/canvas/productionCanvasPersistence";
 
 describe("productionCanvasStateFromRun", () => {
+  it("does not promote the canvas run task into skill task context", () => {
+    const restored = productionCanvasStateFromRun({
+      run_id: "canvas-run",
+      task_id: 44,
+      nodes: [
+        {
+          id: "report",
+          label: "Report",
+          title: "Report",
+          status: "blocked",
+          x: 0,
+          y: 0,
+          width: 220,
+          kind: "skill_result",
+          skill: "report.summarize",
+          outputs: { required_inputs: ["task_id"] },
+        },
+      ],
+      selected_assets: { virtual_ips: [], environments: [] },
+      skill_manifest: { version: "production_canvas.v1" },
+    } as any);
+
+    const report = restored.nodes[0];
+    assert.equal(report?.outputs?.canvas_task_id, 44);
+    assert.equal(report?.outputs?.task_id, undefined);
+    assert.deepEqual(report?.outputs?.required_inputs, ["task_id"]);
+  });
+
+  it("does not share current canvas task evidence as skill task input", () => {
+    const restored = productionCanvasStateFromRun({
+      run_id: "canvas-run-current",
+      task_id: 6266,
+      nodes: [
+        {
+          id: "skill-asset-select",
+          label: "Asset Selection",
+          title: "Asset plan",
+          status: "blocked",
+          x: 200,
+          y: 100,
+          width: 220,
+          kind: "skill_result",
+          skill: "asset.select",
+          outputs: { required_inputs: ["virtual_ip_id"] },
+        },
+      ],
+      selected_assets: { virtual_ips: [], environments: [] },
+      skill_manifest: { version: "production_canvas.v1" },
+      saved_state: {
+        edges: [],
+        nodes: [
+          {
+            id: "skill-report-summarize-task-6266",
+            label: "Task #6266",
+            title: "Current canvas task",
+            status: "review",
+            x: 100,
+            y: 220,
+            width: 220,
+            kind: "note",
+            outputs: {
+              canvas_run_id: "canvas-run-current",
+              canvas_task_id: 6266,
+              task_id: 6266,
+            },
+            action_href: "/tasks?task_id=6266",
+          },
+          {
+            id: "skill-asset-select",
+            label: "Asset Selection",
+            title: "Asset saved",
+            status: "blocked",
+            x: 240,
+            y: 160,
+            width: 240,
+            kind: "skill_result",
+            skill: "asset.select",
+            outputs: {
+              canvas_run_id: "canvas-run-current",
+              canvas_task_id: 6266,
+              required_inputs: ["virtual_ip_id"],
+            },
+          },
+        ],
+        selected_node_id: "skill-asset-select",
+        viewport: { x: 0, y: 0, zoom: 1 },
+      },
+    } as any);
+
+    const taskEvidence = restored.nodes.find(
+      (node) => node.id === "skill-report-summarize-task-6266",
+    );
+    assert.equal(taskEvidence?.outputs?.task_id, 6266);
+
+    const asset = restored.nodes.find(
+      (node) => node.id === "skill-asset-select",
+    );
+    assert.equal(asset?.outputs?.canvas_task_id, 6266);
+    assert.equal(asset?.outputs?.task_id, undefined);
+    assert.deepEqual(asset?.outputs?.required_inputs, ["virtual_ip_id"]);
+  });
+
+  it("drops saved task evidence from another canvas run", () => {
+    const restored = productionCanvasStateFromRun({
+      run_id: "canvas-run-current",
+      task_id: 1,
+      nodes: [
+        {
+          id: "skill-report-summarize",
+          label: "Report Skill",
+          title: "Report plan",
+          status: "blocked",
+          x: 100,
+          y: 100,
+          width: 220,
+          kind: "skill_result",
+          skill: "report.summarize",
+          outputs: { required_inputs: ["task_id"] },
+        },
+        {
+          id: "skill-asset-select",
+          label: "Asset Selection",
+          title: "Asset plan",
+          status: "blocked",
+          x: 200,
+          y: 100,
+          width: 220,
+          kind: "skill_result",
+          skill: "asset.select",
+          outputs: { required_inputs: ["virtual_ip_id"] },
+        },
+      ],
+      selected_assets: { virtual_ips: [], environments: [] },
+      skill_manifest: { version: "production_canvas.v1" },
+      saved_state: {
+        edges: [],
+        nodes: [
+          {
+            id: "skill-report-summarize-task-999",
+            label: "Task #999",
+            title: "Stale task",
+            status: "review",
+            x: 100,
+            y: 220,
+            width: 220,
+            kind: "note",
+            outputs: {
+              canvas_run_id: "canvas-run-stale",
+              canvas_task_id: 999,
+              task_id: 999,
+            },
+            action_href: "/tasks?task_id=999",
+          },
+          {
+            id: "skill-report-summarize",
+            label: "Report Skill",
+            title: "Stale report result",
+            status: "review",
+            x: 140,
+            y: 160,
+            width: 240,
+            kind: "skill_result",
+            skill: "report.summarize",
+            outputs: {
+              canvas_run_id: "canvas-run-stale",
+              canvas_task_id: 999,
+              task_id: 999,
+            },
+            action_href: "/tasks?task_id=999",
+          },
+          {
+            id: "skill-asset-select",
+            label: "Asset Selection",
+            title: "Asset saved",
+            status: "blocked",
+            x: 240,
+            y: 160,
+            width: 240,
+            kind: "skill_result",
+            skill: "asset.select",
+            outputs: {
+              canvas_run_id: "canvas-run-current",
+              canvas_task_id: 999,
+              task_id: 999,
+              required_inputs: ["virtual_ip_id"],
+            },
+          },
+        ],
+        selected_node_id: "skill-report-summarize-task-999",
+        viewport: { x: 0, y: 0, zoom: 1 },
+      },
+    } as any);
+
+    assert.deepEqual(
+      restored.nodes.map((node) => node.id),
+      ["skill-report-summarize", "skill-asset-select"],
+    );
+    assert.equal(restored.selectedNodeId, "skill-report-summarize");
+
+    const report = restored.nodes.find(
+      (node) => node.id === "skill-report-summarize",
+    );
+    assert.equal(report?.title, "Report plan");
+    assert.equal(report?.x, 140);
+    assert.equal(report?.outputs?.canvas_run_id, "canvas-run-current");
+    assert.equal(report?.outputs?.canvas_task_id, 1);
+    assert.equal(report?.outputs?.task_id, undefined);
+    assert.equal(report?.actionHref, undefined);
+
+    const asset = restored.nodes.find(
+      (node) => node.id === "skill-asset-select",
+    );
+    assert.equal(asset?.outputs?.canvas_run_id, "canvas-run-current");
+    assert.equal(asset?.outputs?.canvas_task_id, 1);
+    assert.equal(asset?.outputs?.task_id, undefined);
+    assert.deepEqual(asset?.outputs?.required_inputs, ["virtual_ip_id"]);
+  });
+
   it("sanitizes server plan nodes", () => {
     const restored = productionCanvasStateFromRun({
       run_id: "canvas-run",
