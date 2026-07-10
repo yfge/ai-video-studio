@@ -45,6 +45,29 @@ const taskNode: ProductionCanvasNode = {
   outputs: { source_node_id: sourceNode.id, task_id: 101 },
 };
 
+const renderSkillNode: ProductionCanvasNode = {
+  ...sourceNode,
+  id: "skill-timeline-render",
+  skill: "timeline.render",
+  status: "running",
+  outputs: {
+    timeline_id: 71,
+    render_job_id: 122,
+    render_status: "queued",
+  },
+};
+const renderNode: ProductionCanvasNode = {
+  ...taskNode,
+  id: "skill-timeline-render-render-122",
+  label: "Render #122",
+  outputs: {
+    source_node_id: renderSkillNode.id,
+    timeline_id: 71,
+    render_job_id: 122,
+    render_status: "queued",
+  },
+};
+
 describe("useProductionCanvasExecutionTracker", () => {
   afterEach(() => cleanup());
 
@@ -96,6 +119,82 @@ describe("useProductionCanvasExecutionTracker", () => {
         updates[1][0].outputs?.result_file_path,
         "environment_images:13:1",
       );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("polls a RenderJob until the final video link is ready", async () => {
+    const originalFetch = globalThis.fetch;
+    const updates: ProductionCanvasNode[][] = [];
+    let requestCount = 0;
+    globalThis.fetch = async (input) => {
+      assert.equal(String(input), "/api/v1/timelines/71/render-jobs");
+      requestCount += 1;
+      const succeeded = requestCount > 1;
+      return new Response(
+        JSON.stringify({
+          items: [
+            {
+              id: 122,
+              business_id: "render-122",
+              timeline_id: 71,
+              timeline_version: 6,
+              render_type: "final",
+              preset_hash: "preset",
+              preset: { fps: 24 },
+              status: succeeded ? "succeeded" : "running",
+              progress: succeeded ? 100 : 50,
+              output_asset_id: succeeded ? 375 : null,
+              output_asset: succeeded
+                ? {
+                    id: 375,
+                    business_id: "asset-375",
+                    asset_type: "video",
+                    origin: "timeline_render",
+                    file_url: "/media/final.mp4",
+                    created_at: "2026-07-10T10:00:00Z",
+                    updated_at: "2026-07-10T10:00:00Z",
+                  }
+                : null,
+              created_at: "2026-07-10T10:00:00Z",
+              updated_at: "2026-07-10T10:00:01Z",
+            },
+          ],
+        }),
+        { headers: { "content-type": "application/json" } },
+      );
+    };
+
+    function Harness() {
+      const publish = useProductionCanvasExecutionTracker({
+        onNodesCreated: (nodes) => updates.push(nodes),
+        pollIntervalMs: 5,
+        maxPollMs: 500,
+      });
+      return (
+        <button
+          type="button"
+          onClick={() =>
+            publish(renderSkillNode, [renderSkillNode, renderNode])
+          }
+        >
+          publish render
+        </button>
+      );
+    }
+
+    try {
+      const utils = render(<Harness />, {
+        container: dom.window.document.body,
+      });
+      utils.getByRole("button", { name: "publish render" }).click();
+
+      await waitFor(() => assert.equal(updates.length, 3));
+      assert.equal(updates[1][0].outputs?.render_progress, 50);
+      assert.equal(updates[2][0].status, "ready");
+      assert.equal(updates[2][1].outputs?.render_status, "succeeded");
+      assert.equal(updates[2][0].actionHref, "/media/final.mp4");
     } finally {
       globalThis.fetch = originalFetch;
     }

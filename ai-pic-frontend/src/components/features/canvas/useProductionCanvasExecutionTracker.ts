@@ -1,17 +1,26 @@
-import { useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useGenerationTaskTracker } from "@/hooks/useGenerationTaskTracker";
+import { timelineAPI } from "@/utils/api/endpoints";
 import {
   productionCanvasExecutionFailure,
+  productionCanvasExecutionFromRenderJob,
   productionCanvasExecutionFromTask,
   type TrackedProductionCanvasExecution,
 } from "./productionCanvasExecutionTracking";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
-import { taskOutputNumber } from "./productionCanvasSkillNodes";
+import {
+  outputNumber,
+  outputString,
+  taskOutputNumber,
+} from "./productionCanvasSkillNodes";
+
+const DEFAULT_POLL_INTERVAL_MS = 4000;
+const DEFAULT_MAX_POLL_MS = 15 * 60 * 1000;
 
 export function useProductionCanvasExecutionTracker({
-  maxPollMs,
+  maxPollMs = DEFAULT_MAX_POLL_MS,
   onNodesCreated,
-  pollIntervalMs,
+  pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,
 }: {
   maxPollMs?: number;
   onNodesCreated: (nodes: ProductionCanvasNode[]) => void;
@@ -19,6 +28,70 @@ export function useProductionCanvasExecutionTracker({
 }) {
   const trackedExecutions = useRef(
     new Map<string, TrackedProductionCanvasExecution>(),
+  );
+  const renderTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const mounted = useRef(true);
+  const onNodesCreatedRef = useRef(onNodesCreated);
+
+  useEffect(() => {
+    onNodesCreatedRef.current = onNodesCreated;
+  }, [onNodesCreated]);
+
+  useEffect(() => {
+    const timers = renderTimers.current;
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      for (const timer of timers.values()) clearTimeout(timer);
+      timers.clear();
+    };
+  }, []);
+
+  const trackRenderJob = useCallback(
+    (nodeId: string, timelineId: number, renderJobId: number) => {
+      const existing = renderTimers.current.get(nodeId);
+      if (existing) clearTimeout(existing);
+      const startedAt = Date.now();
+
+      const poll = async () => {
+        renderTimers.current.delete(nodeId);
+        const execution = trackedExecutions.current.get(nodeId);
+        if (
+          !mounted.current ||
+          !execution ||
+          outputNumber(execution.taskNode.outputs, "render_job_id") !==
+            renderJobId
+        ) {
+          return;
+        }
+        try {
+          const response = await timelineAPI.listTimelineRenderJobs(timelineId);
+          if (!mounted.current) return;
+          const job = response.data?.items.find(
+            (item) => item.id === renderJobId,
+          );
+          if (response.success && job) {
+            onNodesCreatedRef.current(
+              productionCanvasExecutionFromRenderJob(execution, job),
+            );
+            if (!["queued", "running"].includes(job.status)) {
+              trackedExecutions.current.delete(nodeId);
+              return;
+            }
+          }
+        } catch {
+          // Transient polling errors retry until the existing task timeout.
+        }
+        if (Date.now() - startedAt < maxPollMs) {
+          renderTimers.current.set(nodeId, setTimeout(poll, pollIntervalMs));
+        } else {
+          trackedExecutions.current.delete(nodeId);
+        }
+      };
+
+      renderTimers.current.set(nodeId, setTimeout(poll, pollIntervalMs));
+    },
+    [maxPollMs, pollIntervalMs],
   );
   const taskTracker = useGenerationTaskTracker<string>({
     labels: (nodeId) =>
@@ -48,11 +121,29 @@ export function useProductionCanvasExecutionTracker({
     onNodesCreated(resultNodes);
     const skillNode = resultNodes.find((node) => node.id === sourceNode.id);
     const taskNode = resultNodes.find(
-      (node) => node.kind === "note" && taskOutputNumber(node.outputs),
+      (node) =>
+        node.kind === "note" &&
+        (taskOutputNumber(node.outputs) ||
+          outputNumber(node.outputs, "render_job_id")),
     );
     const taskId = taskOutputNumber(taskNode?.outputs);
-    if (!skillNode || !taskNode || !taskId) return;
+    if (!skillNode || !taskNode) return;
     trackedExecutions.current.set(sourceNode.id, { skillNode, taskNode });
-    taskTracker.track(sourceNode.id, taskId);
+    if (taskId) {
+      taskTracker.track(sourceNode.id, taskId);
+      return;
+    }
+    const renderJobId = outputNumber(taskNode.outputs, "render_job_id");
+    const timelineId = outputNumber(taskNode.outputs, "timeline_id");
+    const renderStatus = outputString(taskNode.outputs, "render_status");
+    if (
+      renderJobId &&
+      timelineId &&
+      (renderStatus === "queued" || renderStatus === "running")
+    ) {
+      trackRenderJob(sourceNode.id, timelineId, renderJobId);
+      return;
+    }
+    trackedExecutions.current.delete(sourceNode.id);
   };
 }

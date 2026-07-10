@@ -62,6 +62,29 @@ describe("production canvas render nodes", () => {
     assert.equal(evidenceNode?.actionHref, "https://example.test/final.mp4");
   });
 
+  it("clears a stale output link while a new RenderJob is running", () => {
+    const node = productionCanvasSkillResultToNode(
+      {
+        ...renderNode,
+        actionHref: "https://example.test/old.mp4",
+        actionLabel: "打开成片",
+      },
+      {
+        ...renderResult,
+        status: "running",
+        title: "已提交最终渲染任务",
+        outputs: {
+          render_job_id: 123,
+          render_status: "queued",
+          render_progress: 0,
+        },
+      },
+    );
+
+    assert.equal(node.actionHref, undefined);
+    assert.equal(node.actionLabel, undefined);
+  });
+
   it("appends newly introduced plan nodes when restoring an older saved run", () => {
     const planNode = (id: string, skill: string, x: number) => ({
       id,

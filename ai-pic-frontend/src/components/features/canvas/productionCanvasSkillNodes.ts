@@ -149,6 +149,7 @@ export function productionCanvasSkillResultToNode(
   result: ProductionCanvasSkillResult,
 ): ProductionCanvasNode {
   const outputUrl = outputString(result.outputs, "output_url");
+  const isRenderResult = Boolean(outputNumber(result.outputs, "render_job_id"));
   return {
     ...node,
     label: result.label,
@@ -157,8 +158,12 @@ export function productionCanvasSkillResultToNode(
     detail: result.detail,
     outputs: { ...node.outputs, ...result.outputs },
     reuseTargets: result.reuse_targets,
-    actionHref: outputUrl || node.actionHref,
-    actionLabel: outputUrl ? "打开成片" : node.actionLabel,
+    actionHref: outputUrl || (isRenderResult ? undefined : node.actionHref),
+    actionLabel: outputUrl
+      ? "打开成片"
+      : isRenderResult
+      ? undefined
+      : node.actionLabel,
   };
 }
 

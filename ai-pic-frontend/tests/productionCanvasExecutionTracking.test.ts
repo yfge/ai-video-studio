@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   productionCanvasExecutionFailure,
+  productionCanvasExecutionFromRenderJob,
   productionCanvasExecutionFromTask,
 } from "../src/components/features/canvas/productionCanvasExecutionTracking";
 import type { ProductionCanvasNode } from "../src/components/features/canvas/productionCanvasModel";
@@ -58,5 +59,39 @@ describe("production canvas execution tracking", () => {
     assert.equal(nodes[0].status, "blocked");
     assert.equal(nodes[1].status, "blocked");
     assert.equal(nodes[0].outputs?.task_error_message, "quota exceeded");
+  });
+
+  it("turns a succeeded RenderJob into linked export-ready nodes", () => {
+    const nodes = productionCanvasExecutionFromRenderJob(
+      { skillNode, taskNode },
+      {
+        id: 122,
+        business_id: "render-122",
+        timeline_id: 71,
+        timeline_version: 6,
+        render_type: "final",
+        preset_hash: "preset",
+        preset: { fps: 24 },
+        status: "succeeded",
+        progress: 100,
+        output_asset_id: 375,
+        output_asset: {
+          id: 375,
+          business_id: "asset-375",
+          asset_type: "video",
+          origin: "timeline_render",
+          file_url: "/media/final.mp4",
+          created_at: "2026-07-10T10:00:00Z",
+          updated_at: "2026-07-10T10:00:00Z",
+        },
+        created_at: "2026-07-10T10:00:00Z",
+        updated_at: "2026-07-10T10:00:01Z",
+      },
+    );
+
+    assert.equal(nodes[0].status, "ready");
+    assert.equal(nodes[1].outputs?.render_status, "succeeded");
+    assert.equal(nodes[0].actionHref, "/media/final.mp4");
+    assert.equal(nodes[1].actionLabel, "打开成片");
   });
 });

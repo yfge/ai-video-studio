@@ -1,10 +1,62 @@
-import type { Task } from "@/utils/api/types";
+import type { Task, TimelineRenderJobResponse } from "@/utils/api/types";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
 
 export type TrackedProductionCanvasExecution = {
   skillNode: ProductionCanvasNode;
   taskNode: ProductionCanvasNode;
 };
+
+function renderOutputUrl(job: TimelineRenderJobResponse) {
+  return job.output_asset?.file_url || job.output_asset?.file_path || undefined;
+}
+
+function renderJobOutputs(job: TimelineRenderJobResponse) {
+  return {
+    timeline_id: job.timeline_id,
+    timeline_version: job.timeline_version,
+    render_job_id: job.id,
+    render_status: job.status,
+    render_progress: job.progress,
+    output_asset_id: job.output_asset_id,
+    output_url: renderOutputUrl(job),
+    render_log: job.log,
+    render_updated_at: job.updated_at,
+  };
+}
+
+export function productionCanvasExecutionFromRenderJob(
+  execution: TrackedProductionCanvasExecution,
+  job: TimelineRenderJobResponse,
+): ProductionCanvasNode[] {
+  const outputUrl = renderOutputUrl(job);
+  const succeeded = job.status === "succeeded" && Boolean(outputUrl);
+  const active = job.status === "queued" || job.status === "running";
+  const status = succeeded ? "ready" : active ? "running" : "blocked";
+  const title = succeeded
+    ? "最终渲染已完成"
+    : active
+    ? "最终渲染正在执行"
+    : job.status === "cancelled"
+    ? "最终渲染已取消"
+    : "最终渲染失败";
+  const detail = succeeded
+    ? "成片资产已生成，可直接打开。"
+    : active
+    ? `后台渲染进度 ${job.progress}%。`
+    : "最终渲染未生成可用成片，请重新执行 Render Skill。";
+  const outputs = renderJobOutputs(job);
+  const action = outputUrl
+    ? { actionHref: outputUrl, actionLabel: "打开成片" }
+    : {};
+  return [execution.skillNode, execution.taskNode].map((node) => ({
+    ...node,
+    title,
+    status,
+    detail,
+    outputs: { ...node.outputs, ...outputs },
+    ...action,
+  }));
+}
 
 function canvasStatusFromTask(
   status: Task["status"],
