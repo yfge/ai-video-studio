@@ -64,14 +64,16 @@ export function useProductionCanvasController(storageKey?: string | null) {
   const handleSelectNode = (nodeId: string) =>
     setCanvasState((state) => ({ ...state, selectedNodeId: nodeId }));
 
-  const handleFocusSelectedNode = () => {
+  const handleFocusSelectedNode = (nodeId?: string) => {
     const width = canvasRef.current?.clientWidth || CANVAS_BASE_WIDTH;
     const height = canvasRef.current?.clientHeight || CANVAS_BASE_HEIGHT;
     setCanvasState((state) => {
-      const node = state.nodes.find((item) => item.id === state.selectedNodeId);
+      const targetNodeId = nodeId || state.selectedNodeId;
+      const node = state.nodes.find((item) => item.id === targetNodeId);
       if (!node) return state;
       return {
         ...state,
+        selectedNodeId: node.id,
         viewport: centerProductionCanvasOnNode(state.viewport, node, {
           width,
           height,

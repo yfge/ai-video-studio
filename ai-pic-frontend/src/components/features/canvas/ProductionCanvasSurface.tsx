@@ -1,5 +1,6 @@
 import type {
   KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
   RefObject,
   WheelEvent as ReactWheelEvent,
@@ -20,6 +21,7 @@ export function ProductionCanvasSurface({
   canvasRef,
   canvasState,
   executingNodeId,
+  onCanvasDoubleClick,
   onCanvasKeyDown,
   onCanvasPointerDown,
   onCanvasPointerMove,
@@ -34,6 +36,7 @@ export function ProductionCanvasSurface({
   canvasRef: RefObject<HTMLDivElement | null>;
   canvasState: ProductionCanvasState;
   executingNodeId?: string | null;
+  onCanvasDoubleClick: (event: ReactMouseEvent<HTMLDivElement>) => void;
   onCanvasKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>) => void;
   onCanvasPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onCanvasPointerMove: (event: ReactPointerEvent<HTMLDivElement>) => void;
@@ -62,6 +65,7 @@ export function ProductionCanvasSurface({
       onPointerUp={onCanvasPointerUp}
       onPointerCancel={onCanvasPointerUp}
       onWheel={onCanvasWheel}
+      onDoubleClick={onCanvasDoubleClick}
     >
       <div
         className="absolute left-0 top-0"

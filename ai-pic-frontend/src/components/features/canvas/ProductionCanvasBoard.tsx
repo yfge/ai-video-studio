@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import {
   OperatorPanel,
   OperatorSectionHeader,
@@ -11,6 +12,7 @@ import { ProductionCanvasNodeTools } from "./ProductionCanvasNodeTools";
 import { ProductionCanvasChatBar } from "./ProductionCanvasChatBar";
 import { ProductionCanvasRunControls } from "./ProductionCanvasRunControls";
 import { ProductionCanvasSurface } from "./ProductionCanvasSurface";
+import { nodeIdFromCanvasDoubleClick } from "./productionCanvasDoubleClick";
 import { useProductionCanvasSkillPlanner } from "./useProductionCanvasSkillPlanner";
 import { useProductionCanvasController } from "./useProductionCanvasController";
 import { useProductionCanvasRunPersistence } from "./useProductionCanvasRunPersistence";
@@ -83,6 +85,10 @@ export function ProductionCanvasContent({
     onRunCreated: persistence.setRunId,
   });
   const resetCanvas = () => (handleReset(), persistence.resetRun());
+  const handleCanvasDoubleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const nodeId = nodeIdFromCanvasDoubleClick(event);
+    if (nodeId) handleFocusSelectedNode(nodeId);
+  };
   return (
     <div className="space-y-4">
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
@@ -146,7 +152,7 @@ export function ProductionCanvasContent({
               type="button"
               className={operatorButtonClass("secondary")}
               disabled={!selectedNode}
-              onClick={handleFocusSelectedNode}
+              onClick={() => handleFocusSelectedNode()}
             >
               定位选中
             </button>
@@ -171,6 +177,7 @@ export function ProductionCanvasContent({
             executingNodeId={planner.executingNodeId}
             selectedNodeId={selectedNode?.id}
             worldBounds={worldBounds}
+            onCanvasDoubleClick={handleCanvasDoubleClick}
             onCanvasKeyDown={handleCanvasKeyDown}
             onCanvasPointerDown={handleCanvasPointerDown}
             onCanvasPointerMove={handleCanvasPointerMove}
