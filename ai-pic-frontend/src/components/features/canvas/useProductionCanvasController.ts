@@ -68,6 +68,16 @@ export function useProductionCanvasController(storageKey?: string | null) {
       return;
     }
     if (event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.key === "+" || event.key === "=" || event.key === "-") {
+      event.preventDefault();
+      handleZoomButton(event.key === "-" ? -1 : 1);
+      return;
+    }
+    if (event.key === "0" || event.key === "Home") {
+      event.preventDefault();
+      handleFit();
+      return;
+    }
     const nudge = getProductionCanvasKeyboardNudge(event.key, event.shiftKey);
     if (!nudge) return;
     event.preventDefault();
