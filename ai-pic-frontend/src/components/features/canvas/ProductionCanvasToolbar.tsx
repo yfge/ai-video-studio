@@ -50,9 +50,9 @@ export function ProductionCanvasToolbar({
         busy={busy}
         runId={runId}
         status={status}
-        onRestore={onRestore}
+        onRestore={(value) => runCommand(() => onRestore(value))}
         onRunIdChange={onRunIdChange}
-        onSave={onSave}
+        onSave={() => runCommand(onSave)}
       />
       <button
         type="button"

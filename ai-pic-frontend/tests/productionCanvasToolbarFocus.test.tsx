@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render } from "@testing-library/react";
 import { JSDOM } from "jsdom";
 
 import { ProductionCanvasContent } from "../src/components/features/canvas/ProductionCanvasBoard";
+import { ProductionCanvasToolbar } from "../src/components/features/canvas/ProductionCanvasToolbar";
 
 const dom = new JSDOM("<!doctype html><html><body></body></html>", {
   url: "http://localhost",
@@ -15,6 +16,8 @@ const dom = new JSDOM("<!doctype html><html><body></body></html>", {
 (globalThis as any).SVGElement = dom.window.SVGElement;
 (globalThis as any).localStorage = dom.window.localStorage;
 (globalThis as any).Event = dom.window.Event;
+(dom.window.HTMLElement.prototype as any).attachEvent = () => {};
+(dom.window.HTMLElement.prototype as any).detachEvent = () => {};
 Object.defineProperty(globalThis, "navigator", {
   value: dom.window.navigator,
   configurable: true,
@@ -62,5 +65,65 @@ describe("ProductionCanvas toolbar focus", () => {
     assert.equal(dom.window.document.activeElement, canvas);
     fireEvent.keyDown(canvas, { key: "ArrowRight" });
     assert.equal(brief.style.left, "56px");
+  });
+
+  it("keeps keyboard control after save and restore commands", () => {
+    let saveCount = 0;
+    let nudgeCount = 0;
+    const restoredRunIds: Array<string | undefined> = [];
+    const utils = render(
+      <>
+        <div
+          data-production-canvas="infinite-canvas"
+          tabIndex={0}
+          onKeyDown={() => nudgeCount++}
+        />
+        <ProductionCanvasToolbar
+          busy={false}
+          hasSelectedNode
+          runId="canvas-run-1"
+          status={null}
+          zoomLabel="100%"
+          onAddNote={() => {}}
+          onFit={() => {}}
+          onFocusSelected={() => {}}
+          onReset={() => {}}
+          onRestore={(runId) => restoredRunIds.push(runId)}
+          onReturnFocus={() =>
+            utils.container
+              .querySelector<HTMLElement>(
+                "[data-production-canvas='infinite-canvas']",
+              )
+              ?.focus()
+          }
+          onRunIdChange={() => {}}
+          onSave={() => saveCount++}
+          onZoom={() => {}}
+        />
+      </>,
+      { container: dom.window.document.body },
+    );
+    const canvas = utils.container.querySelector<HTMLElement>(
+      "[data-production-canvas='infinite-canvas']",
+    );
+    assert.ok(canvas);
+
+    fireEvent.click(utils.getByRole("button", { name: "保存画布" }));
+    assert.equal(saveCount, 1);
+    assert.equal(dom.window.document.activeElement, canvas);
+    fireEvent.keyDown(canvas, { key: "ArrowRight" });
+
+    fireEvent.click(utils.getByRole("button", { name: "恢复画布" }));
+    assert.deepEqual(restoredRunIds, [undefined]);
+    assert.equal(dom.window.document.activeElement, canvas);
+    fireEvent.keyDown(canvas, { key: "ArrowRight" });
+
+    const runIdInput = utils.getByLabelText("Run ID");
+    runIdInput.focus();
+    fireEvent.keyUp(runIdInput, { key: "Enter" });
+    assert.deepEqual(restoredRunIds, [undefined, "canvas-run-1"]);
+    assert.equal(dom.window.document.activeElement, canvas);
+    fireEvent.keyDown(canvas, { key: "ArrowRight" });
+    assert.equal(nudgeCount, 3);
   });
 });
