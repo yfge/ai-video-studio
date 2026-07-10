@@ -4,6 +4,79 @@ import { describe, it } from "node:test";
 import { productionCanvasStateFromRun } from "../src/components/features/canvas/productionCanvasPersistence";
 
 describe("productionCanvasStateFromRun", () => {
+  it("reconciles a restored skill node with its completed task evidence", () => {
+    const restored = productionCanvasStateFromRun({
+      run_id: "canvas-run-current",
+      task_id: 6266,
+      nodes: [],
+      selected_assets: { virtual_ips: [], environments: [] },
+      skill_manifest: { version: "production_canvas.v1" },
+      saved_state: {
+        edges: [],
+        nodes: [
+          {
+            id: "skill-virtual-ip-image",
+            label: "Virtual IP Image",
+            title: "Image task queued",
+            status: "running",
+            x: 100,
+            y: 100,
+            width: 220,
+            kind: "skill_result",
+            skill: "virtual_ip.image",
+            outputs: {
+              canvas_run_id: "canvas-run-current",
+              dispatched_task_id: 99,
+              task_status: "pending",
+            },
+          },
+          {
+            id: "skill-virtual-ip-image-task-99",
+            label: "Task #99",
+            title: "Image task complete",
+            status: "review",
+            x: 120,
+            y: 240,
+            width: 220,
+            kind: "note",
+            detail: "任务 #99 已完成；产物：virtual_ip_image:84:148",
+            outputs: {
+              canvas_run_id: "canvas-run-current",
+              source_node_id: "skill-virtual-ip-image",
+              task_id: 99,
+              task_status: "completed",
+              result_file_path: "virtual_ip_image:84:148",
+            },
+          },
+          {
+            id: "skill-virtual-ip-image-task-98",
+            label: "Task #98",
+            title: "Older image task failed",
+            status: "blocked",
+            x: 120,
+            y: 360,
+            width: 220,
+            kind: "note",
+            outputs: {
+              source_node_id: "skill-virtual-ip-image",
+              task_id: 98,
+              task_status: "failed",
+            },
+          },
+        ],
+        selected_node_id: "skill-virtual-ip-image",
+        viewport: { x: 0, y: 0, zoom: 1 },
+      },
+    } as any);
+
+    const skill = restored.nodes.find(
+      (node) => node.id === "skill-virtual-ip-image",
+    );
+    assert.equal(skill?.status, "review");
+    assert.equal(skill?.outputs?.task_status, "completed");
+    assert.equal(skill?.outputs?.result_file_path, "virtual_ip_image:84:148");
+  });
+
   it("does not promote the canvas run task into skill task context", () => {
     const restored = productionCanvasStateFromRun({
       run_id: "canvas-run",

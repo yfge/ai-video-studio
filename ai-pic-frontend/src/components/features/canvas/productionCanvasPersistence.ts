@@ -19,6 +19,7 @@ import {
   createProductionCanvasState,
   type ProductionCanvasState,
 } from "./productionCanvasState";
+import { reconcileProductionCanvasExecutionTasks } from "./productionCanvasExecutionTracking";
 
 function canvasNodeToSavedNode(
   node: ProductionCanvasNode,
@@ -90,7 +91,7 @@ export function productionCanvasStateFromRun(
       .map((node) => restoredSavedNode(node, run, planNodesById))
       .filter((node): node is ProductionCanvasNode => Boolean(node));
     const restored = createProductionCanvasState(
-      nodes,
+      reconcileProductionCanvasExecutionTasks(nodes),
       savedEdges(saved.edges),
     );
     return {

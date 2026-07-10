@@ -166,6 +166,7 @@ export function productionCanvasSkillResultToTaskNode(
     kind: "note",
     detail: result.detail,
     outputs: {
+      source_node_id: node.id,
       skill: result.skill,
       task_id: taskId,
       task_status: response.task_status,

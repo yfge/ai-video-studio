@@ -107,5 +107,6 @@ describe("productionCanvasSkillNodes", () => {
 
     assert.equal(taskNode?.actionHref, "/tasks?task_id=77");
     assert.equal(taskNode?.actionLabel, "查看任务");
+    assert.equal(taskNode?.outputs?.source_node_id, "script");
   });
 });

@@ -8,6 +8,7 @@ import {
 } from "./productionCanvasContext";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
 import { applyProductionCanvasContext } from "./productionCanvasState";
+import { useProductionCanvasExecutionTracker } from "./useProductionCanvasExecutionTracker";
 import {
   firstOutputNumber,
   outputBoolean,
@@ -46,10 +47,14 @@ export function useProductionCanvasSkillPlanner({
   currentRunId,
   onNodesCreated,
   onRunCreated,
+  taskMaxPollMs,
+  taskPollIntervalMs,
 }: {
   currentRunId?: string | null;
   onNodesCreated: (nodes: ProductionCanvasNode[]) => void;
   onRunCreated?: (runId: string) => void;
+  taskMaxPollMs?: number;
+  taskPollIntervalMs?: number;
 }) {
   const [prompt, setPrompt] = useState("");
   const [context, setContext] = useState(emptyProductionCanvasContext);
@@ -57,6 +62,11 @@ export function useProductionCanvasSkillPlanner({
   const [error, setError] = useState<string | null>(null);
   const [executingNodeId, setExecutingNodeId] = useState<string | null>(null);
   const [executionError, setExecutionError] = useState<string | null>(null);
+  const publishExecutionNodes = useProductionCanvasExecutionTracker({
+    maxPollMs: taskMaxPollMs,
+    onNodesCreated,
+    pollIntervalMs: taskPollIntervalMs,
+  });
 
   const setContextValue = (key: ProductionCanvasContextKey, value: string) => {
     setContext((current) => ({ ...current, [key]: value }));
@@ -134,7 +144,7 @@ export function useProductionCanvasSkillPlanner({
       attemptedNodeIds.add(node.id);
       setExecutingNodeId(node.id);
       const resultNodes = await executeSkillRequest(node, fallbackPrompt);
-      onNodesCreated(resultNodes);
+      publishExecutionNodes(node, resultNodes);
       workingNodes = upsertCanvasNodes(workingNodes, resultNodes);
     }
   };
@@ -176,7 +186,7 @@ export function useProductionCanvasSkillPlanner({
     setExecutingNodeId(node.id);
     setExecutionError(null);
     try {
-      onNodesCreated(await executeSkillRequest(node));
+      publishExecutionNodes(node, await executeSkillRequest(node));
     } catch (err) {
       setExecutionError(err instanceof Error ? err.message : String(err));
     } finally {
