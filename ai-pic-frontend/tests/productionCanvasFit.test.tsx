@@ -44,6 +44,20 @@ describe("production canvas fit", () => {
     const world = utils.container.querySelector<HTMLElement>(
       "[data-production-canvas-world='true']",
     );
-    assert.equal(world?.style.transform, "translate(64px, 24px) scale(0.79)");
+    const brief = utils.container.querySelector<HTMLElement>(
+      "[data-canvas-node='brief']",
+    );
+    const edge = utils.container.querySelector<SVGPathElement>(
+      "[data-canvas-edge='brief-script']",
+    );
+    assert.equal(
+      world?.style.transform,
+      "translate(64px, 24px) scale(0.79) translate(-50px, 0px)",
+    );
+    assert.equal(brief?.style.left, "0px");
+    assert.equal(
+      edge?.getAttribute("d"),
+      "M 170 171 C 245 171 245 107 320 107",
+    );
   });
 });

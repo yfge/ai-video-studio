@@ -172,7 +172,7 @@ export function ProductionCanvasContent({
               style={{
                 width: worldBounds.width,
                 height: worldBounds.height,
-                transform: `translate(${canvasState.viewport.x}px, ${canvasState.viewport.y}px) scale(${canvasState.viewport.zoom})`,
+                transform: `translate(${canvasState.viewport.x}px, ${canvasState.viewport.y}px) scale(${canvasState.viewport.zoom}) translate(${worldBounds.minX}px, ${worldBounds.minY}px)`,
                 transformOrigin: "0 0",
               }}
             >
@@ -180,8 +180,7 @@ export function ProductionCanvasContent({
               <CanvasEdges
                 edges={canvasState.edges}
                 nodes={canvasState.nodes}
-                width={worldBounds.width}
-                height={worldBounds.height}
+                worldBounds={worldBounds}
               />
               {canvasState.nodes.map((node) => (
                 <CanvasNodeCard
@@ -189,6 +188,7 @@ export function ProductionCanvasContent({
                   executing={planner.executingNodeId === node.id}
                   node={node}
                   selected={node.id === selectedNode?.id}
+                  worldBounds={worldBounds}
                   onExecuteNode={(nodeToExecute) =>
                     void planner.executeSkillNode(nodeToExecute)
                   }

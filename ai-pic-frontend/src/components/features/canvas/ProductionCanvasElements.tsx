@@ -11,11 +11,16 @@ import {
 } from "./productionCanvasModel";
 import { getNodeHeight } from "./productionCanvasViewModel";
 
-function edgePath(source: ProductionCanvasNode, target: ProductionCanvasNode) {
-  const sourceX = source.x + source.width;
-  const sourceY = source.y + getNodeHeight(source) / 2;
-  const targetX = target.x;
-  const targetY = target.y + getNodeHeight(target) / 2;
+function edgePath(
+  source: ProductionCanvasNode,
+  target: ProductionCanvasNode,
+  offsetX: number,
+  offsetY: number,
+) {
+  const sourceX = source.x + offsetX + source.width;
+  const sourceY = source.y + offsetY + getNodeHeight(source) / 2;
+  const targetX = target.x + offsetX;
+  const targetY = target.y + offsetY + getNodeHeight(target) / 2;
   const controlDistance = Math.max(48, Math.abs(targetX - sourceX) / 2);
   return `M ${sourceX} ${sourceY} C ${sourceX + controlDistance} ${sourceY} ${
     targetX - controlDistance
@@ -39,22 +44,22 @@ function outputEntries(node: ProductionCanvasNode) {
 export function CanvasEdges({
   edges,
   nodes,
-  width,
-  height,
+  worldBounds,
 }: {
   edges: ProductionCanvasEdge[];
   nodes: ProductionCanvasNode[];
-  width: number;
-  height: number;
+  worldBounds: { minX: number; minY: number; width: number; height: number };
 }) {
+  const offsetX = -worldBounds.minX;
+  const offsetY = -worldBounds.minY;
   const nodeById = new Map(nodes.map((node) => [node.id, node] as const));
   return (
     <svg
       className="pointer-events-none absolute inset-0"
       aria-hidden="true"
-      width={width}
-      height={height}
-      viewBox={`0 0 ${width} ${height}`}
+      width={worldBounds.width}
+      height={worldBounds.height}
+      viewBox={`0 0 ${worldBounds.width} ${worldBounds.height}`}
     >
       {edges.map((edge) => {
         const source = nodeById.get(edge.from);
@@ -64,7 +69,7 @@ export function CanvasEdges({
           <path
             key={`${edge.from}-${edge.to}`}
             data-canvas-edge={`${edge.from}-${edge.to}`}
-            d={edgePath(source, target)}
+            d={edgePath(source, target, offsetX, offsetY)}
             fill="none"
             stroke="#94a3b8"
             strokeDasharray="8 8"

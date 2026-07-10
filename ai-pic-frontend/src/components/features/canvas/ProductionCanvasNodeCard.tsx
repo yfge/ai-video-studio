@@ -11,6 +11,7 @@ export function CanvasNodeCard({
   node,
   onExecuteNode,
   selected,
+  worldBounds = { minX: 0, minY: 0 },
   onSelect,
   onPointerDown,
 }: {
@@ -18,6 +19,7 @@ export function CanvasNodeCard({
   node: ProductionCanvasNode;
   onExecuteNode?: (node: ProductionCanvasNode) => void;
   selected: boolean;
+  worldBounds?: { minX: number; minY: number };
   onSelect: (nodeId: string) => void;
   onPointerDown: (
     event: ReactPointerEvent<HTMLButtonElement>,
@@ -37,8 +39,8 @@ export function CanvasNodeCard({
         selected ? "ring-2 ring-blue-500 ring-offset-2" : "hover:shadow-md"
       } ${noteClass}`}
       style={{
-        left: node.x,
-        top: node.y,
+        left: node.x - worldBounds.minX,
+        top: node.y - worldBounds.minY,
         width: node.width,
         height: getNodeHeight(node),
       }}
