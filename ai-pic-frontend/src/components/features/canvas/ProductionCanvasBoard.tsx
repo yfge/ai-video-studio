@@ -58,6 +58,7 @@ export function ProductionCanvasContent({
     handleCanvasPointerMove,
     handleCanvasPointerUp,
     handleFit,
+    handleFocusSelectedNode,
     handleNodePointerDown,
     handleReset,
     handleRemoveEdge,
@@ -140,6 +141,14 @@ export function ProductionCanvasContent({
               onClick={() => handleZoomButton(1)}
             >
               +
+            </button>
+            <button
+              type="button"
+              className={operatorButtonClass("secondary")}
+              disabled={!selectedNode}
+              onClick={handleFocusSelectedNode}
+            >
+              定位选中
             </button>
             <button
               type="button"

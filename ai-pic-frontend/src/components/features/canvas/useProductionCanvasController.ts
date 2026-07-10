@@ -13,6 +13,9 @@ import {
   createProductionCanvasState,
 } from "./productionCanvasState";
 import {
+  CANVAS_BASE_HEIGHT,
+  CANVAS_BASE_WIDTH,
+  centerProductionCanvasOnNode,
   getWorldBounds,
   readStoredCanvasState,
 } from "./productionCanvasViewModel";
@@ -61,6 +64,23 @@ export function useProductionCanvasController(storageKey?: string | null) {
   const handleSelectNode = (nodeId: string) =>
     setCanvasState((state) => ({ ...state, selectedNodeId: nodeId }));
 
+  const handleFocusSelectedNode = () => {
+    const width = canvasRef.current?.clientWidth || CANVAS_BASE_WIDTH;
+    const height = canvasRef.current?.clientHeight || CANVAS_BASE_HEIGHT;
+    setCanvasState((state) => {
+      const node = state.nodes.find((item) => item.id === state.selectedNodeId);
+      if (!node) return state;
+      return {
+        ...state,
+        viewport: centerProductionCanvasOnNode(state.viewport, node, {
+          width,
+          height,
+        }),
+      };
+    });
+    canvasRef.current?.focus({ preventScroll: true });
+  };
+
   const handleCanvasKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Escape") {
       event.preventDefault();
@@ -68,6 +88,11 @@ export function useProductionCanvasController(storageKey?: string | null) {
       return;
     }
     if (event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.key.toLowerCase() === "f" && selectedNode) {
+      event.preventDefault();
+      handleFocusSelectedNode();
+      return;
+    }
     if (event.key === "+" || event.key === "=" || event.key === "-") {
       event.preventDefault();
       handleZoomButton(event.key === "-" ? -1 : 1);
@@ -163,6 +188,7 @@ export function useProductionCanvasController(storageKey?: string | null) {
     handleCanvasPointerMove,
     handleCanvasPointerUp,
     handleFit,
+    handleFocusSelectedNode,
     handleNodePointerDown,
     handleReset,
     handleRemoveEdge,
