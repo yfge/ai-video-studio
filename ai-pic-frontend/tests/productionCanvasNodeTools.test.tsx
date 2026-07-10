@@ -42,6 +42,7 @@ describe("ProductionCanvasNodeTools", () => {
         nodes={[taskNode]}
         onAddEdge={() => undefined}
         onRemoveEdge={() => undefined}
+        onUpdateNode={() => undefined}
         onUpdateNodeOutputs={() => undefined}
       />,
       { container: dom.window.document.body },

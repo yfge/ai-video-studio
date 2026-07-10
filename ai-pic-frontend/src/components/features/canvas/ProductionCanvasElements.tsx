@@ -9,7 +9,10 @@ import {
   productionCanvasStatusMeta,
   type ProductionCanvasNode,
 } from "./productionCanvasModel";
-import { getNodeHeight } from "./productionCanvasViewModel";
+import {
+  displayProductionCanvasNodeTitle,
+  getNodeHeight,
+} from "./productionCanvasViewModel";
 
 function edgePath(
   source: ProductionCanvasNode,
@@ -105,6 +108,7 @@ export function CanvasInspector({
 
   const status = productionCanvasStatusMeta[node.status];
   const outputs = outputEntries(node);
+  const displayTitle = displayProductionCanvasNodeTitle(node);
   const canExecute = Boolean(node.skill && node.kind === "skill_result");
   const executing = executingNodeId === node.id;
   return (
@@ -118,7 +122,7 @@ export function CanvasInspector({
         </div>
         <StatusPill tone={status.tone}>{status.label}</StatusPill>
       </div>
-      <p className="mt-3 text-xs leading-5 text-gray-700">{node.title}</p>
+      <p className="mt-3 text-xs leading-5 text-gray-700">{displayTitle}</p>
       {node.detail ? (
         <p className="mt-2 text-xs leading-5 text-gray-500">{node.detail}</p>
       ) : null}

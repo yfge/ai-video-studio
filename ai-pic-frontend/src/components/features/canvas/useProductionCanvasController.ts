@@ -4,6 +4,7 @@ import type { ProductionCanvasNode } from "./productionCanvasModel";
 import {
   addProductionCanvasEdge,
   removeProductionCanvasEdge,
+  updateProductionCanvasNode,
   updateProductionCanvasNodeOutputs,
   type ProductionCanvasOutputPatch,
 } from "./productionCanvasGraphState";
@@ -131,6 +132,15 @@ export function useProductionCanvasController(storageKey?: string | null) {
       nodes: updateProductionCanvasNodeOutputs(state.nodes, nodeId, patch),
     }));
 
+  const handleUpdateNode = (
+    nodeId: string,
+    patch: Partial<ProductionCanvasNode>,
+  ) =>
+    setCanvasState((state) => ({
+      ...state,
+      nodes: updateProductionCanvasNode(state.nodes, nodeId, patch),
+    }));
+
   const handleReset = () => {
     setCanvasState(createProductionCanvasState());
     if (storageKey && typeof window !== "undefined") {
@@ -196,6 +206,7 @@ export function useProductionCanvasController(storageKey?: string | null) {
     handleReset,
     handleRemoveEdge,
     handleSelectNode,
+    handleUpdateNode,
     handleUpdateNodeOutputs,
     handleWheel,
     handleZoomButton,

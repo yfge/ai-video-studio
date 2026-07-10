@@ -68,6 +68,7 @@ export function ProductionCanvasContent({
     handleReset,
     handleRemoveEdge,
     handleSelectNode,
+    handleUpdateNode,
     handleUpdateNodeOutputs,
     handleWheel,
     handleZoomButton,
@@ -210,6 +211,7 @@ export function ProductionCanvasContent({
             onAddEdge={handleAddEdge}
             onRemoveEdge={handleRemoveEdge}
             onSelectNode={handleSelectNode}
+            onUpdateNode={handleUpdateNode}
             onUpdateNodeOutputs={handleUpdateNodeOutputs}
           />
           <OperatorPanel className="p-4">

@@ -4,7 +4,10 @@ import {
   productionCanvasStatusMeta,
   type ProductionCanvasNode,
 } from "./productionCanvasModel";
-import { getNodeHeight } from "./productionCanvasViewModel";
+import {
+  displayProductionCanvasNodeTitle,
+  getNodeHeight,
+} from "./productionCanvasViewModel";
 
 export function CanvasNodeCard({
   executing,
@@ -32,6 +35,7 @@ export function CanvasNodeCard({
       ? "border-amber-200 bg-amber-50/95"
       : "border-gray-200 bg-white";
   const canExecute = Boolean(node.skill && node.kind === "skill_result");
+  const displayTitle = displayProductionCanvasNodeTitle(node);
 
   return (
     <div
@@ -51,7 +55,7 @@ export function CanvasNodeCard({
         className={`h-full w-full cursor-grab rounded-lg p-3 text-left active:cursor-grabbing ${
           canExecute ? "pb-11" : ""
         }`}
-        aria-label={`${node.label} ${node.title}`}
+        aria-label={`${node.label} ${displayTitle}`}
         onClick={(event) => {
           onSelect(node.id);
           event.currentTarget
@@ -67,7 +71,7 @@ export function CanvasNodeCard({
           <StatusPill tone={status.tone}>{status.label}</StatusPill>
         </div>
         <div className="mt-2 line-clamp-2 text-xs leading-5 text-gray-600">
-          {node.title}
+          {displayTitle}
         </div>
       </button>
       {canExecute ? (
