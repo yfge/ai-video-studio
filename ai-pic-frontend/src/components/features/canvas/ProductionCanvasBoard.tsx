@@ -118,7 +118,10 @@ export function ProductionCanvasContent({
           <ProductionCanvasChatBar
             context={planner.context}
             error={planner.error}
-            onCreate={() => void planner.createFromPrompt()}
+            onCreate={() => {
+              void planner.createFromPrompt();
+              focusCanvas();
+            }}
             onContextChange={planner.setContextValue}
             onPromptChange={planner.setPrompt}
             prompt={planner.prompt}
