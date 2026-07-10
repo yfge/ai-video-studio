@@ -15,6 +15,7 @@ import {
   outputNumber,
   outputNumberArray,
   outputString,
+  outputStringArray,
   productionCanvasPlanNodeToCanvasNode,
   productionCanvasSkillResultToNode,
   productionCanvasSkillResultToTaskNode,
@@ -89,6 +90,10 @@ export function useProductionCanvasSkillPlanner({
       run_id:
         (currentRunId || "").trim() ||
         outputString(node.outputs, "canvas_run_id"),
+      reference_artifacts: outputStringArray(
+        node.outputs,
+        "reference_artifacts",
+      ),
       frame_indexes: outputNumberArray(node.outputs, "frame_indexes"),
       model: outputString(node.outputs, "model"),
       aspect_ratio: outputString(node.outputs, "aspect_ratio"),

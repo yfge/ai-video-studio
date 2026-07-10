@@ -11,6 +11,7 @@ export interface ProductionCanvasSkillExecuteRequest
   extends ProductionCanvasPlanRequest {
   skill: string;
   run_id?: string | null;
+  reference_artifacts?: string[];
   frame_indexes?: number[] | null;
   model?: string | null;
   aspect_ratio?: string | null;

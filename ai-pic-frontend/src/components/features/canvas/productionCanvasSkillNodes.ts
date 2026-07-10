@@ -77,6 +77,18 @@ export function outputNumberArray(
   return numbers.length ? numbers : undefined;
 }
 
+export function outputStringArray(
+  outputs: Record<string, unknown> | undefined,
+  key: string,
+) {
+  const value = outputs?.[key];
+  if (!Array.isArray(value)) return undefined;
+  const strings = value.filter(
+    (item): item is string => typeof item === "string" && Boolean(item.trim()),
+  );
+  return strings.length ? strings : undefined;
+}
+
 export function firstOutputNumber(
   outputs: Record<string, unknown> | undefined,
   key: string,

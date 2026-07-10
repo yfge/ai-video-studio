@@ -10,7 +10,9 @@ import {
   cloneProductionCanvasNodes,
   finiteCanvasNumber,
 } from "./productionCanvasGeometry";
-import { outputTaskContext } from "./productionCanvasTaskContext";
+import { applyProductionCanvasContext } from "./productionCanvasSharedContext";
+
+export { applyProductionCanvasContext } from "./productionCanvasSharedContext";
 
 export type ProductionCanvasViewport = {
   x: number;
@@ -30,107 +32,6 @@ export const productionCanvasDefaultViewport: ProductionCanvasViewport = {
   y: 0,
   zoom: 1,
 };
-
-function outputNumber(
-  outputs: Record<string, unknown> | undefined,
-  key: string,
-) {
-  const value = outputs?.[key];
-  return typeof value === "number" && Number.isFinite(value)
-    ? value
-    : undefined;
-}
-
-function firstOutputNumber(
-  outputs: Record<string, unknown> | undefined,
-  key: string,
-) {
-  const value = outputs?.[key];
-  if (!Array.isArray(value)) return undefined;
-  const first = value.find((item) => typeof item === "number");
-  return typeof first === "number" ? first : undefined;
-}
-
-function collectCanvasContext(nodes: ProductionCanvasNode[]) {
-  const context: Record<string, number> = {};
-  for (const node of nodes) {
-    const outputs = node.outputs;
-    const virtualIpId = firstOutputNumber(outputs, "virtual_ip_ids");
-    const environmentId = firstOutputNumber(outputs, "environment_ids");
-    const episodeId = outputNumber(outputs, "episode_id");
-    const scriptId = outputNumber(outputs, "script_id");
-    const taskContextId = outputTaskContext(outputs);
-
-    if (virtualIpId) context.virtual_ip_id = virtualIpId;
-    if (environmentId) context.environment_id = environmentId;
-    if (episodeId) context.episode_id = episodeId;
-    if (scriptId) context.script_id = scriptId;
-    if (taskContextId) context.task_id = taskContextId;
-  }
-  return context;
-}
-
-function contextOutputs(
-  context: Record<string, number>,
-): Record<string, unknown> {
-  return {
-    ...(context.virtual_ip_id
-      ? { virtual_ip_ids: [context.virtual_ip_id] }
-      : {}),
-    ...(context.environment_id
-      ? { environment_ids: [context.environment_id] }
-      : {}),
-    ...(context.episode_id ? { episode_id: context.episode_id } : {}),
-    ...(context.script_id ? { script_id: context.script_id } : {}),
-    ...(context.task_id ? { task_id: context.task_id } : {}),
-  };
-}
-
-function requiredInputSatisfied(
-  input: unknown,
-  outputs: Record<string, unknown>,
-) {
-  if (input === "virtual_ip_id") {
-    return firstOutputNumber(outputs, "virtual_ip_ids");
-  }
-  if (input === "environment_id") {
-    return firstOutputNumber(outputs, "environment_ids");
-  }
-  if (typeof input === "string") return outputNumber(outputs, input);
-  return false;
-}
-
-export function applyProductionCanvasContext(nodes: ProductionCanvasNode[]) {
-  const sharedOutputs = contextOutputs(collectCanvasContext(nodes));
-  return nodes.map((node) => {
-    if (!node.skill) return node;
-    const outputs: Record<string, unknown> = {
-      ...node.outputs,
-      ...sharedOutputs,
-    };
-    const rawRequiredInputs = outputs.required_inputs;
-    const hadRequiredInputs = Array.isArray(rawRequiredInputs);
-    const requiredInputs = hadRequiredInputs
-      ? rawRequiredInputs.filter(
-          (input) => !requiredInputSatisfied(input, outputs),
-        )
-      : [];
-    if (requiredInputs.length) {
-      return {
-        ...node,
-        outputs: { ...outputs, required_inputs: requiredInputs },
-      };
-    }
-    const readyOutputs = { ...outputs };
-    delete readyOutputs.required_inputs;
-    return {
-      ...node,
-      status:
-        node.status === "blocked" && hadRequiredInputs ? "ready" : node.status,
-      outputs: readyOutputs,
-    };
-  });
-}
 
 export function createProductionCanvasState(
   nodes: ProductionCanvasNode[] = productionCanvasNodes,

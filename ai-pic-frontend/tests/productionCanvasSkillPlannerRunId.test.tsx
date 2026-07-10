@@ -29,6 +29,7 @@ const staleRunNode: ProductionCanvasNode = {
   outputs: {
     canvas_run_id: "stale-run",
     environment_ids: [2],
+    reference_artifacts: ["virtual_ip_image:84:148", "environment_images:13:1"],
     task_id: 6267,
     virtual_ip_ids: [1],
   },
@@ -115,6 +116,10 @@ describe("useProductionCanvasSkillPlanner run id routing", () => {
       assert.equal(executeRequests[0]?.run_id, "current-run");
       assert.equal(executeRequests[0]?.virtual_ip_id, 11);
       assert.equal(executeRequests[0]?.environment_id, 22);
+      assert.deepEqual(executeRequests[0]?.reference_artifacts, [
+        "virtual_ip_image:84:148",
+        "environment_images:13:1",
+      ]);
     } finally {
       globalThis.fetch = originalFetch;
     }

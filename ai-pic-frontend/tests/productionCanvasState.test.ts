@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   addProductionCanvasNote,
+  applyProductionCanvasContext,
   createProductionCanvasState,
   moveProductionCanvasNode,
   zoomProductionCanvas,
@@ -14,6 +15,88 @@ import {
 } from "../src/components/features/canvas/productionCanvasViewModel";
 
 describe("productionCanvasState", () => {
+  it("propagates only completed source artifacts into downstream context", () => {
+    const nodes = applyProductionCanvasContext([
+      {
+        id: "skill-virtual-ip-image",
+        label: "Virtual IP Image",
+        title: "角色图已完成",
+        status: "review",
+        x: 0,
+        y: 0,
+        width: 220,
+        skill: "virtual_ip.image",
+        outputs: {
+          task_status: "completed",
+          result_file_path: "virtual_ip_image:84:148",
+        },
+      },
+      {
+        id: "skill-environment-image",
+        label: "Environment Image",
+        title: "环境图已完成",
+        status: "review",
+        x: 260,
+        y: 0,
+        width: 220,
+        skill: "environment.image",
+        outputs: {
+          task_status: "completed",
+          result_file_path: "environment_images:13:1",
+        },
+      },
+      {
+        id: "skill-environment-image-task-98",
+        kind: "note",
+        label: "Task #98",
+        title: "旧环境图任务",
+        status: "review",
+        x: 260,
+        y: 120,
+        width: 220,
+        outputs: {
+          task_status: "completed",
+          result_file_path: "environment_images:13:4",
+        },
+      },
+      {
+        id: "skill-image-candidates",
+        label: "Image Candidates",
+        title: "生成分镜候选",
+        status: "ready",
+        x: 520,
+        y: 0,
+        width: 220,
+        skill: "image.candidates",
+        outputs: { script_id: 42 },
+      },
+    ]);
+
+    const candidates = nodes.find((node) => node.skill === "image.candidates");
+    assert.deepEqual(candidates?.outputs?.reference_artifacts, [
+      "virtual_ip_image:84:148",
+      "environment_images:13:1",
+    ]);
+
+    const retrying = applyProductionCanvasContext(
+      nodes.map((node) =>
+        node.id === "skill-virtual-ip-image" ||
+        node.id === "skill-environment-image"
+          ? {
+              ...node,
+              status: "running",
+              outputs: { ...node.outputs, task_status: "pending" },
+            }
+          : node,
+      ),
+    );
+    assert.equal(
+      retrying.find((node) => node.skill === "image.candidates")?.outputs
+        ?.reference_artifacts,
+      undefined,
+    );
+  });
+
   it("dedupes restored canvas nodes by id", () => {
     const state = createProductionCanvasState();
     const restored = createProductionCanvasState([

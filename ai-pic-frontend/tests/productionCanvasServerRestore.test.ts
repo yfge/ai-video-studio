@@ -63,6 +63,18 @@ describe("productionCanvasStateFromRun", () => {
               task_status: "failed",
             },
           },
+          {
+            id: "skill-image-candidates",
+            label: "Image Candidates",
+            title: "Create storyboard candidates",
+            status: "ready",
+            x: 420,
+            y: 100,
+            width: 220,
+            kind: "skill_result",
+            skill: "image.candidates",
+            outputs: { script_id: 42 },
+          },
         ],
         selected_node_id: "skill-virtual-ip-image",
         viewport: { x: 0, y: 0, zoom: 1 },
@@ -75,6 +87,12 @@ describe("productionCanvasStateFromRun", () => {
     assert.equal(skill?.status, "review");
     assert.equal(skill?.outputs?.task_status, "completed");
     assert.equal(skill?.outputs?.result_file_path, "virtual_ip_image:84:148");
+    const candidates = restored.nodes.find(
+      (node) => node.id === "skill-image-candidates",
+    );
+    assert.deepEqual(candidates?.outputs?.reference_artifacts, [
+      "virtual_ip_image:84:148",
+    ]);
   });
 
   it("does not promote the canvas run task into skill task context", () => {
