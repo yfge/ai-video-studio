@@ -181,6 +181,7 @@ export function ProductionCanvasContent({
             executingNodeId={planner.executingNodeId}
             selectedNodeId={selectedNode?.id}
             worldBounds={worldBounds}
+            onAddEdge={handleAddEdge}
             onCanvasDoubleClick={handleCanvasDoubleClick}
             onCanvasKeyDown={handleBoardKeyDown}
             onCanvasPointerDown={handleCanvasPointerDown}

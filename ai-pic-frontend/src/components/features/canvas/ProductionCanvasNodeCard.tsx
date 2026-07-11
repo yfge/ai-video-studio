@@ -13,6 +13,7 @@ export function CanvasNodeCard({
   executing,
   node,
   onExecuteNode,
+  onOutputPortPointerDown,
   selected,
   worldBounds = { minX: 0, minY: 0 },
   onFocusNode,
@@ -23,6 +24,11 @@ export function CanvasNodeCard({
   executing?: boolean;
   node: ProductionCanvasNode;
   onExecuteNode?: (node: ProductionCanvasNode) => void;
+  onOutputPortPointerDown?: (
+    event: ReactPointerEvent<HTMLButtonElement>,
+    nodeId: string,
+    portId: string,
+  ) => void;
   selected: boolean;
   worldBounds?: { minX: number; minY: number };
   onFocusNode?: (nodeId: string) => void;
@@ -61,25 +67,28 @@ export function CanvasNodeCard({
       }}
     >
       {ports.inputPorts?.map((port, index) => (
-        <span
+        <button
           key={port.id}
+          type="button"
           aria-label={`输入端口 ${port.label} ${port.type}`}
           className="absolute -left-1.5 z-10 h-3 w-3 rounded-full border-2 border-white bg-blue-500 shadow-sm"
           data-canvas-input-port={`${node.id}:${port.id}`}
-          role="img"
           style={{ top: 28 + index * 18 }}
           title={`${port.label} · ${port.type}`}
         />
       ))}
       {ports.outputPorts?.map((port, index) => (
-        <span
+        <button
           key={port.id}
+          type="button"
           aria-label={`输出端口 ${port.label} ${port.type}`}
           className="absolute -right-1.5 z-10 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 shadow-sm"
           data-canvas-output-port={`${node.id}:${port.id}`}
-          role="img"
           style={{ top: 28 + index * 18 }}
           title={`${port.label} · ${port.type}`}
+          onPointerDown={(event) =>
+            onOutputPortPointerDown?.(event, node.id, port.id)
+          }
         />
       ))}
       <button

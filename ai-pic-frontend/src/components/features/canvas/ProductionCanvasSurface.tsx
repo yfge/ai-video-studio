@@ -7,6 +7,10 @@ import type {
 import { useEffect, useState } from "react";
 import { CanvasEdges } from "./ProductionCanvasElements";
 import { ProductionCanvasMinimap } from "./ProductionCanvasMinimap";
+import {
+  ProductionCanvasConnectionOverlay,
+  useProductionCanvasPortConnections,
+} from "./ProductionCanvasPortConnections";
 import { CanvasNodeCard } from "./ProductionCanvasNodeCard";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
 import type { ProductionCanvasState } from "./productionCanvasState";
@@ -31,6 +35,7 @@ export function ProductionCanvasSurface({
   onCanvasPointerDown,
   onCanvasPointerMove,
   onCanvasPointerUp,
+  onAddEdge,
   onExecuteNode,
   onFocusNode,
   onNavigate,
@@ -48,6 +53,7 @@ export function ProductionCanvasSurface({
   onCanvasPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onCanvasPointerMove: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onCanvasPointerUp: (event: ReactPointerEvent<HTMLDivElement>) => void;
+  onAddEdge: (edge: ProductionCanvasState["edges"][number]) => void;
   onExecuteNode: (node: ProductionCanvasNode) => void;
   onFocusNode: (nodeId?: string) => void;
   onNavigate: (point: { x: number; y: number }) => void;
@@ -85,6 +91,13 @@ export function ProductionCanvasSurface({
         (edge) => visibleNodeIds.has(edge.from) && visibleNodeIds.has(edge.to),
       )
     : canvasState.edges;
+  const connections = useProductionCanvasPortConnections({
+    canvasRef,
+    edges: canvasState.edges,
+    nodes: canvasState.nodes,
+    onAddEdge,
+    onFocusNode,
+  });
   return (
     <div
       ref={canvasRef}
@@ -95,9 +108,18 @@ export function ProductionCanvasSurface({
       tabIndex={0}
       onKeyDown={onCanvasKeyDown}
       onPointerDown={onCanvasPointerDown}
-      onPointerMove={onCanvasPointerMove}
-      onPointerUp={onCanvasPointerUp}
-      onPointerCancel={onCanvasPointerUp}
+      onPointerMove={(event) => {
+        connections.move(event);
+        onCanvasPointerMove(event);
+      }}
+      onPointerUp={(event) => {
+        connections.finish(event);
+        onCanvasPointerUp(event);
+      }}
+      onPointerCancel={(event) => {
+        connections.cancel();
+        onCanvasPointerUp(event);
+      }}
       onDoubleClick={onCanvasDoubleClick}
     >
       <div
@@ -128,6 +150,7 @@ export function ProductionCanvasSurface({
             worldBounds={worldBounds}
             onExecuteNode={onExecuteNode}
             onFocusNode={onFocusNode}
+            onOutputPortPointerDown={connections.start}
             onSelect={onSelectNode}
             onPointerDown={onNodePointerDown}
           />
@@ -146,6 +169,13 @@ export function ProductionCanvasSurface({
         viewport={canvasState.viewport}
         onFocusNode={onFocusNode}
         onNavigate={onNavigate}
+      />
+      <ProductionCanvasConnectionOverlay
+        discovery={connections.discovery}
+        draft={connections.draft}
+        nodes={visibleNodes}
+        onCancel={connections.cancel}
+        onChoose={connections.choose}
       />
     </div>
   );
