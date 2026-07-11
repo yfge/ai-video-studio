@@ -5,9 +5,7 @@ from typing import Any
 
 from app.models.user import User
 from app.repositories.storyboard_media_repository import load_storyboard_frames
-from app.repositories.timeline_repository import MediaAssetRepository
 from app.schemas.production_canvas import (
-    ProductionCanvasMediaCandidate,
     ProductionCanvasMediaCandidateList,
     ProductionCanvasRunResponse,
     ProductionCanvasSavedNode,
@@ -19,6 +17,11 @@ from app.services.production_canvas.stale_runtime import (
 )
 from sqlalchemy.orm import Session
 
+from .candidate_history import (
+    load_canvas_candidate_history,
+    materialize_canvas_candidate,
+    remember_canvas_candidate_history,
+)
 from .run_persistence import load_canvas_saved_state, save_canvas_state
 from .timeline_candidates import list_timeline_video_candidates
 
@@ -86,40 +89,6 @@ def _prompt(frame: dict[str, Any], media_type: str) -> str | None:
     return _string(frame.get(key)) or _string(frame.get("description"))
 
 
-def _materialize_candidate(
-    db: Session,
-    user: User,
-    node: ProductionCanvasSavedNode,
-    frame: dict[str, Any],
-    frame_index: int,
-    media_type: str,
-    url: str,
-):
-    repository = MediaAssetRepository(db)
-    asset = repository.find_by_location(asset_type=media_type, file_url=url)
-    if asset is None:
-        asset = repository.create(
-            asset_type=media_type,
-            origin="provider",
-            file_url=url,
-            duration_ms=(
-                int(float(frame["duration_seconds"]) * 1000)
-                if isinstance(frame.get("duration_seconds"), (int, float))
-                else None
-            ),
-            extra_metadata={
-                "kind": "production_canvas_candidate",
-                "frame_index": frame_index,
-                "clip_id": _clip_id(frame),
-                "prompt": _prompt(frame, media_type),
-                "model": _model(frame, node),
-            },
-            created_by=user.id,
-        )
-        db.flush()
-    return asset
-
-
 def list_canvas_media_candidates(
     db: Session,
     user: User,
@@ -137,38 +106,35 @@ def list_canvas_media_candidates(
 
     media_type, _ = _MEDIA_SKILLS[node.skill]
     requested_indexes = _frame_indexes(node)
-    candidates: list[ProductionCanvasMediaCandidate] = []
-    seen: set[tuple[int, int]] = set()
+    candidates = load_canvas_candidate_history(db, user, run_id, node, media_type)
+    seen = {(item.asset_id, item.frame_index) for item in candidates}
     frames = load_storyboard_frames(db, script.id)
     for frame_index, frame in enumerate(frames):
         if requested_indexes is not None and frame_index not in requested_indexes:
             continue
         for url in _candidate_urls(frame, media_type):
-            asset = _materialize_candidate(
-                db, user, node, frame, frame_index, media_type, url
+            candidate = materialize_canvas_candidate(
+                db,
+                user,
+                media_type=media_type,
+                url=url,
+                frame_index=frame_index,
+                clip_id=_clip_id(frame),
+                prompt=_prompt(frame, media_type),
+                model=_model(frame, node),
+                duration_seconds=frame.get("duration_seconds"),
+                selected_output_id=node.selected_output_id,
             )
-            key = (asset.id, frame_index)
+            key = (candidate.asset_id, frame_index)
             if key in seen:
                 continue
             seen.add(key)
-            candidates.append(
-                ProductionCanvasMediaCandidate(
-                    asset_id=asset.id,
-                    asset_business_id=asset.business_id,
-                    media_type=media_type,
-                    url=url,
-                    frame_index=frame_index,
-                    clip_id=_clip_id(frame),
-                    prompt=_prompt(frame, media_type),
-                    model=_model(frame, node),
-                    duration_seconds=frame.get("duration_seconds"),
-                    selected=asset.id == node.selected_output_id,
-                )
-            )
+            candidates.append(candidate)
     if media_type == "video":
         candidates.extend(
             list_timeline_video_candidates(db, node, frames, requested_indexes, seen)
         )
+    remember_canvas_candidate_history(db, run_id, node, candidates)
     db.commit()
     return ProductionCanvasMediaCandidateList(
         node_id=node.id,
