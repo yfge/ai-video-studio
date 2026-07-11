@@ -13,6 +13,7 @@ from sqlalchemy import (
     String,
     Text,
 )
+from sqlalchemy.dialects import mysql
 from sqlalchemy.orm import relationship
 
 
@@ -117,7 +118,9 @@ class Episode(SoftDeleteBusinessMixin, Base):
     )
 
     # AI生成相关
-    generation_prompt = Column(Text, comment="生成提示词")
+    generation_prompt = Column(
+        Text().with_variant(mysql.LONGTEXT(), "mysql"), comment="生成提示词"
+    )
     ai_model = Column(String(50), comment="使用的AI模型")
     generation_params = Column(JSON, comment="生成参数")
 
