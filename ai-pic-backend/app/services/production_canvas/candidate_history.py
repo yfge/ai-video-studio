@@ -1,14 +1,15 @@
 from __future__ import annotations
 
+from datetime import datetime
+from typing import Literal
+
 from app.models.timeline import MediaAsset
 from app.models.user import User
 from app.repositories.production_canvas_candidate_repository import (
     ProductionCanvasCandidateRepository,
 )
-from app.schemas.production_canvas import (
-    ProductionCanvasMediaCandidate,
-    ProductionCanvasSavedNode,
-)
+from app.schemas.production_canvas import ProductionCanvasSavedNode
+from app.schemas.production_canvas_review import ProductionCanvasMediaCandidate
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.orm import Session
 
@@ -21,6 +22,10 @@ class CanvasCandidateReference(BaseModel):
     prompt: str | None = None
     model: str | None = None
     duration_seconds: float | None = None
+    review_state: Literal["pending", "approved", "rejected"] = "pending"
+    reviewed_by: int | None = None
+    reviewed_at: datetime | None = None
+    rejection_reason: str | None = None
 
 
 def _metadata(asset: MediaAsset) -> dict:
@@ -46,6 +51,7 @@ def _candidate_from_asset(
     if asset.is_deleted or not asset.file_url:
         return None
     metadata = _metadata(asset)
+    selected = asset.id == selected_output_id
     return ProductionCanvasMediaCandidate(
         asset_id=asset.id,
         asset_business_id=asset.business_id,
@@ -60,7 +66,11 @@ def _candidate_from_asset(
             if reference.duration_seconds is not None
             else asset.duration_ms / 1000 if asset.duration_ms else None
         ),
-        selected=asset.id == selected_output_id,
+        selected=selected,
+        review_state="approved" if selected else reference.review_state,
+        reviewed_by=reference.reviewed_by,
+        reviewed_at=reference.reviewed_at,
+        rejection_reason=None if selected else reference.rejection_reason,
     )
 
 

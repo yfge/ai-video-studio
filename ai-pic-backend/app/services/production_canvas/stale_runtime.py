@@ -7,8 +7,8 @@ from collections import defaultdict
 from app.schemas.production_canvas import (
     ProductionCanvasSavedNode,
     ProductionCanvasSavedState,
-    ProductionCanvasStaleImpactNode,
 )
+from app.schemas.production_canvas_review import ProductionCanvasStaleImpactNode
 from app.services.production_canvas.graph_runtime import resolved_canvas_inputs
 
 

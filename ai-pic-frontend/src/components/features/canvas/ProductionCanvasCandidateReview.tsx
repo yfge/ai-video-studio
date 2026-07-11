@@ -97,6 +97,31 @@ export function ProductionCanvasCandidateReview({
     }
   };
 
+  const reject = async (
+    candidate: ProductionCanvasMediaCandidate,
+    reason: string,
+  ) => {
+    setBusyId(candidate.asset_id);
+    setError(null);
+    try {
+      const response = await productionCanvasAPI.rejectNodeCandidate(
+        runId,
+        node.id,
+        candidate.asset_id,
+        reason.trim(),
+      );
+      if (!response.success || !response.data) {
+        throw new Error(response.error || "候选拒绝失败");
+      }
+      onCanvasStateUpdated(productionCanvasStateFromRun(response.data));
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const placeInTimeline = async () => {
     const expectedVersion = node.outputs?.timeline_version;
     if (typeof expectedVersion !== "number") return;
@@ -145,6 +170,7 @@ export function ProductionCanvasCandidateReview({
               eager={index === 0}
               onApprove={(item) => void approve(item)}
               onPlaceInTimeline={() => void placeInTimeline()}
+              onReject={(item, reason) => void reject(item, reason)}
               placed={
                 node.outputs?.placed_media_asset_id === candidate.asset_id
               }

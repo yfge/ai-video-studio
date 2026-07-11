@@ -98,6 +98,26 @@ async function approveNodeCandidate(
   );
 }
 
+async function rejectNodeCandidate(
+  runId: string,
+  nodeId: string,
+  candidateId: number,
+  reason?: string,
+): Promise<ApiResponse<ProductionCanvasRunResponse>> {
+  return httpClient<ProductionCanvasRunResponse>(
+    `/api/v1/production-canvas/runs/${encodeURIComponent(
+      runId,
+    )}/nodes/${encodeURIComponent(nodeId)}/rejection`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        candidate_id: candidateId,
+        reason: reason || null,
+      }),
+    },
+  );
+}
+
 async function placeNodeVideoInTimeline(
   runId: string,
   nodeId: string,
@@ -122,5 +142,6 @@ export const productionCanvasAPI = {
   getNodeCandidates,
   getRun,
   placeNodeVideoInTimeline,
+  rejectNodeCandidate,
   saveRunState,
 };

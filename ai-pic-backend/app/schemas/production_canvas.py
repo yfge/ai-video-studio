@@ -225,39 +225,6 @@ class ProductionCanvasRunResponse(ProductionCanvasPlanResponse):
     )
 
 
-class ProductionCanvasMediaCandidate(BaseModel):
-    asset_id: int
-    asset_business_id: str
-    media_type: Literal["image", "video"]
-    url: str
-    frame_index: int
-    clip_id: str | None = None
-    prompt: str | None = None
-    model: str | None = None
-    duration_seconds: float | None = None
-    selected: bool = False
-
-
-class ProductionCanvasStaleImpactNode(BaseModel):
-    node_id: str
-    title: str
-
-
-class ProductionCanvasMediaCandidateList(BaseModel):
-    node_id: str
-    selected_output_id: int | None = None
-    stale_impact: list[ProductionCanvasStaleImpactNode] = Field(default_factory=list)
-    candidates: list[ProductionCanvasMediaCandidate] = Field(default_factory=list)
-
-
-class ProductionCanvasCandidateApprovalRequest(BaseModel):
-    candidate_id: int = Field(..., ge=1)
-
-
-class ProductionCanvasTimelinePlacementRequest(BaseModel):
-    expected_version: int = Field(..., ge=1)
-
-
 class ProductionCanvasNodeExecution(BaseModel):
     skill_result: ProductionCanvasSkillResult
     task_id: int | None = None

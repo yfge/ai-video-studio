@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { operatorButtonClass } from "@/components/shared";
 import type {
   ProductionCanvasMediaCandidate,
@@ -60,6 +60,7 @@ export function ProductionCanvasCandidateItem({
   eager,
   onApprove,
   onPlaceInTimeline,
+  onReject,
   placed,
   selectedOutputId,
   staleImpact,
@@ -70,12 +71,15 @@ export function ProductionCanvasCandidateItem({
   eager?: boolean;
   onApprove: (candidate: ProductionCanvasMediaCandidate) => void;
   onPlaceInTimeline: () => void;
+  onReject: (candidate: ProductionCanvasMediaCandidate, reason: string) => void;
   placed: boolean;
   selectedOutputId?: number | null;
   staleImpact: ProductionCanvasStaleImpactNode[];
   timelineVersion?: number;
 }) {
   const [confirming, setConfirming] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const rejectionReasonRef = useRef<HTMLTextAreaElement>(null);
   const switchingSelection = Boolean(
     selectedOutputId && selectedOutputId !== candidate.asset_id,
   );
@@ -93,6 +97,14 @@ export function ProductionCanvasCandidateItem({
       <div className="mt-2 text-[11px] leading-4 text-gray-500">
         {candidateSummary(candidate)}
       </div>
+      {candidate.review_state === "rejected" ? (
+        <div className="mt-2 border-l-2 border-red-400 bg-red-50 px-3 py-2 text-xs leading-5 text-red-900">
+          <span className="font-semibold">已拒绝</span>
+          {candidate.rejection_reason
+            ? ` · ${candidate.rejection_reason}`
+            : null}
+        </div>
+      ) : null}
       {confirming ? (
         <div className="mt-2 border-l-2 border-amber-400 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
           <p className="font-semibold">切换后以下节点将标记为已过期：</p>
@@ -115,6 +127,41 @@ export function ProductionCanvasCandidateItem({
           </div>
         </div>
       ) : null}
+      {rejecting ? (
+        <div className="mt-2 border-l-2 border-gray-300 bg-gray-50 px-3 py-2">
+          <label
+            className="block text-xs font-medium text-gray-700"
+            htmlFor={`candidate-rejection-${candidate.asset_id}`}
+          >
+            拒绝原因（可选）
+          </label>
+          <textarea
+            id={`candidate-rejection-${candidate.asset_id}`}
+            className="mt-1 min-h-16 w-full resize-y border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-900 outline-none focus:border-blue-500"
+            maxLength={500}
+            ref={rejectionReasonRef}
+          />
+          <div className="mt-2 flex justify-end gap-2">
+            <button
+              type="button"
+              className={operatorButtonClass("ghost", "h-7 px-2 text-xs")}
+              onClick={() => setRejecting(false)}
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              className={operatorButtonClass("danger", "h-7 px-2 text-xs")}
+              onClick={() => {
+                setRejecting(false);
+                onReject(candidate, rejectionReasonRef.current?.value || "");
+              }}
+            >
+              确认拒绝
+            </button>
+          </div>
+        </div>
+      ) : null}
       <div className="mt-2 flex items-center justify-between gap-2">
         <a
           className="truncate text-xs font-medium text-blue-700 hover:underline"
@@ -124,17 +171,36 @@ export function ProductionCanvasCandidateItem({
         >
           查看原始资产
         </a>
-        <button
-          type="button"
-          className={operatorButtonClass(
-            candidate.selected ? "secondary" : "primary",
-            "h-8 shrink-0 px-3 text-xs",
-          )}
-          disabled={candidate.selected || busy}
-          onClick={approve}
-        >
-          {candidate.selected ? "已选用" : busy ? "选用中" : "选用"}
-        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            className={operatorButtonClass(
+              "ghost",
+              "h-8 px-2 text-xs text-red-700",
+            )}
+            disabled={busy}
+            onClick={() => setRejecting(true)}
+          >
+            拒绝
+          </button>
+          <button
+            type="button"
+            className={operatorButtonClass(
+              candidate.selected ? "secondary" : "primary",
+              "h-8 px-3 text-xs",
+            )}
+            disabled={candidate.selected || busy}
+            onClick={approve}
+          >
+            {candidate.selected
+              ? "已选用"
+              : busy
+              ? "选用中"
+              : candidate.review_state === "rejected"
+              ? "重新选用"
+              : "选用"}
+          </button>
+        </div>
       </div>
       {candidate.media_type === "video" && candidate.selected ? (
         <button

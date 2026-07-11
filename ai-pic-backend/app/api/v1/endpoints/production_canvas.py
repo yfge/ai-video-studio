@@ -4,13 +4,16 @@ from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.user import User
 from app.schemas.production_canvas import (
-    ProductionCanvasCandidateApprovalRequest,
     ProductionCanvasPlanRequest,
     ProductionCanvasPlanResponse,
     ProductionCanvasRunActionRequest,
     ProductionCanvasSavedState,
     ProductionCanvasSkillExecuteRequest,
     ProductionCanvasSkillExecuteResponse,
+)
+from app.schemas.production_canvas_review import (
+    ProductionCanvasCandidateApprovalRequest,
+    ProductionCanvasCandidateRejectionRequest,
     ProductionCanvasTimelinePlacementRequest,
 )
 from app.services.production_canvas import (
@@ -23,6 +26,7 @@ from app.services.production_canvas import (
     load_canvas_skill_run,
     persist_canvas_skill_run,
     place_canvas_video_in_timeline,
+    reject_canvas_media_candidate,
     save_canvas_client_state,
     save_canvas_execution_response,
 )
@@ -143,6 +147,28 @@ async def approve_production_canvas_media_candidate(
     try:
         run = approve_canvas_media_candidate(
             db, current_user, run_id, node_id, request.candidate_id
+        )
+    except ValueError as exc:
+        raise _candidate_http_error(exc) from exc
+    return {"success": True, "data": run.model_dump(by_alias=True)}
+
+
+@router.post("/runs/{run_id}/nodes/{node_id}/rejection", response_model=dict)
+async def reject_production_canvas_media_candidate(
+    run_id: str,
+    node_id: str,
+    request: ProductionCanvasCandidateRejectionRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        run = reject_canvas_media_candidate(
+            db,
+            current_user,
+            run_id,
+            node_id,
+            request.candidate_id,
+            request.reason,
         )
     except ValueError as exc:
         raise _candidate_http_error(exc) from exc

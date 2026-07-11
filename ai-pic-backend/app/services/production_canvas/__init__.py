@@ -1,3 +1,4 @@
+from .candidate_rejection import reject_canvas_media_candidate
 from .candidate_review import (
     approve_canvas_media_candidate,
     list_canvas_media_candidates,
@@ -28,6 +29,7 @@ __all__ = [
     "list_canvas_media_candidates",
     "persist_canvas_skill_run",
     "place_canvas_video_in_timeline",
+    "reject_canvas_media_candidate",
     "save_canvas_skill_result",
     "save_canvas_execution_response",
     "save_canvas_client_state",

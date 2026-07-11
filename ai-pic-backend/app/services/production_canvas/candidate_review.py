@@ -6,10 +6,10 @@ from typing import Any
 from app.models.user import User
 from app.repositories.storyboard_media_repository import load_storyboard_frames
 from app.schemas.production_canvas import (
-    ProductionCanvasMediaCandidateList,
     ProductionCanvasRunResponse,
     ProductionCanvasSavedNode,
 )
+from app.schemas.production_canvas_review import ProductionCanvasMediaCandidateList
 from app.services.production_canvas.execution_common import load_script
 from app.services.production_canvas.stale_runtime import (
     canvas_node_input_fingerprint,
@@ -22,6 +22,7 @@ from .candidate_history import (
     materialize_canvas_candidate,
     remember_canvas_candidate_history,
 )
+from .candidate_review_state import set_canvas_candidate_review
 from .run_persistence import load_canvas_saved_state, save_canvas_state
 from .timeline_candidates import list_timeline_video_candidates
 
@@ -165,6 +166,15 @@ def approve_canvas_media_candidate(
     node = _review_node(state, node_id)
     _, output_port = _MEDIA_SKILLS[node.skill]
     reviewed_at = datetime.now(timezone.utc)
+    set_canvas_candidate_review(
+        db,
+        run_id=run_id,
+        node_id=node_id,
+        candidate_id=candidate.asset_id,
+        review_state="approved",
+        reviewed_by=user.id,
+        reviewed_at=reviewed_at,
+    )
     updated = node.model_copy(
         update={
             "status": "approved",

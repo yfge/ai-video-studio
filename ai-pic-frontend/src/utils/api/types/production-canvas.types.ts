@@ -214,6 +214,10 @@ export interface ProductionCanvasMediaCandidate {
   model?: string | null;
   duration_seconds?: number | null;
   selected: boolean;
+  review_state: "pending" | "approved" | "rejected";
+  reviewed_by?: number | null;
+  reviewed_at?: string | null;
+  rejection_reason?: string | null;
 }
 
 export interface ProductionCanvasStaleImpactNode {

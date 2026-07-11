@@ -3,10 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 from app.repositories.timeline_repository import TimelineClipAssetRepository
-from app.schemas.production_canvas import (
-    ProductionCanvasMediaCandidate,
-    ProductionCanvasSavedNode,
-)
+from app.schemas.production_canvas import ProductionCanvasSavedNode
+from app.schemas.production_canvas_review import ProductionCanvasMediaCandidate
 from sqlalchemy.orm import Session
 
 

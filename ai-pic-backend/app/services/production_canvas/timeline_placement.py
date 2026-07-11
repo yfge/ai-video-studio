@@ -4,8 +4,8 @@ from copy import deepcopy
 from typing import Any
 
 from app.models.user import User
-from app.schemas.production_canvas import (
-    ProductionCanvasRunResponse,
+from app.schemas.production_canvas import ProductionCanvasRunResponse
+from app.schemas.production_canvas_review import (
     ProductionCanvasTimelinePlacementRequest,
 )
 from app.schemas.timeline import TimelineUpdate

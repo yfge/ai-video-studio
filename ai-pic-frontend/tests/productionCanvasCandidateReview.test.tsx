@@ -35,7 +35,7 @@ const imageNode: ProductionCanvasNode = {
   y: 0,
 };
 
-function runResponse(candidateId: number): ProductionCanvasRunResponse {
+function runResponse(candidateId: number | null): ProductionCanvasRunResponse {
   const url =
     candidateId === 11
       ? "https://example.com/old.png"
@@ -54,13 +54,14 @@ function runResponse(candidateId: number): ProductionCanvasRunResponse {
           kind: "pipeline",
           label: "Image Candidates",
           skill: "image.candidates",
-          status: "approved",
+          status: candidateId ? "approved" : "review",
           title: "图片候选",
           width: 220,
           x: 0,
           y: 0,
-          selected_output_id: candidateId,
-          selected_output_url: url,
+          ...(candidateId
+            ? { selected_output_id: candidateId, selected_output_url: url }
+            : {}),
         },
       ],
       selected_node_id: "image-review",
@@ -77,6 +78,8 @@ describe("ProductionCanvasCandidateReview", () => {
     const requests: Array<{ body?: string; method?: string; url: string }> = [];
     let updatedState: ProductionCanvasState | null = null;
     let approvedCandidateId: number | null = null;
+    let rejectedCandidateId: number | null = null;
+    let rejectionReason: string | null = null;
     globalThis.fetch = async (input, init) => {
       const url = String(input);
       requests.push({
@@ -93,6 +96,16 @@ describe("ProductionCanvasCandidateReview", () => {
             success: true,
             data: runResponse(approvedCandidateId),
           }),
+          { headers: { "content-type": "application/json" } },
+        );
+      }
+      if (url.endsWith("/rejection")) {
+        const body = JSON.parse(String(init?.body));
+        rejectedCandidateId = Number(body.candidate_id);
+        rejectionReason = body.reason;
+        approvedCandidateId = null;
+        return new Response(
+          JSON.stringify({ success: true, data: runResponse(null) }),
           { headers: { "content-type": "application/json" } },
         );
       }
@@ -121,6 +134,14 @@ describe("ProductionCanvasCandidateReview", () => {
                 clip_id: "clip-001",
                 model: "gpt-image-2",
                 selected: approvedCandidateId === 11,
+                review_state:
+                  rejectedCandidateId === 11
+                    ? "rejected"
+                    : approvedCandidateId === 11
+                    ? "approved"
+                    : "pending",
+                rejection_reason:
+                  rejectedCandidateId === 11 ? rejectionReason : null,
               },
               {
                 asset_id: 12,
@@ -131,6 +152,14 @@ describe("ProductionCanvasCandidateReview", () => {
                 clip_id: "clip-001",
                 model: "gpt-image-2",
                 selected: approvedCandidateId === 12,
+                review_state:
+                  rejectedCandidateId === 12
+                    ? "rejected"
+                    : approvedCandidateId === 12
+                    ? "approved"
+                    : "pending",
+                rejection_reason:
+                  rejectedCandidateId === 12 ? rejectionReason : null,
               },
             ],
           },
@@ -183,6 +212,33 @@ describe("ProductionCanvasCandidateReview", () => {
       assert.deepEqual(JSON.parse(approval?.body || "{}"), {
         candidate_id: 12,
       });
+
+      fireEvent.click(utils.getAllByRole("button", { name: "拒绝" })[1]);
+      fireEvent.input(utils.getByLabelText("拒绝原因（可选）"), {
+        target: { value: "角色外观不一致" },
+      });
+      fireEvent.click(utils.getByRole("button", { name: "确认拒绝" }));
+
+      await waitFor(() =>
+        assert.ok(
+          requests.find((request) => request.url.endsWith("/rejection")),
+        ),
+      );
+      const rejection = requests.find((request) =>
+        request.url.endsWith("/rejection"),
+      );
+      assert.equal(rejection?.method, "POST");
+      assert.deepEqual(JSON.parse(rejection?.body || "{}"), {
+        candidate_id: 12,
+        reason: "角色外观不一致",
+      });
+      await waitFor(() =>
+        assert.match(
+          dom.window.document.body.textContent || "",
+          /角色外观不一致/,
+        ),
+      );
+      assert.equal(updatedState?.nodes[0]?.status, "review");
     } finally {
       globalThis.fetch = originalFetch;
     }
