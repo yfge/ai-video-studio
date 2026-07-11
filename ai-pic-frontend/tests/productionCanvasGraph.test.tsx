@@ -71,39 +71,31 @@ describe("ProductionCanvasGraph", () => {
       "[data-production-canvas='infinite-canvas']",
     );
     assert.ok(canvas);
-    assert.equal(
-      utils.container.querySelector("[data-canvas-edge='brief-report']"),
-      null,
+    fireEvent.click(
+      utils.getByLabelText("Image Candidates 角色、环境和关键帧候选"),
     );
-
-    fireEvent.change(utils.getByLabelText("连线目标"), {
-      target: { value: "report" },
-    });
-    fireEvent.click(utils.getByLabelText("Script 短剧节拍、对白和质量门禁"));
-    assert.equal(
-      (utils.getByLabelText("连线目标") as HTMLSelectElement).value,
-      "",
-    );
-    fireEvent.click(utils.getByLabelText("Brief IP、受众、题材和单集目标"));
-    fireEvent.change(utils.getByLabelText("连线目标"), {
-      target: { value: "report" },
-    });
-    fireEvent.click(utils.getByRole("button", { name: "添加连线" }));
-
     assert.ok(
-      utils.container.querySelector("[data-canvas-edge='brief-report']"),
+      utils.container.querySelector("[data-canvas-edge='image-video']"),
+    );
+    fireEvent.click(
+      utils.getByRole("button", {
+        name: /移除 选用图片 → Video Candidates.*起始帧/,
+      }),
     );
     assert.equal(
-      [...utils.getByLabelText("连线目标").querySelectorAll("option")].some(
-        (option) => option.textContent === "Report",
-      ),
-      false,
-    );
-    assert.equal(dom.window.document.activeElement, canvas);
-    fireEvent.click(utils.getByRole("button", { name: "移除连线 Report" }));
-    assert.equal(
-      utils.container.querySelector("[data-canvas-edge='brief-report']"),
+      utils.container.querySelector("[data-canvas-edge='image-video']"),
       null,
+    );
+    const select = utils.getByLabelText("连线目标") as HTMLSelectElement;
+    const binding = [...select.options].find(
+      (option) =>
+        option.textContent?.includes("选用图片 → Video Candidates· 起始帧"),
+    );
+    assert.ok(binding);
+    fireEvent.change(select, { target: { value: binding.value } });
+    fireEvent.click(utils.getByRole("button", { name: "添加连线" }));
+    assert.ok(
+      utils.container.querySelector("[data-canvas-edge='image-video']"),
     );
     assert.equal(dom.window.document.activeElement, canvas);
   });
@@ -659,7 +651,7 @@ describe("ProductionCanvasGraph", () => {
 
     const select = utils.getByLabelText("连线目标") as HTMLSelectElement;
     assert.equal(select.disabled, true);
-    assert.equal(select.options[0]?.textContent, "所有目标已连线");
+    assert.equal(select.options[0]?.textContent, "没有兼容端口");
     assert.equal(
       utils.getByRole("button", { name: "添加连线" }).hasAttribute("disabled"),
       true,
@@ -725,9 +717,15 @@ describe("ProductionCanvasGraph", () => {
       ...utils.getByLabelText("连线目标").querySelectorAll("option"),
     ].map((option) => option.textContent);
 
-    assert.ok(optionLabels.includes("Manual Note"));
-    assert.ok(optionLabels.includes("Report Skill"));
-    assert.equal(optionLabels.includes("Task #77"), false);
+    assert.equal(
+      optionLabels.some((label) => label?.includes("Manual Note")),
+      false,
+    );
+    assert.ok(optionLabels.some((label) => label?.includes("Report Skill")));
+    assert.equal(
+      optionLabels.some((label) => label?.includes("Task #77")),
+      false,
+    );
   });
 
   it("disambiguates duplicate edge target labels", () => {
@@ -786,10 +784,10 @@ describe("ProductionCanvasGraph", () => {
     ].map((option) => option.textContent);
 
     assert.deepEqual(optionLabels, [
-      "选择目标",
-      "Image Candidates · 角色、环境和关键帧候选",
-      "Image Candidates · Create or reuse storyboard/keyframe image candidates.",
-      "Video Candidates",
+      "选择兼容端口",
+      "输出 → Image Candidates · 角色、环境和关键帧候选· 输入",
+      "输出 → Image Candidates · Create or reuse storyboard/keyframe image candidates.· 输入",
+      "输出 → Video Candidates· 输入",
     ]);
   });
 
@@ -840,12 +838,12 @@ describe("ProductionCanvasGraph", () => {
 
     assert.ok(
       utils.getByRole("button", {
-        name: "移除连线 Image Candidates · 角色、环境和关键帧候选",
+        name: "移除 默认 → Image Candidates · 角色、环境和关键帧候选· 默认",
       }),
     );
     assert.ok(
       utils.getByRole("button", {
-        name: "移除连线 Image Candidates · Create or reuse storyboard/keyframe image candidates.",
+        name: "移除 默认 → Image Candidates · Create or reuse storyboard/keyframe image candidates.· 默认",
       }),
     );
   });

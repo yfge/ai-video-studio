@@ -4,7 +4,20 @@ import type {
   ProductionCanvasEdge,
   ProductionCanvasNode,
 } from "./productionCanvasModel";
-import { taskOutputNumber } from "./productionCanvasSkillNodes";
+import {
+  compatibleProductionCanvasEdges,
+  productionCanvasPortContract,
+} from "./productionCanvasPorts";
+
+function portLabel(
+  node: ProductionCanvasNode,
+  portId?: string,
+  output = false,
+) {
+  const contract = productionCanvasPortContract(node);
+  const ports = output ? contract.outputPorts : contract.inputPorts;
+  return ports?.find((port) => port.id === portId)?.label || portId || "默认";
+}
 
 export function ProductionCanvasEdgeControls({
   edges,
@@ -16,36 +29,41 @@ export function ProductionCanvasEdgeControls({
   edges: ProductionCanvasEdge[];
   node?: ProductionCanvasNode;
   nodes: ProductionCanvasNode[];
-  onAddEdge: (from: string, to: string) => void;
-  onRemoveEdge: (from: string, to: string) => void;
+  onAddEdge: (edge: ProductionCanvasEdge) => void;
+  onRemoveEdge: (edge: ProductionCanvasEdge) => void;
 }) {
-  const [targetId, setTargetId] = useState("");
-  useEffect(() => setTargetId(""), [node?.id]);
+  const [candidateId, setCandidateId] = useState("");
+  useEffect(() => setCandidateId(""), [node?.id]);
   const nodeById = useMemo(
     () => new Map(nodes.map((item) => [item.id, item] as const)),
     [nodes],
   );
-  if (!node || (node.kind === "note" && taskOutputNumber(node.outputs))) {
-    return null;
-  }
+  const candidates = useMemo(
+    () =>
+      node
+        ? nodes.flatMap((target) =>
+            compatibleProductionCanvasEdges(node, target, edges),
+          )
+        : [],
+    [edges, node, nodes],
+  );
+  if (!node || node.kind === "note") return null;
 
   const outgoing = edges.filter((edge) => edge.from === node.id);
-  const outgoingTargets = new Set(outgoing.map((edge) => edge.to));
-  const availableTargets = nodes.filter(
-    (item) =>
-      item.id !== node.id &&
-      !outgoingTargets.has(item.id) &&
-      !(item.kind === "note" && taskOutputNumber(item.outputs)),
+  const selectedCandidate = candidates.find(
+    (candidate) => candidate.edgeId === candidateId,
   );
-  const noAvailableTargets = availableTargets.length === 0;
+  const noAvailableTargets = candidates.length === 0;
   const targetLabelCounts = new Map<string, number>();
-  for (const target of availableTargets) {
+  for (const candidate of candidates) {
+    const target = nodeById.get(candidate.to);
+    if (!target) continue;
     targetLabelCounts.set(
       target.label,
       (targetLabelCounts.get(target.label) ?? 0) + 1,
     );
   }
-  const targetOptionLabel = (target: ProductionCanvasNode) =>
+  const targetLabel = (target: ProductionCanvasNode) =>
     (targetLabelCounts.get(target.label) ?? 0) > 1
       ? `${target.label} · ${target.title}`
       : target.label;
@@ -58,43 +76,44 @@ export function ProductionCanvasEdgeControls({
       (outgoingLabelCounts.get(target.label) ?? 0) + 1,
     );
   }
-  const outgoingEdgeLabel = (
-    target: ProductionCanvasNode | undefined,
-    id: string,
-  ) =>
-    target
-      ? (outgoingLabelCounts.get(target.label) ?? 0) > 1
-        ? `${target.label} · ${target.title}`
-        : target.label
-      : id;
+  const outgoingTargetLabel = (target: ProductionCanvasNode) =>
+    (outgoingLabelCounts.get(target.label) ?? 0) > 1
+      ? `${target.label} · ${target.title}`
+      : target.label;
 
   return (
     <div className="border-t border-gray-100 pt-3">
-      <div className="text-xs font-semibold text-gray-700">连线编辑</div>
+      <div className="text-xs font-semibold text-gray-700">类型化连线</div>
       <div className="mt-2 flex gap-2">
         <select
           aria-label="连线目标"
           className="h-8 min-w-0 flex-1 rounded-md border border-gray-200 bg-white px-2 text-xs text-gray-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
           disabled={noAvailableTargets}
-          value={targetId}
-          onChange={(event) => setTargetId(event.currentTarget.value)}
+          value={candidateId}
+          onChange={(event) => setCandidateId(event.currentTarget.value)}
         >
           <option value="">
-            {noAvailableTargets ? "所有目标已连线" : "选择目标"}
+            {noAvailableTargets ? "没有兼容端口" : "选择兼容端口"}
           </option>
-          {availableTargets.map((target) => (
-            <option key={target.id} value={target.id}>
-              {targetOptionLabel(target)}
-            </option>
-          ))}
+          {candidates.map((candidate) => {
+            const target = nodeById.get(candidate.to);
+            if (!target) return null;
+            return (
+              <option key={candidate.edgeId} value={candidate.edgeId}>
+                {portLabel(node, candidate.fromPort, true)} →{" "}
+                {targetLabel(target)}· {portLabel(target, candidate.toPort)}
+              </option>
+            );
+          })}
         </select>
         <button
           type="button"
           className={operatorButtonClass("secondary")}
-          disabled={!targetId || noAvailableTargets}
+          disabled={!selectedCandidate}
           onClick={() => {
-            onAddEdge(node.id, targetId);
-            setTargetId("");
+            if (!selectedCandidate) return;
+            onAddEdge(selectedCandidate);
+            setCandidateId("");
           }}
         >
           添加连线
@@ -104,18 +123,19 @@ export function ProductionCanvasEdgeControls({
         <div className="mt-2 space-y-1">
           {outgoing.map((edge) => {
             const target = nodeById.get(edge.to);
-            const label = outgoingEdgeLabel(target, edge.to);
             return (
               <button
-                key={`${edge.from}-${edge.to}`}
+                key={edge.edgeId || `${edge.from}-${edge.to}`}
                 type="button"
                 className={operatorButtonClass(
                   "ghost",
                   "h-7 w-full justify-start px-2",
                 )}
-                onClick={() => onRemoveEdge(edge.from, edge.to)}
+                onClick={() => onRemoveEdge(edge)}
               >
-                移除连线 {label}
+                移除 {portLabel(node, edge.fromPort, true)} →{" "}
+                {target ? outgoingTargetLabel(target) : edge.to}·{" "}
+                {target ? portLabel(target, edge.toPort) : "默认"}
               </button>
             );
           })}

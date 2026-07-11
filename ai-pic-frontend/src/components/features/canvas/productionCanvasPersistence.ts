@@ -7,6 +7,7 @@ import type {
   ProductionCanvasEdge,
   ProductionCanvasNode,
 } from "./productionCanvasModel";
+import { isTypedProductionCanvasEdge } from "./productionCanvasPorts";
 import {
   clampProductionCanvasZoom,
   finiteCanvasNumber,
@@ -33,22 +34,59 @@ function canvasNodeToSavedNode(
     y: node.y,
     width: node.width,
     height: node.height,
-    kind: node.kind,
+    kind: node.skill ? "pipeline" : node.kind,
     skill: node.skill,
     detail: node.detail,
     outputs: node.outputs || {},
     reuse_targets: node.reuseTargets,
     action_href: node.actionHref,
     action_label: node.actionLabel,
+    definition_version: node.definitionVersion || 1,
+    input_ports: node.inputPorts?.map(({ id, type, required, multiple }) => ({
+      id,
+      type,
+      required,
+      multiple,
+    })),
+    output_ports: node.outputPorts?.map(({ id, type, required, multiple }) => ({
+      id,
+      type,
+      required,
+      multiple,
+    })),
   };
 }
 
-function savedEdges(edges?: { from: string; to: string }[] | null) {
-  return Array.isArray(edges) ? edges.map((edge) => ({ ...edge })) : [];
+function savedEdges(
+  edges?: ProductionCanvasSavedState["edges"] | null,
+): ProductionCanvasEdge[] {
+  return Array.isArray(edges)
+    ? edges.map((edge) => ({
+        from: edge.from,
+        to: edge.to,
+        ...(edge.edge_id ? { edgeId: edge.edge_id } : {}),
+        ...(edge.from_port ? { fromPort: edge.from_port } : {}),
+        ...(edge.to_port ? { toPort: edge.to_port } : {}),
+        ...(edge.binding_type ? { bindingType: edge.binding_type } : {}),
+        ...(edge.required === undefined ? {} : { required: edge.required }),
+        ...(edge.binding_order === undefined || edge.binding_order === null
+          ? {}
+          : { bindingOrder: edge.binding_order }),
+      }))
+    : [];
 }
 
 function canvasEdgesToSavedEdges(edges: ProductionCanvasEdge[]) {
-  return edges.map((edge) => ({ from: edge.from, to: edge.to }));
+  return edges.map((edge) => ({
+    from: edge.from,
+    to: edge.to,
+    edge_id: edge.edgeId,
+    from_port: edge.fromPort,
+    to_port: edge.toPort,
+    binding_type: edge.bindingType,
+    required: edge.required ?? true,
+    binding_order: edge.bindingOrder,
+  }));
 }
 
 function selectedNodeId(
@@ -73,6 +111,7 @@ export function toProductionCanvasSavedState(
   state: ProductionCanvasState,
 ): ProductionCanvasSavedState {
   return {
+    graph_version: state.edges.every(isTypedProductionCanvasEdge) ? 2 : 1,
     edges: canvasEdgesToSavedEdges(state.edges),
     nodes: state.nodes.map(canvasNodeToSavedNode),
     viewport: state.viewport,

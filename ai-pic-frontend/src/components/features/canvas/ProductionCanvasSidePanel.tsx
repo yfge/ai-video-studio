@@ -36,12 +36,12 @@ export function ProductionCanvasSidePanel({
   executingNodeId?: string | null;
   node?: ProductionCanvasNode;
   nodes: ProductionCanvasNode[];
-  onAddEdge: (from: string, to: string) => void;
+  onAddEdge: (edge: ProductionCanvasEdge) => void;
   onDuplicateNote: (nodeId: string) => void;
   onExecuteNode: (node: ProductionCanvasNode) => void;
   onRefreshTaskNode: (node: ProductionCanvasNode) => void;
   onRefreshTasks: (nodes: ProductionCanvasNode[]) => void;
-  onRemoveEdge: (from: string, to: string) => void;
+  onRemoveEdge: (edge: ProductionCanvasEdge) => void;
   onRemoveNode: (nodeId: string) => void;
   onReturnFocus: () => void;
   onSelectNode: (nodeId: string) => void;

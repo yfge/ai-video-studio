@@ -10,20 +10,44 @@ export type ProductionCanvasOutputPatch = Record<
 
 export function addProductionCanvasEdge(
   edges: ProductionCanvasEdge[],
-  from: string,
-  to: string,
+  edgeOrFrom: ProductionCanvasEdge | string,
+  legacyTo?: string,
 ) {
+  const edge =
+    typeof edgeOrFrom === "string"
+      ? { from: edgeOrFrom, to: legacyTo || "" }
+      : edgeOrFrom;
+  const { from, to } = edge;
   if (!from || !to || from === to) return edges;
-  if (edges.some((edge) => edge.from === from && edge.to === to)) return edges;
-  return [...edges, { from, to }];
+  if (
+    edges.some(
+      (current) =>
+        current.from === from &&
+        current.to === to &&
+        current.fromPort === edge.fromPort &&
+        current.toPort === edge.toPort,
+    )
+  )
+    return edges;
+  return [...edges, { ...edge }];
 }
 
 export function removeProductionCanvasEdge(
   edges: ProductionCanvasEdge[],
-  from: string,
-  to: string,
+  edgeOrFrom: ProductionCanvasEdge | string,
+  legacyTo?: string,
 ) {
-  return edges.filter((edge) => edge.from !== from || edge.to !== to);
+  const requested =
+    typeof edgeOrFrom === "string"
+      ? { from: edgeOrFrom, to: legacyTo || "" }
+      : edgeOrFrom;
+  return edges.filter((edge) => {
+    if (edge.from !== requested.from || edge.to !== requested.to) return true;
+    if (!requested.fromPort && !requested.toPort) return false;
+    return (
+      edge.fromPort !== requested.fromPort || edge.toPort !== requested.toPort
+    );
+  });
 }
 
 export function removeProductionCanvasNode(

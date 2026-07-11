@@ -205,8 +205,8 @@ export function ProductionCanvasContent({
               ? planner.executionError.message
               : null
           }
-          onAddEdge={(from, to) => {
-            handleAddEdge(from, to);
+          onAddEdge={(edge) => {
+            handleAddEdge(edge);
             focusCanvas();
           }}
           onDuplicateNote={handleDuplicateNote}
@@ -222,8 +222,8 @@ export function ProductionCanvasContent({
             void taskSync.refreshTaskNodes(nodes);
             focusCanvas();
           }}
-          onRemoveEdge={(from, to) => {
-            handleRemoveEdge(from, to);
+          onRemoveEdge={(edge) => {
+            handleRemoveEdge(edge);
             focusCanvas();
           }}
           onRemoveNode={(nodeId) => {

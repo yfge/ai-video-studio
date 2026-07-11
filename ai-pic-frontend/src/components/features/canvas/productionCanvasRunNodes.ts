@@ -5,6 +5,7 @@ import type {
 } from "@/utils/api/types";
 import { finiteCanvasNumber } from "./productionCanvasGeometry";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
+import { withProductionCanvasPortContract } from "./productionCanvasPorts";
 
 function runOutputs(run: ProductionCanvasRunResponse) {
   return {
@@ -17,7 +18,7 @@ export function planNodeToCanvasNode(
   node: ProductionCanvasPlanNode,
   run: ProductionCanvasRunResponse,
 ): ProductionCanvasNode {
-  return {
+  return withProductionCanvasPortContract({
     id: node.id,
     label: node.label,
     title: node.title,
@@ -36,14 +37,23 @@ export function planNodeToCanvasNode(
     reuseTargets: node.reuse_targets,
     actionHref: node.action_href || undefined,
     actionLabel: node.action_label || undefined,
-  };
+    definitionVersion: node.definition_version,
+    inputPorts: node.input_ports?.map((port) => ({
+      ...port,
+      label: port.id,
+    })),
+    outputPorts: node.output_ports?.map((port) => ({
+      ...port,
+      label: port.id,
+    })),
+  });
 }
 
 export function savedNodeToCanvasNode(
   node: ProductionCanvasSavedNode,
   run?: ProductionCanvasRunResponse,
 ): ProductionCanvasNode {
-  return {
+  return withProductionCanvasPortContract({
     id: node.id,
     label: node.label,
     title: node.title,
@@ -59,7 +69,16 @@ export function savedNodeToCanvasNode(
     reuseTargets: node.reuse_targets,
     actionHref: node.action_href || undefined,
     actionLabel: node.action_label || undefined,
-  };
+    definitionVersion: node.definition_version,
+    inputPorts: node.input_ports?.map((port) => ({
+      ...port,
+      label: port.id,
+    })),
+    outputPorts: node.output_ports?.map((port) => ({
+      ...port,
+      label: port.id,
+    })),
+  });
 }
 
 function savedOutputString(

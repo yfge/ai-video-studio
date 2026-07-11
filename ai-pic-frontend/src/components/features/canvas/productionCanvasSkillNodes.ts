@@ -9,6 +9,7 @@ import {
   type ProductionCanvasNode,
 } from "./productionCanvasModel";
 import { taskStatusLabelForStatus } from "./productionCanvasTaskSummaryModel";
+import { withProductionCanvasPortContract } from "./productionCanvasPorts";
 
 function runOutputs(response: ProductionCanvasPlanResponse) {
   return {
@@ -22,7 +23,7 @@ export function productionCanvasPlanNodeToCanvasNode(
   response: ProductionCanvasPlanResponse,
   contextOutputs: Record<string, unknown> = {},
 ): ProductionCanvasNode {
-  return {
+  return withProductionCanvasPortContract({
     id: node.id,
     label: node.label,
     title: node.title,
@@ -38,7 +39,7 @@ export function productionCanvasPlanNodeToCanvasNode(
     reuseTargets: node.reuse_targets,
     actionHref: node.action_href || undefined,
     actionLabel: node.action_label || undefined,
-  };
+  });
 }
 
 export function outputString(

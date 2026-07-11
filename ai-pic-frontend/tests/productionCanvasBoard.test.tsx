@@ -73,6 +73,16 @@ describe("ProductionCanvasBoard", () => {
     );
     assert.equal(canvas.getAttribute("tabindex"), "0");
     assert.match(canvas.className, /touch-none/);
+    assert.ok(
+      utils.container.querySelector(
+        "[data-canvas-output-port='image:approved_image']",
+      ),
+    );
+    assert.ok(
+      utils.container.querySelector(
+        "[data-canvas-input-port='video:start_frame']",
+      ),
+    );
     assert.ok(utils.getByRole("button", { name: "添加便签" }));
     assert.ok(utils.getByRole("button", { name: "适配" }));
     assert.equal(

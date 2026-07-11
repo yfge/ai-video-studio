@@ -2,6 +2,7 @@ import type {
   ProductionCanvasEdge,
   ProductionCanvasNode,
 } from "./productionCanvasModel";
+import { withProductionCanvasPortContract } from "./productionCanvasPorts";
 
 export const finiteCanvasNumber = (value: unknown, fallback: number) =>
   typeof value === "number" && Number.isFinite(value) ? value : fallback;
@@ -21,11 +22,15 @@ export function cloneProductionCanvasNodes(nodes: ProductionCanvasNode[]) {
   const seenNodes = new Set<string>();
   return nodes
     .filter((node) => !seenNodes.has(node.id) && !!seenNodes.add(node.id))
-    .map((node) => ({
-      ...node,
-      width: positiveCanvasNumber(node.width, 190),
-      height: positiveCanvasNumber(node.height, 0) || undefined,
-    }));
+    .map((node) =>
+      withProductionCanvasPortContract({
+        ...node,
+        width: positiveCanvasNumber(node.width, 190),
+        height: positiveCanvasNumber(node.height, 0) || undefined,
+        inputPorts: node.inputPorts?.map((port) => ({ ...port })),
+        outputPorts: node.outputPorts?.map((port) => ({ ...port })),
+      }),
+    );
 }
 
 export function cloneProductionCanvasEdges(
@@ -36,7 +41,9 @@ export function cloneProductionCanvasEdges(
   const seenEdges = new Set<string>();
   return edges
     .filter((edge) => {
-      const key = `${edge.from}->${edge.to}`;
+      const key = `${edge.from}:${edge.fromPort || ""}->${edge.to}:${
+        edge.toPort || ""
+      }`;
       if (
         edge.from === edge.to ||
         !nodeIds.has(edge.from) ||

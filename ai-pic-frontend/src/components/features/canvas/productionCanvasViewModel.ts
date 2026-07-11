@@ -30,9 +30,15 @@ function isCanvasNode(value: unknown): value is ProductionCanvasNode {
     Number.isFinite(node.y) &&
     Number.isFinite(node.width) &&
     (node.height === undefined || Number.isFinite(node.height)) &&
-    (node.status === "ready" ||
+    (node.status === "draft" ||
+      node.status === "ready" ||
+      node.status === "queued" ||
       node.status === "running" ||
       node.status === "review" ||
+      node.status === "approved" ||
+      node.status === "stale" ||
+      node.status === "failed" ||
+      node.status === "cancelled" ||
       node.status === "blocked")
   );
 }
@@ -93,7 +99,7 @@ export function readStoredCanvasState(storageKey: string | null | undefined) {
 export function getNodeHeight(node: ProductionCanvasNode) {
   if (node.height && Number.isFinite(node.height) && node.height > 0)
     return node.height;
-  if (node.skill && node.kind === "skill_result") return 118;
+  if (node.skill && node.kind !== "note") return 118;
   return DEFAULT_NODE_HEIGHT;
 }
 

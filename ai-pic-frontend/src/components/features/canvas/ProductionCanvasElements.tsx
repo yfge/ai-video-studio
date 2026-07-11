@@ -73,12 +73,14 @@ export function CanvasEdges({
         if (!source || !target) return null;
         return (
           <path
-            key={`${edge.from}-${edge.to}`}
+            key={edge.edgeId || `${edge.from}-${edge.to}`}
             data-canvas-edge={`${edge.from}-${edge.to}`}
+            data-canvas-edge-id={edge.edgeId}
+            data-canvas-edge-type={edge.bindingType || "legacy"}
             d={edgePath(source, target, offsetX, offsetY)}
             fill="none"
-            stroke="#94a3b8"
-            strokeDasharray="8 8"
+            stroke={edge.bindingType ? "#64748b" : "#94a3b8"}
+            strokeDasharray={edge.bindingType ? undefined : "8 8"}
             strokeWidth="2"
           />
         );
@@ -118,7 +120,7 @@ export function CanvasInspector({
   const status = productionCanvasNodeStatusMeta(node);
   const outputs = outputEntries(node);
   const displayTitle = displayProductionCanvasNodeTitle(node);
-  const canExecute = Boolean(node.skill && node.kind === "skill_result");
+  const canExecute = Boolean(node.skill && node.kind !== "note");
   const executing = executingNodeId === node.id;
   const executeDisabled = Boolean(executingNodeId && !executing);
   const canRefreshTask = Boolean(

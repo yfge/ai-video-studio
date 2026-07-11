@@ -351,9 +351,23 @@ describe("ProductionCanvasPersistence", () => {
 
       fireEvent.click(utils.getByRole("button", { name: "保存画布" }));
       await waitFor(() => assert.equal(savedBodies.length, 1));
+      assert.equal(savedBodies[0]?.graph_version, 2);
       assert.equal(savedBodies[0]?.selected_node_id, "skill-brief");
       assert.ok(Array.isArray(savedBodies[0]?.nodes));
       assert.ok(Array.isArray(savedBodies[0]?.edges));
+      const savedBrief = savedBodies[0]?.nodes.find(
+        (node: { id: string }) => node.id === "skill-brief",
+      );
+      assert.equal(savedBrief?.kind, "pipeline");
+      assert.equal(savedBrief?.definition_version, 1);
+      assert.equal(savedBrief?.output_ports?.[0]?.id, "production_brief");
+      const imageVideoEdge = savedBodies[0]?.edges.find(
+        (edge: { from: string; to: string }) =>
+          edge.from === "image" && edge.to === "video",
+      );
+      assert.equal(imageVideoEdge?.from_port, "approved_image");
+      assert.equal(imageVideoEdge?.to_port, "start_frame");
+      assert.equal(imageVideoEdge?.binding_type, "selected_output");
       await waitFor(() => assert.ok(utils.getByText("已保存")));
 
       fireEvent.click(utils.getByRole("button", { name: "恢复画布" }));

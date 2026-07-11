@@ -1,6 +1,7 @@
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { StatusPill, operatorButtonClass } from "@/components/shared";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
+import { productionCanvasPortContract } from "./productionCanvasPorts";
 import { productionCanvasNodeStatusMeta } from "./productionCanvasSkillNodes";
 import {
   displayProductionCanvasNodeTitle,
@@ -36,9 +37,10 @@ export function CanvasNodeCard({
     node.kind === "note"
       ? "border-amber-200 bg-amber-50/95"
       : "border-gray-200 bg-white";
-  const canExecute = Boolean(node.skill && node.kind === "skill_result");
+  const canExecute = Boolean(node.skill && node.kind !== "note");
   const executeDisabled = executing || executionDisabled;
   const displayTitle = displayProductionCanvasNodeTitle(node);
+  const ports = productionCanvasPortContract(node);
 
   return (
     <div
@@ -58,6 +60,28 @@ export function CanvasNodeCard({
         onFocusNode?.(node.id);
       }}
     >
+      {ports.inputPorts?.map((port, index) => (
+        <span
+          key={port.id}
+          aria-label={`输入端口 ${port.label} ${port.type}`}
+          className="absolute -left-1.5 z-10 h-3 w-3 rounded-full border-2 border-white bg-blue-500 shadow-sm"
+          data-canvas-input-port={`${node.id}:${port.id}`}
+          role="img"
+          style={{ top: 28 + index * 18 }}
+          title={`${port.label} · ${port.type}`}
+        />
+      ))}
+      {ports.outputPorts?.map((port, index) => (
+        <span
+          key={port.id}
+          aria-label={`输出端口 ${port.label} ${port.type}`}
+          className="absolute -right-1.5 z-10 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 shadow-sm"
+          data-canvas-output-port={`${node.id}:${port.id}`}
+          role="img"
+          style={{ top: 28 + index * 18 }}
+          title={`${port.label} · ${port.type}`}
+        />
+      ))}
       <button
         type="button"
         className={`h-full w-full cursor-grab rounded-lg p-3 text-left active:cursor-grabbing ${

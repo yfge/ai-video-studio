@@ -7,6 +7,25 @@ export interface ProductionCanvasPlanRequest {
   task_id?: number | null;
 }
 
+export type ProductionCanvasNodeStatus =
+  | "draft"
+  | "ready"
+  | "queued"
+  | "running"
+  | "review"
+  | "approved"
+  | "stale"
+  | "failed"
+  | "cancelled"
+  | "blocked";
+
+export interface ProductionCanvasSavedPort {
+  id: string;
+  type: "text" | "image" | "video" | "audio" | "entity_ref" | "execution_ref";
+  required?: boolean;
+  multiple?: boolean;
+}
+
 export interface ProductionCanvasSkillExecuteRequest
   extends ProductionCanvasPlanRequest {
   skill: string;
@@ -55,7 +74,7 @@ export interface ProductionCanvasSkillDefinition {
 export interface ProductionCanvasSkillResult {
   skill: string;
   label: string;
-  status: "ready" | "running" | "review" | "blocked";
+  status: ProductionCanvasNodeStatus;
   title: string;
   detail: string;
   outputs?: Record<string, unknown>;
@@ -73,7 +92,7 @@ export interface ProductionCanvasPlanNode {
   id: string;
   label: string;
   title: string;
-  status: "ready" | "running" | "review" | "blocked";
+  status: ProductionCanvasNodeStatus;
   x: number;
   y: number;
   width: number;
@@ -85,6 +104,9 @@ export interface ProductionCanvasPlanNode {
   reuse_targets?: ProductionCanvasSkillReuseTarget[];
   action_href?: string | null;
   action_label?: string | null;
+  definition_version?: number;
+  input_ports?: ProductionCanvasSavedPort[];
+  output_ports?: ProductionCanvasSavedPort[];
 }
 
 export interface ProductionCanvasViewport {
@@ -97,7 +119,7 @@ export interface ProductionCanvasSavedNode {
   id: string;
   label: string;
   title: string;
-  status: "ready" | "running" | "review" | "blocked";
+  status: ProductionCanvasNodeStatus;
   x: number;
   y: number;
   width: number;
@@ -109,14 +131,24 @@ export interface ProductionCanvasSavedNode {
   reuse_targets?: ProductionCanvasSkillReuseTarget[];
   action_href?: string | null;
   action_label?: string | null;
+  definition_version?: number;
+  input_ports?: ProductionCanvasSavedPort[];
+  output_ports?: ProductionCanvasSavedPort[];
 }
 
 export interface ProductionCanvasSavedEdge {
   from: string;
   to: string;
+  edge_id?: string | null;
+  from_port?: string | null;
+  to_port?: string | null;
+  binding_type?: "value" | "selected_output" | null;
+  required?: boolean;
+  binding_order?: number | null;
 }
 
 export interface ProductionCanvasSavedState {
+  graph_version?: 1 | 2;
   nodes: ProductionCanvasSavedNode[];
   edges?: ProductionCanvasSavedEdge[];
   viewport: ProductionCanvasViewport;

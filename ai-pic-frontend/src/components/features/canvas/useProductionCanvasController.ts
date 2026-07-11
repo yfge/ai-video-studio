@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ProductionCanvasNode } from "./productionCanvasModel";
+import type {
+  ProductionCanvasEdge,
+  ProductionCanvasNode,
+} from "./productionCanvasModel";
 import {
   addProductionCanvasEdge,
   removeProductionCanvasEdge,
@@ -61,15 +64,15 @@ export function useProductionCanvasController(storageKey?: string | null) {
   const handleSelectNode = (nodeId: string) =>
     setCanvasState((state) => ({ ...state, selectedNodeId: nodeId }));
 
-  const handleAddEdge = (from: string, to: string) =>
+  const handleAddEdge = (edge: ProductionCanvasEdge) =>
     setCanvasState((state) => ({
       ...state,
-      edges: addProductionCanvasEdge(state.edges, from, to),
+      edges: addProductionCanvasEdge(state.edges, edge),
     }));
-  const handleRemoveEdge = (from: string, to: string) =>
+  const handleRemoveEdge = (edge: ProductionCanvasEdge) =>
     setCanvasState((state) => ({
       ...state,
-      edges: removeProductionCanvasEdge(state.edges, from, to),
+      edges: removeProductionCanvasEdge(state.edges, edge),
     }));
   const handleRemoveNode = (nodeId: string) => {
     setCanvasState((state) => {

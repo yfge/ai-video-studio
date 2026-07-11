@@ -32,11 +32,11 @@ export function ProductionCanvasNodeTools({
   edges: ProductionCanvasEdge[];
   node?: ProductionCanvasNode;
   nodes: ProductionCanvasNode[];
-  onAddEdge: (from: string, to: string) => void;
+  onAddEdge: (edge: ProductionCanvasEdge) => void;
   onDuplicateNote: (nodeId: string) => void;
   onReturnFocus?: () => void;
   onRefreshTasks?: (nodes: ProductionCanvasNode[]) => void;
-  onRemoveEdge: (from: string, to: string) => void;
+  onRemoveEdge: (edge: ProductionCanvasEdge) => void;
   onRemoveNode: (nodeId: string) => void;
   onSelectNode: (nodeId: string) => void;
   onUpdateNode: (nodeId: string, patch: Partial<ProductionCanvasNode>) => void;

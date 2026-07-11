@@ -71,9 +71,13 @@ describe("ProductionCanvasEdgeControls", () => {
     );
 
     const select = utils.getByLabelText("连线目标") as HTMLSelectElement;
-    assert.deepEqual(optionLabels(select), ["选择目标", "Report"]);
-    fireEvent.change(select, { target: { value: "report" } });
-    assert.equal(select.value, "report");
+    assert.deepEqual(optionLabels(select), [
+      "选择兼容端口",
+      "输出 → Report· 输入",
+    ]);
+    const reportBinding = select.options[1]?.value;
+    fireEvent.change(select, { target: { value: reportBinding } });
+    assert.equal(select.value, reportBinding);
 
     utils.rerender(
       <ProductionCanvasEdgeControls
@@ -107,7 +111,7 @@ describe("ProductionCanvasEdgeControls", () => {
 
     const select = utils.getByLabelText("连线目标") as HTMLSelectElement;
     assert.equal(select.disabled, true);
-    assert.equal(select.options[0]?.textContent, "所有目标已连线");
+    assert.equal(select.options[0]?.textContent, "没有兼容端口");
     assert.equal(
       utils.getByRole("button", { name: "添加连线" }).hasAttribute("disabled"),
       true,
@@ -154,10 +158,10 @@ describe("ProductionCanvasEdgeControls", () => {
     );
 
     assert.deepEqual(optionLabels(utils.getByLabelText("连线目标")), [
-      "选择目标",
-      "Image Candidates · 角色、环境和关键帧候选",
-      "Image Candidates · Create or reuse storyboard/keyframe image candidates.",
-      "Video Candidates",
+      "选择兼容端口",
+      "输出 → Image Candidates · 角色、环境和关键帧候选· 输入",
+      "输出 → Image Candidates · Create or reuse storyboard/keyframe image candidates.· 输入",
+      "输出 → Video Candidates· 输入",
     ]);
 
     utils.rerender(
@@ -175,12 +179,12 @@ describe("ProductionCanvasEdgeControls", () => {
 
     assert.ok(
       utils.getByRole("button", {
-        name: "移除连线 Image Candidates · 角色、环境和关键帧候选",
+        name: "移除 默认 → Image Candidates · 角色、环境和关键帧候选· 默认",
       }),
     );
     assert.ok(
       utils.getByRole("button", {
-        name: "移除连线 Image Candidates · Create or reuse storyboard/keyframe image candidates.",
+        name: "移除 默认 → Image Candidates · Create or reuse storyboard/keyframe image candidates.· 默认",
       }),
     );
   });
