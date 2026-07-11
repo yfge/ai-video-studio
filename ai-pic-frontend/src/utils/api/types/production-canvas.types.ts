@@ -134,6 +134,7 @@ export interface ProductionCanvasSavedNode {
   action_href?: string | null;
   action_label?: string | null;
   definition_version?: number;
+  execution_input_fingerprint?: string | null;
   input_ports?: ProductionCanvasSavedPort[];
   output_ports?: ProductionCanvasSavedPort[];
 }

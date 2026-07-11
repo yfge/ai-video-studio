@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { productionCanvasAPI } from "@/utils/api/endpoints";
 import {
   canvasRunIdFromNodes,
@@ -29,7 +36,7 @@ export function useProductionCanvasRunPersistence({
   autosaveDelayMs?: number | null;
   canvasState: ProductionCanvasState;
   initialRunId?: string | null;
-  replaceCanvasState: (state: ProductionCanvasState) => void;
+  replaceCanvasState: Dispatch<SetStateAction<ProductionCanvasState>>;
 }) {
   const initialRunIdValue = productionCanvasRunIdFromInput(initialRunId || "");
   const [runId, setRunIdValue] = useState(initialRunIdValue);
@@ -85,7 +92,30 @@ export function useProductionCanvasRunPersistence({
           return false;
         }
         const nextRunId = response.data.run_id || targetRunId;
-        lastSavedSignature.current = stateSignature(nextRunId, state);
+        const serverState = response.data.saved_state
+          ? productionCanvasStateFromRun(response.data)
+          : null;
+        if (serverState) {
+          const serverNodes = new Map(
+            serverState.nodes.map((node) => [node.id, node]),
+          );
+          replaceCanvasState((current) => ({
+            ...current,
+            nodes: current.nodes.map((node) => {
+              const serverNode = serverNodes.get(node.id);
+              if (!serverNode) return node;
+              return {
+                ...node,
+                status: serverNode.status,
+                executionInputFingerprint: serverNode.executionInputFingerprint,
+              };
+            }),
+          }));
+        }
+        lastSavedSignature.current = stateSignature(
+          nextRunId,
+          serverState || state,
+        );
         setRunIdValue(nextRunId);
         setStatus(mode === "auto" ? "已自动保存" : "已保存");
         return true;
@@ -96,7 +126,7 @@ export function useProductionCanvasRunPersistence({
         setBusy(false);
       }
     },
-    [busy, stateSignature],
+    [busy, replaceCanvasState, stateSignature],
   );
 
   const saveCanvas = async () => {

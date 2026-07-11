@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { JSDOM } from "jsdom";
-import { createElement } from "react";
+import { createElement, useState } from "react";
 
 import {
   productionCanvasRunIdFromInput,
@@ -182,5 +182,104 @@ describe("productionCanvasRunIdFromInput", () => {
     await waitFor(() =>
       assert.equal(window.location.href, "http://localhost/canvas"),
     );
+  });
+
+  it("adopts stale runtime state returned by save without replacing local layout", async () => {
+    const originalFetch = globalThis.fetch;
+    let savedRequest: Record<string, any> | null = null;
+    globalThis.fetch = async (_input, init) => {
+      savedRequest = JSON.parse(String(init?.body));
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: {
+            run_id: "canvas-run-stale",
+            nodes: [],
+            selected_assets: { virtual_ips: [], environments: [] },
+            skill_manifest: { version: "production_canvas.v1" },
+            saved_state: {
+              edges: [],
+              nodes: [
+                {
+                  id: "downstream",
+                  kind: "skill_result",
+                  label: "Downstream",
+                  skill: "asset.select",
+                  status: "stale",
+                  title: "Select assets",
+                  width: 220,
+                  x: 10,
+                  y: 20,
+                  execution_input_fingerprint: "server-fingerprint",
+                  outputs: { canvas_run_id: "canvas-run-stale" },
+                },
+              ],
+              selected_node_id: "downstream",
+              viewport: { x: 0, y: 0, zoom: 1 },
+            },
+          },
+        }),
+        { headers: { "content-type": "application/json" } },
+      );
+    };
+
+    function Harness() {
+      const [state, setState] = useState<ProductionCanvasState>({
+        edges: [],
+        nodes: [
+          {
+            id: "downstream",
+            kind: "skill_result",
+            label: "Downstream",
+            skill: "asset.select",
+            status: "blocked",
+            title: "Select assets",
+            width: 220,
+            x: 400,
+            y: 500,
+            executionInputFingerprint: "client-fingerprint",
+            outputs: { canvas_run_id: "canvas-run-stale" },
+          },
+        ],
+        selectedNodeId: "downstream",
+        viewport: { x: 0, y: 0, zoom: 1 },
+      });
+      const persistence = useProductionCanvasRunPersistence({
+        autosaveDelayMs: null,
+        canvasState: state,
+        replaceCanvasState: setState,
+      });
+      return createElement(
+        "div",
+        {},
+        createElement(
+          "button",
+          { onClick: () => void persistence.saveCanvas(), type: "button" },
+          "save",
+        ),
+        createElement(
+          "output",
+          {},
+          state.nodes[0]?.status === "stale" ? "已过期" : "未过期",
+        ),
+        createElement("data", {}, String(state.nodes[0]?.x)),
+      );
+    }
+
+    try {
+      const utils = render(createElement(Harness), {
+        container: dom.window.document.body,
+      });
+      fireEvent.click(utils.getByRole("button", { name: "save" }));
+
+      await waitFor(() => assert.ok(utils.getByText("已过期")));
+      assert.equal(utils.getByText("400").textContent, "400");
+      assert.equal(
+        savedRequest?.nodes?.[0]?.execution_input_fingerprint,
+        "client-fingerprint",
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });

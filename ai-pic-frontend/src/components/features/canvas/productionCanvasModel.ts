@@ -61,6 +61,7 @@ export type ProductionCanvasNode = {
   actionHref?: string;
   actionLabel?: string;
   definitionVersion?: number;
+  executionInputFingerprint?: string;
   inputPorts?: ProductionCanvasPort[];
   outputPorts?: ProductionCanvasPort[];
 };

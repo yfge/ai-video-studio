@@ -70,6 +70,7 @@ export function savedNodeToCanvasNode(
     actionHref: node.action_href || undefined,
     actionLabel: node.action_label || undefined,
     definitionVersion: node.definition_version,
+    executionInputFingerprint: node.execution_input_fingerprint || undefined,
     inputPorts: node.input_ports?.map((port) => ({
       ...port,
       label: port.id,
