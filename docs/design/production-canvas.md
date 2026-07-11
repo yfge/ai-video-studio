@@ -382,6 +382,11 @@ As of 2026-07-12, Phases 1-3 are implemented on the real `/canvas` route:
   `video` clip identities without invoking the provider planning pipeline. When
   no shot plan exists, support frames map to `video` clips before considering
   dialogue clips, preserving the clip contract required by video generation.
+- The current-environment provider-backed acceptance run
+  `9a4bbfdb95f846e4be216beb1b09ad88` approved image candidate `442`, generated
+  and approved MiniMax video candidate `443`, and placed it into stable clip
+  `video_scene_90_beat_3991_001`, advancing Timeline `69` from v5 to v6. Run ID
+  restoration preserved the review and placement state.
 - Image and video candidate execution defaults to frame `0` when the operator
   does not select frames, so an exploratory canvas action cannot fan out across
   the whole storyboard unexpectedly. Storyboard image workers re-check persisted
