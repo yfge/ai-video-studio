@@ -9,6 +9,7 @@ import type { ProductionCanvasNode } from "./productionCanvasModel";
 import { productionCanvasStateFromRun } from "./productionCanvasPersistence";
 import type { ProductionCanvasState } from "./productionCanvasState";
 import { ProductionCanvasCandidateItem } from "./ProductionCanvasCandidateItem";
+import { loadProductionCanvasCandidates } from "./productionCanvasCandidateLoading";
 
 function isReviewNode(node?: ProductionCanvasNode) {
   return (
@@ -47,10 +48,7 @@ export function ProductionCanvasCandidateReview({
     setBusyId("load");
     setError(null);
     try {
-      const response = await productionCanvasAPI.getNodeCandidates(
-        runId,
-        nodeId,
-      );
+      const response = await loadProductionCanvasCandidates(runId, nodeId);
       if (!response.success || !response.data) {
         throw new Error(response.error || "候选加载失败");
       }

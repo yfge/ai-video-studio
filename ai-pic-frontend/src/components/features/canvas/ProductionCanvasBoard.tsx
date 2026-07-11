@@ -1,5 +1,4 @@
-import { OperatorPanel, OperatorShell } from "@/components/shared";
-import { ProductionCanvasBackLink } from "./ProductionCanvasBackLink";
+import { OperatorPanel } from "@/components/shared";
 import { ProductionCanvasInfoPanels } from "./ProductionCanvasInfoPanels";
 import { ProductionCanvasPlanningHeader } from "./ProductionCanvasPlanningHeader";
 import { ProductionCanvasSidePanel } from "./ProductionCanvasSidePanel";
@@ -14,21 +13,6 @@ import { useProductionCanvasBoardCommands } from "./useProductionCanvasBoardComm
 import { PRODUCTION_CANVAS_STORAGE_KEY } from "./productionCanvasViewModel";
 import { productionCanvasCapabilities } from "./productionCanvasAccess";
 import { useProductionCanvasAccessGate } from "./useProductionCanvasAccessGate";
-export function ProductionCanvasBoard(
-  props: { initialRunId?: string | null } = {},
-) {
-  return (
-    <OperatorShell
-      title="创作画布"
-      subtitle="从现有项目编排剧本、分镜、图片候选、视频候选和时间线"
-      breadcrumb={["IP 中心", "创作画布"]}
-      showGlobalSearch={false}
-      rightSlot={<ProductionCanvasBackLink />}
-    >
-      <ProductionCanvasContent initialRunId={props.initialRunId} />
-    </OperatorShell>
-  );
-}
 export function ProductionCanvasContent({
   autosaveDelayMs = 1200,
   initialRunId,
@@ -54,6 +38,7 @@ export function ProductionCanvasContent({
     handleCanvasPointerUp,
     handleFit,
     handleFocusSelectedNode,
+    handleInsertTemplate,
     handleNodePointerDown,
     handleNavigate,
     handleReset,
@@ -149,6 +134,7 @@ export function ProductionCanvasContent({
             onAddNote={() => handleAddNote()}
             onFit={() => withCanvasFocus(handleFit)}
             onFocusSelected={() => withCanvasFocus(handleFocusSelectedNode)}
+            onInsertTemplate={handleInsertTemplate}
             onReset={resetCanvas}
             onCancelRun={() => void runActions.cancel()}
             onRedo={() => withCanvasFocus(handleRedo)}

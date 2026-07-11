@@ -1,6 +1,6 @@
 # Production Canvas Design
 
-> Status: Implemented through Phase 3; Phase 4 collaboration complete
+> Status: Implemented through Phase 3; Phase 4 collaboration and reuse complete
 >
 > Last updated: 2026-07-12
 
@@ -374,13 +374,16 @@ As of 2026-07-12, Phases 1-3 are implemented on the real `/canvas` route:
   to stable node, candidate, edge, and section identities, while definition,
   execution, review, placement, comment, and membership events share one
   persistent activity history.
+- Provider-agnostic role look, scene look, shot review, and delivery templates
+  insert reusable Skill subgraphs with typed edges and persistent sections.
+  Every instance receives unique graph identities and inherits the active Run
+  and production context without exposing service or worker implementation.
 - Task attempts and media assets remain execution evidence; the saved graph and
   review state remain the current orchestration definition.
 
 The remaining product gaps are deliberately outside the completed first
 vertical slice:
 
-- Reusable domain templates and provider-agnostic subflows remain Phase 4 work.
 - Large-production performance budgets, viewport virtualization, and scale
   regression evidence have not yet been defined.
 - Before release, the complete provider-backed image-to-video-to-Timeline path
@@ -431,12 +434,12 @@ after partial failure or upstream revision.
 ### Phase 4: Collaboration and reuse
 
 Status: In progress. Candidate regeneration, parent-candidate lineage,
-role-based collaboration, comments, and activity history are implemented;
-reusable workflows and scale work remain.
+role-based collaboration, comments, activity history, and reusable domain
+subflows are implemented; scale work remains.
 
 - [Complete] Add comments, approver identity, permissions, and activity history.
-- Add reusable domain templates and subflows without exposing provider-specific
-  implementation graphs.
+- [Complete] Add reusable domain templates and subflows without exposing
+  provider-specific implementation graphs.
 - Add performance budgets and virtualization for large productions.
 
 Exit criterion: a production team can review, approve, and reuse workflows

@@ -3,13 +3,13 @@
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { AuthGuard } from "@/components/shared";
-import { ProductionCanvasBoard } from "@/components/features/canvas/ProductionCanvasBoard";
+import { ProductionCanvasShell } from "@/components/features/canvas/ProductionCanvasShell";
 
 function CanvasPageContent() {
   const runId = useSearchParams().get("run_id");
   return (
     <AuthGuard>
-      <ProductionCanvasBoard initialRunId={runId} />
+      <ProductionCanvasShell initialRunId={runId} />
     </AuthGuard>
   );
 }

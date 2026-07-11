@@ -20,6 +20,7 @@ import {
 } from "./productionCanvasSections";
 import type { ProductionCanvasDefinitionSetter } from "./useProductionCanvasHistory";
 import { useProductionCanvasSelectionActions } from "./useProductionCanvasSelectionActions";
+import { insertProductionCanvasTemplate } from "./productionCanvasTemplates";
 
 export function useProductionCanvasDefinitionActions({
   canvasRef,
@@ -106,11 +107,18 @@ export function useProductionCanvasDefinitionActions({
       };
     });
   };
+  const handleInsertTemplate = (templateId: string) => {
+    setCanvasDefinition((state) =>
+      insertProductionCanvasTemplate(state, templateId),
+    );
+    canvasRef.current?.focus({ preventScroll: true });
+  };
 
   return {
     appendNodes,
     handleAddEdge,
     handleAddNote,
+    handleInsertTemplate,
     handleRemoveEdge,
     handleRemoveNode,
     handleToggleSection,

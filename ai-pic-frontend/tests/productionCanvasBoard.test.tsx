@@ -134,6 +134,36 @@ describe("ProductionCanvasBoard", () => {
     assert.ok(utils.container.querySelector("[data-canvas-node='note-1']"));
   });
 
+  it("inserts a reusable domain subflow as one undoable definition change", () => {
+    const utils = render(<ProductionCanvasContent storageKey={null} />, {
+      container: dom.window.document.body,
+    });
+    fireEvent.change(utils.getByLabelText("领域模板"), {
+      target: { value: "shot-review" },
+    });
+    fireEvent.click(utils.getByRole("button", { name: "插入子流程" }));
+
+    assert.ok(utils.getByRole("region", { name: "镜头评审子流程" }));
+    assert.ok(
+      utils.container.querySelector(
+        "[data-canvas-node='template-shot-review-1-image-candidates']",
+      ),
+    );
+    assert.ok(
+      utils.container.querySelector(
+        "[data-canvas-node='template-shot-review-1-video-candidates']",
+      ),
+    );
+
+    fireEvent.click(utils.getByRole("button", { name: "撤销图定义变更" }));
+    assert.equal(
+      utils.container.querySelector(
+        "[data-canvas-node='template-shot-review-1-image-candidates']",
+      ),
+      null,
+    );
+  });
+
   it("navigates to nodes from the minimap", () => {
     const utils = render(<ProductionCanvasContent storageKey={null} />, {
       container: dom.window.document.body,

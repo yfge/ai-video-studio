@@ -1,5 +1,6 @@
 import { operatorButtonClass } from "@/components/shared";
 import { ProductionCanvasRunControls } from "./ProductionCanvasRunControls";
+import { ProductionCanvasTemplatePicker } from "./ProductionCanvasTemplatePicker";
 
 export function ProductionCanvasToolbar({
   busy,
@@ -13,6 +14,7 @@ export function ProductionCanvasToolbar({
   onAddNote,
   onFit,
   onFocusSelected,
+  onInsertTemplate,
   onReset,
   onCancelRun,
   onRedo,
@@ -38,6 +40,7 @@ export function ProductionCanvasToolbar({
   onAddNote: () => void;
   onFit: () => void;
   onFocusSelected: () => void;
+  onInsertTemplate: (templateId: string) => void;
   onReset: () => void;
   onCancelRun?: () => void;
   onRedo: () => void;
@@ -62,6 +65,10 @@ export function ProductionCanvasToolbar({
       >
         添加便签
       </button>
+      <ProductionCanvasTemplatePicker
+        disabled={!canEdit}
+        onInsert={onInsertTemplate}
+      />
       <ProductionCanvasRunControls
         actionBusy={actionBusy}
         actionStatus={actionStatus}
