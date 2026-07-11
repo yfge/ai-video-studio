@@ -2,10 +2,25 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 CanvasNodeKind = Literal["pipeline", "note", "skill_result"]
-CanvasNodeStatus = Literal["ready", "running", "review", "blocked"]
+CanvasNodeStatus = Literal[
+    "draft",
+    "ready",
+    "queued",
+    "running",
+    "review",
+    "approved",
+    "stale",
+    "failed",
+    "cancelled",
+    "blocked",
+]
+CanvasPortType = Literal[
+    "text", "image", "video", "audio", "entity_ref", "execution_ref"
+]
+CanvasBindingType = Literal["value", "selected_output"]
 ReuseTargetKind = Literal["api", "repository", "service", "worker", "artifact"]
 
 
@@ -102,6 +117,13 @@ class ProductionCanvasViewport(BaseModel):
     zoom: float
 
 
+class ProductionCanvasSavedPort(BaseModel):
+    id: str = Field(..., min_length=1, max_length=80)
+    type: CanvasPortType
+    required: bool = False
+    multiple: bool = False
+
+
 class ProductionCanvasSavedNode(BaseModel):
     id: str = Field(..., min_length=1, max_length=120)
     label: str = Field(..., min_length=1, max_length=120)
@@ -118,6 +140,9 @@ class ProductionCanvasSavedNode(BaseModel):
     reuse_targets: list[ProductionCanvasSkillReuseTarget] = Field(default_factory=list)
     action_href: str | None = None
     action_label: str | None = None
+    definition_version: int = Field(1, ge=1)
+    input_ports: list[ProductionCanvasSavedPort] = Field(default_factory=list)
+    output_ports: list[ProductionCanvasSavedPort] = Field(default_factory=list)
 
 
 class ProductionCanvasSavedEdge(BaseModel):
@@ -125,13 +150,27 @@ class ProductionCanvasSavedEdge(BaseModel):
 
     from_node: str = Field(..., alias="from", min_length=1, max_length=120)
     to_node: str = Field(..., alias="to", min_length=1, max_length=120)
+    edge_id: str | None = Field(None, min_length=1, max_length=160)
+    from_port: str | None = Field(None, min_length=1, max_length=80)
+    to_port: str | None = Field(None, min_length=1, max_length=80)
+    binding_type: CanvasBindingType | None = None
+    required: bool = True
+    binding_order: int | None = Field(None, ge=0)
 
 
 class ProductionCanvasSavedState(BaseModel):
+    graph_version: Literal[1, 2] = 1
     nodes: list[ProductionCanvasSavedNode] = Field(default_factory=list)
     edges: list[ProductionCanvasSavedEdge] = Field(default_factory=list)
     viewport: ProductionCanvasViewport
     selected_node_id: str | None = Field(None, max_length=120)
+
+    @model_validator(mode="after")
+    def validate_graph(self):
+        from app.services.production_canvas.graph_validation import validate_saved_graph
+
+        validate_saved_graph(self)
+        return self
 
 
 class ProductionCanvasPlanResponse(BaseModel):
