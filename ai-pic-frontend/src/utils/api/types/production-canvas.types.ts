@@ -184,9 +184,9 @@ export interface ProductionCanvasPlanResponse {
   skill_results?: ProductionCanvasSkillResult[];
   nodes: ProductionCanvasPlanNode[];
 }
-
 export interface ProductionCanvasRunResponse
   extends ProductionCanvasPlanResponse {
+  access_role?: ProductionCanvasAccessRole;
   saved_state?: ProductionCanvasSavedState | null;
   execution_attempts?: ProductionCanvasExecutionAttempt[];
 }
@@ -234,7 +234,6 @@ export interface ProductionCanvasMediaCandidateList {
   stale_impact: ProductionCanvasStaleImpactNode[];
   candidates: ProductionCanvasMediaCandidate[];
 }
-
 export interface ProductionCanvasNodeExecutionResponse {
   skill_result: ProductionCanvasSkillResult;
   task_id?: number | null;
@@ -242,9 +241,9 @@ export interface ProductionCanvasNodeExecutionResponse {
   node_id?: string | null;
   resolved_inputs?: Record<string, unknown>;
 }
-
 export interface ProductionCanvasSkillExecuteResponse
   extends ProductionCanvasNodeExecutionResponse {
   execution_order?: string[];
   executions?: ProductionCanvasNodeExecutionResponse[];
 }
+import type { ProductionCanvasAccessRole } from "./production-canvas-collaboration.types";

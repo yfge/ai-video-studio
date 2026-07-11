@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { useRef, useState } from "react";
 import { operatorButtonClass } from "@/components/shared";
 import type {
@@ -6,41 +5,7 @@ import type {
   ProductionCanvasStaleImpactNode,
 } from "@/utils/api/types";
 import { ProductionCanvasCandidateBranchControls } from "./ProductionCanvasCandidateBranchControls";
-
-function CandidateMedia({
-  candidate,
-  eager,
-}: {
-  candidate: ProductionCanvasMediaCandidate;
-  eager?: boolean;
-}) {
-  const label = `${candidate.media_type === "image" ? "图片" : "视频"}候选 ${
-    candidate.frame_index + 1
-  }`;
-  return (
-    <div className="relative aspect-video w-full overflow-hidden bg-gray-950">
-      {candidate.media_type === "image" ? (
-        <Image
-          alt={label}
-          className="object-contain"
-          fill
-          loading={eager ? "eager" : "lazy"}
-          sizes="248px"
-          src={candidate.url}
-          unoptimized
-        />
-      ) : (
-        <video
-          aria-label={label}
-          className="h-full w-full object-contain"
-          controls
-          preload="metadata"
-          src={candidate.url}
-        />
-      )}
-    </div>
-  );
-}
+import { ProductionCanvasCandidateMedia } from "./ProductionCanvasCandidateMedia";
 
 function candidateSummary(candidate: ProductionCanvasMediaCandidate) {
   return [
@@ -57,6 +22,8 @@ function candidateSummary(candidate: ProductionCanvasMediaCandidate) {
 
 export function ProductionCanvasCandidateItem({
   busy,
+  canApprove = true,
+  canBranch = true,
   candidate,
   eager,
   onApprove,
@@ -69,6 +36,8 @@ export function ProductionCanvasCandidateItem({
   timelineVersion,
 }: {
   busy: boolean;
+  canApprove?: boolean;
+  canBranch?: boolean;
   candidate: ProductionCanvasMediaCandidate;
   eager?: boolean;
   onApprove: (candidate: ProductionCanvasMediaCandidate) => void;
@@ -99,7 +68,7 @@ export function ProductionCanvasCandidateItem({
   };
   return (
     <article className="py-3">
-      <CandidateMedia candidate={candidate} eager={eager} />
+      <ProductionCanvasCandidateMedia candidate={candidate} eager={eager} />
       <div className="mt-2 text-[11px] leading-4 text-gray-500">
         {candidateSummary(candidate)}
       </div>
@@ -189,42 +158,48 @@ export function ProductionCanvasCandidateItem({
           查看原始资产
         </a>
         <div className="flex shrink-0 items-center gap-1">
-          <ProductionCanvasCandidateBranchControls
-            busy={busy}
-            candidateId={candidate.asset_id}
-            onBranch={(instruction) => onBranch(candidate, instruction)}
-          />
-          <button
-            type="button"
-            className={operatorButtonClass(
-              "ghost",
-              "h-8 px-2 text-xs text-red-700",
-            )}
-            disabled={busy}
-            onClick={() => setRejecting(true)}
-          >
-            拒绝
-          </button>
-          <button
-            type="button"
-            className={operatorButtonClass(
-              candidate.selected ? "secondary" : "primary",
-              "h-8 px-3 text-xs",
-            )}
-            disabled={candidate.selected || busy}
-            onClick={approve}
-          >
-            {candidate.selected
-              ? "已选用"
-              : busy
-              ? "选用中"
-              : candidate.review_state === "rejected"
-              ? "重新选用"
-              : "选用"}
-          </button>
+          {canBranch ? (
+            <ProductionCanvasCandidateBranchControls
+              busy={busy}
+              candidateId={candidate.asset_id}
+              onBranch={(instruction) => onBranch(candidate, instruction)}
+            />
+          ) : null}
+          {canApprove ? (
+            <>
+              <button
+                type="button"
+                className={operatorButtonClass(
+                  "ghost",
+                  "h-8 px-2 text-xs text-red-700",
+                )}
+                disabled={busy}
+                onClick={() => setRejecting(true)}
+              >
+                拒绝
+              </button>
+              <button
+                type="button"
+                className={operatorButtonClass(
+                  candidate.selected ? "secondary" : "primary",
+                  "h-8 px-3 text-xs",
+                )}
+                disabled={candidate.selected || busy}
+                onClick={approve}
+              >
+                {candidate.selected
+                  ? "已选用"
+                  : busy
+                  ? "选用中"
+                  : candidate.review_state === "rejected"
+                  ? "重新选用"
+                  : "选用"}
+              </button>
+            </>
+          ) : null}
         </div>
       </div>
-      {candidate.media_type === "video" && candidate.selected ? (
+      {canApprove && candidate.media_type === "video" && candidate.selected ? (
         <button
           type="button"
           className={operatorButtonClass(

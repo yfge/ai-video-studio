@@ -46,7 +46,7 @@ def _activity(
         actor_username=user.username,
         target_type=target_type,
         target_id=target_id,
-        detail=detail,
+        detail=detail[:500] if detail else None,
         created_at=datetime.now(UTC),
     )
 
@@ -55,6 +55,27 @@ def _append_activity(payload: dict, item: ProductionCanvasActivity) -> None:
     history = list(payload.get("canvas_activity") or [])
     history.append(item.model_dump(mode="json"))
     payload["canvas_activity"] = history[-500:]
+
+
+def append_canvas_activity(
+    payload: dict,
+    user: User,
+    action: str,
+    *,
+    target_type: str | None = None,
+    target_id: str | None = None,
+    detail: str | None = None,
+) -> None:
+    _append_activity(
+        payload,
+        _activity(
+            user,
+            action,
+            target_type=target_type,
+            target_id=target_id,
+            detail=detail,
+        ),
+    )
 
 
 def load_canvas_collaboration(
@@ -202,15 +223,13 @@ def record_canvas_activity(
     if access is None:
         return
     task, payload, _ = access
-    _append_activity(
+    append_canvas_activity(
         payload,
-        _activity(
-            user,
-            action,
-            target_type=target_type,
-            target_id=target_id,
-            detail=detail,
-        ),
+        user,
+        action,
+        target_type=target_type,
+        target_id=target_id,
+        detail=detail,
     )
     task.parameters = json.dumps(payload, ensure_ascii=False)
     db.commit()

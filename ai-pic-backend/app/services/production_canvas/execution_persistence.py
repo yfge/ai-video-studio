@@ -13,6 +13,8 @@ from app.schemas.production_canvas import (
 from app.services.production_canvas.run_persistence import _canvas_run_task
 from sqlalchemy.orm import Session
 
+from .collaboration import append_canvas_activity
+
 
 def save_canvas_skill_result(
     db: Session,
@@ -155,6 +157,16 @@ def save_canvas_execution_response(
                 **execution.skill_result.outputs,
             }
             node["execution_input_fingerprint"] = execution.input_fingerprint
+
+    for execution in executions:
+        append_canvas_activity(
+            payload,
+            user,
+            "node.executed",
+            target_type="node",
+            target_id=execution.node_id,
+            detail=execution.skill_result.skill,
+        )
 
     task.parameters = json.dumps(payload, ensure_ascii=False)
     db.commit()

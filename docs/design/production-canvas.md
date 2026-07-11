@@ -1,8 +1,8 @@
 # Production Canvas Design
 
-> Status: Implemented through Phase 3; Phase 4 planned
+> Status: Implemented through Phase 3; Phase 4 collaboration complete
 >
-> Last updated: 2026-07-11
+> Last updated: 2026-07-12
 
 ## Product Decision
 
@@ -352,7 +352,7 @@ must already identify who changed definitions and who approved outputs.
 
 ## Current State And Gap
 
-As of 2026-07-11, Phases 1-3 are implemented on the real `/canvas` route:
+As of 2026-07-12, Phases 1-3 are implemented on the real `/canvas` route:
 
 - The backend validates versioned typed ports and edges, computes readiness
   from graph dependencies, resolves bound inputs into existing skill requests,
@@ -369,14 +369,18 @@ As of 2026-07-11, Phases 1-3 are implemented on the real `/canvas` route:
 - Scene and episode sections, minimap navigation, search and filters,
   multi-select layout operations, duplication, undo/redo, diagnostics, retry,
   resume, and cancel are available as production recovery tools.
+- Owner-managed Viewer, Commenter, Editor, and Approver roles gate graph edits,
+  execution, comments, candidate review, and Timeline placement. Comments attach
+  to stable node, candidate, edge, and section identities, while definition,
+  execution, review, placement, comment, and membership events share one
+  persistent activity history.
 - Task attempts and media assets remain execution evidence; the saved graph and
   review state remain the current orchestration definition.
 
 The remaining product gaps are deliberately outside the completed first
 vertical slice:
 
-- Comments, commenter/approver permissions, shared activity history, and
-  reusable domain templates remain Phase 4 work.
+- Reusable domain templates and provider-agnostic subflows remain Phase 4 work.
 - Large-production performance budgets, viewport virtualization, and scale
   regression evidence have not yet been defined.
 - Before release, the complete provider-backed image-to-video-to-Timeline path
@@ -426,10 +430,11 @@ after partial failure or upstream revision.
 
 ### Phase 4: Collaboration and reuse
 
-Status: In progress. Candidate regeneration and parent-candidate lineage are
-implemented; collaboration, reusable workflows, and scale work remain.
+Status: In progress. Candidate regeneration, parent-candidate lineage,
+role-based collaboration, comments, and activity history are implemented;
+reusable workflows and scale work remain.
 
-- Add comments, approver identity, permissions, and activity history.
+- [Complete] Add comments, approver identity, permissions, and activity history.
 - Add reusable domain templates and subflows without exposing provider-specific
   implementation graphs.
 - Add performance budgets and virtualization for large productions.

@@ -1,11 +1,5 @@
-import {
-  useEffect,
-  useRef,
-  type Dispatch,
-  type RefObject,
-  type SetStateAction,
-  type PointerEvent as ReactPointerEvent,
-} from "react";
+import { useEffect, useRef, type Dispatch, type RefObject } from "react";
+import type { PointerEvent as ReactPointerEvent, SetStateAction } from "react";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
 import {
   moveProductionCanvasNodes,
@@ -43,6 +37,7 @@ type CanvasDragState =
     };
 
 type UseProductionCanvasInteractionControlsArgs = {
+  canEdit: () => boolean;
   canvasRef: RefObject<HTMLDivElement | null>;
   canvasState: ProductionCanvasState;
   endHistoryGroup: () => void;
@@ -51,6 +46,7 @@ type UseProductionCanvasInteractionControlsArgs = {
 };
 
 export function useProductionCanvasInteractionControls({
+  canEdit,
   canvasRef,
   canvasState,
   endHistoryGroup,
@@ -86,6 +82,7 @@ export function useProductionCanvasInteractionControls({
       selectedNodeId: nodeId,
       selectedNodeIds: nodeIds,
     }));
+    if (!canEdit()) return;
     dragRef.current = {
       type: "node",
       historyGroup: `node-drag-${event.pointerId}-${event.clientX}-${event.clientY}`,
@@ -135,6 +132,7 @@ export function useProductionCanvasInteractionControls({
     if (!drag) return;
     event.preventDefault();
     if (drag.type === "node") {
+      if (!canEdit()) return;
       setCanvasDefinition(
         (state) => ({
           ...state,

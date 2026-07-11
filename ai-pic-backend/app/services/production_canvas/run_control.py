@@ -27,6 +27,7 @@ from app.services.production_canvas.run_requests import request_for_canvas_node
 from sqlalchemy.orm import Session
 
 from .access_control import require_canvas_access
+from .collaboration import record_canvas_activity
 
 
 def _run_and_state(
@@ -183,7 +184,18 @@ def control_canvas_run(
 ) -> ProductionCanvasRunActionResponse:
     require_canvas_access(db, user, run_id, "execute")
     if request.action in {"run_ready", "resume"}:
-        return _execute_run_nodes(db, user, run_id, request.action)
-    if request.action == "retry":
-        return _retry_node(db, user, run_id, request.node_id, request.definition_mode)
-    return cancel_canvas_run(db, user, run_id)
+        result = _execute_run_nodes(db, user, run_id, request.action)
+    elif request.action == "retry":
+        result = _retry_node(db, user, run_id, request.node_id, request.definition_mode)
+    else:
+        result = cancel_canvas_run(db, user, run_id)
+    record_canvas_activity(
+        db,
+        user,
+        run_id,
+        f"run.{request.action}",
+        target_type="node" if request.node_id else "run",
+        target_id=request.node_id or run_id,
+        detail=request.definition_mode if request.action == "retry" else None,
+    )
+    return result

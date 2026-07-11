@@ -77,6 +77,7 @@ export function CanvasEdges({
 }
 
 export function CanvasInspector({
+  canExecute = true,
   node,
   executingNodeId,
   executionError,
@@ -86,6 +87,7 @@ export function CanvasInspector({
   taskSyncError,
   taskSyncingNodeId,
 }: {
+  canExecute?: boolean;
   node?: ProductionCanvasNode;
   executingNodeId?: string | null;
   executionError?: string | null;
@@ -108,7 +110,7 @@ export function CanvasInspector({
 
   const status = productionCanvasNodeStatusMeta(node);
   const displayTitle = displayProductionCanvasNodeTitle(node);
-  const canExecute = Boolean(node.skill && node.kind !== "note");
+  const canRunNode = Boolean(canExecute && node.skill && node.kind !== "note");
   const executing = executingNodeId === node.id;
   const executeDisabled = Boolean(executingNodeId && !executing);
   const canRefreshTask = Boolean(
@@ -161,7 +163,7 @@ export function CanvasInspector({
           {refreshingTask ? "刷新中" : "刷新任务状态"}
         </button>
       ) : null}
-      {canExecute ? (
+      {canRunNode ? (
         <div className="mt-2 grid grid-cols-2 gap-2">
           <button
             type="button"

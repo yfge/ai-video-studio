@@ -21,12 +21,14 @@ export function useProductionCanvasPortConnections({
   canvasRef,
   edges,
   nodes,
+  disabled = false,
   onAddEdge,
   onFocusNode,
 }: {
   canvasRef: React.RefObject<HTMLDivElement | null>;
   edges: ProductionCanvasEdge[];
   nodes: ProductionCanvasNode[];
+  disabled?: boolean;
   onAddEdge: (edge: ProductionCanvasEdge) => void;
   onFocusNode: (nodeId?: string) => void;
 }) {
@@ -37,6 +39,7 @@ export function useProductionCanvasPortConnections({
     nodeId: string,
     portId: string,
   ) => {
+    if (disabled) return;
     const canvasRect = canvasRef.current?.getBoundingClientRect();
     const portRect = event.currentTarget.getBoundingClientRect();
     const point = {
@@ -55,7 +58,7 @@ export function useProductionCanvasPortConnections({
     });
   };
   const move = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!draft) return;
+    if (disabled || !draft) return;
     const rect = event.currentTarget.getBoundingClientRect();
     setDraft((current) =>
       current
@@ -67,7 +70,7 @@ export function useProductionCanvasPortConnections({
     );
   };
   const finish = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!draft) return;
+    if (disabled || !draft) return;
     const canvasRect = event.currentTarget.getBoundingClientRect();
     const inside =
       event.clientX >= canvasRect.left &&
@@ -128,6 +131,7 @@ export function useProductionCanvasPortConnections({
       setDiscovery(null);
     },
     choose: (edge: ProductionCanvasEdge) => {
+      if (disabled) return;
       onAddEdge(edge);
       onFocusNode(edge.to);
       setDiscovery(null);

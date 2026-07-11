@@ -13,6 +13,7 @@ from app.services.timeline_service import TimelineService
 from sqlalchemy.orm import Session
 
 from .access_control import canvas_run_owner, require_canvas_access
+from .collaboration import record_canvas_activity
 from .run_persistence import load_canvas_saved_state, save_canvas_state
 
 
@@ -115,4 +116,13 @@ def place_canvas_video_in_timeline(
     run = save_canvas_state(db, user, run_id, next_state, capability="approve")
     if run is None:
         raise ValueError("canvas_run_state_not_found")
+    record_canvas_activity(
+        db,
+        user,
+        run_id,
+        "timeline.placed",
+        target_type="candidate",
+        target_id=str(node.selected_output_id),
+        detail=f"timeline={placed.id} version={placed.version} clip={clip_id}",
+    )
     return run

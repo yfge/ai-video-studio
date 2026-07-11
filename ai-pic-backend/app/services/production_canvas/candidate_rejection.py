@@ -6,6 +6,7 @@ from app.services.production_canvas.stale_runtime import canvas_node_input_finge
 from sqlalchemy.orm import Session
 
 from .access_control import require_canvas_access
+from .candidate_activity import record_canvas_candidate_activity
 from .candidate_review import list_canvas_media_candidates
 from .candidate_review_state import set_canvas_candidate_review
 from .run_persistence import (
@@ -62,6 +63,9 @@ def reject_canvas_media_candidate(
     )
     if node.selected_output_id != candidate_id:
         db.commit()
+        record_canvas_candidate_activity(
+            db, user, run_id, "candidate.rejected", candidate_id, reason
+        )
         run = load_canvas_skill_run(db, user, run_id)
         if run is None:
             raise ValueError("canvas_run_state_not_found")
@@ -104,4 +108,7 @@ def reject_canvas_media_candidate(
     run = save_canvas_state(db, user, run_id, next_state, capability="approve")
     if run is None:
         raise ValueError("canvas_run_state_not_found")
+    record_canvas_candidate_activity(
+        db, user, run_id, "candidate.rejected", candidate_id, reason
+    )
     return run

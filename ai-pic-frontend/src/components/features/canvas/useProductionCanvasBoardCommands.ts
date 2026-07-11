@@ -10,6 +10,8 @@ import type { ProductionCanvasDefinitionSetter } from "./useProductionCanvasHist
 import { useSavedNodeExecution } from "./useProductionCanvasNodeExecution";
 
 export function useProductionCanvasBoardCommands({
+  canEdit,
+  canExecute,
   canvasRef,
   canvasState,
   handleAddNote,
@@ -20,6 +22,8 @@ export function useProductionCanvasBoardCommands({
   planner,
   updateCanvasDefinition,
 }: {
+  canEdit: () => boolean;
+  canExecute: () => boolean;
   canvasRef: React.RefObject<HTMLDivElement | null>;
   canvasState: ProductionCanvasState;
   handleAddNote: (position?: { x: number; y: number }) => void;
@@ -46,11 +50,21 @@ export function useProductionCanvasBoardCommands({
   };
   const resetCanvas = () =>
     withCanvasFocus(() => {
+      if (!canEdit()) return;
       handleReset();
       persistence.resetRun();
     });
-  const executeNode = useSavedNodeExecution(persistence, planner, focusCanvas);
+  const executeSavedNode = useSavedNodeExecution(
+    persistence,
+    planner,
+    focusCanvas,
+  );
+  const executeNode: typeof executeSavedNode = async (...args) => {
+    if (!canExecute()) return;
+    await executeSavedNode(...args);
+  };
   const handleDuplicateNote = (nodeId: string) => {
+    if (!canEdit()) return;
     updateCanvasDefinition((state) =>
       duplicateManualProductionCanvasNote(state, nodeId),
     );
@@ -59,6 +73,7 @@ export function useProductionCanvasBoardCommands({
   const handleCanvasDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
     const nodeId = nodeIdFromCanvasDoubleClick(event);
     if (nodeId) return handleFocusSelectedNode(nodeId);
+    if (!canEdit()) return;
     handleAddNote(
       notePositionFromCanvasDoubleClick(event, canvasState.viewport),
     );
@@ -70,6 +85,7 @@ export function useProductionCanvasBoardCommands({
       !event.metaKey &&
       event.key.toLowerCase() === "r"
     ) {
+      if (!canEdit()) return;
       event.preventDefault();
       resetCanvas();
       return;

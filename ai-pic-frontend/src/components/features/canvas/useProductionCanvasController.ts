@@ -15,7 +15,10 @@ import { useProductionCanvasHistory } from "./useProductionCanvasHistory";
 import { useProductionCanvasInteractionControls } from "./useProductionCanvasInteractionControls";
 import { useProductionCanvasKeyboardCommands } from "./useProductionCanvasKeyboardCommands";
 
-export function useProductionCanvasController(storageKey?: string | null) {
+export function useProductionCanvasController(
+  storageKey?: string | null,
+  canEdit: () => boolean = () => true,
+) {
   const history = useProductionCanvasHistory(createProductionCanvasState);
   const {
     canvasState,
@@ -38,6 +41,7 @@ export function useProductionCanvasController(storageKey?: string | null) {
   });
   const zoomLabel = `${Math.round(canvasState.viewport.zoom * 100)}%`;
   const interaction = useProductionCanvasInteractionControls({
+    canEdit,
     canvasRef,
     canvasState,
     endHistoryGroup: history.endHistoryGroup,
@@ -111,6 +115,7 @@ export function useProductionCanvasController(storageKey?: string | null) {
   };
 
   const handleCanvasKeyDown = useProductionCanvasKeyboardCommands({
+    canEdit,
     handleAddNote: definitionActions.handleAddNote,
     handleFit: interaction.handleFit,
     handleFocusSelectedNode,

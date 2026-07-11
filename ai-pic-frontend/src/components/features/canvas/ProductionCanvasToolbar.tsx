@@ -7,6 +7,8 @@ export function ProductionCanvasToolbar({
   actionStatus,
   canRedo,
   canUndo,
+  canEdit = true,
+  canExecute = true,
   hasSelectedNode,
   onAddNote,
   onFit,
@@ -30,6 +32,8 @@ export function ProductionCanvasToolbar({
   actionStatus?: string | null;
   canRedo: boolean;
   canUndo: boolean;
+  canEdit?: boolean;
+  canExecute?: boolean;
   hasSelectedNode: boolean;
   onAddNote: () => void;
   onFit: () => void;
@@ -53,6 +57,7 @@ export function ProductionCanvasToolbar({
       <button
         type="button"
         className={operatorButtonClass("primary")}
+        disabled={!canEdit}
         onClick={onAddNote}
       >
         添加便签
@@ -61,6 +66,8 @@ export function ProductionCanvasToolbar({
         actionBusy={actionBusy}
         actionStatus={actionStatus}
         busy={busy}
+        canEdit={canEdit}
+        canExecute={canExecute}
         onCancel={onCancelRun}
         onResume={onResumeRun}
         runId={runId}
@@ -74,7 +81,7 @@ export function ProductionCanvasToolbar({
         type="button"
         aria-label="撤销图定义变更"
         title="撤销图定义变更"
-        disabled={!canUndo}
+        disabled={!canEdit || !canUndo}
         className={operatorButtonClass("secondary", "w-8 px-0 text-base")}
         onClick={onUndo}
       >
@@ -84,7 +91,7 @@ export function ProductionCanvasToolbar({
         type="button"
         aria-label="重做图定义变更"
         title="重做图定义变更"
-        disabled={!canRedo}
+        disabled={!canEdit || !canRedo}
         className={operatorButtonClass("secondary", "w-8 px-0 text-base")}
         onClick={onRedo}
       >
@@ -129,6 +136,7 @@ export function ProductionCanvasToolbar({
       <button
         type="button"
         className={operatorButtonClass("ghost")}
+        disabled={!canEdit}
         onClick={onReset}
       >
         重置

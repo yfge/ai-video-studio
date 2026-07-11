@@ -5,6 +5,8 @@ export function ProductionCanvasRunControls({
   busy,
   actionBusy,
   actionStatus,
+  canEdit = true,
+  canExecute = true,
   onCancel,
   onResume,
   onRestore,
@@ -17,6 +19,8 @@ export function ProductionCanvasRunControls({
   busy: boolean;
   actionBusy?: boolean;
   actionStatus?: string | null;
+  canEdit?: boolean;
+  canExecute?: boolean;
   onCancel?: () => void;
   onResume?: () => void;
   onRestore: (runId?: string) => void;
@@ -110,7 +114,7 @@ export function ProductionCanvasRunControls({
         type="button"
         aria-busy={controlsBusy || undefined}
         className={operatorButtonClass("secondary")}
-        disabled={controlsBusy}
+        disabled={controlsBusy || !canEdit}
         onClick={onSave}
       >
         保存画布
@@ -140,7 +144,7 @@ export function ProductionCanvasRunControls({
       >
         复制链接
       </button>
-      {onRunReady ? (
+      {canExecute && onRunReady ? (
         <button
           type="button"
           aria-busy={actionBusy || undefined}
@@ -151,7 +155,7 @@ export function ProductionCanvasRunControls({
           运行就绪节点
         </button>
       ) : null}
-      {onResume ? (
+      {canExecute && onResume ? (
         <button
           type="button"
           aria-busy={actionBusy || undefined}
@@ -162,7 +166,7 @@ export function ProductionCanvasRunControls({
           继续运行
         </button>
       ) : null}
-      {onCancel ? (
+      {canExecute && onCancel ? (
         <button
           type="button"
           aria-busy={actionBusy || undefined}

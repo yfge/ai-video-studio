@@ -1,4 +1,3 @@
-"use client";
 import { OperatorPanel, OperatorShell } from "@/components/shared";
 import { ProductionCanvasBackLink } from "./ProductionCanvasBackLink";
 import { ProductionCanvasInfoPanels } from "./ProductionCanvasInfoPanels";
@@ -13,6 +12,8 @@ import { useProductionCanvasRunActions } from "./useProductionCanvasRunActions";
 import { useProductionCanvasTaskSync } from "./useProductionCanvasTaskSync";
 import { useProductionCanvasBoardCommands } from "./useProductionCanvasBoardCommands";
 import { PRODUCTION_CANVAS_STORAGE_KEY } from "./productionCanvasViewModel";
+import { productionCanvasCapabilities } from "./productionCanvasAccess";
+import { useProductionCanvasAccessGate } from "./useProductionCanvasAccessGate";
 export function ProductionCanvasBoard(
   props: { initialRunId?: string | null } = {},
 ) {
@@ -37,6 +38,7 @@ export function ProductionCanvasContent({
   initialRunId?: string | null;
   storageKey?: string | null;
 } = {}) {
+  const accessGate = useProductionCanvasAccessGate(initialRunId);
   const {
     appendNodes,
     canvasRef,
@@ -71,7 +73,7 @@ export function ProductionCanvasContent({
     updateCanvasDefinition,
     worldBounds,
     zoomLabel,
-  } = useProductionCanvasController(storageKey);
+  } = useProductionCanvasController(storageKey, accessGate.canEdit);
   const persistence = useProductionCanvasRunPersistence({
     autosaveDelayMs,
     canvasState,
@@ -79,11 +81,13 @@ export function ProductionCanvasContent({
     onStateRestored: clearHistory,
     replaceCanvasState,
   });
+  accessGate.setRole(persistence.accessRole);
+  const capabilities = productionCanvasCapabilities(persistence.accessRole);
   const planner = useProductionCanvasSkillPlanner({
     currentRunId: persistence.runId,
     nodes: canvasState.nodes,
     onNodesCreated: appendNodes,
-    onRunCreated: persistence.setRunId,
+    onRunCreated: (runId) => persistence.setRunId(runId, "owner"),
   });
   const runActions = useProductionCanvasRunActions({
     onStateUpdated: persistence.adoptServerState,
@@ -102,6 +106,8 @@ export function ProductionCanvasContent({
     resetCanvas,
     withCanvasFocus,
   } = useProductionCanvasBoardCommands({
+    canEdit: accessGate.canEdit,
+    canExecute: accessGate.canExecute,
     canvasRef,
     canvasState,
     handleAddNote,
@@ -114,7 +120,7 @@ export function ProductionCanvasContent({
   });
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <OperatorPanel className="overflow-hidden">
           <ProductionCanvasPlanningHeader
             context={planner.context}
@@ -134,6 +140,8 @@ export function ProductionCanvasContent({
             busy={persistence.busy}
             canRedo={canRedo}
             canUndo={canUndo}
+            canEdit={capabilities.edit}
+            canExecute={capabilities.execute}
             hasSelectedNode={Boolean(selectedNode)}
             runId={persistence.runId}
             status={persistence.status}
@@ -155,6 +163,8 @@ export function ProductionCanvasContent({
             onZoom={handleZoomButton}
           />
           <ProductionCanvasWorkspace
+            canEdit={capabilities.edit}
+            canExecute={capabilities.execute}
             canvasRef={canvasRef}
             canvasState={canvasState}
             executingNodeId={planner.executingNodeId}
@@ -176,9 +186,12 @@ export function ProductionCanvasContent({
           />
         </OperatorPanel>
         <ProductionCanvasSidePanel
+          accessRole={persistence.accessRole}
+          capabilities={capabilities}
           edges={canvasState.edges}
           node={selectedNode}
           nodes={canvasState.nodes}
+          sections={canvasState.sections || []}
           executingNodeId={planner.executingNodeId}
           executionError={
             planner.executionError &&

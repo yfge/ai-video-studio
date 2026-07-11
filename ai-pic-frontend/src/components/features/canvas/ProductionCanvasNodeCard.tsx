@@ -9,6 +9,7 @@ import {
 } from "./productionCanvasViewModel";
 
 export function CanvasNodeCard({
+  editable = true,
   executionDisabled,
   executing,
   node,
@@ -20,6 +21,7 @@ export function CanvasNodeCard({
   onSelect,
   onPointerDown,
 }: {
+  editable?: boolean;
   executionDisabled?: boolean;
   executing?: boolean;
   node: ProductionCanvasNode;
@@ -93,9 +95,9 @@ export function CanvasNodeCard({
       ))}
       <button
         type="button"
-        className={`h-full w-full cursor-grab rounded-lg p-3 text-left active:cursor-grabbing ${
-          canExecute ? "pb-11" : ""
-        }`}
+        className={`h-full w-full rounded-lg p-3 text-left ${
+          editable ? "cursor-grab active:cursor-grabbing" : "cursor-default"
+        } ${canExecute ? "pb-11" : ""}`}
         aria-label={`${node.label} ${displayTitle}`}
         aria-pressed={selected}
         onClick={(event) => {

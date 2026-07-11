@@ -201,3 +201,8 @@ def test_canvas_approver_reviews_owner_candidates(client, db_session):
     )
     assert image["selected_output_id"] == candidate_id
     assert image["selected_output_reviewed_by"] == approver.id
+    collaboration = client.get(
+        f"/api/v1/production-canvas/runs/{run_id}/collaboration"
+    ).json()["data"]
+    assert collaboration["activity"][-1]["action"] == "candidate.approved"
+    assert collaboration["activity"][-1]["actor_id"] == approver.id

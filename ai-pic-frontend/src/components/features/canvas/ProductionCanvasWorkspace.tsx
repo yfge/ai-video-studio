@@ -19,7 +19,7 @@ type WorkspaceProps = ComponentProps<typeof ProductionCanvasSurface> & {
 };
 
 export function ProductionCanvasWorkspace(props: WorkspaceProps) {
-  const { selectionActions, ...surfaceProps } = props;
+  const { canEdit, selectionActions, ...surfaceProps } = props;
   const [filters, setFilters] = useState(emptyProductionCanvasFilters);
   const nodes = props.canvasState.nodes;
   const facets = useMemo(() => productionCanvasFilterFacets(nodes), [nodes]);
@@ -97,11 +97,14 @@ export function ProductionCanvasWorkspace(props: WorkspaceProps) {
           清除筛选
         </button>
       </div>
-      <ProductionCanvasSelectionToolbar
-        actions={selectionActions}
-        canvasState={props.canvasState}
-      />
+      {canEdit ? (
+        <ProductionCanvasSelectionToolbar
+          actions={selectionActions}
+          canvasState={props.canvasState}
+        />
+      ) : null}
       <ProductionCanvasSurface
+        canEdit={canEdit}
         {...surfaceProps}
         visibleNodeIds={visibleNodeIds}
       />

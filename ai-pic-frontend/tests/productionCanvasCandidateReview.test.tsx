@@ -289,4 +289,49 @@ describe("ProductionCanvasCandidateReview", () => {
       globalThis.fetch = originalFetch;
     }
   });
+
+  it("keeps candidates visible without review or branch commands", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () =>
+      new Response(
+        JSON.stringify({
+          success: true,
+          data: {
+            candidates: [
+              {
+                asset_business_id: "asset-11",
+                asset_id: 11,
+                frame_index: 0,
+                media_type: "image",
+                review_state: "pending",
+                selected: false,
+                url: "https://example.com/old.png",
+              },
+            ],
+            node_id: imageNode.id,
+            stale_impact: [],
+          },
+        }),
+        { headers: { "content-type": "application/json" } },
+      );
+    try {
+      const utils = render(
+        createElement(ProductionCanvasCandidateReview, {
+          canApprove: false,
+          canBranch: false,
+          node: imageNode,
+          onCanvasStateUpdated: () => undefined,
+          runId: "canvas-review-readonly",
+        }),
+        { container: dom.window.document.body },
+      );
+      await waitFor(() => assert.ok(utils.getByText("帧 1")));
+      assert.equal(utils.queryByRole("button", { name: "选用" }), null);
+      assert.equal(utils.queryByRole("button", { name: "拒绝" }), null);
+      assert.equal(utils.queryByText("分支生成"), null);
+      assert.ok(utils.getByText("查看原始资产"));
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });

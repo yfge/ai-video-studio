@@ -30,6 +30,8 @@ type WorldBounds = {
 };
 
 export function ProductionCanvasSurface({
+  canEdit = true,
+  canExecute = true,
   canvasRef,
   canvasState,
   executingNodeId,
@@ -49,6 +51,8 @@ export function ProductionCanvasSurface({
   visibleNodeIds,
   worldBounds,
 }: {
+  canEdit?: boolean;
+  canExecute?: boolean;
   canvasRef: RefObject<HTMLDivElement | null>;
   canvasState: ProductionCanvasState;
   executingNodeId?: string | null;
@@ -103,6 +107,7 @@ export function ProductionCanvasSurface({
     canvasRef,
     edges: canvasState.edges,
     nodes: canvasState.nodes,
+    disabled: !canEdit,
     onAddEdge,
     onFocusNode,
   });
@@ -144,7 +149,7 @@ export function ProductionCanvasSurface({
         <ProductionCanvasSectionFrames
           sections={canvasState.sections || []}
           worldBounds={worldBounds}
-          onToggle={onToggleSection}
+          onToggle={canEdit ? onToggleSection : () => undefined}
         />
         <CanvasEdges
           edges={visibleEdges}
@@ -155,15 +160,16 @@ export function ProductionCanvasSurface({
           <CanvasNodeCard
             key={node.id}
             executionDisabled={Boolean(
-              executingNodeId && executingNodeId !== node.id,
+              !canExecute || (executingNodeId && executingNodeId !== node.id),
             )}
+            editable={canEdit}
             executing={executingNodeId === node.id}
             node={node}
             selected={selectedNodeIds.has(node.id)}
             worldBounds={worldBounds}
             onExecuteNode={onExecuteNode}
             onFocusNode={onFocusNode}
-            onOutputPortPointerDown={connections.start}
+            onOutputPortPointerDown={canEdit ? connections.start : undefined}
             onSelect={onSelectNode}
             onPointerDown={onNodePointerDown}
           />

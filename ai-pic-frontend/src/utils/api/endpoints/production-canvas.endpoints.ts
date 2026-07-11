@@ -12,6 +12,11 @@ import type {
   ProductionCanvasRunActionRequest,
   ProductionCanvasRunActionResponse,
 } from "../types/production-canvas-run.types";
+import type {
+  ProductionCanvasCollaborationResponse,
+  ProductionCanvasCollaboratorRequest,
+  ProductionCanvasCommentRequest,
+} from "../types/production-canvas-collaboration.types";
 import type { ApiResponse } from "../types/common.types";
 
 async function createPlan(
@@ -67,6 +72,47 @@ async function saveRunState(
       method: "PUT",
       body: JSON.stringify(data),
     },
+  );
+}
+
+async function getCollaboration(
+  runId: string,
+): Promise<ApiResponse<ProductionCanvasCollaborationResponse>> {
+  return httpClient<ProductionCanvasCollaborationResponse>(
+    `/api/v1/production-canvas/runs/${encodeURIComponent(runId)}/collaboration`,
+    { method: "GET" },
+  );
+}
+
+async function upsertCollaborator(
+  runId: string,
+  data: ProductionCanvasCollaboratorRequest,
+): Promise<ApiResponse<ProductionCanvasCollaborationResponse>> {
+  return httpClient<ProductionCanvasCollaborationResponse>(
+    `/api/v1/production-canvas/runs/${encodeURIComponent(runId)}/collaborators`,
+    { method: "PUT", body: JSON.stringify(data) },
+  );
+}
+
+async function removeCollaborator(
+  runId: string,
+  collaboratorId: number,
+): Promise<ApiResponse<ProductionCanvasCollaborationResponse>> {
+  return httpClient<ProductionCanvasCollaborationResponse>(
+    `/api/v1/production-canvas/runs/${encodeURIComponent(
+      runId,
+    )}/collaborators/${collaboratorId}`,
+    { method: "DELETE" },
+  );
+}
+
+async function addComment(
+  runId: string,
+  data: ProductionCanvasCommentRequest,
+): Promise<ApiResponse<ProductionCanvasCollaborationResponse>> {
+  return httpClient<ProductionCanvasCollaborationResponse>(
+    `/api/v1/production-canvas/runs/${encodeURIComponent(runId)}/comments`,
+    { method: "POST", body: JSON.stringify(data) },
   );
 }
 
@@ -155,14 +201,18 @@ async function placeNodeVideoInTimeline(
 }
 
 export const productionCanvasAPI = {
+  addComment,
   approveNodeCandidate,
   branchNodeCandidate,
   createPlan,
   controlRun,
   executeSkill,
+  getCollaboration,
   getNodeCandidates,
   getRun,
   placeNodeVideoInTimeline,
   rejectNodeCandidate,
+  removeCollaborator,
   saveRunState,
+  upsertCollaborator,
 };

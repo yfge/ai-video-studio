@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
@@ -19,6 +20,7 @@ from app.services.production_canvas.stale_runtime import apply_canvas_stale_stat
 from sqlalchemy.orm import Session
 
 from .access_control import CanvasCapability, canvas_access_role, canvas_run_access
+from .definition_activity import record_definition_change
 
 
 def _run_context(payload: dict) -> dict:
@@ -214,6 +216,9 @@ def save_canvas_state(
     if isinstance(payload.get("saved_state"), dict):
         previous = ProductionCanvasSavedState.model_validate(payload["saved_state"])
     state = apply_canvas_stale_state(previous, state)
+    if record_definition_change(payload, user, run_id, previous, state):
+        payload["saved_state_updated_by"] = user.id
+        payload["saved_state_updated_at"] = datetime.now(UTC).isoformat()
     payload["saved_state"] = state.model_dump(by_alias=True, mode="json")
     task.parameters = json.dumps(payload, ensure_ascii=False)
     db.commit()

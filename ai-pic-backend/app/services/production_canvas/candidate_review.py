@@ -18,6 +18,7 @@ from app.services.production_canvas.stale_runtime import (
 from sqlalchemy.orm import Session
 
 from .access_control import canvas_run_owner, require_canvas_access
+from .candidate_activity import record_canvas_candidate_activity
 from .candidate_history import (
     load_canvas_candidate_history,
     materialize_canvas_candidate,
@@ -238,4 +239,7 @@ def approve_canvas_media_candidate(
     run = save_canvas_state(db, user, run_id, next_state, capability="approve")
     if run is None:
         raise ValueError("canvas_run_state_not_found")
+    record_canvas_candidate_activity(
+        db, user, run_id, "candidate.approved", candidate.asset_id, node_id
+    )
     return run

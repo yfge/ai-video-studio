@@ -17,10 +17,14 @@ function isReviewNode(node?: ProductionCanvasNode) {
 }
 
 export function ProductionCanvasCandidateReview({
+  canApprove = true,
+  canBranch = true,
   node,
   onCanvasStateUpdated,
   runId,
 }: {
+  canApprove?: boolean;
+  canBranch?: boolean;
   node?: ProductionCanvasNode;
   onCanvasStateUpdated: (state: ProductionCanvasState) => void;
   runId: string;
@@ -196,6 +200,8 @@ export function ProductionCanvasCandidateReview({
             <ProductionCanvasCandidateItem
               key={`${candidate.asset_id}-${candidate.frame_index}`}
               busy={busyId !== null}
+              canApprove={canApprove}
+              canBranch={canBranch}
               candidate={candidate}
               eager={index === 0}
               onApprove={(item) => void approve(item)}

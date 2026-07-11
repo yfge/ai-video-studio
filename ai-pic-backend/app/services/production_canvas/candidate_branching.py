@@ -4,6 +4,7 @@ from app.schemas.production_canvas_review import ProductionCanvasCandidateBranch
 from sqlalchemy.orm import Session
 
 from .access_control import require_canvas_access
+from .candidate_activity import record_canvas_candidate_activity
 from .execution_persistence import save_canvas_execution_response
 from .executor import execute_canvas_skill
 from .run_persistence import load_canvas_skill_run
@@ -36,6 +37,9 @@ def branch_canvas_media_candidate(
     response = execute_canvas_skill(db, user, request)
     if not save_canvas_execution_response(db, user, run_id, response):
         raise ValueError("canvas_run_state_not_found")
+    record_canvas_candidate_activity(
+        db, user, run_id, "candidate.branched", branch.candidate_id, branch.instruction
+    )
     updated = load_canvas_skill_run(db, user, run_id)
     if updated is None:
         raise ValueError("canvas_run_state_not_found")

@@ -17,6 +17,9 @@ type OutputPatch = Record<
 >;
 
 export function ProductionCanvasNodeTools({
+  canApprove = true,
+  canEdit = true,
+  canExecute = true,
   edges,
   node,
   nodes,
@@ -36,6 +39,9 @@ export function ProductionCanvasNodeTools({
   retryingNode,
   runId,
 }: {
+  canApprove?: boolean;
+  canEdit?: boolean;
+  canExecute?: boolean;
   edges: ProductionCanvasEdge[];
   node?: ProductionCanvasNode;
   nodes: ProductionCanvasNode[];
@@ -62,40 +68,48 @@ export function ProductionCanvasNodeTools({
       <ProductionCanvasTaskSummary
         nodes={nodes}
         onReturnFocus={onReturnFocus}
-        onRefreshTasks={onRefreshTasks}
+        onRefreshTasks={canExecute ? onRefreshTasks : undefined}
         onSelectNode={onSelectNode}
         refreshError={refreshError}
         refreshingTasks={refreshingTasks}
       />
-      <ProductionCanvasEdgeControls
-        edges={edges}
-        node={node}
-        nodes={nodes}
-        onAddEdge={onAddEdge}
-        onRemoveEdge={onRemoveEdge}
-      />
-      <ProductionCanvasMediaControls
-        node={node}
-        onUpdateNodeOutputs={onUpdateNodeOutputs}
-      />
+      {canEdit ? (
+        <>
+          <ProductionCanvasEdgeControls
+            edges={edges}
+            node={node}
+            nodes={nodes}
+            onAddEdge={onAddEdge}
+            onRemoveEdge={onRemoveEdge}
+          />
+          <ProductionCanvasMediaControls
+            node={node}
+            onUpdateNodeOutputs={onUpdateNodeOutputs}
+          />
+        </>
+      ) : null}
       <ProductionCanvasVideoTaskStatus node={node} />
       <ProductionCanvasRetryControls
         node={node}
-        onRetry={onRetryNode}
+        onRetry={canExecute ? onRetryNode : undefined}
         retrying={retryingNode}
         runId={runId}
       />
       <ProductionCanvasCandidateReview
+        canApprove={canApprove}
+        canBranch={canExecute}
         node={node}
         onCanvasStateUpdated={onCanvasStateUpdated}
         runId={runId}
       />
-      <ProductionCanvasNoteControls
-        node={node}
-        onDuplicateNote={onDuplicateNote}
-        onRemoveNode={onRemoveNode}
-        onUpdateNode={onUpdateNode}
-      />
+      {canEdit ? (
+        <ProductionCanvasNoteControls
+          node={node}
+          onDuplicateNote={onDuplicateNote}
+          onRemoveNode={onRemoveNode}
+          onUpdateNode={onUpdateNode}
+        />
+      ) : null}
     </OperatorPanel>
   );
 }

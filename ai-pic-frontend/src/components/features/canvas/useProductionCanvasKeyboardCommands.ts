@@ -18,6 +18,7 @@ function isEditableTarget(target: EventTarget | null) {
 }
 
 export function useProductionCanvasKeyboardCommands({
+  canEdit,
   handleAddNote,
   handleFit,
   handleFocusSelectedNode,
@@ -29,6 +30,7 @@ export function useProductionCanvasKeyboardCommands({
   selectedNode,
   setCanvasDefinition,
 }: {
+  canEdit: () => boolean;
   handleAddNote: () => void;
   handleFit: () => void;
   handleFocusSelectedNode: () => void;
@@ -42,6 +44,7 @@ export function useProductionCanvasKeyboardCommands({
 }) {
   return (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (
+      canEdit() &&
       !event.altKey &&
       (event.ctrlKey || event.metaKey) &&
       !isEditableTarget(event.target) &&
@@ -55,6 +58,7 @@ export function useProductionCanvasKeyboardCommands({
       return;
     }
     if (event.key === "Delete" || event.key === "Backspace") {
+      if (!canEdit()) return;
       if (!isManualProductionCanvasNote(selectedNode)) return;
       event.preventDefault();
       event.stopPropagation();
@@ -87,6 +91,7 @@ export function useProductionCanvasKeyboardCommands({
       return;
     }
     if (
+      canEdit() &&
       (event.ctrlKey || event.metaKey) &&
       !event.altKey &&
       !event.shiftKey &&
@@ -111,6 +116,7 @@ export function useProductionCanvasKeyboardCommands({
       return;
     }
     if (
+      canEdit() &&
       !event.altKey &&
       !event.ctrlKey &&
       !event.metaKey &&
@@ -122,7 +128,7 @@ export function useProductionCanvasKeyboardCommands({
     }
     if (event.altKey || event.ctrlKey || event.metaKey) return;
     const nudge = getProductionCanvasKeyboardNudge(event.key, event.shiftKey);
-    if (!nudge) return;
+    if (!nudge || !canEdit()) return;
     event.preventDefault();
     setCanvasDefinition((state) =>
       applyProductionCanvasKeyboardNudge(state, nudge),

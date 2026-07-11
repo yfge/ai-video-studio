@@ -7,6 +7,7 @@ import {
   type SetStateAction,
 } from "react";
 import { productionCanvasAPI } from "@/utils/api/endpoints";
+import type { ProductionCanvasAccessRole } from "@/utils/api/types";
 import {
   canvasRunIdFromNodes,
   productionCanvasStateFromRun,
@@ -17,6 +18,7 @@ import {
   productionCanvasStateSignature,
 } from "./productionCanvasPersistenceSync";
 import type { ProductionCanvasState } from "./productionCanvasState";
+import { useProductionCanvasRunUrl } from "./useProductionCanvasRunUrl";
 
 export function productionCanvasRunIdFromInput(value: string) {
   const trimmed = value.trim();
@@ -46,15 +48,23 @@ export function useProductionCanvasRunPersistence({
 }) {
   const initialRunIdValue = productionCanvasRunIdFromInput(initialRunId || "");
   const [runId, setRunIdValue] = useState(initialRunIdValue);
+  const [accessRole, setAccessRole] =
+    useState<ProductionCanvasAccessRole | null>(
+      initialRunIdValue ? null : "owner",
+    );
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const restoredInitialRunId = useRef("");
   const lastSavedSignature = useRef("");
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const setRunId = useCallback(
-    (value: string) => setRunIdValue(productionCanvasRunIdFromInput(value)),
+    (value: string, role: ProductionCanvasAccessRole | null = null) => {
+      setRunIdValue(productionCanvasRunIdFromInput(value));
+      setAccessRole(role);
+    },
     [],
   );
+  const canEdit = accessRole === "owner" || accessRole === "editor";
   const resolvedRunId = useCallback(
     (state: ProductionCanvasState = canvasState) =>
       productionCanvasRunIdFromInput(runId) ||
@@ -67,6 +77,10 @@ export function useProductionCanvasRunPersistence({
       state: ProductionCanvasState,
       mode: "manual" | "auto",
     ) => {
+      if (!canEdit) {
+        setStatus("当前角色无编辑权限");
+        return false;
+      }
       if (busy) {
         setStatus("保存中");
         return false;
@@ -103,6 +117,7 @@ export function useProductionCanvasRunPersistence({
           acknowledgedState,
         );
         setRunIdValue(nextRunId);
+        setAccessRole(response.data.access_role || accessRole || "owner");
         setStatus(mode === "auto" ? "已自动保存" : "已保存");
         return true;
       } catch (err) {
@@ -112,7 +127,7 @@ export function useProductionCanvasRunPersistence({
         setBusy(false);
       }
     },
-    [busy, replaceCanvasState],
+    [accessRole, busy, canEdit, replaceCanvasState],
   );
   const saveCanvas = async () => {
     const targetRunId = resolvedRunId();
@@ -123,7 +138,8 @@ export function useProductionCanvasRunPersistence({
     return saveCanvasState(targetRunId, canvasState, "manual");
   };
   useEffect(() => {
-    if (autosaveDelayMs === null || autosaveDelayMs < 0 || busy) return;
+    if (!canEdit || autosaveDelayMs === null || autosaveDelayMs < 0 || busy)
+      return;
     if (initialRunIdValue && !lastSavedSignature.current) return;
     const targetRunId = resolvedRunId();
     if (!targetRunId) return;
@@ -138,6 +154,7 @@ export function useProductionCanvasRunPersistence({
   }, [
     autosaveDelayMs,
     busy,
+    canEdit,
     canvasState,
     initialRunIdValue,
     resolvedRunId,
@@ -164,29 +181,11 @@ export function useProductionCanvasRunPersistence({
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     lastSavedSignature.current = "";
     setRunIdValue("");
+    setAccessRole("owner");
     setStatus(null);
   }, []);
 
-  useEffect(() => {
-    if (
-      typeof window === "undefined" ||
-      window.location.pathname !== "/canvas"
-    ) {
-      return;
-    }
-    const url = new URL(window.location.href);
-    const currentUrl = `${url.pathname}${url.search}${url.hash}`;
-    const trimmedRunId = runId.trim();
-    if (trimmedRunId) {
-      url.searchParams.set("run_id", trimmedRunId);
-    } else {
-      url.searchParams.delete("run_id");
-    }
-    const nextUrl = `${url.pathname}${url.search}${url.hash}`;
-    if (nextUrl !== currentUrl) {
-      window.history.replaceState(window.history.state, "", nextUrl);
-    }
-  }, [runId]);
+  useProductionCanvasRunUrl(runId);
 
   const restoreCanvas = useCallback(
     async (requestedRunId?: string) => {
@@ -214,6 +213,7 @@ export function useProductionCanvasRunPersistence({
           restoredState,
         );
         setRunIdValue(nextRunId);
+        setAccessRole(response.data.access_role || "owner");
         setStatus("已恢复");
       } catch (err) {
         setStatus(err instanceof Error ? err.message : String(err));
@@ -237,6 +237,7 @@ export function useProductionCanvasRunPersistence({
   }, [initialRunIdValue, restoreCanvas]);
 
   return {
+    accessRole,
     adoptServerState,
     busy,
     resetRun,

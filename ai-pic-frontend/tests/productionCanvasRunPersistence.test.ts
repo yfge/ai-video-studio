@@ -184,6 +184,79 @@ describe("productionCanvasRunIdFromInput", () => {
     );
   });
 
+  it("restores viewer access without autosaving local changes", async () => {
+    const originalFetch = globalThis.fetch;
+    let saveCount = 0;
+    globalThis.fetch = async (_input, init) => {
+      if (init?.method === "PUT") saveCount++;
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: {
+            access_role: "viewer",
+            nodes: [],
+            run_id: "canvas-viewer-run",
+            saved_state: {
+              edges: [],
+              nodes: [],
+              selected_node_id: null,
+              viewport: { x: 0, y: 0, zoom: 1 },
+            },
+            selected_assets: { environments: [], virtual_ips: [] },
+            skill_manifest: { version: "production_canvas.v1" },
+          },
+        }),
+        { headers: { "content-type": "application/json" } },
+      );
+    };
+
+    function Harness() {
+      const [state, setState] = useState(emptyCanvasState);
+      const persistence = useProductionCanvasRunPersistence({
+        autosaveDelayMs: 5,
+        canvasState: state,
+        initialRunId: "canvas-viewer-run",
+        replaceCanvasState: setState,
+      });
+      return createElement(
+        "div",
+        {},
+        createElement("output", {}, persistence.accessRole || "loading"),
+        createElement(
+          "button",
+          {
+            onClick: () =>
+              setState((current) => ({
+                ...current,
+                viewport: { ...current.viewport, x: current.viewport.x + 10 },
+              })),
+            type: "button",
+          },
+          "change",
+        ),
+        createElement(
+          "button",
+          { onClick: () => void persistence.saveCanvas(), type: "button" },
+          "save",
+        ),
+      );
+    }
+
+    try {
+      const utils = render(createElement(Harness), {
+        container: dom.window.document.body,
+      });
+      await waitFor(() => assert.ok(utils.getByText("viewer")));
+      fireEvent.click(utils.getByRole("button", { name: "change" }));
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      fireEvent.click(utils.getByRole("button", { name: "save" }));
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      assert.equal(saveCount, 0);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("adopts stale runtime state returned by save without replacing local layout", async () => {
     const originalFetch = globalThis.fetch;
     let savedRequest: Record<string, any> | null = null;
