@@ -219,7 +219,7 @@ def save_canvas_state(
     if isinstance(payload.get("saved_state"), dict):
         previous = ProductionCanvasSavedState.model_validate(payload["saved_state"])
     state = apply_canvas_stale_state(previous, state)
-    payload["saved_state"] = state.model_dump(by_alias=True)
+    payload["saved_state"] = state.model_dump(by_alias=True, mode="json")
     task.parameters = json.dumps(payload, ensure_ascii=False)
     db.commit()
     db.refresh(task)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -144,6 +145,10 @@ class ProductionCanvasSavedNode(BaseModel):
     action_label: str | None = None
     definition_version: int = Field(1, ge=1)
     execution_input_fingerprint: str | None = Field(None, max_length=64)
+    selected_output_id: int | None = Field(None, ge=1)
+    selected_output_url: str | None = None
+    selected_output_reviewed_by: int | None = Field(None, ge=1)
+    selected_output_reviewed_at: datetime | None = None
     input_ports: list[ProductionCanvasSavedPort] = Field(default_factory=list)
     output_ports: list[ProductionCanvasSavedPort] = Field(default_factory=list)
 
@@ -188,6 +193,29 @@ class ProductionCanvasPlanResponse(BaseModel):
 
 class ProductionCanvasRunResponse(ProductionCanvasPlanResponse):
     saved_state: ProductionCanvasSavedState | None = None
+
+
+class ProductionCanvasMediaCandidate(BaseModel):
+    asset_id: int
+    asset_business_id: str
+    media_type: Literal["image", "video"]
+    url: str
+    frame_index: int
+    clip_id: str | None = None
+    prompt: str | None = None
+    model: str | None = None
+    duration_seconds: float | None = None
+    selected: bool = False
+
+
+class ProductionCanvasMediaCandidateList(BaseModel):
+    node_id: str
+    selected_output_id: int | None = None
+    candidates: list[ProductionCanvasMediaCandidate] = Field(default_factory=list)
+
+
+class ProductionCanvasCandidateApprovalRequest(BaseModel):
+    candidate_id: int = Field(..., ge=1)
 
 
 class ProductionCanvasNodeExecution(BaseModel):

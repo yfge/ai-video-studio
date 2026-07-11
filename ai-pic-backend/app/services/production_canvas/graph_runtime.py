@@ -50,6 +50,8 @@ def _node_value(node: ProductionCanvasSavedNode, port_id: str, selected: bool):
     if node.status == "stale":
         return None
     outputs = node.outputs or {}
+    if selected and node.selected_output_url:
+        return node.selected_output_url
     if port_id in outputs:
         return outputs[port_id]
     aliases = {
