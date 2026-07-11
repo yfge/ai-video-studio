@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { JSDOM } from "jsdom";
 
 import { productionNavItems } from "../src/components/shared/operator/OperatorShell";
@@ -140,6 +140,55 @@ describe("ProductionCanvasBoard", () => {
       true,
     );
     assert.ok(utils.getByText("选择画布节点后查看当前阶段、入口和备注。"));
+  });
+
+  it("searches and filters nodes without changing the graph definition", async () => {
+    const utils = render(<ProductionCanvasContent storageKey={null} />, {
+      container: dom.window.document.body,
+    });
+    const originalNodeCount =
+      utils.container.querySelectorAll("[data-canvas-node]").length;
+
+    fireEvent.change(utils.getByLabelText("节点状态"), {
+      target: { value: "生成中" },
+    });
+    assert.equal(
+      utils.container.querySelectorAll("[data-canvas-node]").length,
+      1,
+    );
+    assert.ok(utils.container.querySelector("[data-canvas-node='video']"));
+
+    fireEvent.click(utils.getByRole("button", { name: "清除筛选" }));
+    await waitFor(() =>
+      assert.equal(
+        utils.container.querySelectorAll("[data-canvas-node]").length,
+        originalNodeCount,
+      ),
+    );
+    fireEvent.input(utils.getByLabelText("节点搜索"), {
+      target: { value: "镜头顺序" },
+    });
+    await waitFor(() =>
+      assert.equal(
+        utils.container.querySelectorAll("[data-canvas-node]").length,
+        1,
+      ),
+    );
+    fireEvent.click(utils.getByRole("button", { name: "定位首项" }));
+    assert.equal(
+      utils.container
+        .querySelector("[data-canvas-node='timeline']")
+        ?.getAttribute("aria-current"),
+      "true",
+    );
+
+    fireEvent.click(utils.getByRole("button", { name: "清除筛选" }));
+    await waitFor(() =>
+      assert.equal(
+        utils.container.querySelectorAll("[data-canvas-node]").length,
+        originalNodeCount,
+      ),
+    );
   });
 
   it("pans the canvas with horizontal wheel gestures", () => {

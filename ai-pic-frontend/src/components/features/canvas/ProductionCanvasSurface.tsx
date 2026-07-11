@@ -30,6 +30,7 @@ export function ProductionCanvasSurface({
   onNodePointerDown,
   onSelectNode,
   selectedNodeId,
+  visibleNodeIds,
   worldBounds,
 }: {
   canvasRef: RefObject<HTMLDivElement | null>;
@@ -48,8 +49,17 @@ export function ProductionCanvasSurface({
   ) => void;
   onSelectNode: (nodeId: string) => void;
   selectedNodeId?: string;
+  visibleNodeIds?: Set<string>;
   worldBounds: WorldBounds;
 }) {
+  const visibleNodes = visibleNodeIds
+    ? canvasState.nodes.filter((node) => visibleNodeIds.has(node.id))
+    : canvasState.nodes;
+  const visibleEdges = visibleNodeIds
+    ? canvasState.edges.filter(
+        (edge) => visibleNodeIds.has(edge.from) && visibleNodeIds.has(edge.to),
+      )
+    : canvasState.edges;
   return (
     <div
       ref={canvasRef}
@@ -77,11 +87,11 @@ export function ProductionCanvasSurface({
       >
         <div className="absolute inset-0 bg-[linear-gradient(#e5e7eb_1px,transparent_1px),linear-gradient(90deg,#e5e7eb_1px,transparent_1px)] bg-[size:32px_32px]" />
         <CanvasEdges
-          edges={canvasState.edges}
-          nodes={canvasState.nodes}
+          edges={visibleEdges}
+          nodes={visibleNodes}
           worldBounds={worldBounds}
         />
-        {canvasState.nodes.map((node) => (
+        {visibleNodes.map((node) => (
           <CanvasNodeCard
             key={node.id}
             executionDisabled={Boolean(
@@ -98,6 +108,11 @@ export function ProductionCanvasSurface({
           />
         ))}
       </div>
+      {!visibleNodes.length ? (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-gray-500">
+          无匹配节点
+        </div>
+      ) : null}
     </div>
   );
 }

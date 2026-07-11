@@ -12,7 +12,7 @@ import {
 import { ProductionCanvasInfoPanels } from "./ProductionCanvasInfoPanels";
 import { ProductionCanvasPlanningHeader } from "./ProductionCanvasPlanningHeader";
 import { ProductionCanvasSidePanel } from "./ProductionCanvasSidePanel";
-import { ProductionCanvasSurface } from "./ProductionCanvasSurface";
+import { ProductionCanvasWorkspace } from "./ProductionCanvasWorkspace";
 import { ProductionCanvasToolbar } from "./ProductionCanvasToolbar";
 import { useProductionCanvasSkillPlanner } from "./useProductionCanvasSkillPlanner";
 import { useProductionCanvasController } from "./useProductionCanvasController";
@@ -177,7 +177,7 @@ export function ProductionCanvasContent({
             }}
             onZoom={handleZoomButton}
           />
-          <ProductionCanvasSurface
+          <ProductionCanvasWorkspace
             canvasRef={canvasRef}
             canvasState={canvasState}
             executingNodeId={planner.executingNodeId}
