@@ -1,25 +1,28 @@
 "use client";
 import Link from "next/link";
-import type { MouseEvent as ReactMouseEvent } from "react";
+import type {
+  KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent as ReactMouseEvent,
+} from "react";
 import {
   OperatorPanel,
-  OperatorSectionHeader,
   OperatorShell,
   operatorButtonClass,
 } from "@/components/shared";
-import { CanvasInspector } from "./ProductionCanvasElements";
-import { ProductionCanvasNodeTools } from "./ProductionCanvasNodeTools";
-import { ProductionCanvasChatBar } from "./ProductionCanvasChatBar";
+import { ProductionCanvasInfoPanels } from "./ProductionCanvasInfoPanels";
+import { ProductionCanvasPlanningHeader } from "./ProductionCanvasPlanningHeader";
+import { ProductionCanvasSidePanel } from "./ProductionCanvasSidePanel";
 import { ProductionCanvasSurface } from "./ProductionCanvasSurface";
 import { ProductionCanvasToolbar } from "./ProductionCanvasToolbar";
+import { useProductionCanvasSkillPlanner } from "./useProductionCanvasSkillPlanner";
+import { useProductionCanvasController } from "./useProductionCanvasController";
+import { useProductionCanvasRunPersistence } from "./useProductionCanvasRunPersistence";
+import { useProductionCanvasTaskSync } from "./useProductionCanvasTaskSync";
 import {
   nodeIdFromCanvasDoubleClick,
   notePositionFromCanvasDoubleClick,
 } from "./productionCanvasDoubleClick";
-import { useProductionCanvasSkillPlanner } from "./useProductionCanvasSkillPlanner";
-import { useProductionCanvasController } from "./useProductionCanvasController";
-import { useProductionCanvasRunPersistence } from "./useProductionCanvasRunPersistence";
-import type { ProductionCanvasNode } from "./productionCanvasModel";
+import { duplicateManualProductionCanvasNote } from "./productionCanvasNoteActions";
 import { PRODUCTION_CANVAS_STORAGE_KEY } from "./productionCanvasViewModel";
 type ProductionCanvasBoardProps = { initialRunId?: string | null };
 export function ProductionCanvasBoard(props: ProductionCanvasBoardProps = {}) {
@@ -63,17 +66,15 @@ export function ProductionCanvasContent({
     handleCanvasPointerDown,
     handleCanvasPointerMove,
     handleCanvasPointerUp,
-    handleDuplicateNote,
     handleFit,
     handleFocusSelectedNode,
     handleNodePointerDown,
     handleReset,
     handleRemoveEdge,
-    handleRemoveNote,
+    handleRemoveNode,
     handleSelectNode,
     handleUpdateNode,
     handleUpdateNodeOutputs,
-    handleWheel,
     handleZoomButton,
     replaceCanvasState,
     selectedNode,
@@ -91,31 +92,46 @@ export function ProductionCanvasContent({
     onNodesCreated: appendNodes,
     onRunCreated: persistence.setRunId,
   });
+  const taskSync = useProductionCanvasTaskSync({
+    onNodeUpdated: handleUpdateNode,
+  });
   const focusCanvas = () => canvasRef.current?.focus({ preventScroll: true });
-  const handleExecuteNode = (node: ProductionCanvasNode) => {
-    void planner.executeSkillNode(node);
+  const handleDuplicateNote = (nodeId: string) => {
+    replaceCanvasState((state) =>
+      duplicateManualProductionCanvasNote(state, nodeId),
+    );
     focusCanvas();
   };
   const handleCanvasDoubleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
     const nodeId = nodeIdFromCanvasDoubleClick(event);
-    if (nodeId) return handleFocusSelectedNode(nodeId);
-    const { viewport } = canvasState;
-    handleAddNote(notePositionFromCanvasDoubleClick(event, viewport));
+    if (nodeId) {
+      handleFocusSelectedNode(nodeId);
+      return;
+    }
+    handleAddNote(
+      notePositionFromCanvasDoubleClick(event, canvasState.viewport),
+    );
+  };
+  const handleBoardKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (
+      !event.altKey &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      event.key.toLowerCase() === "r"
+    ) {
+      event.preventDefault();
+      handleReset();
+      persistence.resetRun();
+      focusCanvas();
+      return;
+    }
+    handleCanvasKeyDown(event);
   };
   return (
     <div className="space-y-4">
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
         <OperatorPanel className="overflow-hidden">
-          <OperatorSectionHeader
-            title="短剧生产链路"
-            subtitle="Brief -> Script -> Audio + Timeline -> Storyboard Support -> Image Candidates -> Video Candidates -> Render -> Export -> Report"
-            action={
-              <Link href="/tasks" className={operatorButtonClass("ghost")}>
-                查看任务
-              </Link>
-            }
-          />
-          <ProductionCanvasChatBar
+          <ProductionCanvasPlanningHeader
             context={planner.context}
             error={planner.error}
             onCreate={() => {
@@ -134,13 +150,28 @@ export function ProductionCanvasContent({
             status={persistence.status}
             zoomLabel={zoomLabel}
             onAddNote={() => handleAddNote()}
-            onFit={handleFit}
-            onFocusSelected={() => handleFocusSelectedNode()}
-            onReset={() => (handleReset(), persistence.resetRun())}
-            onRestore={(runId) => void persistence.restoreCanvas(runId)}
-            onReturnFocus={focusCanvas}
+            onFit={() => {
+              handleFit();
+              focusCanvas();
+            }}
+            onFocusSelected={() => {
+              handleFocusSelectedNode();
+              focusCanvas();
+            }}
+            onReset={() => {
+              handleReset();
+              persistence.resetRun();
+              focusCanvas();
+            }}
+            onRestore={(runId) => {
+              void persistence.restoreCanvas(runId);
+              focusCanvas();
+            }}
             onRunIdChange={persistence.setRunId}
-            onSave={() => void persistence.saveCanvas()}
+            onSave={() => {
+              void persistence.saveCanvas();
+              focusCanvas();
+            }}
             onZoom={handleZoomButton}
           />
           <ProductionCanvasSurface
@@ -150,72 +181,70 @@ export function ProductionCanvasContent({
             selectedNodeId={selectedNode?.id}
             worldBounds={worldBounds}
             onCanvasDoubleClick={handleCanvasDoubleClick}
-            onCanvasKeyDown={handleCanvasKeyDown}
+            onCanvasKeyDown={handleBoardKeyDown}
             onCanvasPointerDown={handleCanvasPointerDown}
             onCanvasPointerMove={handleCanvasPointerMove}
             onCanvasPointerUp={handleCanvasPointerUp}
-            onCanvasWheel={handleWheel}
-            onExecuteNode={handleExecuteNode}
+            onExecuteNode={(nodeToExecute) => {
+              void planner.executeSkillNode(nodeToExecute);
+              focusCanvas();
+            }}
+            onFocusNode={handleFocusSelectedNode}
             onNodePointerDown={handleNodePointerDown}
             onSelectNode={handleSelectNode}
           />
         </OperatorPanel>
-        <div className="space-y-3">
-          <CanvasInspector
-            node={selectedNode}
-            executingNodeId={planner.executingNodeId}
-            executionError={planner.executionError}
-            onExecuteNode={handleExecuteNode}
-          />
-          <ProductionCanvasNodeTools
-            edges={canvasState.edges}
-            node={selectedNode}
-            nodes={canvasState.nodes}
-            onAddEdge={(from, to) => {
-              handleAddEdge(from, to);
-              focusCanvas();
-            }}
-            onDuplicateNote={handleDuplicateNote}
-            onReturnFocus={focusCanvas}
-            onRemoveEdge={(from, to) => {
-              handleRemoveEdge(from, to);
-              focusCanvas();
-            }}
-            onRemoveNote={handleRemoveNote}
-            onSelectNode={handleSelectNode}
-            onUpdateNode={handleUpdateNode}
-            onUpdateNodeOutputs={handleUpdateNodeOutputs}
-          />
-          <OperatorPanel className="p-4">
-            <div className="text-xs font-semibold text-gray-950">画布操作</div>
-            <div className="mt-2 space-y-1 text-xs leading-5 text-gray-500">
-              <p>拖拽节点调整链路位置。</p>
-              <p>拖拽空白区域移动画布。</p>
-              <p>滚轮或工具栏缩放视图。</p>
-            </div>
-          </OperatorPanel>
-        </div>
+        <ProductionCanvasSidePanel
+          edges={canvasState.edges}
+          node={selectedNode}
+          nodes={canvasState.nodes}
+          executingNodeId={planner.executingNodeId}
+          executionError={
+            planner.executionError &&
+            planner.executionError.nodeId === selectedNode?.id
+              ? planner.executionError.message
+              : null
+          }
+          onAddEdge={(from, to) => {
+            handleAddEdge(from, to);
+            focusCanvas();
+          }}
+          onDuplicateNote={handleDuplicateNote}
+          onExecuteNode={(node) => {
+            void planner.executeSkillNode(node);
+            focusCanvas();
+          }}
+          onRefreshTaskNode={(node) => {
+            void taskSync.refreshTaskNode(node);
+            focusCanvas();
+          }}
+          onRefreshTasks={(nodes) => {
+            void taskSync.refreshTaskNodes(nodes);
+            focusCanvas();
+          }}
+          onRemoveEdge={(from, to) => {
+            handleRemoveEdge(from, to);
+            focusCanvas();
+          }}
+          onRemoveNode={(nodeId) => {
+            handleRemoveNode(nodeId);
+            focusCanvas();
+          }}
+          onReturnFocus={focusCanvas}
+          onSelectNode={handleFocusSelectedNode}
+          onUpdateNode={handleUpdateNode}
+          onUpdateNodeOutputs={handleUpdateNodeOutputs}
+          refreshError={taskSync.syncSummaryError}
+          refreshingTasks={Boolean(taskSync.syncingNodeId)}
+          taskSyncError={
+            taskSync.syncError && taskSync.syncError.nodeId === selectedNode?.id
+              ? taskSync.syncError.message
+              : null
+          }
+          taskSyncingNodeId={taskSync.syncingNodeId}
+        />
       </div>
-      <div className="grid gap-3 lg:grid-cols-3">
-        <OperatorPanel className="p-4">
-          <div className="text-xs font-semibold text-gray-950">引用对象</div>
-          <p className="mt-2 text-xs leading-5 text-gray-600">
-            IP / Story / Episode / Task / Artifact
-          </p>
-        </OperatorPanel>
-        <OperatorPanel className="p-4">
-          <div className="text-xs font-semibold text-gray-950">执行层</div>
-          <p className="mt-2 text-xs leading-5 text-gray-600">
-            Existing API / Skill Invocation / Artifact Run
-          </p>
-        </OperatorPanel>
-        <OperatorPanel className="p-4">
-          <div className="text-xs font-semibold text-gray-950">证据出口</div>
-          <p className="mt-2 text-xs leading-5 text-gray-600">
-            Quality Gate / Cost / Failure / Provider Lineage
-          </p>
-        </OperatorPanel>
-      </div>
+      <ProductionCanvasInfoPanels />
     </div>
   );
 }

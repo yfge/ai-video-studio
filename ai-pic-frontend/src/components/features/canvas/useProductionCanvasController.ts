@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
 import {
   addProductionCanvasEdge,
   removeProductionCanvasEdge,
+  removeProductionCanvasNode,
   updateProductionCanvasNode,
   updateProductionCanvasNodeOutputs,
   type ProductionCanvasOutputPatch,
@@ -21,12 +21,7 @@ import {
   readStoredCanvasState,
 } from "./productionCanvasViewModel";
 import { useProductionCanvasInteractionControls } from "./useProductionCanvasInteractionControls";
-import {
-  applyProductionCanvasKeyboardNudge,
-  getProductionCanvasKeyboardNudge,
-} from "./productionCanvasKeyboard";
-import { isManualProductionCanvasNote } from "./productionCanvasSkillNodes";
-import { useProductionCanvasNoteCommands } from "./useProductionCanvasNoteCommands";
+import { useProductionCanvasKeyboardCommands } from "./useProductionCanvasKeyboardCommands";
 
 export function useProductionCanvasController(storageKey?: string | null) {
   const [canvasState, setCanvasState] = useState(createProductionCanvasState);
@@ -46,15 +41,12 @@ export function useProductionCanvasController(storageKey?: string | null) {
     handleCanvasPointerUp,
     handleFit,
     handleNodePointerDown,
-    handleWheel,
     handleZoomButton,
   } = useProductionCanvasInteractionControls({
     canvasRef,
     canvasState,
     setCanvasState,
   });
-  const { handleDuplicateNote, handleRemoveNote } =
-    useProductionCanvasNoteCommands({ canvasRef, setCanvasState });
 
   useEffect(() => {
     setCanvasState(readStoredCanvasState(storageKey));
@@ -69,73 +61,6 @@ export function useProductionCanvasController(storageKey?: string | null) {
   const handleSelectNode = (nodeId: string) =>
     setCanvasState((state) => ({ ...state, selectedNodeId: nodeId }));
 
-  const handleFocusSelectedNode = (nodeId?: string) => {
-    const width = canvasRef.current?.clientWidth || CANVAS_BASE_WIDTH;
-    const height = canvasRef.current?.clientHeight || CANVAS_BASE_HEIGHT;
-    setCanvasState((state) => {
-      const targetNodeId = nodeId || state.selectedNodeId;
-      const node = state.nodes.find((item) => item.id === targetNodeId);
-      if (!node) return state;
-      return {
-        ...state,
-        selectedNodeId: node.id,
-        viewport: centerProductionCanvasOnNode(state.viewport, node, {
-          width,
-          height,
-        }),
-      };
-    });
-    canvasRef.current?.focus({ preventScroll: true });
-  };
-
-  const handleCanvasKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      handleSelectNode("");
-      return;
-    }
-    if (
-      (event.key === "Delete" || event.key === "Backspace") &&
-      isManualProductionCanvasNote(selectedNode)
-    ) {
-      event.preventDefault();
-      event.stopPropagation();
-      handleRemoveNote(selectedNode.id);
-      return;
-    }
-    if (
-      (event.ctrlKey || event.metaKey) &&
-      !event.altKey &&
-      !event.shiftKey &&
-      event.key.toLowerCase() === "d" &&
-      isManualProductionCanvasNote(selectedNode)
-    ) {
-      event.preventDefault();
-      handleDuplicateNote(selectedNode.id);
-      return;
-    }
-    if (event.altKey || event.ctrlKey || event.metaKey) return;
-    if (event.key.toLowerCase() === "f" && selectedNode) {
-      event.preventDefault();
-      handleFocusSelectedNode();
-      return;
-    }
-    if (event.key === "+" || event.key === "=" || event.key === "-") {
-      event.preventDefault();
-      handleZoomButton(event.key === "-" ? -1 : 1);
-      return;
-    }
-    if (event.key === "0" || event.key === "Home") {
-      event.preventDefault();
-      handleFit();
-      return;
-    }
-    const nudge = getProductionCanvasKeyboardNudge(event.key, event.shiftKey);
-    if (!nudge) return;
-    event.preventDefault();
-    setCanvasState((state) => applyProductionCanvasKeyboardNudge(state, nudge));
-  };
-
   const handleAddEdge = (from: string, to: string) =>
     setCanvasState((state) => ({
       ...state,
@@ -146,7 +71,19 @@ export function useProductionCanvasController(storageKey?: string | null) {
       ...state,
       edges: removeProductionCanvasEdge(state.edges, from, to),
     }));
-
+  const handleRemoveNode = (nodeId: string) => {
+    setCanvasState((state) => {
+      const next = removeProductionCanvasNode(state.nodes, state.edges, nodeId);
+      return {
+        ...state,
+        ...next,
+        selectedNodeId:
+          state.selectedNodeId === nodeId
+            ? next.nodes[0]?.id || ""
+            : state.selectedNodeId,
+      };
+    });
+  };
   const handleUpdateNodeOutputs = (
     nodeId: string,
     patch: ProductionCanvasOutputPatch,
@@ -172,6 +109,27 @@ export function useProductionCanvasController(storageKey?: string | null) {
     }
   };
 
+  const handleFocusSelectedNode = (nodeId?: string) => {
+    const width = canvasRef.current?.clientWidth || CANVAS_BASE_WIDTH;
+    const height = canvasRef.current?.clientHeight || CANVAS_BASE_HEIGHT;
+    setCanvasState((state) => {
+      const targetNodeId = nodeId || state.selectedNodeId;
+      const node = targetNodeId
+        ? state.nodes.find((item) => item.id === targetNodeId)
+        : undefined;
+      if (!node) return state;
+      return {
+        ...state,
+        selectedNodeId: node.id,
+        viewport: centerProductionCanvasOnNode(state.viewport, node, {
+          width,
+          height,
+        }),
+      };
+    });
+    canvasRef.current?.focus({ preventScroll: true });
+  };
+
   const handleAddNote = (targetPosition?: { x: number; y: number }) => {
     const rect = canvasRef.current?.getBoundingClientRect();
     setCanvasState((state) => {
@@ -194,6 +152,17 @@ export function useProductionCanvasController(storageKey?: string | null) {
     });
     canvasRef.current?.focus({ preventScroll: true });
   };
+
+  const handleCanvasKeyDown = useProductionCanvasKeyboardCommands({
+    handleAddNote,
+    handleFit,
+    handleFocusSelectedNode,
+    handleRemoveNode,
+    handleSelectNode,
+    handleZoomButton,
+    selectedNode,
+    setCanvasState,
+  });
 
   const appendNodes = (nodes: ProductionCanvasNode[]) => {
     if (!nodes.length) return;
@@ -224,17 +193,15 @@ export function useProductionCanvasController(storageKey?: string | null) {
     handleCanvasPointerDown,
     handleCanvasPointerMove,
     handleCanvasPointerUp,
-    handleDuplicateNote,
     handleFit,
     handleFocusSelectedNode,
     handleNodePointerDown,
     handleReset,
     handleRemoveEdge,
-    handleRemoveNote,
+    handleRemoveNode,
     handleSelectNode,
     handleUpdateNode,
     handleUpdateNodeOutputs,
-    handleWheel,
     handleZoomButton,
     replaceCanvasState: setCanvasState,
     selectedNode,

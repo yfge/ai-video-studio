@@ -19,7 +19,9 @@ export function nodeIdFromCanvasDoubleClick(
     ?.closest?.("[data-canvas-node]");
   const nodeElement =
     target?.closest?.("[data-canvas-node]") || pathNode || hitNode;
-  if (!nodeElement || !event.currentTarget.contains(nodeElement)) return null;
+  if (!nodeElement || !event.currentTarget.contains(nodeElement)) {
+    return null;
+  }
   return nodeElement.getAttribute("data-canvas-node");
 }
 

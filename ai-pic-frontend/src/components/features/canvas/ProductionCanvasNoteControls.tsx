@@ -5,12 +5,12 @@ import { isManualProductionCanvasNote } from "./productionCanvasSkillNodes";
 export function ProductionCanvasNoteControls({
   node,
   onDuplicateNote,
-  onRemoveNote,
+  onRemoveNode,
   onUpdateNode,
 }: {
   node?: ProductionCanvasNode;
   onDuplicateNote: (nodeId: string) => void;
-  onRemoveNote: (nodeId: string) => void;
+  onRemoveNode: (nodeId: string) => void;
   onUpdateNode: (nodeId: string, patch: Partial<ProductionCanvasNode>) => void;
 }) {
   if (!isManualProductionCanvasNote(node)) return null;
@@ -27,6 +27,9 @@ export function ProductionCanvasNoteControls({
             aria-label="便签标题"
             className="mt-1 h-8 w-full rounded-md border border-gray-200 bg-white px-2 text-xs text-gray-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
             value={node.title}
+            onChange={(event) =>
+              onUpdateNode(node.id, { title: event.currentTarget.value })
+            }
             onInput={(event) =>
               onUpdateNode(node.id, { title: event.currentTarget.value })
             }
@@ -40,6 +43,9 @@ export function ProductionCanvasNoteControls({
             aria-label="便签内容"
             className="mt-1 min-h-20 w-full resize-y rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
             value={node.detail || ""}
+            onChange={(event) =>
+              onUpdateNode(node.id, { detail: event.currentTarget.value })
+            }
             onInput={(event) =>
               onUpdateNode(node.id, { detail: event.currentTarget.value })
             }
@@ -58,7 +64,7 @@ export function ProductionCanvasNoteControls({
             "ghost",
             "justify-center text-red-600 hover:bg-red-50 hover:text-red-700",
           )}
-          onClick={() => onRemoveNote(node.id)}
+          onClick={() => onRemoveNode(node.id)}
         >
           删除便签
         </button>

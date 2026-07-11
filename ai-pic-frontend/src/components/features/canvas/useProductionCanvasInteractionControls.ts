@@ -1,10 +1,10 @@
 import {
+  useEffect,
   useRef,
   type Dispatch,
   type RefObject,
   type SetStateAction,
   type PointerEvent as ReactPointerEvent,
-  type WheelEvent as ReactWheelEvent,
 } from "react";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
 import {
@@ -53,10 +53,11 @@ export function useProductionCanvasInteractionControls({
     event: ReactPointerEvent<HTMLButtonElement>,
     nodeId: string,
   ) => {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || event.altKey) return;
     event.preventDefault();
     event.stopPropagation();
     canvasRef.current?.setPointerCapture(event.pointerId);
+    canvasRef.current?.focus({ preventScroll: true });
     setCanvasState((state) => ({ ...state, selectedNodeId: nodeId }));
     dragRef.current = {
       type: "node",
@@ -71,13 +72,22 @@ export function useProductionCanvasInteractionControls({
   const handleCanvasPointerDown = (
     event: ReactPointerEvent<HTMLDivElement>,
   ) => {
-    if (event.button !== 0) return;
+    if (event.button !== 0 && event.button !== 1) return;
     const target = event.target;
-    if (target instanceof Element && target.closest("[data-canvas-node]")) {
+    if (
+      event.button === 0 &&
+      !event.altKey &&
+      target instanceof Element &&
+      target.closest("[data-canvas-node]")
+    ) {
       return;
     }
     event.preventDefault();
     canvasRef.current?.setPointerCapture(event.pointerId);
+    canvasRef.current?.focus({ preventScroll: true });
+    if (event.button === 0 && !event.altKey) {
+      setCanvasState((state) => ({ ...state, selectedNodeId: "" }));
+    }
     dragRef.current = {
       type: "pan",
       startX: event.clientX,
@@ -121,27 +131,47 @@ export function useProductionCanvasInteractionControls({
     }
   };
 
-  const handleWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    const rect = event.currentTarget.getBoundingClientRect();
-    setCanvasState((state) => ({
-      ...state,
-      viewport: zoomProductionCanvas(
-        state.viewport,
-        event.deltaY < 0 ? 1 : -1,
-        {
-          x: event.clientX - rect.left,
-          y: event.clientY - rect.top,
-        },
-      ),
-    }));
-  };
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const handleWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      canvas.focus({ preventScroll: true });
+      if (event.shiftKey || Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
+        setCanvasState((state) => ({
+          ...state,
+          viewport: panProductionCanvas(
+            state.viewport,
+            event.shiftKey ? -event.deltaY : -event.deltaX,
+            event.shiftKey ? 0 : -event.deltaY,
+          ),
+        }));
+        return;
+      }
+      const rect = canvas.getBoundingClientRect();
+      setCanvasState((state) => ({
+        ...state,
+        viewport: zoomProductionCanvas(
+          state.viewport,
+          event.deltaY < 0 ? 1 : -1,
+          {
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top,
+          },
+        ),
+      }));
+    };
+    canvas.addEventListener("wheel", handleWheel, { passive: false });
+    return () => canvas.removeEventListener("wheel", handleWheel);
+  }, [canvasRef, setCanvasState]);
 
-  const handleZoomButton = (steps: number) =>
+  const handleZoomButton = (steps: number) => {
     setCanvasState((state) => ({
       ...state,
       viewport: zoomProductionCanvas(state.viewport, steps),
     }));
+    canvasRef.current?.focus({ preventScroll: true });
+  };
 
   const handleFit = () => {
     const width = canvasRef.current?.clientWidth || CANVAS_BASE_WIDTH;
@@ -177,7 +207,6 @@ export function useProductionCanvasInteractionControls({
     handleCanvasPointerUp,
     handleFit,
     handleNodePointerDown,
-    handleWheel,
     handleZoomButton,
   };
 }

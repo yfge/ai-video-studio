@@ -71,6 +71,7 @@ describe("ProductionCanvas toolbar focus", () => {
     let saveCount = 0;
     let nudgeCount = 0;
     const restoredRunIds: Array<string | undefined> = [];
+    let returnFocus = () => {};
     const utils = render(
       <>
         <div
@@ -88,16 +89,15 @@ describe("ProductionCanvas toolbar focus", () => {
           onFit={() => {}}
           onFocusSelected={() => {}}
           onReset={() => {}}
-          onRestore={(runId) => restoredRunIds.push(runId)}
-          onReturnFocus={() =>
-            utils.container
-              .querySelector<HTMLElement>(
-                "[data-production-canvas='infinite-canvas']",
-              )
-              ?.focus()
-          }
+          onRestore={(runId) => {
+            restoredRunIds.push(runId);
+            returnFocus();
+          }}
           onRunIdChange={() => {}}
-          onSave={() => saveCount++}
+          onSave={() => {
+            saveCount++;
+            returnFocus();
+          }}
           onZoom={() => {}}
         />
       </>,
@@ -107,6 +107,7 @@ describe("ProductionCanvas toolbar focus", () => {
       "[data-production-canvas='infinite-canvas']",
     );
     assert.ok(canvas);
+    returnFocus = () => canvas.focus();
 
     fireEvent.click(utils.getByRole("button", { name: "保存画布" }));
     assert.equal(saveCount, 1);

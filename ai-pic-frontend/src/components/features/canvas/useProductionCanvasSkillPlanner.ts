@@ -33,6 +33,20 @@ function isAutoExecutableNode(node: ProductionCanvasNode) {
   );
 }
 
+function waitForCanvasBusyPaint() {
+  if (
+    typeof window !== "undefined" &&
+    typeof window.requestAnimationFrame === "function"
+  ) {
+    return new Promise<void>((resolve) => {
+      window.requestAnimationFrame(() => resolve());
+    });
+  }
+  return new Promise<void>((resolve) => {
+    setTimeout(resolve, 0);
+  });
+}
+
 function upsertCanvasNodes(
   currentNodes: ProductionCanvasNode[],
   incomingNodes: ProductionCanvasNode[],
@@ -62,7 +76,10 @@ export function useProductionCanvasSkillPlanner({
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [executingNodeId, setExecutingNodeId] = useState<string | null>(null);
-  const [executionError, setExecutionError] = useState<string | null>(null);
+  const [executionError, setExecutionError] = useState<{
+    message: string;
+    nodeId: string;
+  } | null>(null);
   const publishExecutionNodes = useProductionCanvasExecutionTracker({
     maxPollMs: taskMaxPollMs,
     onNodesCreated,
@@ -162,6 +179,7 @@ export function useProductionCanvasSkillPlanner({
     setError(null);
     setExecutionError(null);
     try {
+      await waitForCanvasBusyPaint();
       const requestContext = productionCanvasRequestContext(context);
       const response = await productionCanvasAPI.createPlan({
         prompt: trimmed,
@@ -194,7 +212,10 @@ export function useProductionCanvasSkillPlanner({
     try {
       publishExecutionNodes(node, await executeSkillRequest(node));
     } catch (err) {
-      setExecutionError(err instanceof Error ? err.message : String(err));
+      setExecutionError({
+        message: err instanceof Error ? err.message : String(err),
+        nodeId: node.id,
+      });
     } finally {
       setExecutingNodeId(null);
     }

@@ -1,40 +1,43 @@
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { StatusPill, operatorButtonClass } from "@/components/shared";
-import {
-  productionCanvasStatusMeta,
-  type ProductionCanvasNode,
-} from "./productionCanvasModel";
+import type { ProductionCanvasNode } from "./productionCanvasModel";
+import { productionCanvasNodeStatusMeta } from "./productionCanvasSkillNodes";
 import {
   displayProductionCanvasNodeTitle,
   getNodeHeight,
 } from "./productionCanvasViewModel";
 
 export function CanvasNodeCard({
+  executionDisabled,
   executing,
   node,
   onExecuteNode,
   selected,
   worldBounds = { minX: 0, minY: 0 },
+  onFocusNode,
   onSelect,
   onPointerDown,
 }: {
+  executionDisabled?: boolean;
   executing?: boolean;
   node: ProductionCanvasNode;
   onExecuteNode?: (node: ProductionCanvasNode) => void;
   selected: boolean;
   worldBounds?: { minX: number; minY: number };
+  onFocusNode?: (nodeId: string) => void;
   onSelect: (nodeId: string) => void;
   onPointerDown: (
     event: ReactPointerEvent<HTMLButtonElement>,
     nodeId: string,
   ) => void;
 }) {
-  const status = productionCanvasStatusMeta[node.status];
+  const status = productionCanvasNodeStatusMeta(node);
   const noteClass =
     node.kind === "note"
       ? "border-amber-200 bg-amber-50/95"
       : "border-gray-200 bg-white";
   const canExecute = Boolean(node.skill && node.kind === "skill_result");
+  const executeDisabled = executing || executionDisabled;
   const displayTitle = displayProductionCanvasNodeTitle(node);
 
   return (
@@ -48,7 +51,12 @@ export function CanvasNodeCard({
         width: node.width,
         height: getNodeHeight(node),
       }}
+      aria-current={selected ? "true" : undefined}
       data-canvas-node={node.id}
+      onDoubleClickCapture={(event) => {
+        event.stopPropagation();
+        onFocusNode?.(node.id);
+      }}
     >
       <button
         type="button"
@@ -56,6 +64,7 @@ export function CanvasNodeCard({
           canExecute ? "pb-11" : ""
         }`}
         aria-label={`${node.label} ${displayTitle}`}
+        aria-pressed={selected}
         onClick={(event) => {
           onSelect(node.id);
           event.currentTarget
@@ -82,7 +91,8 @@ export function CanvasNodeCard({
             "absolute bottom-2 left-3 right-3 h-7 justify-center px-2 text-[11px]",
           )}
           aria-label={`${executing ? "执行中" : "后台执行"} ${node.label}`}
-          disabled={executing}
+          aria-busy={executing || undefined}
+          disabled={executeDisabled}
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();

@@ -6,9 +6,12 @@ import {
 } from "@/components/shared";
 import {
   type ProductionCanvasEdge,
-  productionCanvasStatusMeta,
   type ProductionCanvasNode,
 } from "./productionCanvasModel";
+import {
+  productionCanvasNodeStatusMeta,
+  taskOutputNumber,
+} from "./productionCanvasSkillNodes";
 import {
   displayProductionCanvasNodeTitle,
   getNodeHeight,
@@ -89,11 +92,17 @@ export function CanvasInspector({
   executingNodeId,
   executionError,
   onExecuteNode,
+  onRefreshTaskNode,
+  taskSyncError,
+  taskSyncingNodeId,
 }: {
   node?: ProductionCanvasNode;
   executingNodeId?: string | null;
   executionError?: string | null;
   onExecuteNode?: (node: ProductionCanvasNode) => void;
+  onRefreshTaskNode?: (node: ProductionCanvasNode) => void;
+  taskSyncError?: string | null;
+  taskSyncingNodeId?: string | null;
 }) {
   if (!node) {
     return (
@@ -106,11 +115,17 @@ export function CanvasInspector({
     );
   }
 
-  const status = productionCanvasStatusMeta[node.status];
+  const status = productionCanvasNodeStatusMeta(node);
   const outputs = outputEntries(node);
   const displayTitle = displayProductionCanvasNodeTitle(node);
   const canExecute = Boolean(node.skill && node.kind === "skill_result");
   const executing = executingNodeId === node.id;
+  const executeDisabled = Boolean(executingNodeId && !executing);
+  const canRefreshTask = Boolean(
+    node.kind === "note" && taskOutputNumber(node.outputs),
+  );
+  const refreshingTask = taskSyncingNodeId === node.id;
+  const refreshDisabled = Boolean(taskSyncingNodeId && !refreshingTask);
   return (
     <OperatorPanel className="p-4">
       <div className="flex items-start justify-between gap-3">
@@ -176,19 +191,36 @@ export function CanvasInspector({
           {node.actionLabel || "打开入口"}
         </Link>
       ) : null}
+      {canRefreshTask ? (
+        <button
+          type="button"
+          aria-busy={refreshingTask || undefined}
+          className={operatorButtonClass("secondary", "mt-2 w-full")}
+          disabled={refreshingTask || refreshDisabled}
+          onClick={() => onRefreshTaskNode?.(node)}
+        >
+          {refreshingTask ? "刷新中" : "刷新任务状态"}
+        </button>
+      ) : null}
       {canExecute ? (
         <button
           type="button"
+          aria-busy={executing || undefined}
           className={operatorButtonClass("primary", "mt-2 w-full")}
-          disabled={executing}
+          disabled={executing || executeDisabled}
           onClick={() => onExecuteNode?.(node)}
         >
           {executing ? "执行中" : "后台执行"}
         </button>
       ) : null}
       {executionError ? (
-        <div className="mt-2 text-xs leading-5 text-red-600">
+        <div className="mt-2 text-xs leading-5 text-red-600" role="alert">
           {executionError}
+        </div>
+      ) : null}
+      {canRefreshTask && taskSyncError ? (
+        <div className="mt-2 text-xs leading-5 text-red-600" role="alert">
+          {taskSyncError}
         </div>
       ) : null}
     </OperatorPanel>

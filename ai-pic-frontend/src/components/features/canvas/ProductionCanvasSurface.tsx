@@ -3,7 +3,6 @@ import type {
   MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
   RefObject,
-  WheelEvent as ReactWheelEvent,
 } from "react";
 import { CanvasEdges } from "./ProductionCanvasElements";
 import { CanvasNodeCard } from "./ProductionCanvasNodeCard";
@@ -26,8 +25,8 @@ export function ProductionCanvasSurface({
   onCanvasPointerDown,
   onCanvasPointerMove,
   onCanvasPointerUp,
-  onCanvasWheel,
   onExecuteNode,
+  onFocusNode,
   onNodePointerDown,
   onSelectNode,
   selectedNodeId,
@@ -41,8 +40,8 @@ export function ProductionCanvasSurface({
   onCanvasPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onCanvasPointerMove: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onCanvasPointerUp: (event: ReactPointerEvent<HTMLDivElement>) => void;
-  onCanvasWheel: (event: ReactWheelEvent<HTMLDivElement>) => void;
   onExecuteNode: (node: ProductionCanvasNode) => void;
+  onFocusNode: (nodeId?: string) => void;
   onNodePointerDown: (
     event: ReactPointerEvent<HTMLButtonElement>,
     nodeId: string,
@@ -64,7 +63,6 @@ export function ProductionCanvasSurface({
       onPointerMove={onCanvasPointerMove}
       onPointerUp={onCanvasPointerUp}
       onPointerCancel={onCanvasPointerUp}
-      onWheel={onCanvasWheel}
       onDoubleClick={onCanvasDoubleClick}
     >
       <div
@@ -86,11 +84,15 @@ export function ProductionCanvasSurface({
         {canvasState.nodes.map((node) => (
           <CanvasNodeCard
             key={node.id}
+            executionDisabled={Boolean(
+              executingNodeId && executingNodeId !== node.id,
+            )}
             executing={executingNodeId === node.id}
             node={node}
             selected={node.id === selectedNodeId}
             worldBounds={worldBounds}
             onExecuteNode={onExecuteNode}
+            onFocusNode={onFocusNode}
             onSelect={onSelectNode}
             onPointerDown={onNodePointerDown}
           />
