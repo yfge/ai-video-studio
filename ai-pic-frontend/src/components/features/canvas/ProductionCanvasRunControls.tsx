@@ -3,14 +3,24 @@ import { operatorButtonClass } from "@/components/shared";
 
 export function ProductionCanvasRunControls({
   busy,
+  actionBusy,
+  actionStatus,
+  onCancel,
+  onResume,
   onRestore,
+  onRunReady,
   onRunIdChange,
   onSave,
   runId,
   status,
 }: {
   busy: boolean;
+  actionBusy?: boolean;
+  actionStatus?: string | null;
+  onCancel?: () => void;
+  onResume?: () => void;
   onRestore: (runId?: string) => void;
+  onRunReady?: () => void;
   onRunIdChange: (value: string) => void;
   onSave: () => void;
   runId: string;
@@ -74,7 +84,10 @@ export function ProductionCanvasRunControls({
       returnFocusToCanvas();
     }
   };
-  const statusText = [status, copyStatus].filter(Boolean).join(" · ");
+  const statusText = [status, actionStatus, copyStatus]
+    .filter(Boolean)
+    .join(" · ");
+  const controlsBusy = busy || actionBusy;
 
   return (
     <div className="flex flex-wrap items-end gap-2">
@@ -85,28 +98,28 @@ export function ProductionCanvasRunControls({
           className="mt-1 h-8 w-full rounded-md border border-gray-200 bg-white px-2 text-xs text-gray-800 placeholder:text-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
           value={runId}
           placeholder="创建后自动填入"
-          disabled={busy}
+          disabled={controlsBusy}
           onChange={(event) => onRunIdChange(event.currentTarget.value)}
           onKeyUp={(event) => {
-            if (event.key === "Enter" && !busy)
+            if (event.key === "Enter" && !controlsBusy)
               onRestore(event.currentTarget.value || runId);
           }}
         />
       </label>
       <button
         type="button"
-        aria-busy={busy || undefined}
+        aria-busy={controlsBusy || undefined}
         className={operatorButtonClass("secondary")}
-        disabled={busy}
+        disabled={controlsBusy}
         onClick={onSave}
       >
         保存画布
       </button>
       <button
         type="button"
-        aria-busy={busy || undefined}
+        aria-busy={controlsBusy || undefined}
         className={operatorButtonClass("ghost")}
-        disabled={busy}
+        disabled={controlsBusy}
         onClick={() => onRestore()}
       >
         恢复画布
@@ -114,7 +127,7 @@ export function ProductionCanvasRunControls({
       <button
         type="button"
         className={operatorButtonClass("ghost")}
-        disabled={busy || !trimmedRunId}
+        disabled={controlsBusy || !trimmedRunId}
         onClick={() => void copyRunId()}
       >
         复制 Run ID
@@ -122,11 +135,44 @@ export function ProductionCanvasRunControls({
       <button
         type="button"
         className={operatorButtonClass("ghost")}
-        disabled={busy || !trimmedRunId}
+        disabled={controlsBusy || !trimmedRunId}
         onClick={() => void copyRunLink()}
       >
         复制链接
       </button>
+      {onRunReady ? (
+        <button
+          type="button"
+          aria-busy={actionBusy || undefined}
+          className={operatorButtonClass("primary")}
+          disabled={controlsBusy || !trimmedRunId}
+          onClick={onRunReady}
+        >
+          运行就绪节点
+        </button>
+      ) : null}
+      {onResume ? (
+        <button
+          type="button"
+          aria-busy={actionBusy || undefined}
+          className={operatorButtonClass("secondary")}
+          disabled={controlsBusy || !trimmedRunId}
+          onClick={onResume}
+        >
+          继续运行
+        </button>
+      ) : null}
+      {onCancel ? (
+        <button
+          type="button"
+          aria-busy={actionBusy || undefined}
+          className={operatorButtonClass("ghost", "text-red-600")}
+          disabled={controlsBusy || !trimmedRunId}
+          onClick={onCancel}
+        >
+          取消运行
+        </button>
+      ) : null}
       {statusText ? (
         <div
           className="min-h-8 break-all px-1 py-1 text-xs leading-5 text-gray-500"
@@ -134,7 +180,13 @@ export function ProductionCanvasRunControls({
           role="status"
         >
           {status ? <span>{status}</span> : null}
-          {status && copyStatus ? <span aria-hidden="true"> · </span> : null}
+          {status && (actionStatus || copyStatus) ? (
+            <span aria-hidden="true"> · </span>
+          ) : null}
+          {actionStatus ? <span>{actionStatus}</span> : null}
+          {actionStatus && copyStatus ? (
+            <span aria-hidden="true"> · </span>
+          ) : null}
           {copyStatus ? <span>{copyStatus}</span> : null}
         </div>
       ) : null}

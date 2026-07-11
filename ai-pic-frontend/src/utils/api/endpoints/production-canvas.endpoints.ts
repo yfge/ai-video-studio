@@ -8,6 +8,10 @@ import type {
   ProductionCanvasSkillExecuteRequest,
   ProductionCanvasSkillExecuteResponse,
 } from "../types/production-canvas.types";
+import type {
+  ProductionCanvasRunActionRequest,
+  ProductionCanvasRunActionResponse,
+} from "../types/production-canvas-run.types";
 import type { ApiResponse } from "../types/common.types";
 
 async function createPlan(
@@ -40,6 +44,16 @@ async function getRun(
   return httpClient<ProductionCanvasRunResponse>(
     `/api/v1/production-canvas/runs/${encodeURIComponent(runId)}`,
     { method: "GET" },
+  );
+}
+
+async function controlRun(
+  runId: string,
+  data: ProductionCanvasRunActionRequest,
+): Promise<ApiResponse<ProductionCanvasRunActionResponse>> {
+  return httpClient<ProductionCanvasRunActionResponse>(
+    `/api/v1/production-canvas/runs/${encodeURIComponent(runId)}/actions`,
+    { method: "POST", body: JSON.stringify(data) },
   );
 }
 
@@ -103,6 +117,7 @@ async function placeNodeVideoInTimeline(
 export const productionCanvasAPI = {
   approveNodeCandidate,
   createPlan,
+  controlRun,
   executeSkill,
   getNodeCandidates,
   getRun,

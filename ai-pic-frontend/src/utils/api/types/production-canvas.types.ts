@@ -188,6 +188,19 @@ export interface ProductionCanvasPlanResponse {
 export interface ProductionCanvasRunResponse
   extends ProductionCanvasPlanResponse {
   saved_state?: ProductionCanvasSavedState | null;
+  execution_attempts?: ProductionCanvasExecutionAttempt[];
+}
+
+export interface ProductionCanvasExecutionAttempt {
+  attempt_id: number;
+  node_id: string;
+  skill: string;
+  status: ProductionCanvasNodeStatus;
+  definition_version: number;
+  definition_mode: "current" | "original";
+  task_id?: number | null;
+  task_status?: string | null;
+  created_at: string;
 }
 
 export interface ProductionCanvasMediaCandidate {

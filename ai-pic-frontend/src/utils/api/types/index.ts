@@ -15,6 +15,7 @@ export * from "./user.types";
 export * from "./task.types";
 export * from "./workbench.types";
 export * from "./production-canvas.types";
+export * from "./production-canvas-run.types";
 
 // Image and gallery types
 export * from "./image.types";

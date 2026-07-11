@@ -1,5 +1,4 @@
 "use client";
-import type * as React from "react";
 import { OperatorPanel, OperatorShell } from "@/components/shared";
 import { ProductionCanvasBackLink } from "./ProductionCanvasBackLink";
 import { ProductionCanvasInfoPanels } from "./ProductionCanvasInfoPanels";
@@ -10,13 +9,9 @@ import { ProductionCanvasToolbar } from "./ProductionCanvasToolbar";
 import { useProductionCanvasSkillPlanner } from "./useProductionCanvasSkillPlanner";
 import { useProductionCanvasController } from "./useProductionCanvasController";
 import { useProductionCanvasRunPersistence } from "./useProductionCanvasRunPersistence";
+import { useProductionCanvasRunActions } from "./useProductionCanvasRunActions";
 import { useProductionCanvasTaskSync } from "./useProductionCanvasTaskSync";
-import { useSavedNodeExecution } from "./useProductionCanvasNodeExecution";
-import {
-  nodeIdFromCanvasDoubleClick,
-  notePositionFromCanvasDoubleClick,
-} from "./productionCanvasDoubleClick";
-import { duplicateManualProductionCanvasNote } from "./productionCanvasNoteActions";
+import { useProductionCanvasBoardCommands } from "./useProductionCanvasBoardCommands";
 import { PRODUCTION_CANVAS_STORAGE_KEY } from "./productionCanvasViewModel";
 export function ProductionCanvasBoard(
   props: { initialRunId?: string | null } = {},
@@ -90,49 +85,33 @@ export function ProductionCanvasContent({
     onNodesCreated: appendNodes,
     onRunCreated: persistence.setRunId,
   });
+  const runActions = useProductionCanvasRunActions({
+    onStateUpdated: persistence.adoptServerState,
+    runId: persistence.runId,
+    saveCanvas: persistence.saveCanvas,
+  });
   const taskSync = useProductionCanvasTaskSync({
     onNodeUpdated: handleSyncNode,
   });
-  const focusCanvas = () => canvasRef.current?.focus({ preventScroll: true });
-  const withCanvasFocus = (command: () => void) => {
-    command();
-    focusCanvas();
-  };
-  const resetCanvas = () =>
-    withCanvasFocus(() => {
-      handleReset();
-      persistence.resetRun();
-    });
-  const executeNode = useSavedNodeExecution(persistence, planner, focusCanvas);
-  const handleDuplicateNote = (nodeId: string) => {
-    updateCanvasDefinition((state) =>
-      duplicateManualProductionCanvasNote(state, nodeId),
-    );
-    focusCanvas();
-  };
-  const handleCanvasDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    const nodeId = nodeIdFromCanvasDoubleClick(event);
-    if (nodeId) {
-      handleFocusSelectedNode(nodeId);
-      return;
-    }
-    handleAddNote(
-      notePositionFromCanvasDoubleClick(event, canvasState.viewport),
-    );
-  };
-  const handleBoardKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (
-      !event.altKey &&
-      !event.ctrlKey &&
-      !event.metaKey &&
-      event.key.toLowerCase() === "r"
-    ) {
-      event.preventDefault();
-      resetCanvas();
-      return;
-    }
-    handleCanvasKeyDown(event);
-  };
+  const {
+    executeNode,
+    focusCanvas,
+    handleBoardKeyDown,
+    handleCanvasDoubleClick,
+    handleDuplicateNote,
+    resetCanvas,
+    withCanvasFocus,
+  } = useProductionCanvasBoardCommands({
+    canvasRef,
+    canvasState,
+    handleAddNote,
+    handleCanvasKeyDown,
+    handleFocusSelectedNode,
+    handleReset,
+    persistence,
+    planner,
+    updateCanvasDefinition,
+  });
   return (
     <div className="space-y-4">
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
@@ -150,6 +129,8 @@ export function ProductionCanvasContent({
             running={planner.running}
           />
           <ProductionCanvasToolbar
+            actionBusy={Boolean(runActions.busyAction)}
+            actionStatus={runActions.status}
             busy={persistence.busy}
             canRedo={canRedo}
             canUndo={canUndo}
@@ -161,11 +142,14 @@ export function ProductionCanvasContent({
             onFit={() => withCanvasFocus(handleFit)}
             onFocusSelected={() => withCanvasFocus(handleFocusSelectedNode)}
             onReset={resetCanvas}
+            onCancelRun={() => void runActions.cancel()}
             onRedo={() => withCanvasFocus(handleRedo)}
             onRestore={(runId) =>
               withCanvasFocus(() => void persistence.restoreCanvas(runId))
             }
+            onResumeRun={() => void runActions.resume()}
             onRunIdChange={persistence.setRunId}
+            onRunReady={() => void runActions.runReady()}
             onSave={() => withCanvasFocus(() => void persistence.saveCanvas())}
             onUndo={() => withCanvasFocus(handleUndo)}
             onZoom={handleZoomButton}
@@ -217,6 +201,7 @@ export function ProductionCanvasContent({
             void taskSync.refreshTaskNodes(nodes);
             focusCanvas();
           }}
+          onRetryNode={(node, mode) => void runActions.retry(node, mode)}
           onRemoveEdge={(edge) => {
             handleRemoveEdge(edge);
             focusCanvas();
@@ -232,6 +217,11 @@ export function ProductionCanvasContent({
           onCanvasStateUpdated={persistence.adoptServerState}
           refreshError={taskSync.syncSummaryError}
           refreshingTasks={Boolean(taskSync.syncingNodeId)}
+          retryingNodeId={
+            runActions.busyAction?.startsWith("retry:")
+              ? runActions.busyAction.slice("retry:".length)
+              : null
+          }
           runId={persistence.runId}
           taskSyncError={
             taskSync.syncError && taskSync.syncError.nodeId === selectedNode?.id

@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render } from "@testing-library/react";
 import { JSDOM } from "jsdom";
 
 import { ProductionCanvasVideoTaskStatus } from "../src/components/features/canvas/ProductionCanvasVideoTaskStatus";
+import { ProductionCanvasRetryControls } from "../src/components/features/canvas/ProductionCanvasRetryControls";
 import type { ProductionCanvasNode } from "../src/components/features/canvas/productionCanvasModel";
 
 const dom = new JSDOM("<!doctype html><html><body></body></html>", {
@@ -48,6 +49,7 @@ describe("ProductionCanvasVideoTaskStatus", () => {
 
   it("retries a failed video task through node execution", () => {
     let retriedNode: ProductionCanvasNode | undefined;
+    let retriedMode = "";
     const failedNode: ProductionCanvasNode = {
       ...videoNode,
       status: "blocked",
@@ -58,17 +60,26 @@ describe("ProductionCanvasVideoTaskStatus", () => {
       },
     };
     const utils = render(
-      <ProductionCanvasVideoTaskStatus
-        node={failedNode}
-        onRetry={(node) => {
-          retriedNode = node;
-        }}
-      />,
+      <>
+        <ProductionCanvasVideoTaskStatus node={failedNode} />
+        <ProductionCanvasRetryControls
+          node={failedNode}
+          runId="canvas-run-1"
+          onRetry={(node, mode) => {
+            retriedNode = node;
+            retriedMode = mode;
+          }}
+        />
+      </>,
       { container: dom.window.document.body },
     );
 
     assert.ok(utils.getByText("错误：provider quota exceeded"));
+    fireEvent.change(utils.getByRole("combobox", { name: "重试定义" }), {
+      target: { value: "original" },
+    });
     fireEvent.click(utils.getByRole("button", { name: "重试视频生成" }));
     assert.equal(retriedNode?.id, failedNode.id);
+    assert.equal(retriedMode, "original");
   });
 });

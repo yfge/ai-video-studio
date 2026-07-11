@@ -3,6 +3,8 @@ import { ProductionCanvasRunControls } from "./ProductionCanvasRunControls";
 
 export function ProductionCanvasToolbar({
   busy,
+  actionBusy,
+  actionStatus,
   canRedo,
   canUndo,
   hasSelectedNode,
@@ -10,9 +12,12 @@ export function ProductionCanvasToolbar({
   onFit,
   onFocusSelected,
   onReset,
+  onCancelRun,
   onRedo,
   onRestore,
+  onResumeRun,
   onRunIdChange,
+  onRunReady,
   onSave,
   onUndo,
   onZoom,
@@ -21,6 +26,8 @@ export function ProductionCanvasToolbar({
   zoomLabel,
 }: {
   busy: boolean;
+  actionBusy?: boolean;
+  actionStatus?: string | null;
   canRedo: boolean;
   canUndo: boolean;
   hasSelectedNode: boolean;
@@ -28,9 +35,12 @@ export function ProductionCanvasToolbar({
   onFit: () => void;
   onFocusSelected: () => void;
   onReset: () => void;
+  onCancelRun?: () => void;
   onRedo: () => void;
   onRestore: (runId?: string) => void;
+  onResumeRun?: () => void;
   onRunIdChange: (value: string) => void;
+  onRunReady?: () => void;
   onSave: () => void;
   onUndo: () => void;
   onZoom: (steps: number) => void;
@@ -48,11 +58,16 @@ export function ProductionCanvasToolbar({
         添加便签
       </button>
       <ProductionCanvasRunControls
+        actionBusy={actionBusy}
+        actionStatus={actionStatus}
         busy={busy}
+        onCancel={onCancelRun}
+        onResume={onResumeRun}
         runId={runId}
         status={status}
         onRestore={onRestore}
         onRunIdChange={onRunIdChange}
+        onRunReady={onRunReady}
         onSave={onSave}
       />
       <button

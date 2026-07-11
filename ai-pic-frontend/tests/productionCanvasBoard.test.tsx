@@ -85,6 +85,12 @@ describe("ProductionCanvasBoard", () => {
     );
     assert.ok(utils.getByRole("button", { name: "添加便签" }));
     assert.ok(utils.getByRole("button", { name: "适配" }));
+    for (const label of ["运行就绪节点", "继续运行", "取消运行"]) {
+      assert.equal(
+        utils.getByRole("button", { name: label }).hasAttribute("disabled"),
+        true,
+      );
+    }
     assert.ok(utils.getByRole("navigation", { name: "画布小地图" }));
     assert.equal(
       utils.getByRole("button", { name: "定位选中" }).hasAttribute("disabled"),

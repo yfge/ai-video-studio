@@ -1,4 +1,4 @@
-import { StatusPill, operatorButtonClass } from "@/components/shared";
+import { StatusPill } from "@/components/shared";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
 import {
   outputNumber,
@@ -17,12 +17,8 @@ function videoTaskId(node: ProductionCanvasNode) {
 
 export function ProductionCanvasVideoTaskStatus({
   node,
-  onRetry,
-  retrying,
 }: {
   node?: ProductionCanvasNode;
-  onRetry?: (node: ProductionCanvasNode) => void;
-  retrying?: boolean;
 }) {
   if (node?.skill !== "video.candidates") return null;
   const taskId = videoTaskId(node);
@@ -60,18 +56,6 @@ export function ProductionCanvasVideoTaskStatus({
         >
           {error ? `错误：${error}` : `进度：${progress}`}
         </p>
-      ) : null}
-      {failed && onRetry ? (
-        <button
-          type="button"
-          aria-busy={retrying || undefined}
-          className={operatorButtonClass("primary", "mt-2 w-full gap-1.5")}
-          disabled={retrying}
-          onClick={() => onRetry(node)}
-        >
-          <span aria-hidden="true">↻</span>
-          {retrying ? "重新提交中" : "重试视频生成"}
-        </button>
       ) : null}
     </section>
   );

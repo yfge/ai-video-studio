@@ -21,6 +21,7 @@ export function ProductionCanvasSidePanel({
   onExecuteDownstream,
   onRefreshTaskNode,
   onRefreshTasks,
+  onRetryNode,
   onRemoveEdge,
   onRemoveNode,
   onReturnFocus,
@@ -30,6 +31,7 @@ export function ProductionCanvasSidePanel({
   onCanvasStateUpdated,
   refreshError,
   refreshingTasks,
+  retryingNodeId,
   runId,
   taskSyncError,
   taskSyncingNodeId,
@@ -45,6 +47,7 @@ export function ProductionCanvasSidePanel({
   onExecuteDownstream: (node: ProductionCanvasNode) => void;
   onRefreshTaskNode: (node: ProductionCanvasNode) => void;
   onRefreshTasks: (nodes: ProductionCanvasNode[]) => void;
+  onRetryNode: NodeToolsProps["onRetryNode"];
   onRemoveEdge: (edge: ProductionCanvasEdge) => void;
   onRemoveNode: (nodeId: string) => void;
   onReturnFocus: () => void;
@@ -54,6 +57,7 @@ export function ProductionCanvasSidePanel({
   onCanvasStateUpdated: NodeToolsProps["onCanvasStateUpdated"];
   refreshError?: string | null;
   refreshingTasks?: boolean;
+  retryingNodeId?: string | null;
   runId: string;
   taskSyncError?: string | null;
   taskSyncingNodeId?: string | null;
@@ -78,7 +82,7 @@ export function ProductionCanvasSidePanel({
         onDuplicateNote={onDuplicateNote}
         onReturnFocus={onReturnFocus}
         onRefreshTasks={onRefreshTasks}
-        onRetryNode={onExecuteNode}
+        onRetryNode={onRetryNode}
         onRemoveEdge={onRemoveEdge}
         onRemoveNode={onRemoveNode}
         onSelectNode={onSelectNode}
@@ -87,7 +91,7 @@ export function ProductionCanvasSidePanel({
         onCanvasStateUpdated={onCanvasStateUpdated}
         refreshError={refreshError}
         refreshingTasks={refreshingTasks}
-        retryingNode={executingNodeId === node?.id}
+        retryingNode={retryingNodeId === node?.id}
         runId={runId}
       />
       <OperatorPanel className="p-4">

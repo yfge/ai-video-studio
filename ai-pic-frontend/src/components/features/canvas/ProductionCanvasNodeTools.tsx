@@ -4,6 +4,7 @@ import { ProductionCanvasCandidateReview } from "./ProductionCanvasCandidateRevi
 import { ProductionCanvasMediaControls } from "./ProductionCanvasMediaControls";
 import { ProductionCanvasNoteControls } from "./ProductionCanvasNoteControls";
 import { ProductionCanvasTaskSummary } from "./ProductionCanvasTaskSummary";
+import { ProductionCanvasRetryControls } from "./ProductionCanvasRetryControls";
 import { ProductionCanvasVideoTaskStatus } from "./ProductionCanvasVideoTaskStatus";
 import type {
   ProductionCanvasEdge,
@@ -42,7 +43,7 @@ export function ProductionCanvasNodeTools({
   onDuplicateNote: (nodeId: string) => void;
   onReturnFocus?: () => void;
   onRefreshTasks?: (nodes: ProductionCanvasNode[]) => void;
-  onRetryNode?: (node: ProductionCanvasNode) => void;
+  onRetryNode?: Parameters<typeof ProductionCanvasRetryControls>[0]["onRetry"];
   onRemoveEdge: (edge: ProductionCanvasEdge) => void;
   onRemoveNode: (nodeId: string) => void;
   onSelectNode: (nodeId: string) => void;
@@ -77,10 +78,12 @@ export function ProductionCanvasNodeTools({
         node={node}
         onUpdateNodeOutputs={onUpdateNodeOutputs}
       />
-      <ProductionCanvasVideoTaskStatus
+      <ProductionCanvasVideoTaskStatus node={node} />
+      <ProductionCanvasRetryControls
         node={node}
         onRetry={onRetryNode}
         retrying={retryingNode}
+        runId={runId}
       />
       <ProductionCanvasCandidateReview
         node={node}
