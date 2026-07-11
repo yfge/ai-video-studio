@@ -1,6 +1,6 @@
 # Production Canvas Design
 
-> Status: Proposed
+> Status: Implemented through Phase 3; Phase 4 planned
 >
 > Last updated: 2026-07-11
 
@@ -352,30 +352,44 @@ must already identify who changed definitions and who approved outputs.
 
 ## Current State And Gap
 
-As of 2026-07-11, the implementation has a real `/canvas` route, dynamic plan
-nodes, direct skill execution, task evidence, task refresh, media parameters,
-editable visual edges, notes, pan/zoom/drag interactions, keyboard controls,
-server-backed run persistence, autosave, and restore links.
+As of 2026-07-11, Phases 1-3 are implemented on the real `/canvas` route:
 
-The current graph is not yet the execution source of truth:
+- The backend validates versioned typed ports and edges, computes readiness
+  from graph dependencies, resolves bound inputs into existing skill requests,
+  and supports Run Node, Run Downstream, and Run Ready.
+- Definition, binding, and selected-output changes increment versions and mark
+  affected descendants stale. The UI shows that impact before a candidate
+  switch.
+- Image and video nodes show persistent media history and previewable
+  candidates. Approval, rejection with an optional reason, reviewer identity,
+  and review timestamps survive Run ID restoration independently from browser
+  autosave.
+- Approved video placement targets a stable Timeline clip and expected Timeline
+  version, then returns the updated version and media lineage to the canvas.
+- Scene and episode sections, minimap navigation, search and filters,
+  multi-select layout operations, duplication, undo/redo, diagnostics, retry,
+  resume, and cancel are available as production recovery tools.
+- Task attempts and media assets remain execution evidence; the saved graph and
+  review state remain the current orchestration definition.
 
-- The planner does not consume canvas edges when building skill requests.
-- Auto-execution scans ready nodes rather than scheduling from graph
-  dependencies.
-- Visual edges do not define typed ports, input mapping, or stale descendants.
-- Node cards do not show real candidate previews, generation history, approval,
-  or downstream consumption.
-- Timeline placement is represented as a stage but is not yet the complete
-  approved-video-to-stable-clip contract described above.
-- Raw outputs and backend reuse details are more visible than creative review
-  decisions.
+The remaining product gaps are deliberately outside the completed first
+vertical slice:
 
-This means the current product is an interactive task dashboard over existing
-pipelines, not yet a complete production workflow canvas.
+- Candidate regeneration and branching do not yet preserve a first-class
+  parent-candidate relationship.
+- Comments, commenter/approver permissions, shared activity history, and
+  reusable domain templates remain Phase 4 work.
+- Large-production performance budgets, viewport virtualization, and scale
+  regression evidence have not yet been defined.
+- Before release, the complete provider-backed image-to-video-to-Timeline path
+  still needs one consolidated current-environment browser run; existing
+  evidence is distributed across the implementation slices.
 
 ## Delivery Phases
 
 ### Phase 1: Executable typed graph
+
+Status: Complete.
 
 - Introduce versioned node ports and typed edge bindings.
 - Validate graph mutations and restored definitions on the backend.
@@ -386,6 +400,10 @@ Exit criterion: changing an edge changes the actual request context and the
 affected downstream execution set.
 
 ### Phase 2: Media candidate review vertical slice
+
+Status: Implemented for approval, rejection, restoration, stale propagation,
+and stable Timeline placement. Candidate regeneration and branching remain a
+Phase 4 extension, and consolidated release validation remains open.
 
 - Render real image and video candidates inside nodes.
 - Preserve candidate history across retries.
@@ -398,6 +416,8 @@ canvas without copying URLs or IDs.
 
 ### Phase 3: Production organization and recovery
 
+Status: Complete for the interaction and run-control scope below.
+
 - Add scene/episode sections, minimap, search, filters, and multi-select.
 - Add retry with original/current definition, cancel, and resume.
 - Show stale impact before changing approved inputs.
@@ -408,6 +428,8 @@ after partial failure or upstream revision.
 
 ### Phase 4: Collaboration and reuse
 
+Status: Planned.
+
 - Add comments, approver identity, permissions, and activity history.
 - Add reusable domain templates and subflows without exposing provider-specific
   implementation graphs.
@@ -417,6 +439,11 @@ Exit criterion: a production team can review, approve, and reuse workflows
 without sharing operator credentials or rebuilding graph structure manually.
 
 ## First Vertical-Slice Acceptance Criteria
+
+Implementation status: complete across the tracked slices. Release acceptance
+remains open until one current-environment browser run covers the whole path.
+The repository task board and per-change `agent_chats` entries are the source
+of truth for existing commands, Run IDs, request IDs, and browser artifacts.
 
 - A real image-generation execution creates previewable candidates on its
   canvas node.
