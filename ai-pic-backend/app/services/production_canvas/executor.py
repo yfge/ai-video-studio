@@ -36,6 +36,7 @@ from app.services.production_canvas.render_execution import (
 )
 from app.services.production_canvas.report_execution import execute_report_summary
 from app.services.production_canvas.run_persistence import load_canvas_saved_state
+from app.services.production_canvas.stale_runtime import canvas_node_input_fingerprint
 from sqlalchemy.orm import Session
 
 
@@ -81,6 +82,7 @@ def _resolved_execution(
     db: Session,
     user: User,
     resolution: CanvasGraphResolution,
+    state: ProductionCanvasSavedState,
 ) -> ProductionCanvasSkillExecuteResponse:
     if resolution.missing_inputs:
         response = blocked_result(
@@ -96,6 +98,9 @@ def _resolved_execution(
             "node_id": resolution.node_id,
             "resolved_inputs": resolution.resolved_inputs,
             "execution_order": resolution.execution_order,
+            "input_fingerprint": canvas_node_input_fingerprint(
+                state, resolution.node_id
+            ),
         }
     )
 
@@ -109,6 +114,7 @@ def _node_execution(
         task_status=response.task_status,
         node_id=response.node_id,
         resolved_inputs=response.resolved_inputs,
+        input_fingerprint=response.input_fingerprint,
     )
 
 
@@ -134,7 +140,7 @@ def _execute_downstream(
         resolution = resolve_canvas_graph_request(working_state, node_request)
         if resolution is None:
             break
-        response = _resolved_execution(db, user, resolution)
+        response = _resolved_execution(db, user, resolution, working_state)
         execution = _node_execution(response)
         executions.append(execution)
         working_state = apply_canvas_node_execution(working_state, execution)
@@ -169,4 +175,4 @@ def execute_canvas_skill(
         return _dispatch_canvas_skill(db, user, request)
     if request.execution_scope == "downstream":
         return _execute_downstream(db, user, request, state, resolution)
-    return _resolved_execution(db, user, resolution)
+    return _resolved_execution(db, user, resolution, state)

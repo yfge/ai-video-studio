@@ -143,6 +143,7 @@ class ProductionCanvasSavedNode(BaseModel):
     action_href: str | None = None
     action_label: str | None = None
     definition_version: int = Field(1, ge=1)
+    execution_input_fingerprint: str | None = Field(None, max_length=64)
     input_ports: list[ProductionCanvasSavedPort] = Field(default_factory=list)
     output_ports: list[ProductionCanvasSavedPort] = Field(default_factory=list)
 
@@ -195,6 +196,7 @@ class ProductionCanvasNodeExecution(BaseModel):
     task_status: str | None = None
     node_id: str | None = None
     resolved_inputs: dict[str, Any] = Field(default_factory=dict)
+    input_fingerprint: str | None = None
 
 
 class ProductionCanvasSkillExecuteResponse(ProductionCanvasNodeExecution):

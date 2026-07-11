@@ -14,6 +14,7 @@ from app.schemas.production_canvas import (
 )
 from app.services.production_canvas.nodes import build_plan_nodes
 from app.services.production_canvas.skills import list_canvas_skill_definitions
+from app.services.production_canvas.stale_runtime import apply_canvas_stale_state
 from sqlalchemy.orm import Session
 
 
@@ -214,6 +215,10 @@ def save_canvas_state(
     if task_and_payload is None:
         return None
     task, payload = task_and_payload
+    previous = None
+    if isinstance(payload.get("saved_state"), dict):
+        previous = ProductionCanvasSavedState.model_validate(payload["saved_state"])
+    state = apply_canvas_stale_state(previous, state)
     payload["saved_state"] = state.model_dump(by_alias=True)
     task.parameters = json.dumps(payload, ensure_ascii=False)
     db.commit()

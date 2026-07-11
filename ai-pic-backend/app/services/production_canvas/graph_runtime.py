@@ -35,6 +35,7 @@ def apply_canvas_node_execution(
                 update={
                     "outputs": {**node.outputs, **execution.skill_result.outputs},
                     "status": execution.skill_result.status,
+                    "execution_input_fingerprint": execution.input_fingerprint,
                 }
             )
             if node.id == execution.node_id
@@ -46,6 +47,8 @@ def apply_canvas_node_execution(
 
 
 def _node_value(node: ProductionCanvasSavedNode, port_id: str, selected: bool):
+    if node.status == "stale":
+        return None
     outputs = node.outputs or {}
     if port_id in outputs:
         return outputs[port_id]
@@ -84,7 +87,7 @@ def _target_node(
     return matches[0] if len(matches) == 1 else None
 
 
-def _resolved_inputs(
+def resolved_canvas_inputs(
     state: ProductionCanvasSavedState,
     target: ProductionCanvasSavedNode,
 ) -> tuple[dict[str, Any], list[str]]:
@@ -197,7 +200,7 @@ def resolve_canvas_graph_request(
     target = _target_node(state, request)
     if target is None:
         return None
-    values, missing = _resolved_inputs(state, target)
+    values, missing = resolved_canvas_inputs(state, target)
     resolved_request = request.model_copy(update=_request_updates(values))
     order = (
         _execution_order(state, target.id)
@@ -218,9 +221,9 @@ def evaluate_canvas_graph(
 ) -> ProductionCanvasGraphEvaluation:
     node_states: list[ProductionCanvasGraphNodeState] = []
     for node in state.nodes:
-        _, missing = _resolved_inputs(state, node)
+        _, missing = resolved_canvas_inputs(state, node)
         status = node.status
-        if node.kind != "note" and status in {"draft", "ready", "blocked", "stale"}:
+        if node.kind != "note" and status in {"draft", "ready", "blocked"}:
             status = "draft" if missing else "ready"
         node_states.append(
             ProductionCanvasGraphNodeState(

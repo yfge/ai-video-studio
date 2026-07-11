@@ -104,6 +104,7 @@ def test_run_downstream_executes_in_dependency_order_and_persists_nodes(client):
     nodes = {node["id"]: node for node in restored["saved_state"]["nodes"]}
     for node_id in ("root", "middle", "leaf"):
         assert nodes[node_id]["outputs"]["prompt"] == "贯穿三节点的真实输入"
+        assert len(nodes[node_id]["execution_input_fingerprint"]) == 64
 
 
 def test_run_downstream_stops_when_an_intermediate_node_is_blocked(client):
@@ -115,3 +116,52 @@ def test_run_downstream_stops_when_an_intermediate_node_is_blocked(client):
     blocked = result["executions"][1]["skill_result"]
     assert blocked["status"] == "blocked"
     assert blocked["outputs"]["required_inputs"] == ["episode"]
+
+
+def test_changed_typed_output_marks_descendants_stale_until_rerun(client):
+    run_id = _create_run(client, _brief_chain_state())
+    _run_downstream(client, run_id, "第一版生产输入")
+    restored = client.get(f"/api/v1/production-canvas/runs/{run_id}").json()["data"]
+    state = restored["saved_state"]
+    nodes = {node["id"]: node for node in state["nodes"]}
+    nodes["root"]["outputs"]["prompt"] = "第二版生产输入"
+
+    saved = client.put(
+        f"/api/v1/production-canvas/runs/{run_id}/state",
+        json=state,
+    )
+
+    assert saved.status_code == 200
+    stale_nodes = {
+        node["id"]: node for node in saved.json()["data"]["saved_state"]["nodes"]
+    }
+    assert stale_nodes["root"]["status"] == "ready"
+    assert stale_nodes["middle"]["status"] == "stale"
+    assert stale_nodes["leaf"]["status"] == "stale"
+    evaluation = client.get(f"/api/v1/production-canvas/runs/{run_id}/graph").json()[
+        "data"
+    ]
+    evaluated = {node["node_id"]: node for node in evaluation["node_states"]}
+    assert evaluated["middle"]["status"] == "stale"
+    assert evaluated["leaf"]["status"] == "stale"
+    assert evaluated["leaf"]["missing_inputs"] == ["production_brief"]
+
+    rerun = client.post(
+        "/api/v1/production-canvas/execute",
+        json={
+            "prompt": "不得覆盖类型化输入",
+            "skill": "brief.compose",
+            "node_id": "middle",
+            "run_id": run_id,
+            "execution_scope": "downstream",
+        },
+    ).json()["data"]
+
+    assert [item["node_id"] for item in rerun["executions"]] == ["middle", "leaf"]
+    assert rerun["executions"][0]["resolved_inputs"] == {
+        "production_brief": "第二版生产输入"
+    }
+    refreshed = client.get(f"/api/v1/production-canvas/runs/{run_id}").json()["data"]
+    refreshed_nodes = {node["id"]: node for node in refreshed["saved_state"]["nodes"]}
+    assert refreshed_nodes["middle"]["status"] == "ready"
+    assert refreshed_nodes["leaf"]["status"] == "ready"

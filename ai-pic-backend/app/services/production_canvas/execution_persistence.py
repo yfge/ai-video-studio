@@ -34,6 +34,7 @@ def _response_executions(
             task_status=response.task_status,
             node_id=response.node_id,
             resolved_inputs=response.resolved_inputs,
+            input_fingerprint=response.input_fingerprint,
         )
     ]
 
@@ -75,6 +76,7 @@ def save_canvas_execution_response(
                 **(node.get("outputs") or {}),
                 **execution.skill_result.outputs,
             }
+            node["execution_input_fingerprint"] = execution.input_fingerprint
 
     task.parameters = json.dumps(payload, ensure_ascii=False)
     db.commit()
