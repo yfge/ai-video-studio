@@ -93,6 +93,41 @@ describe("ProductionCanvasBoard", () => {
     assert.ok(utils.getByText("100%"));
   });
 
+  it("undoes and redoes graph definition changes", () => {
+    const utils = render(<ProductionCanvasContent storageKey={null} />, {
+      container: dom.window.document.body,
+    });
+    const canvas = utils.container.querySelector<HTMLElement>(
+      "[data-production-canvas='infinite-canvas']",
+    );
+    const undo = utils.getByRole("button", { name: "撤销图定义变更" });
+    const redo = utils.getByRole("button", { name: "重做图定义变更" });
+    assert.ok(canvas);
+    assert.equal(undo.hasAttribute("disabled"), true);
+    assert.equal(redo.hasAttribute("disabled"), true);
+
+    fireEvent.click(utils.getByRole("button", { name: "添加便签" }));
+    assert.ok(utils.container.querySelector("[data-canvas-node='note-1']"));
+    assert.equal(undo.hasAttribute("disabled"), false);
+
+    fireEvent.click(undo);
+    assert.equal(
+      utils.container.querySelector("[data-canvas-node='note-1']"),
+      null,
+    );
+    assert.equal(redo.hasAttribute("disabled"), false);
+
+    fireEvent.click(redo);
+    assert.ok(utils.container.querySelector("[data-canvas-node='note-1']"));
+    fireEvent.keyDown(canvas, { key: "z", metaKey: true });
+    assert.equal(
+      utils.container.querySelector("[data-canvas-node='note-1']"),
+      null,
+    );
+    fireEvent.keyDown(canvas, { key: "z", metaKey: true, shiftKey: true });
+    assert.ok(utils.container.querySelector("[data-canvas-node='note-1']"));
+  });
+
   it("navigates to nodes from the minimap", () => {
     const utils = render(<ProductionCanvasContent storageKey={null} />, {
       container: dom.window.document.body,

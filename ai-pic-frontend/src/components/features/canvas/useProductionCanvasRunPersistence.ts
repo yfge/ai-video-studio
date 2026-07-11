@@ -35,11 +35,13 @@ export function useProductionCanvasRunPersistence({
   autosaveDelayMs = 1200,
   canvasState,
   initialRunId,
+  onStateRestored,
   replaceCanvasState,
 }: {
   autosaveDelayMs?: number | null;
   canvasState: ProductionCanvasState;
   initialRunId?: string | null;
+  onStateRestored?: () => void;
   replaceCanvasState: Dispatch<SetStateAction<ProductionCanvasState>>;
 }) {
   const initialRunIdValue = productionCanvasRunIdFromInput(initialRunId || "");
@@ -53,14 +55,12 @@ export function useProductionCanvasRunPersistence({
     (value: string) => setRunIdValue(productionCanvasRunIdFromInput(value)),
     [],
   );
-
   const resolvedRunId = useCallback(
     (state: ProductionCanvasState = canvasState) =>
       productionCanvasRunIdFromInput(runId) ||
       canvasRunIdFromNodes(state.nodes),
     [canvasState, runId],
   );
-
   const saveCanvasState = useCallback(
     async (
       targetRunId: string,
@@ -114,7 +114,6 @@ export function useProductionCanvasRunPersistence({
     },
     [busy, replaceCanvasState],
   );
-
   const saveCanvas = async () => {
     const targetRunId = resolvedRunId();
     if (!targetRunId) {
@@ -123,7 +122,6 @@ export function useProductionCanvasRunPersistence({
     }
     return saveCanvasState(targetRunId, canvasState, "manual");
   };
-
   useEffect(() => {
     if (autosaveDelayMs === null || autosaveDelayMs < 0 || busy) return;
     if (initialRunIdValue && !lastSavedSignature.current) return;
@@ -210,6 +208,7 @@ export function useProductionCanvasRunPersistence({
         const restoredState = productionCanvasStateFromRun(response.data);
         const nextRunId = response.data.run_id || targetRunId;
         replaceCanvasState(restoredState);
+        onStateRestored?.();
         lastSavedSignature.current = productionCanvasStateSignature(
           nextRunId,
           restoredState,
@@ -222,7 +221,7 @@ export function useProductionCanvasRunPersistence({
         setBusy(false);
       }
     },
-    [busy, replaceCanvasState, resolvedRunId],
+    [busy, onStateRestored, replaceCanvasState, resolvedRunId],
   );
 
   useEffect(() => {

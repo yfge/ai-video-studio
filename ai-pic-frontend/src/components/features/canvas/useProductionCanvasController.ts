@@ -1,20 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type {
-  ProductionCanvasEdge,
-  ProductionCanvasNode,
-} from "./productionCanvasModel";
-import {
-  addProductionCanvasEdge,
-  removeProductionCanvasEdge,
-  updateProductionCanvasNode,
-  updateProductionCanvasNodeOutputs,
-  type ProductionCanvasOutputPatch,
-} from "./productionCanvasGraphState";
-import {
-  addProductionCanvasNote,
-  applyProductionCanvasContext,
-  createProductionCanvasState,
-} from "./productionCanvasState";
+import type { ProductionCanvasNode } from "./productionCanvasModel";
+import { updateProductionCanvasNode } from "./productionCanvasGraphState";
+import { selectProductionCanvasNode } from "./productionCanvasSelection";
+import { createProductionCanvasState } from "./productionCanvasState";
 import {
   CANVAS_BASE_HEIGHT,
   CANVAS_BASE_WIDTH,
@@ -22,17 +10,19 @@ import {
   getWorldBounds,
   readStoredCanvasState,
 } from "./productionCanvasViewModel";
+import { useProductionCanvasDefinitionActions } from "./useProductionCanvasDefinitionActions";
+import { useProductionCanvasHistory } from "./useProductionCanvasHistory";
 import { useProductionCanvasInteractionControls } from "./useProductionCanvasInteractionControls";
 import { useProductionCanvasKeyboardCommands } from "./useProductionCanvasKeyboardCommands";
-import { selectProductionCanvasNode } from "./productionCanvasSelection";
-import { useProductionCanvasSelectionActions } from "./useProductionCanvasSelectionActions";
-import {
-  removeProductionCanvasSectionNode,
-  toggleProductionCanvasSection,
-} from "./productionCanvasSections";
 
 export function useProductionCanvasController(storageKey?: string | null) {
-  const [canvasState, setCanvasState] = useState(createProductionCanvasState);
+  const history = useProductionCanvasHistory(createProductionCanvasState);
+  const {
+    canvasState,
+    setCanvasDefinition,
+    setCanvasState,
+    replaceCanvasState,
+  } = history;
   const [storageLoaded, setStorageLoaded] = useState(storageKey === null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const worldBounds = useMemo(
@@ -42,25 +32,23 @@ export function useProductionCanvasController(storageKey?: string | null) {
   const selectedNode = canvasState.nodes.find(
     (node) => node.id === canvasState.selectedNodeId,
   );
-  const selectionActions = useProductionCanvasSelectionActions(setCanvasState);
+  const definitionActions = useProductionCanvasDefinitionActions({
+    canvasRef,
+    setCanvasDefinition,
+  });
   const zoomLabel = `${Math.round(canvasState.viewport.zoom * 100)}%`;
-  const {
-    handleCanvasPointerDown,
-    handleCanvasPointerMove,
-    handleCanvasPointerUp,
-    handleFit,
-    handleNodePointerDown,
-    handleZoomButton,
-  } = useProductionCanvasInteractionControls({
+  const interaction = useProductionCanvasInteractionControls({
     canvasRef,
     canvasState,
+    endHistoryGroup: history.endHistoryGroup,
+    setCanvasDefinition,
     setCanvasState,
   });
 
   useEffect(() => {
-    setCanvasState(readStoredCanvasState(storageKey));
+    replaceCanvasState(readStoredCanvasState(storageKey));
     setStorageLoaded(true);
-  }, [storageKey]);
+  }, [replaceCanvasState, storageKey]);
 
   useEffect(() => {
     if (!storageKey || !storageLoaded || typeof window === "undefined") return;
@@ -71,32 +59,7 @@ export function useProductionCanvasController(storageKey?: string | null) {
     setCanvasState((state) =>
       selectProductionCanvasNode(state, nodeId, additive),
     );
-  const handleToggleSection = (sectionId: string) =>
-    setCanvasState((state) => toggleProductionCanvasSection(state, sectionId));
-
-  const handleAddEdge = (edge: ProductionCanvasEdge) =>
-    setCanvasState((state) => ({
-      ...state,
-      edges: addProductionCanvasEdge(state.edges, edge),
-    }));
-  const handleRemoveEdge = (edge: ProductionCanvasEdge) =>
-    setCanvasState((state) => ({
-      ...state,
-      edges: removeProductionCanvasEdge(state.edges, edge),
-    }));
-  const handleRemoveNode = (nodeId: string) => {
-    setCanvasState((state) => removeProductionCanvasSectionNode(state, nodeId));
-  };
-  const handleUpdateNodeOutputs = (
-    nodeId: string,
-    patch: ProductionCanvasOutputPatch,
-  ) =>
-    setCanvasState((state) => ({
-      ...state,
-      nodes: updateProductionCanvasNodeOutputs(state.nodes, nodeId, patch),
-    }));
-
-  const handleUpdateNode = (
+  const handleSyncNode = (
     nodeId: string,
     patch: Partial<ProductionCanvasNode>,
   ) =>
@@ -104,9 +67,8 @@ export function useProductionCanvasController(storageKey?: string | null) {
       ...state,
       nodes: updateProductionCanvasNode(state.nodes, nodeId, patch),
     }));
-
   const handleReset = () => {
-    setCanvasState(createProductionCanvasState());
+    replaceCanvasState(createProductionCanvasState());
     if (storageKey && typeof window !== "undefined") {
       window.localStorage.removeItem(storageKey);
     }
@@ -148,86 +110,38 @@ export function useProductionCanvasController(storageKey?: string | null) {
     canvasRef.current?.focus({ preventScroll: true });
   };
 
-  const handleAddNote = (targetPosition?: { x: number; y: number }) => {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    setCanvasState((state) => {
-      const position = targetPosition || {
-        x:
-          ((rect?.width || 720) / 2 - state.viewport.x) / state.viewport.zoom -
-          95,
-        y:
-          ((rect?.height || 420) / 2 - state.viewport.y) / state.viewport.zoom -
-          48,
-      };
-      const noteIndex =
-        state.nodes.filter((node) => node.kind === "note").length + 1;
-      const nodes = addProductionCanvasNote(state.nodes, noteIndex, position);
-      return {
-        ...state,
-        nodes,
-        selectedNodeId: nodes[nodes.length - 1]?.id || state.selectedNodeId,
-        selectedNodeIds: [nodes[nodes.length - 1]?.id || state.selectedNodeId],
-      };
-    });
-    canvasRef.current?.focus({ preventScroll: true });
-  };
-
   const handleCanvasKeyDown = useProductionCanvasKeyboardCommands({
-    handleAddNote,
-    handleFit,
+    handleAddNote: definitionActions.handleAddNote,
+    handleFit: interaction.handleFit,
     handleFocusSelectedNode,
-    handleRemoveNode,
+    handleRedo: history.redo,
+    handleRemoveNode: definitionActions.handleRemoveNode,
     handleSelectNode,
-    handleZoomButton,
+    handleUndo: history.undo,
+    handleZoomButton: interaction.handleZoomButton,
     selectedNode,
-    setCanvasState,
+    setCanvasDefinition,
   });
 
-  const appendNodes = (nodes: ProductionCanvasNode[]) => {
-    if (!nodes.length) return;
-    setCanvasState((state) => {
-      const incomingIds = new Set(nodes.map((node) => node.id));
-      const nextState = {
-        ...state,
-        nodes: [
-          ...state.nodes.filter((node) => !incomingIds.has(node.id)),
-          ...nodes,
-        ],
-        selectedNodeId: nodes[0]?.id || state.selectedNodeId,
-        selectedNodeIds: [nodes[0]?.id || state.selectedNodeId],
-      };
-      return {
-        ...nextState,
-        nodes: applyProductionCanvasContext(nextState.nodes),
-      };
-    });
-  };
-
   return {
-    appendNodes,
+    ...definitionActions,
+    ...interaction,
     canvasRef,
     canvasState,
-    handleAddNote,
-    handleAddEdge,
+    canRedo: history.canRedo,
+    canUndo: history.canUndo,
+    clearHistory: history.clearHistory,
     handleCanvasKeyDown,
-    handleCanvasPointerDown,
-    handleCanvasPointerMove,
-    handleCanvasPointerUp,
-    handleFit,
     handleFocusSelectedNode,
-    handleNodePointerDown,
     handleNavigate,
+    handleRedo: history.redo,
     handleReset,
-    handleRemoveEdge,
-    handleRemoveNode,
     handleSelectNode,
-    handleUpdateNode,
-    handleUpdateNodeOutputs,
-    handleToggleSection,
-    handleZoomButton,
+    handleSyncNode,
+    handleUndo: history.undo,
     replaceCanvasState: setCanvasState,
     selectedNode,
-    selectionActions,
+    updateCanvasDefinition: setCanvasDefinition,
     worldBounds,
     zoomLabel,
   };

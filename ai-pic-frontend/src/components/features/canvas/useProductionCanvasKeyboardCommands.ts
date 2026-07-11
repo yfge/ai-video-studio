@@ -1,8 +1,4 @@
-import type {
-  Dispatch,
-  KeyboardEvent as ReactKeyboardEvent,
-  SetStateAction,
-} from "react";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
 import { duplicateManualProductionCanvasNote } from "./productionCanvasNoteActions";
 import { duplicateProductionCanvasSelection } from "./productionCanvasSelection";
@@ -11,28 +7,53 @@ import {
   getProductionCanvasKeyboardNudge,
 } from "./productionCanvasKeyboard";
 import { isManualProductionCanvasNote } from "./productionCanvasSkillNodes";
-import type { ProductionCanvasState } from "./productionCanvasState";
+import type { ProductionCanvasDefinitionSetter } from "./useProductionCanvasHistory";
+
+function isEditableTarget(target: EventTarget | null) {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable ||
+      ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))
+  );
+}
 
 export function useProductionCanvasKeyboardCommands({
   handleAddNote,
   handleFit,
   handleFocusSelectedNode,
   handleRemoveNode,
+  handleRedo,
   handleSelectNode,
+  handleUndo,
   handleZoomButton,
   selectedNode,
-  setCanvasState,
+  setCanvasDefinition,
 }: {
   handleAddNote: () => void;
   handleFit: () => void;
   handleFocusSelectedNode: () => void;
   handleRemoveNode: (nodeId: string) => void;
+  handleRedo: () => void;
   handleSelectNode: (nodeId: string) => void;
+  handleUndo: () => void;
   handleZoomButton: (steps: number) => void;
   selectedNode?: ProductionCanvasNode;
-  setCanvasState: Dispatch<SetStateAction<ProductionCanvasState>>;
+  setCanvasDefinition: ProductionCanvasDefinitionSetter;
 }) {
   return (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (
+      !event.altKey &&
+      (event.ctrlKey || event.metaKey) &&
+      !isEditableTarget(event.target) &&
+      (event.key.toLowerCase() === "z" ||
+        (!event.metaKey && event.key.toLowerCase() === "y"))
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.shiftKey || event.key.toLowerCase() === "y") handleRedo();
+      else handleUndo();
+      return;
+    }
     if (event.key === "Delete" || event.key === "Backspace") {
       if (!isManualProductionCanvasNote(selectedNode)) return;
       event.preventDefault();
@@ -72,7 +93,7 @@ export function useProductionCanvasKeyboardCommands({
       event.key.toLowerCase() === "d"
     ) {
       event.preventDefault();
-      setCanvasState((state) =>
+      setCanvasDefinition((state) =>
         isManualProductionCanvasNote(selectedNode)
           ? duplicateManualProductionCanvasNote(state, state.selectedNodeId)
           : duplicateProductionCanvasSelection(state),
@@ -103,6 +124,8 @@ export function useProductionCanvasKeyboardCommands({
     const nudge = getProductionCanvasKeyboardNudge(event.key, event.shiftKey);
     if (!nudge) return;
     event.preventDefault();
-    setCanvasState((state) => applyProductionCanvasKeyboardNudge(state, nudge));
+    setCanvasDefinition((state) =>
+      applyProductionCanvasKeyboardNudge(state, nudge),
+    );
   };
 }

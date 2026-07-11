@@ -3,6 +3,7 @@ import type {
   ProductionCanvasNode,
 } from "./productionCanvasModel";
 import type { ProductionCanvasState } from "./productionCanvasState";
+import { productionCanvasDefinitionOutputs } from "./productionCanvasDefinition";
 
 export type ProductionCanvasAlignment =
   | "left"
@@ -111,25 +112,6 @@ function copyId(nodes: ProductionCanvasNode[], sourceId: string) {
   return `${sourceId}-copy-${index}`;
 }
 
-function copiedConfig(outputs: Record<string, unknown> | undefined) {
-  const configKeys = new Set([
-    "camera_fixed",
-    "environment_id",
-    "episode_id",
-    "frame_indexes",
-    "media_model",
-    "script_id",
-    "video_aspect_ratio",
-    "video_duration",
-    "video_fps",
-    "video_resolution",
-    "virtual_ip_id",
-  ]);
-  return Object.fromEntries(
-    Object.entries(outputs || {}).filter(([key]) => configKeys.has(key)),
-  );
-}
-
 function copiedEdge(
   edge: ProductionCanvasEdge,
   copiedIds: Map<string, string>,
@@ -166,7 +148,7 @@ export function duplicateProductionCanvasSelection(
       status: "draft",
       x: node.x + 32,
       y: node.y + 32,
-      outputs: copiedConfig(node.outputs),
+      outputs: productionCanvasDefinitionOutputs(node.outputs),
       definitionVersion: 1,
       executionInputFingerprint: undefined,
       selectedOutputId: undefined,

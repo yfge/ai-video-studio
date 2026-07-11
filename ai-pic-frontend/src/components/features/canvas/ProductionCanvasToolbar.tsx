@@ -3,28 +3,36 @@ import { ProductionCanvasRunControls } from "./ProductionCanvasRunControls";
 
 export function ProductionCanvasToolbar({
   busy,
+  canRedo,
+  canUndo,
   hasSelectedNode,
   onAddNote,
   onFit,
   onFocusSelected,
   onReset,
+  onRedo,
   onRestore,
   onRunIdChange,
   onSave,
+  onUndo,
   onZoom,
   runId,
   status,
   zoomLabel,
 }: {
   busy: boolean;
+  canRedo: boolean;
+  canUndo: boolean;
   hasSelectedNode: boolean;
   onAddNote: () => void;
   onFit: () => void;
   onFocusSelected: () => void;
   onReset: () => void;
+  onRedo: () => void;
   onRestore: (runId?: string) => void;
   onRunIdChange: (value: string) => void;
   onSave: () => void;
+  onUndo: () => void;
   onZoom: (steps: number) => void;
   runId: string;
   status?: string | null;
@@ -47,6 +55,26 @@ export function ProductionCanvasToolbar({
         onRunIdChange={onRunIdChange}
         onSave={onSave}
       />
+      <button
+        type="button"
+        aria-label="撤销图定义变更"
+        title="撤销图定义变更"
+        disabled={!canUndo}
+        className={operatorButtonClass("secondary", "w-8 px-0 text-base")}
+        onClick={onUndo}
+      >
+        ↶
+      </button>
+      <button
+        type="button"
+        aria-label="重做图定义变更"
+        title="重做图定义变更"
+        disabled={!canRedo}
+        className={operatorButtonClass("secondary", "w-8 px-0 text-base")}
+        onClick={onRedo}
+      >
+        ↷
+      </button>
       <button
         type="button"
         aria-label="缩小"

@@ -23,10 +23,12 @@ import {
   CANVAS_BASE_WIDTH,
   getWorldBounds,
 } from "./productionCanvasViewModel";
+import type { ProductionCanvasDefinitionSetter } from "./useProductionCanvasHistory";
 
 type CanvasDragState =
   | {
       type: "node";
+      historyGroup: string;
       nodeIds: string[];
       startX: number;
       startY: number;
@@ -43,12 +45,16 @@ type CanvasDragState =
 type UseProductionCanvasInteractionControlsArgs = {
   canvasRef: RefObject<HTMLDivElement | null>;
   canvasState: ProductionCanvasState;
+  endHistoryGroup: () => void;
+  setCanvasDefinition: ProductionCanvasDefinitionSetter;
   setCanvasState: Dispatch<SetStateAction<ProductionCanvasState>>;
 };
 
 export function useProductionCanvasInteractionControls({
   canvasRef,
   canvasState,
+  endHistoryGroup,
+  setCanvasDefinition,
   setCanvasState,
 }: UseProductionCanvasInteractionControlsArgs) {
   const dragRef = useRef<CanvasDragState | null>(null);
@@ -82,6 +88,7 @@ export function useProductionCanvasInteractionControls({
     }));
     dragRef.current = {
       type: "node",
+      historyGroup: `node-drag-${event.pointerId}-${event.clientX}-${event.clientY}`,
       nodeIds,
       startX: event.clientX,
       startY: event.clientY,
@@ -128,15 +135,18 @@ export function useProductionCanvasInteractionControls({
     if (!drag) return;
     event.preventDefault();
     if (drag.type === "node") {
-      setCanvasState((state) => ({
-        ...state,
-        nodes: moveProductionCanvasNodes(
-          drag.originNodes,
-          drag.nodeIds,
-          (event.clientX - drag.startX) / drag.zoom,
-          (event.clientY - drag.startY) / drag.zoom,
-        ),
-      }));
+      setCanvasDefinition(
+        (state) => ({
+          ...state,
+          nodes: moveProductionCanvasNodes(
+            drag.originNodes,
+            drag.nodeIds,
+            (event.clientX - drag.startX) / drag.zoom,
+            (event.clientY - drag.startY) / drag.zoom,
+          ),
+        }),
+        drag.historyGroup,
+      );
       return;
     }
     setCanvasState((state) => ({
@@ -150,6 +160,7 @@ export function useProductionCanvasInteractionControls({
   };
 
   const handleCanvasPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (dragRef.current?.type === "node") endHistoryGroup();
     dragRef.current = null;
     if (canvasRef.current?.hasPointerCapture(event.pointerId)) {
       canvasRef.current.releasePointerCapture(event.pointerId);

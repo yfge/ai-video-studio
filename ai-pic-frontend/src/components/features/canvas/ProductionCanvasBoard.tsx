@@ -46,6 +46,9 @@ export function ProductionCanvasContent({
     appendNodes,
     canvasRef,
     canvasState,
+    canRedo,
+    canUndo,
+    clearHistory,
     handleAddEdge,
     handleAddNote,
     handleCanvasKeyDown,
@@ -57,9 +60,12 @@ export function ProductionCanvasContent({
     handleNodePointerDown,
     handleNavigate,
     handleReset,
+    handleRedo,
     handleRemoveEdge,
     handleRemoveNode,
     handleSelectNode,
+    handleSyncNode,
+    handleUndo,
     handleUpdateNode,
     handleUpdateNodeOutputs,
     handleToggleSection,
@@ -67,6 +73,7 @@ export function ProductionCanvasContent({
     replaceCanvasState,
     selectedNode,
     selectionActions,
+    updateCanvasDefinition,
     worldBounds,
     zoomLabel,
   } = useProductionCanvasController(storageKey);
@@ -74,6 +81,7 @@ export function ProductionCanvasContent({
     autosaveDelayMs,
     canvasState,
     initialRunId,
+    onStateRestored: clearHistory,
     replaceCanvasState,
   });
   const planner = useProductionCanvasSkillPlanner({
@@ -83,12 +91,21 @@ export function ProductionCanvasContent({
     onRunCreated: persistence.setRunId,
   });
   const taskSync = useProductionCanvasTaskSync({
-    onNodeUpdated: handleUpdateNode,
+    onNodeUpdated: handleSyncNode,
   });
   const focusCanvas = () => canvasRef.current?.focus({ preventScroll: true });
+  const withCanvasFocus = (command: () => void) => {
+    command();
+    focusCanvas();
+  };
+  const resetCanvas = () =>
+    withCanvasFocus(() => {
+      handleReset();
+      persistence.resetRun();
+    });
   const executeNode = useSavedNodeExecution(persistence, planner, focusCanvas);
   const handleDuplicateNote = (nodeId: string) => {
-    replaceCanvasState((state) =>
+    updateCanvasDefinition((state) =>
       duplicateManualProductionCanvasNote(state, nodeId),
     );
     focusCanvas();
@@ -111,9 +128,7 @@ export function ProductionCanvasContent({
       event.key.toLowerCase() === "r"
     ) {
       event.preventDefault();
-      handleReset();
-      persistence.resetRun();
-      focusCanvas();
+      resetCanvas();
       return;
     }
     handleCanvasKeyDown(event);
@@ -136,33 +151,23 @@ export function ProductionCanvasContent({
           />
           <ProductionCanvasToolbar
             busy={persistence.busy}
+            canRedo={canRedo}
+            canUndo={canUndo}
             hasSelectedNode={Boolean(selectedNode)}
             runId={persistence.runId}
             status={persistence.status}
             zoomLabel={zoomLabel}
             onAddNote={() => handleAddNote()}
-            onFit={() => {
-              handleFit();
-              focusCanvas();
-            }}
-            onFocusSelected={() => {
-              handleFocusSelectedNode();
-              focusCanvas();
-            }}
-            onReset={() => {
-              handleReset();
-              persistence.resetRun();
-              focusCanvas();
-            }}
-            onRestore={(runId) => {
-              void persistence.restoreCanvas(runId);
-              focusCanvas();
-            }}
+            onFit={() => withCanvasFocus(handleFit)}
+            onFocusSelected={() => withCanvasFocus(handleFocusSelectedNode)}
+            onReset={resetCanvas}
+            onRedo={() => withCanvasFocus(handleRedo)}
+            onRestore={(runId) =>
+              withCanvasFocus(() => void persistence.restoreCanvas(runId))
+            }
             onRunIdChange={persistence.setRunId}
-            onSave={() => {
-              void persistence.saveCanvas();
-              focusCanvas();
-            }}
+            onSave={() => withCanvasFocus(() => void persistence.saveCanvas())}
+            onUndo={() => withCanvasFocus(handleUndo)}
             onZoom={handleZoomButton}
           />
           <ProductionCanvasWorkspace
