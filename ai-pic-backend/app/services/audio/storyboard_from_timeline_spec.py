@@ -128,8 +128,8 @@ def _timeline_spec_clips_to_beats(
     if not isinstance(tracks, list):
         return []
 
-    dialogue_clips = _clips_for_track(tracks, "dialogue")
-    clips = dialogue_clips or _clips_for_track(tracks, "video")
+    video_clips = _clips_for_track(tracks, "video")
+    clips = video_clips or _clips_for_track(tracks, "dialogue")
     timeline_id = timeline_spec.get("timeline_id")
     timeline_version = timeline_spec.get("version")
     source_audio_version = timeline_spec.get("source_audio_timeline_version")

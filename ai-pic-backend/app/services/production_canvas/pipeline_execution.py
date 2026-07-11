@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 from app.models.user import User
+from app.repositories.timeline_repository import TimelineRepository
 from app.schemas.generation_requests import ScriptGenerationRequest
 from app.schemas.production_canvas import (
     ProductionCanvasSkillExecuteRequest,
     ProductionCanvasSkillExecuteResponse,
     ProductionCanvasSkillResult,
+)
+from app.services.audio.storyboard_from_timeline_spec import (
+    generate_storyboard_support_from_timeline_spec,
 )
 from app.services.production_canvas.execution_common import (
     blocked_result,
@@ -141,6 +145,39 @@ def execute_timeline_pipeline(
             detail="需要先绑定 script_id，之后才会提交现有 TIMELINE_PIPELINE 任务。",
             required_inputs=["script_id"],
         )
+    timeline = TimelineRepository(db).get_latest_for_episode_script(
+        episode_id=int(script.episode_id),
+        script_id=int(script.id),
+    )
+    if timeline is not None and _timeline_video_clip_count(timeline.spec):
+        storyboard = generate_storyboard_support_from_timeline_spec(
+            db,
+            script=script,
+            episode=script.episode,
+            timeline=timeline,
+            overwrite_existing=True,
+        )
+        return ProductionCanvasSkillExecuteResponse(
+            skill_result=ProductionCanvasSkillResult(
+                skill="timeline.assemble",
+                label=skill.label if skill else "Timeline Skill",
+                status="review",
+                title=f"已复用 Timeline #{timeline.id} v{timeline.version}",
+                detail="已从当前 Timeline video clips 重建带稳定 clip 映射的分镜支撑帧。",
+                outputs={
+                    "script_id": script.id,
+                    "episode_id": script.episode_id,
+                    "timeline_id": timeline.id,
+                    "timeline_version": timeline.version,
+                    "storyboard_frame_count": len(storyboard["frames"]),
+                    "storyboard_generation_method": storyboard["meta"].get(
+                        "generation_method"
+                    ),
+                    **({"canvas_run_id": request.run_id} if request.run_id else {}),
+                },
+                reuse_targets=skill.reuse_targets if skill else [],
+            )
+        )
     references = resolve_canvas_reference_artifacts(
         db, user, request.reference_artifacts
     )
@@ -172,4 +209,16 @@ def execute_timeline_pipeline(
         },
         reuse_targets=skill.reuse_targets if skill else [],
         canvas_run_id=request.run_id,
+    )
+
+
+def _timeline_video_clip_count(spec: object) -> int:
+    if not isinstance(spec, dict):
+        return 0
+    return sum(
+        len(track.get("clips") or [])
+        for track in spec.get("tracks") or []
+        if isinstance(track, dict)
+        and (track.get("track_type") or track.get("type")) == "video"
+        and isinstance(track.get("clips"), list)
     )
