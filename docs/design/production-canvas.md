@@ -378,6 +378,11 @@ As of 2026-07-12, Phases 1-3 are implemented on the real `/canvas` route:
   checkpoints rather than automatic regeneration. Storyboard preparation may
   run automatically, while image and video candidates remain explicit operator
   actions gated by review.
+- Image and video candidate execution defaults to frame `0` when the operator
+  does not select frames, so an exploratory canvas action cannot fan out across
+  the whole storyboard unexpectedly. Storyboard image workers re-check persisted
+  cancellation between expensive stages and frames, and a task cannot report
+  success unless at least one requested frame has a persisted image.
 - Scene and episode sections, minimap navigation, search and filters,
   multi-select layout operations, duplication, undo/redo, diagnostics, retry,
   resume, and cancel are available as production recovery tools.

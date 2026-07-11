@@ -55,7 +55,9 @@ def execute_storyboard_images(
         script_id=script.id,
         user_id=user.id,
         frame_indexes=(
-            [branch.candidate.frame_index] if branch else request.frame_indexes
+            [branch.candidate.frame_index]
+            if branch
+            else request.frame_indexes if request.frame_indexes is not None else [0]
         ),
         model=request.model,
         aspect_ratio=request.aspect_ratio,
@@ -150,7 +152,9 @@ def execute_storyboard_video_candidates(
             script,
             prompt=branch.prompt if branch else None,
             frame_indexes=(
-                [branch.candidate.frame_index] if branch else request.frame_indexes
+                [branch.candidate.frame_index]
+                if branch
+                else request.frame_indexes if request.frame_indexes is not None else [0]
             ),
             model=request.model,
             duration=request.duration,

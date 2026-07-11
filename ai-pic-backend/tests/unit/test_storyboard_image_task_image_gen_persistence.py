@@ -15,7 +15,11 @@ def _patch_storyboard_generate(monkeypatch, *, image_gen_factory):
     async def _fake_generate_storyboard_image_urls(**kwargs):  # noqa: ANN001
         prompt = kwargs.get("prompt") or ""
         return {
-            "urls": ["https://example.com/generated.png"],
+            "urls": [
+                "data:image/png;base64,"
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8"
+                "/x8AAusB9Wl2n5cAAAAASUVORK5CYII="
+            ],
             "provider": "mock-provider",
             "model": "mock-model",
             "style_spec": None,

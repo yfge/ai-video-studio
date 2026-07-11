@@ -20,6 +20,13 @@ from .image_task_refs import load_image_ref_context
 logger = get_logger("storyboard_image_task")
 
 
+def _task_is_cancelled(db, task) -> bool:
+    if task is None:
+        return False
+    db.refresh(task)
+    return task.status.value == "cancelled"
+
+
 def _process_storyboard_image_task(
     task_id: int,
     script_id: int,
@@ -56,6 +63,9 @@ def _process_storyboard_image_task(
     try:
         task = get_task_by_id(db, task_id)
         if task:
+            if _task_is_cancelled(db, task):
+                logger.info(f"[SBIMG] task cancelled before start | task={task_id}")
+                return
             task.status = TaskStatus.PROCESSING
             db.commit()
 
@@ -97,11 +107,20 @@ def _process_storyboard_image_task(
             prompt_override=prompt_override,
             ai_service=ai_service,
         )
+        if _task_is_cancelled(db, task):
+            logger.info(f"[SBIMG] task cancelled after prompt | task={task_id}")
+            return
 
         resolved_style_spec_used: dict | None = None
         resolved_style_spec_resolution_used: Any = None
+        generated_frame_indexes: list[int] = []
 
         for idx in target_indexes:
+            if _task_is_cancelled(db, task):
+                logger.info(
+                    f"[SBIMG] task cancelled before frame | task={task_id} frame={idx}"
+                )
+                return
             if idx < 0 or idx >= len(frames):
                 logger.warning(f"[SBIMG] frame index out of range: {idx}/{len(frames)}")
                 continue
@@ -144,12 +163,22 @@ def _process_storyboard_image_task(
                 canvas_branch,
                 task_id=task_id,
             )
+            if result_meta.get("generated_urls"):
+                generated_frame_indexes.append(idx)
             if resolved_style_spec_used is None and result_meta.get("style_spec"):
                 resolved_style_spec_used = result_meta["style_spec"]
                 resolved_style_spec_resolution_used = result_meta.get(
                     "style_spec_resolution"
                 )
 
+        if _task_is_cancelled(db, task):
+            logger.info(f"[SBIMG] task cancelled before save | task={task_id}")
+            return
+        if target_indexes and not generated_frame_indexes:
+            raise RuntimeError(
+                "storyboard image generation produced no persisted images "
+                f"for frames: {target_indexes}"
+            )
         save_storyboard_image_frames(
             db,
             script_id=script_id,
@@ -162,11 +191,15 @@ def _process_storyboard_image_task(
             resolved_resolution=resolved_style_spec_resolution_used,
         )
         if task:
+            if _task_is_cancelled(db, task):
+                return
             task.status = TaskStatus.COMPLETED
             db.commit()
     except Exception as e:
         task = get_task_by_id(db, task_id)
         if task:
+            if _task_is_cancelled(db, task):
+                return
             task.status = TaskStatus.FAILED
             task.error_message = str(e)
             db.commit()
