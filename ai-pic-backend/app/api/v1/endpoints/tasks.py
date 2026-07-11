@@ -5,6 +5,7 @@ from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.task import TASK_STATUS_TRANSITIONS, Task, TaskStatus, TaskType
 from app.models.user import User
+from app.repositories.task_repository import TaskRepository
 from app.schemas.task import TaskCreate, TaskList, TaskResponse, TaskUpdate
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -12,12 +13,6 @@ from sqlalchemy.orm import Session
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-def _not_deleted(query, model):
-    return query.filter(model.is_deleted.is_(False))
-
-
 
 
 def _serialize_task(task: Task) -> TaskResponse:
@@ -50,6 +45,13 @@ def _serialize_task(task: Task) -> TaskResponse:
         created_at=task.created_at,
         updated_at=task.updated_at,
     )
+
+
+def _task_or_404(db: Session, task_id: int, user_id: int) -> Task:
+    task = TaskRepository(db).get_user_task(task_id=task_id, user_id=user_id)
+    if task is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="任务不存在")
+    return task
 
 
 @router.post("/", response_model=TaskResponse)
@@ -90,17 +92,13 @@ def get_tasks(
     current_user: User = Depends(get_current_active_user),
 ):
     """获取用户的任务列表"""
-    query = _not_deleted(db.query(Task), Task).filter(Task.user_id == current_user.id)
-
-    if status_filter:
-        query = query.filter(Task.status == status_filter)
-
-    if task_type:
-        query = query.filter(Task.task_type == task_type)
-
-    total = query.count()
-    tasks = query.order_by(Task.id.desc()).offset(skip).limit(limit).all()
-
+    tasks, total = TaskRepository(db).list_for_user(
+        user_id=current_user.id,
+        skip=skip,
+        limit=limit,
+        status_filter=status_filter,
+        task_type=task_type,
+    )
     return TaskList(
         tasks=[_serialize_task(t) for t in tasks],
         total=total,
@@ -140,16 +138,7 @@ def get_task(
     current_user: User = Depends(get_current_active_user),
 ):
     """获取特定任务信息"""
-    task = (
-        _not_deleted(db.query(Task), Task)
-        .filter(Task.id == task_id, Task.user_id == current_user.id)
-        .first()
-    )
-
-    if task is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="任务不存在")
-
-    return _serialize_task(task)
+    return _serialize_task(_task_or_404(db, task_id, current_user.id))
 
 
 @router.put("/{task_id}", response_model=TaskResponse)
@@ -160,15 +149,7 @@ def update_task(
     current_user: User = Depends(get_current_active_user),
 ):
     """更新任务信息"""
-    task = (
-        _not_deleted(db.query(Task), Task)
-        .filter(Task.id == task_id, Task.user_id == current_user.id)
-        .first()
-    )
-
-    if task is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="任务不存在")
-
+    task = _task_or_404(db, task_id, current_user.id)
     # 更新任务信息
     update_data = task_data.model_dump(exclude_unset=True)
 
@@ -206,15 +187,7 @@ def delete_task(
     current_user: User = Depends(get_current_active_user),
 ):
     """删除任务"""
-    task = (
-        _not_deleted(db.query(Task), Task)
-        .filter(Task.id == task_id, Task.user_id == current_user.id)
-        .first()
-    )
-
-    if task is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="任务不存在")
-
+    task = _task_or_404(db, task_id, current_user.id)
     task.soft_delete(user_id=current_user.id, reason="user delete")
     db.commit()
 
@@ -232,12 +205,13 @@ def _dispatch_celery_task(task: Task, user_id: int) -> bool:
 
     from app.services.task_worker import (
         episode_generate_task,
+        script_audio_timeline_generate_task,
         script_dialogue_audio_generate_task,
         script_generate_task,
         script_regenerate_task,
-        storyboard_generate_task,
         story_generate_task,
         story_novel_generate_task,
+        storyboard_generate_task,
         timeline_pipeline_generate_task,
     )
     from app.services.task_worker_assets import (
@@ -250,6 +224,18 @@ def _dispatch_celery_task(task: Task, user_id: int) -> bool:
         storyboard_image_generate_task,
         storyboard_video_generate_task,
     )
+    from app.services.task_worker_timeline_rework import (
+        timeline_clip_rework_video_generate_task,
+    )
+
+    if (
+        task.task_type == TaskType.VIDEO_GENERATION
+        and isinstance(params, dict)
+        and params.get("timeline_id")
+        and params.get("clip_id")
+    ):
+        timeline_clip_rework_video_generate_task.delay(task.id, params, user_id)
+        return True
 
     dispatch_map = {
         TaskType.STORY_GENERATION: story_generate_task,
@@ -258,6 +244,7 @@ def _dispatch_celery_task(task: Task, user_id: int) -> bool:
         TaskType.SCRIPT_GENERATION: script_generate_task,
         TaskType.SCRIPT_REVIEW: script_regenerate_task,
         TaskType.DIALOGUE_AUDIO_GENERATION: script_dialogue_audio_generate_task,
+        TaskType.TIMELINE_GENERATION: script_audio_timeline_generate_task,
         TaskType.STORYBOARD_GENERATION: storyboard_generate_task,
         TaskType.TIMELINE_PIPELINE: timeline_pipeline_generate_task,
         TaskType.VIRTUAL_IP_IMAGE_GENERATION: virtual_ip_image_generate_task,
@@ -283,15 +270,7 @@ def start_task(
     current_user: User = Depends(get_current_active_user),
 ):
     """开始执行任务"""
-    task = (
-        _not_deleted(db.query(Task), Task)
-        .filter(Task.id == task_id, Task.user_id == current_user.id)
-        .first()
-    )
-
-    if task is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="任务不存在")
-
+    task = _task_or_404(db, task_id, current_user.id)
     if task.status not in (TaskStatus.PENDING, TaskStatus.FAILED):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
