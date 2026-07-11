@@ -4,6 +4,7 @@ from app.schemas.production_canvas import ProductionCanvasSavedState
 from app.services.production_canvas.stale_runtime import (
     apply_canvas_stale_state,
     canvas_node_input_fingerprint,
+    canvas_stale_impact_nodes,
 )
 
 
@@ -114,3 +115,23 @@ def test_definition_change_marks_the_node_and_all_descendants_stale():
         "middle",
         "leaf",
     }
+
+
+def test_stale_impact_only_lists_descendants_with_execution_history():
+    state = _state()
+    state = state.model_copy(
+        update={
+            "nodes": [
+                (
+                    node.model_copy(update={"execution_input_fingerprint": "a" * 64})
+                    if node.id == "middle"
+                    else node
+                )
+                for node in state.nodes
+            ]
+        }
+    )
+
+    assert [item.model_dump() for item in canvas_stale_impact_nodes(state, "root")] == [
+        {"node_id": "middle", "title": "Middle"}
+    ]

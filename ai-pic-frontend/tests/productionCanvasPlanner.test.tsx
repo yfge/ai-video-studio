@@ -210,6 +210,9 @@ describe("ProductionCanvasPlanner", () => {
       fireEvent.input(utils.getByLabelText("生产目标"), {
         target: { value: "基于林妹妹整体创建短剧" },
       });
+      fireEvent.input(utils.getByLabelText("Run ID"), {
+        target: { value: "stale-previous-run" },
+      });
       fireEvent.click(utils.getByRole("button", { name: "整体创建" }));
 
       await waitFor(() => assert.equal(fetchStub.executeRequests.length, 1));

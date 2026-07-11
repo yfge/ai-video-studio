@@ -21,14 +21,12 @@ import {
   taskOutputNumber,
 } from "./productionCanvasSkillNodes";
 
-function hasMissingRequiredInputs(node: ProductionCanvasNode) {
-  const requiredInputs = node.outputs?.required_inputs;
-  return Array.isArray(requiredInputs) && requiredInputs.length > 0;
-}
-
 function isAutoExecutableNode(node: ProductionCanvasNode) {
+  const requiredInputs = node.outputs?.required_inputs;
   return Boolean(
-    node.skill && node.status === "ready" && !hasMissingRequiredInputs(node),
+    node.skill &&
+      node.status === "ready" &&
+      !(Array.isArray(requiredInputs) && requiredInputs.length),
   );
 }
 
@@ -96,6 +94,7 @@ export function useProductionCanvasSkillPlanner({
     node: ProductionCanvasNode,
     fallbackPrompt?: string,
     executionScope: "node" | "downstream" = "node",
+    targetRunId?: string | null,
   ) => {
     const requestContext = productionCanvasRequestContext(
       fallbackPrompt ? emptyProductionCanvasContext : context,
@@ -110,6 +109,7 @@ export function useProductionCanvasSkillPlanner({
       node_id: node.id,
       execution_scope: executionScope,
       run_id:
+        (targetRunId || "").trim() ||
         (currentRunId || "").trim() ||
         outputString(node.outputs, "canvas_run_id"),
       reference_artifacts: outputStringArray(
@@ -149,6 +149,7 @@ export function useProductionCanvasSkillPlanner({
   const executeReadyNodes = async (
     initialNodes: ProductionCanvasNode[],
     fallbackPrompt: string,
+    runId?: string | null,
   ) => {
     const attemptedNodeIds = new Set<string>();
     let workingNodes = initialNodes;
@@ -161,7 +162,12 @@ export function useProductionCanvasSkillPlanner({
       if (!node) return;
       attemptedNodeIds.add(node.id);
       setExecutingNodeId(node.id);
-      const publications = await executeSkillRequest(node, fallbackPrompt);
+      const publications = await executeSkillRequest(
+        node,
+        fallbackPrompt,
+        "node",
+        runId,
+      );
       for (const publication of publications) {
         publishExecutionNodes(publication.sourceNode, publication.resultNodes);
         workingNodes = upsertCanvasNodes(workingNodes, publication.resultNodes);
@@ -193,7 +199,7 @@ export function useProductionCanvasSkillPlanner({
         productionCanvasPlanNodeToCanvasNode(node, plan, contextOutputs),
       );
       onNodesCreated(createdNodes);
-      await executeReadyNodes(createdNodes, trimmed);
+      await executeReadyNodes(createdNodes, trimmed, plan.run_id);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

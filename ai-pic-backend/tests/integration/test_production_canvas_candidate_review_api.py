@@ -137,6 +137,7 @@ def test_candidate_approval_persists_asset_and_stales_downstream(
     )
     assert listed.status_code == 200
     candidates = listed.json()["data"]["candidates"]
+    assert listed.json()["data"]["stale_impact"] == []
     assert [item["url"] for item in candidates] == [
         "https://example.com/frame-2.png",
         "https://example.com/frame-2-latest.png",
@@ -170,8 +171,12 @@ def test_candidate_approval_persists_asset_and_stales_downstream(
     relisted = client.get(
         f"/api/v1/production-canvas/runs/{run_id}/nodes/image-review/candidates"
     )
-    selected = [item["selected"] for item in relisted.json()["data"]["candidates"]]
+    relisted_data = relisted.json()["data"]
+    selected = [item["selected"] for item in relisted_data["candidates"]]
     assert selected == [False, True]
+    assert relisted_data["stale_impact"] == [
+        {"node_id": "video-review", "title": "Video Candidates"}
+    ]
 
 
 def test_approved_video_is_explicitly_placed_in_versioned_timeline(client, db_session):

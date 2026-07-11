@@ -216,9 +216,15 @@ export interface ProductionCanvasMediaCandidate {
   selected: boolean;
 }
 
+export interface ProductionCanvasStaleImpactNode {
+  node_id: string;
+  title: string;
+}
+
 export interface ProductionCanvasMediaCandidateList {
   node_id: string;
   selected_output_id?: number | null;
+  stale_impact: ProductionCanvasStaleImpactNode[];
   candidates: ProductionCanvasMediaCandidate[];
 }
 

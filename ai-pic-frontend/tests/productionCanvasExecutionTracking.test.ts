@@ -100,6 +100,7 @@ describe("production canvas execution tracking", () => {
     const reconciled = reconcileProductionCanvasExecutionTasks([
       {
         ...skillNode,
+        status: "stale",
         outputs: {
           dispatched_task_id: 99,
           task_status: "pending",
@@ -120,11 +121,21 @@ describe("production canvas execution tracking", () => {
       },
     ]);
 
+    assert.equal(reconciled[0].status, "stale");
     assert.equal(reconciled[0].outputs?.timeline_version, 8);
     assert.equal(reconciled[0].outputs?.task_status, "completed");
     assert.equal(
       reconciled[0].outputs?.result_file_path,
       "timeline_videos:71:v7:1",
     );
+
+    const approved = reconcileProductionCanvasExecutionTasks([
+      { ...skillNode, status: "approved" },
+      {
+        ...taskNode,
+        outputs: { ...taskNode.outputs, task_status: "cancelled" },
+      },
+    ]);
+    assert.equal(approved[0].status, "approved");
   });
 });

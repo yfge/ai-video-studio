@@ -23,8 +23,8 @@ from app.services.production_canvas import (
     load_canvas_skill_run,
     persist_canvas_skill_run,
     place_canvas_video_in_timeline,
+    save_canvas_client_state,
     save_canvas_execution_response,
-    save_canvas_state,
 )
 from app.services.production_canvas.graph_runtime import evaluate_canvas_graph
 from fastapi import APIRouter, Depends, HTTPException
@@ -171,7 +171,7 @@ async def save_production_canvas_run_state(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    run = save_canvas_state(db, current_user, run_id, request)
+    run = save_canvas_client_state(db, current_user, run_id, request)
     if run is None:
         raise HTTPException(status_code=404, detail="Production canvas run not found")
     return {"success": True, "data": run.model_dump(by_alias=True)}

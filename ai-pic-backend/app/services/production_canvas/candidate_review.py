@@ -13,7 +13,10 @@ from app.schemas.production_canvas import (
     ProductionCanvasSavedNode,
 )
 from app.services.production_canvas.execution_common import load_script
-from app.services.production_canvas.stale_runtime import canvas_node_input_fingerprint
+from app.services.production_canvas.stale_runtime import (
+    canvas_node_input_fingerprint,
+    canvas_stale_impact_nodes,
+)
 from sqlalchemy.orm import Session
 
 from .run_persistence import load_canvas_saved_state, save_canvas_state
@@ -170,6 +173,9 @@ def list_canvas_media_candidates(
     return ProductionCanvasMediaCandidateList(
         node_id=node.id,
         selected_output_id=node.selected_output_id,
+        stale_impact=(
+            canvas_stale_impact_nodes(state, node.id) if node.selected_output_id else []
+        ),
         candidates=candidates,
     )
 

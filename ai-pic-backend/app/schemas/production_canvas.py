@@ -238,9 +238,15 @@ class ProductionCanvasMediaCandidate(BaseModel):
     selected: bool = False
 
 
+class ProductionCanvasStaleImpactNode(BaseModel):
+    node_id: str
+    title: str
+
+
 class ProductionCanvasMediaCandidateList(BaseModel):
     node_id: str
     selected_output_id: int | None = None
+    stale_impact: list[ProductionCanvasStaleImpactNode] = Field(default_factory=list)
     candidates: list[ProductionCanvasMediaCandidate] = Field(default_factory=list)
 
 

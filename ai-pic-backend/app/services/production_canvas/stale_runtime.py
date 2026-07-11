@@ -7,6 +7,7 @@ from collections import defaultdict
 from app.schemas.production_canvas import (
     ProductionCanvasSavedNode,
     ProductionCanvasSavedState,
+    ProductionCanvasStaleImpactNode,
 )
 from app.services.production_canvas.graph_runtime import resolved_canvas_inputs
 
@@ -57,6 +58,24 @@ def _stale_descendants(state: ProductionCanvasSavedState, seeds: set[str]) -> se
                 stale.add(node_id)
                 stack.append(node_id)
     return stale
+
+
+def canvas_stale_descendant_ids(
+    state: ProductionCanvasSavedState, node_id: str
+) -> list[str]:
+    stale = _stale_descendants(state, {node_id}) - {node_id}
+    return [node.id for node in state.nodes if node.id in stale and node.kind != "note"]
+
+
+def canvas_stale_impact_nodes(
+    state: ProductionCanvasSavedState, node_id: str
+) -> list[ProductionCanvasStaleImpactNode]:
+    stale = set(canvas_stale_descendant_ids(state, node_id))
+    return [
+        ProductionCanvasStaleImpactNode(node_id=node.id, title=node.label)
+        for node in state.nodes
+        if node.id in stale and node.execution_input_fingerprint
+    ]
 
 
 def apply_canvas_stale_state(

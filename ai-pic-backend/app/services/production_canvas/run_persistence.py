@@ -230,3 +230,17 @@ def save_canvas_state(
     db.commit()
     db.refresh(task)
     return _run_response_from_task(task, payload)
+
+
+def save_canvas_client_state(
+    db: Session,
+    user: User,
+    run_id: str,
+    state: ProductionCanvasSavedState,
+) -> ProductionCanvasRunResponse | None:
+    from .client_state_merge import merge_canvas_client_state
+
+    previous = load_canvas_saved_state(db, user, run_id)
+    return save_canvas_state(
+        db, user, run_id, merge_canvas_client_state(previous, state)
+    )

@@ -206,7 +206,9 @@ export function reconcileProductionCanvasExecutionTasks(
     return {
       ...node,
       status:
-        evidence.taskStatus === "completed"
+        node.status === "stale" || node.status === "approved"
+          ? node.status
+          : evidence.taskStatus === "completed"
           ? ("review" as const)
           : ("blocked" as const),
       detail: evidence.node.detail || node.detail,

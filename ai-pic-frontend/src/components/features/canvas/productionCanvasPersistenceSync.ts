@@ -1,4 +1,8 @@
 import { toProductionCanvasSavedState } from "./productionCanvasPersistence";
+import {
+  productionCanvasDefinitionOutputs,
+  productionCanvasRuntimeOutputs,
+} from "./productionCanvasDefinition";
 import type { ProductionCanvasState } from "./productionCanvasState";
 
 export function productionCanvasStateSignature(
@@ -24,7 +28,16 @@ export function mergeConfirmedCanvasState(
       return {
         ...node,
         status: serverNode.status,
+        outputs: {
+          ...productionCanvasRuntimeOutputs(serverNode.outputs),
+          ...productionCanvasDefinitionOutputs(node.outputs),
+        },
+        definitionVersion: serverNode.definitionVersion,
         executionInputFingerprint: serverNode.executionInputFingerprint,
+        selectedOutputId: serverNode.selectedOutputId,
+        selectedOutputUrl: serverNode.selectedOutputUrl,
+        selectedOutputReviewedBy: serverNode.selectedOutputReviewedBy,
+        selectedOutputReviewedAt: serverNode.selectedOutputReviewedAt,
       };
     }),
   };

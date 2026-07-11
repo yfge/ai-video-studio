@@ -1,64 +1,19 @@
-import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { operatorButtonClass } from "@/components/shared";
 import { productionCanvasAPI } from "@/utils/api/endpoints";
-import type { ProductionCanvasMediaCandidate } from "@/utils/api/types";
+import type {
+  ProductionCanvasMediaCandidate,
+  ProductionCanvasStaleImpactNode,
+} from "@/utils/api/types";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
 import { productionCanvasStateFromRun } from "./productionCanvasPersistence";
 import type { ProductionCanvasState } from "./productionCanvasState";
+import { ProductionCanvasCandidateItem } from "./ProductionCanvasCandidateItem";
 
 function isReviewNode(node?: ProductionCanvasNode) {
   return (
     node?.skill === "image.candidates" || node?.skill === "video.candidates"
   );
-}
-
-function CandidateMedia({
-  candidate,
-  eager,
-}: {
-  candidate: ProductionCanvasMediaCandidate;
-  eager?: boolean;
-}) {
-  const label = `${candidate.media_type === "image" ? "图片" : "视频"}候选 ${
-    candidate.frame_index + 1
-  }`;
-  return (
-    <div className="relative aspect-video w-full overflow-hidden bg-gray-950">
-      {candidate.media_type === "image" ? (
-        <Image
-          alt={label}
-          className="object-contain"
-          fill
-          loading={eager ? "eager" : "lazy"}
-          sizes="248px"
-          src={candidate.url}
-          unoptimized
-        />
-      ) : (
-        <video
-          aria-label={label}
-          className="h-full w-full object-contain"
-          controls
-          preload="metadata"
-          src={candidate.url}
-        />
-      )}
-    </div>
-  );
-}
-
-function candidateSummary(candidate: ProductionCanvasMediaCandidate) {
-  return [
-    `帧 ${candidate.frame_index + 1}`,
-    candidate.clip_id ? `Clip ${candidate.clip_id}` : null,
-    candidate.model || null,
-    candidate.duration_seconds
-      ? `${candidate.duration_seconds.toFixed(1)}s`
-      : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
 }
 
 export function ProductionCanvasCandidateReview({
@@ -72,6 +27,10 @@ export function ProductionCanvasCandidateReview({
 }) {
   const [candidates, setCandidates] = useState<
     ProductionCanvasMediaCandidate[]
+  >([]);
+  const [selectedOutputId, setSelectedOutputId] = useState<number | null>(null);
+  const [staleImpact, setStaleImpact] = useState<
+    ProductionCanvasStaleImpactNode[]
   >([]);
   const [busyId, setBusyId] = useState<number | "load" | "place" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +50,8 @@ export function ProductionCanvasCandidateReview({
       setCandidates(
         Array.isArray(response.data.candidates) ? response.data.candidates : [],
       );
+      setSelectedOutputId(response.data.selected_output_id || null);
+      setStaleImpact(response.data.stale_impact || []);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -100,6 +61,8 @@ export function ProductionCanvasCandidateReview({
 
   useEffect(() => {
     setCandidates([]);
+    setSelectedOutputId(null);
+    setStaleImpact([]);
     setError(null);
     void load();
   }, [load]);
@@ -124,7 +87,9 @@ export function ProductionCanvasCandidateReview({
           selected: item.asset_id === candidate.asset_id,
         })),
       );
+      setSelectedOutputId(candidate.asset_id);
       onCanvasStateUpdated(productionCanvasStateFromRun(response.data));
+      if (!selectedOutputId) await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -173,61 +138,24 @@ export function ProductionCanvasCandidateReview({
       {candidates.length ? (
         <div className="mt-2 divide-y divide-gray-100 border-y border-gray-100">
           {candidates.map((candidate, index) => (
-            <article
+            <ProductionCanvasCandidateItem
               key={`${candidate.asset_id}-${candidate.frame_index}`}
-              className="py-3"
-            >
-              <CandidateMedia candidate={candidate} eager={index === 0} />
-              <div className="mt-2 text-[11px] leading-4 text-gray-500">
-                {candidateSummary(candidate)}
-              </div>
-              <div className="mt-2 flex items-center justify-between gap-2">
-                <a
-                  className="truncate text-xs font-medium text-blue-700 hover:underline"
-                  href={candidate.url}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  查看原始资产
-                </a>
-                <button
-                  type="button"
-                  className={operatorButtonClass(
-                    candidate.selected ? "secondary" : "primary",
-                    "h-8 shrink-0 px-3 text-xs",
-                  )}
-                  disabled={candidate.selected || busyId !== null}
-                  onClick={() => void approve(candidate)}
-                >
-                  {candidate.selected
-                    ? "已选用"
-                    : busyId === candidate.asset_id
-                    ? "选用中"
-                    : "选用"}
-                </button>
-              </div>
-              {candidate.media_type === "video" && candidate.selected ? (
-                <button
-                  type="button"
-                  className={operatorButtonClass(
-                    "primary",
-                    "mt-2 h-8 w-full px-3 text-xs",
-                  )}
-                  disabled={
-                    busyId !== null ||
-                    typeof node.outputs?.timeline_version !== "number" ||
-                    node.outputs?.placed_media_asset_id === candidate.asset_id
-                  }
-                  onClick={() => void placeInTimeline()}
-                >
-                  {node.outputs?.placed_media_asset_id === candidate.asset_id
-                    ? `已放入 Timeline v${node.outputs?.timeline_version}`
-                    : busyId === "place"
-                    ? "写入中"
-                    : "放入 Timeline"}
-                </button>
-              ) : null}
-            </article>
+              busy={busyId !== null}
+              candidate={candidate}
+              eager={index === 0}
+              onApprove={(item) => void approve(item)}
+              onPlaceInTimeline={() => void placeInTimeline()}
+              placed={
+                node.outputs?.placed_media_asset_id === candidate.asset_id
+              }
+              selectedOutputId={selectedOutputId}
+              staleImpact={staleImpact}
+              timelineVersion={
+                typeof node.outputs?.timeline_version === "number"
+                  ? node.outputs.timeline_version
+                  : undefined
+              }
+            />
           ))}
         </div>
       ) : busyId !== "load" ? (

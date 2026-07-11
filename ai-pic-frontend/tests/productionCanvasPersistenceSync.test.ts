@@ -34,7 +34,17 @@ describe("production canvas persistence sync", () => {
           ...localState.nodes[0],
           title: "服务端规范化标题",
           status: "review",
+          definitionVersion: 3,
           executionInputFingerprint: "a".repeat(64),
+          selectedOutputId: 42,
+          selectedOutputUrl: "https://example.com/approved.png",
+          selectedOutputReviewedBy: 7,
+          selectedOutputReviewedAt: "2026-07-11T12:00:00Z",
+          outputs: {
+            approved_image: "https://example.com/approved.png",
+            task_id: 6300,
+            model: "server-ignored-model",
+          },
         },
       ],
     };
@@ -46,6 +56,13 @@ describe("production canvas persistence sync", () => {
       acknowledged.nodes[0].executionInputFingerprint,
       "a".repeat(64),
     );
+    assert.equal(acknowledged.nodes[0].definitionVersion, 3);
+    assert.equal(acknowledged.nodes[0].selectedOutputId, 42);
+    assert.equal(acknowledged.nodes[0].selectedOutputReviewedBy, 7);
+    assert.deepEqual(acknowledged.nodes[0].outputs, {
+      approved_image: "https://example.com/approved.png",
+      task_id: 6300,
+    });
     assert.equal(
       productionCanvasStateSignature("run-1", acknowledged),
       productionCanvasStateSignature("run-1", {

@@ -43,7 +43,9 @@ export function productionCanvasDefinitionOutputs(
   );
 }
 
-function runtimeOutputs(outputs: Record<string, unknown> | undefined) {
+export function productionCanvasRuntimeOutputs(
+  outputs: Record<string, unknown> | undefined,
+) {
   return Object.fromEntries(
     Object.entries(outputs || {}).filter(
       ([key]) => !CONFIG_OUTPUT_KEYS.has(key),
@@ -99,7 +101,7 @@ function restoreExistingNode(
     ...cloneNode(snapshot),
     status: current.status,
     outputs: {
-      ...runtimeOutputs(current.outputs),
+      ...productionCanvasRuntimeOutputs(current.outputs),
       ...productionCanvasDefinitionOutputs(snapshot.outputs),
     },
     executionInputFingerprint: current.executionInputFingerprint,
