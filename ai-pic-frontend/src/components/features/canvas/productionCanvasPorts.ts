@@ -43,7 +43,7 @@ const skillContracts: Record<string, PortContract> = {
     outputs: [port("storyboard_frame", "分镜帧", "image")],
   },
   "image.candidates": {
-    inputs: [port("shot_context", "镜头上下文", "text", true)],
+    inputs: [port("script", "剧本", "entity_ref", true)],
     outputs: [port("approved_image", "选用图片", "image")],
   },
   "video.candidates": {

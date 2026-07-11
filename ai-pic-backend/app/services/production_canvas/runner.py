@@ -46,15 +46,19 @@ def _downstream_status(
         return "ready"
     if skill_id == "environment.image" and selection.selected.environments:
         return "ready"
-    if skill_id == "script.generate" and request.episode_id:
-        return "ready"
+    if skill_id == "script.generate":
+        if request.script_id:
+            return "review"
+        if request.episode_id:
+            return "ready"
+    if skill_id in {"timeline.assemble", "image.candidates"} and request.script_id:
+        return "review"
+    if skill_id == "video.candidates" and request.script_id:
+        return "blocked"
     if (
         skill_id
         in {
             "storyboard.plan",
-            "image.candidates",
-            "video.candidates",
-            "timeline.assemble",
         }
         and request.script_id
     ):
@@ -114,6 +118,14 @@ def _downstream_detail(
     selection: CanvasAssetSelection,
     skill_id: str,
 ) -> str:
+    if skill_id == "script.generate" and request.script_id:
+        return "已绑定现有剧本；仅在显式要求重生成时调用剧本 worker。"
+    if skill_id == "timeline.assemble" and request.script_id:
+        return "优先复用当前剧本的 Timeline；缺失时由操作员显式创建。"
+    if skill_id == "image.candidates" and request.script_id:
+        return "等待操作员从当前剧本分镜显式生成图片候选。"
+    if skill_id == "video.candidates" and request.script_id:
+        return "等待图片候选通过人工选用后生成视频候选。"
     if skill_id in {"timeline.render", "timeline.export"} and not _required_inputs(
         request, selection, skill_id
     ):

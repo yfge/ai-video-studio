@@ -21,6 +21,11 @@ import {
 import type { ProductionCanvasDefinitionSetter } from "./useProductionCanvasHistory";
 import { useProductionCanvasSelectionActions } from "./useProductionCanvasSelectionActions";
 import { insertProductionCanvasTemplate } from "./productionCanvasTemplates";
+import {
+  isProductionCanvasPlanBatch,
+  productionCanvasPlanEdges,
+  withoutProductionCanvasPlaceholders,
+} from "./productionCanvasPlanGraph";
 
 export function useProductionCanvasDefinitionActions({
   canvasRef,
@@ -94,14 +99,33 @@ export function useProductionCanvasDefinitionActions({
   const appendNodes = (nodes: ProductionCanvasNode[]) => {
     if (!nodes.length) return;
     setCanvasDefinition((state) => {
+      const isPlan = isProductionCanvasPlanBatch(nodes);
       const incomingIds = new Set(nodes.map((node) => node.id));
+      const retainedNodes = (
+        isPlan ? withoutProductionCanvasPlaceholders(state.nodes) : state.nodes
+      ).filter((node) => !incomingIds.has(node.id));
+      const mergedNodes = [...retainedNodes, ...nodes];
+      const mergedNodeIds = new Set(mergedNodes.map((node) => node.id));
+      const retainedEdges = state.edges.filter(
+        (edge) =>
+          mergedNodeIds.has(edge.from) &&
+          mergedNodeIds.has(edge.to) &&
+          !incomingIds.has(edge.from) &&
+          !incomingIds.has(edge.to),
+      );
       const selectedNodeId = nodes[0]?.id || state.selectedNodeId;
       return {
         ...state,
-        nodes: applyProductionCanvasContext([
-          ...state.nodes.filter((node) => !incomingIds.has(node.id)),
-          ...nodes,
-        ]),
+        nodes: applyProductionCanvasContext(mergedNodes),
+        edges: isPlan
+          ? [...retainedEdges, ...productionCanvasPlanEdges(nodes)]
+          : state.edges,
+        sections: (state.sections || []).map((section) => ({
+          ...section,
+          nodeIds: section.nodeIds.filter((nodeId) =>
+            mergedNodeIds.has(nodeId),
+          ),
+        })),
         selectedNodeId,
         selectedNodeIds: [selectedNodeId],
       };

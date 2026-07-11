@@ -255,12 +255,24 @@ def test_canvas_skill_plan_carries_script_context_for_downstream_execution(
     storyboard_result = next(
         result for result in plan.skill_results if result.skill == "storyboard.plan"
     )
+    script_result = next(
+        result for result in plan.skill_results if result.skill == "script.generate"
+    )
     timeline_result = next(
         result for result in plan.skill_results if result.skill == "timeline.assemble"
+    )
+    image_result = next(
+        result for result in plan.skill_results if result.skill == "image.candidates"
+    )
+    video_result = next(
+        result for result in plan.skill_results if result.skill == "video.candidates"
     )
 
     assert storyboard_result.status == "ready"
     assert storyboard_result.outputs["script_id"] == script.id
     assert storyboard_result.outputs["episode_id"] == episode.id
-    assert timeline_result.status == "ready"
+    assert script_result.status == "review"
+    assert timeline_result.status == "review"
     assert timeline_result.outputs["script_id"] == script.id
+    assert image_result.status == "review"
+    assert video_result.status == "blocked"

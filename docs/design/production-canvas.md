@@ -370,6 +370,14 @@ As of 2026-07-12, Phases 1-3 are implemented on the real `/canvas` route:
 - The planning header loads accessible IP, environment, episode, and script
   options by name. Script choices are scoped to the selected episode, so the
   operator does not copy Episode or Script IDs into the canvas workflow.
+- Creating a plan replaces the initial seven-stage placeholder overview with
+  one executable Skill graph. Typed edges connect the actual persisted Skill
+  node identities; placeholder and Skill nodes are never shown as two parallel
+  workflows.
+- When an existing Script is selected, Script and Timeline assembly are reuse
+  checkpoints rather than automatic regeneration. Storyboard preparation may
+  run automatically, while image and video candidates remain explicit operator
+  actions gated by review.
 - Scene and episode sections, minimap navigation, search and filters,
   multi-select layout operations, duplication, undo/redo, diagnostics, retry,
   resume, and cancel are available as production recovery tools.
