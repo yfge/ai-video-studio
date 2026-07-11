@@ -8,6 +8,10 @@ from typing import Any, Sequence
 
 from app.models.task import Task, TaskType
 from app.repositories.storyboard_media_repository import load_storyboard_frames
+from app.services.storyboard.storyboard_image_queue_inputs import (
+    frame_has_reference_images,
+    normalize_frame_indexes,
+)
 from app.services.task_worker import storyboard_image_generate_task
 from app.utils.model_utils import DEFAULT_OPENAI_IMAGE_MODEL
 
@@ -49,6 +53,8 @@ def queue_storyboard_image_generation(
     aspect_ratio: str | None = None,
     reference_images: Sequence[str] | None = None,
     require_reference_images: bool = True,
+    prompt: str | None = None,
+    canvas_branch: dict[str, Any] | None = None,
 ) -> StoryboardImageQueueResult:
     """Create the follow-up task that turns storyboard frames into images.
 
@@ -60,7 +66,7 @@ def queue_storyboard_image_generation(
     target_frames = (
         list(frames) if frames is not None else load_storyboard_frames(db, script_id)
     )
-    target_indexes = _normalize_frame_indexes(frame_indexes, len(target_frames))
+    target_indexes = normalize_frame_indexes(frame_indexes, len(target_frames))
     if user_id is None:
         return StoryboardImageQueueResult(
             status="skipped",
@@ -91,7 +97,7 @@ def queue_storyboard_image_generation(
         queued_indexes = [
             idx
             for idx in target_indexes
-            if _frame_has_reference_images(target_frames[idx])
+            if frame_has_reference_images(target_frames[idx])
         ]
         skipped_indexes = [idx for idx in target_indexes if idx not in queued_indexes]
     else:
@@ -120,6 +126,8 @@ def queue_storyboard_image_generation(
         "end_enabled": False,
         "count": 1,
         "require_reference_images": require_reference_images,
+        "prompt": prompt,
+        "canvas_branch": canvas_branch,
     }
     task = Task(
         title=f"分镜画面生成 - 剧本{script_id}",
@@ -197,47 +205,6 @@ def storyboard_image_queue_progress_message(
         f"{prefix}：分镜画面任务已跳过 "
         f"reason={result.reason or 'no_eligible_frames'} skipped={skipped}"
     )
-
-
-def _normalize_frame_indexes(
-    frame_indexes: Sequence[int] | None,
-    frame_count: int,
-) -> list[int]:
-    if frame_count <= 0:
-        return []
-    if frame_indexes is None:
-        return list(range(frame_count))
-
-    normalized: list[int] = []
-    for raw in frame_indexes:
-        try:
-            idx = int(raw)
-        except (TypeError, ValueError):
-            continue
-        if idx < 0 or idx >= frame_count or idx in normalized:
-            continue
-        normalized.append(idx)
-    return normalized
-
-
-def _frame_has_reference_images(frame: dict[str, Any]) -> bool:
-    for key in (
-        "reference_images",
-        "reference_image_urls",
-        "start_reference_images",
-        "end_reference_images",
-    ):
-        value = frame.get(key)
-        if isinstance(value, list) and any(_has_non_empty_url(item) for item in value):
-            return True
-    for key in ("reference_image", "environment_reference_image"):
-        if _has_non_empty_url(frame.get(key)):
-            return True
-    return False
-
-
-def _has_non_empty_url(value: Any) -> bool:
-    return isinstance(value, str) and bool(value.strip())
 
 
 def _decode_parameters(raw: str | None) -> dict[str, Any]:

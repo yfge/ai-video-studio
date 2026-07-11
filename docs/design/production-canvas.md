@@ -375,8 +375,6 @@ As of 2026-07-11, Phases 1-3 are implemented on the real `/canvas` route:
 The remaining product gaps are deliberately outside the completed first
 vertical slice:
 
-- Candidate regeneration and branching do not yet preserve a first-class
-  parent-candidate relationship.
 - Comments, commenter/approver permissions, shared activity history, and
   reusable domain templates remain Phase 4 work.
 - Large-production performance budgets, viewport virtualization, and scale
@@ -401,9 +399,9 @@ affected downstream execution set.
 
 ### Phase 2: Media candidate review vertical slice
 
-Status: Implemented for approval, rejection, restoration, stale propagation,
-and stable Timeline placement. Candidate regeneration and branching remain a
-Phase 4 extension, and consolidated release validation remains open.
+Status: Implemented for approval, rejection, regeneration and branching,
+restoration, stale propagation, and stable Timeline placement. Consolidated
+release validation remains open.
 
 - Render real image and video candidates inside nodes.
 - Preserve candidate history across retries.
@@ -428,7 +426,8 @@ after partial failure or upstream revision.
 
 ### Phase 4: Collaboration and reuse
 
-Status: Planned.
+Status: In progress. Candidate regeneration and parent-candidate lineage are
+implemented; collaboration, reusable workflows, and scale work remain.
 
 - Add comments, approver identity, permissions, and activity history.
 - Add reusable domain templates and subflows without exposing provider-specific

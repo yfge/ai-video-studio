@@ -5,6 +5,7 @@ import type {
   ProductionCanvasMediaCandidate,
   ProductionCanvasStaleImpactNode,
 } from "@/utils/api/types";
+import { ProductionCanvasCandidateBranchControls } from "./ProductionCanvasCandidateBranchControls";
 
 function CandidateMedia({
   candidate,
@@ -59,6 +60,7 @@ export function ProductionCanvasCandidateItem({
   candidate,
   eager,
   onApprove,
+  onBranch,
   onPlaceInTimeline,
   onReject,
   placed,
@@ -70,6 +72,10 @@ export function ProductionCanvasCandidateItem({
   candidate: ProductionCanvasMediaCandidate;
   eager?: boolean;
   onApprove: (candidate: ProductionCanvasMediaCandidate) => void;
+  onBranch: (
+    candidate: ProductionCanvasMediaCandidate,
+    instruction: string,
+  ) => void;
   onPlaceInTimeline: () => void;
   onReject: (candidate: ProductionCanvasMediaCandidate, reason: string) => void;
   placed: boolean;
@@ -102,6 +108,17 @@ export function ProductionCanvasCandidateItem({
           <span className="font-semibold">已拒绝</span>
           {candidate.rejection_reason
             ? ` · ${candidate.rejection_reason}`
+            : null}
+        </div>
+      ) : null}
+      {candidate.parent_candidate_id ? (
+        <div className="mt-2 border-l-2 border-blue-300 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-950">
+          分支自候选 #{candidate.parent_candidate_id}
+          {candidate.branch_task_id
+            ? ` · Task #${candidate.branch_task_id}`
+            : null}
+          {candidate.branch_instruction
+            ? ` · ${candidate.branch_instruction}`
             : null}
         </div>
       ) : null}
@@ -172,6 +189,11 @@ export function ProductionCanvasCandidateItem({
           查看原始资产
         </a>
         <div className="flex shrink-0 items-center gap-1">
+          <ProductionCanvasCandidateBranchControls
+            busy={busy}
+            candidateId={candidate.asset_id}
+            onBranch={(instruction) => onBranch(candidate, instruction)}
+          />
           <button
             type="button"
             className={operatorButtonClass(

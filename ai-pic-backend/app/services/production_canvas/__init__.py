@@ -1,3 +1,4 @@
+from .candidate_branching import branch_canvas_media_candidate
 from .candidate_rejection import reject_canvas_media_candidate
 from .candidate_review import (
     approve_canvas_media_candidate,
@@ -22,6 +23,7 @@ from .timeline_placement import place_canvas_video_in_timeline
 __all__ = [
     "attach_canvas_run",
     "approve_canvas_media_candidate",
+    "branch_canvas_media_candidate",
     "build_canvas_skill_plan",
     "control_canvas_run",
     "execute_canvas_skill",

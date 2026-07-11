@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional, Tuple
 
-from app.models.script import Script
 from app.models.video_generation_task import VideoGenerationTask
+from app.repositories.script_repository import ScriptRepository
+from app.services.storyboard.candidate_lineage import record_canvas_candidate_lineage
 from app.services.video.video_task_utils import merge_urls
 
 
@@ -16,16 +17,16 @@ def apply_storyboard_result(
     context = _load_storyboard_context(db, item)
     if not context:
         return
-    script, extra_raw, storyboard, frames, idx, frame = context
+    script, storyboard, frames, idx, frame = context
     updated_frame = _build_updated_frame(frame, item, result_payload, params)
     frames[idx] = updated_frame
-    _persist_storyboard(db, script.id, extra_raw, storyboard, frames)
+    _persist_storyboard(db, script.id, storyboard, frames)
 
 
 def _load_storyboard_context(
     db, item: VideoGenerationTask
-) -> Optional[Tuple[Script, Dict[str, Any], Dict[str, Any], list, int, Dict[str, Any]]]:
-    script = db.query(Script).filter(Script.id == item.script_id).first()
+) -> Optional[Tuple[Any, Dict[str, Any], list, int, Dict[str, Any]]]:
+    script = ScriptRepository(db).get_by_id(item.script_id)
     if not script:
         return None
     extra_raw = script.extra_metadata or {}
@@ -35,7 +36,7 @@ def _load_storyboard_context(
     if idx < 0 or idx >= len(frames):
         return None
     frame = dict(frames[idx]) if isinstance(frames[idx], dict) else {}
-    return script, extra_raw, storyboard, frames, idx, frame
+    return script, storyboard, frames, idx, frame
 
 
 def _build_updated_frame(
@@ -74,21 +75,24 @@ def _build_updated_frame(
         "thumbnail_url": result_payload.get("thumbnail_url"),
         "last_frame_url": result_payload.get("last_frame_url"),
     }
+    if isinstance(params.get("canvas_branch"), dict) and item.task_id is not None:
+        record_canvas_candidate_lineage(
+            frame,
+            [frame["video_url"]] if frame.get("video_url") else [],
+            params["canvas_branch"],
+            task_id=int(item.task_id),
+        )
     return frame
 
 
 def _persist_storyboard(
     db,
     script_id: int,
-    extra_raw: Dict[str, Any],
     storyboard: Dict[str, Any],
     frames: list,
 ) -> None:
     storyboard["frames"] = frames
-    extra = dict(extra_raw)
-    extra["storyboard"] = storyboard
-    db.query(Script).filter(Script.id == script_id).update(
-        {Script.extra_metadata: extra},
-        synchronize_session=False,
+    ScriptRepository(db).update_storyboard(
+        script_id, storyboard, increment_version=False
     )
     db.commit()

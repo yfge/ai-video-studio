@@ -25,6 +25,8 @@ export function ProductionCanvasCandidateReview({
   onCanvasStateUpdated: (state: ProductionCanvasState) => void;
   runId: string;
 }) {
+  const nodeId = node?.id;
+  const reviewable = isReviewNode(node);
   const [candidates, setCandidates] = useState<
     ProductionCanvasMediaCandidate[]
   >([]);
@@ -34,15 +36,16 @@ export function ProductionCanvasCandidateReview({
   >([]);
   const [busyId, setBusyId] = useState<number | "load" | "place" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!node || !runId || !isReviewNode(node)) return;
+    if (!nodeId || !runId || !reviewable) return;
     setBusyId("load");
     setError(null);
     try {
       const response = await productionCanvasAPI.getNodeCandidates(
         runId,
-        node.id,
+        nodeId,
       );
       if (!response.success || !response.data) {
         throw new Error(response.error || "候选加载失败");
@@ -57,13 +60,14 @@ export function ProductionCanvasCandidateReview({
     } finally {
       setBusyId(null);
     }
-  }, [node, runId]);
+  }, [nodeId, reviewable, runId]);
 
   useEffect(() => {
     setCandidates([]);
     setSelectedOutputId(null);
     setStaleImpact([]);
     setError(null);
+    setNotice(null);
     void load();
   }, [load]);
 
@@ -122,6 +126,32 @@ export function ProductionCanvasCandidateReview({
     }
   };
 
+  const branch = async (
+    candidate: ProductionCanvasMediaCandidate,
+    instruction: string,
+  ) => {
+    setBusyId(candidate.asset_id);
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await productionCanvasAPI.branchNodeCandidate(
+        runId,
+        node.id,
+        candidate.asset_id,
+        instruction.trim(),
+      );
+      if (!response.success || !response.data) {
+        throw new Error(response.error || "候选分支生成失败");
+      }
+      onCanvasStateUpdated(productionCanvasStateFromRun(response.data));
+      setNotice(`已从候选 #${candidate.asset_id} 提交分支生成任务。`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const placeInTimeline = async () => {
     const expectedVersion = node.outputs?.timeline_version;
     if (typeof expectedVersion !== "number") return;
@@ -169,6 +199,7 @@ export function ProductionCanvasCandidateReview({
               candidate={candidate}
               eager={index === 0}
               onApprove={(item) => void approve(item)}
+              onBranch={(item, instruction) => void branch(item, instruction)}
               onPlaceInTimeline={() => void placeInTimeline()}
               onReject={(item, reason) => void reject(item, reason)}
               placed={
@@ -190,6 +221,11 @@ export function ProductionCanvasCandidateReview({
       {error ? (
         <p className="mt-2 text-xs leading-5 text-red-600" role="alert">
           {error}
+        </p>
+      ) : null}
+      {notice ? (
+        <p className="mt-2 text-xs leading-5 text-blue-700" role="status">
+          {notice}
         </p>
       ) : null}
     </section>

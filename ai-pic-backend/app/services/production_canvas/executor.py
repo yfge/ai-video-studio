@@ -84,7 +84,10 @@ def execute_canvas_resolution(
     resolution: CanvasGraphResolution,
     state: ProductionCanvasSavedState,
 ) -> ProductionCanvasSkillExecuteResponse:
-    if resolution.missing_inputs:
+    if (
+        resolution.missing_inputs
+        and resolution.request.branch_parent_candidate_id is None
+    ):
         response = blocked_result(
             resolution.request,
             title="画布节点等待类型化输入",

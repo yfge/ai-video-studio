@@ -42,6 +42,7 @@ def queue_storyboard_video_generation_task(
     camera_fixed: bool | None = None,
     start_frame_url: str | None = None,
     target_business_id: str | None = None,
+    canvas_branch: dict | None = None,
 ) -> StoryboardVideoQueueResult:
     frames = load_storyboard_frames(db, int(script.id))
     if not frames:
@@ -87,6 +88,7 @@ def queue_storyboard_video_generation_task(
         "timeline_id": timeline.id,
         "timeline_version": timeline.version,
         "timeline_rework_by_frame": timeline_rework_by_frame,
+        "canvas_branch": canvas_branch,
     }
     task = Task(
         title=f"分镜视频候选生成 - 剧本{script.id}",

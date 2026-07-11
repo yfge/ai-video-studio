@@ -19,6 +19,9 @@ class ProductionCanvasMediaCandidate(BaseModel):
     reviewed_by: int | None = None
     reviewed_at: datetime | None = None
     rejection_reason: str | None = None
+    parent_candidate_id: int | None = Field(None, ge=1)
+    branch_task_id: int | None = Field(None, ge=1)
+    branch_instruction: str | None = None
 
 
 class ProductionCanvasStaleImpactNode(BaseModel):
@@ -40,6 +43,11 @@ class ProductionCanvasCandidateApprovalRequest(BaseModel):
 class ProductionCanvasCandidateRejectionRequest(BaseModel):
     candidate_id: int = Field(..., ge=1)
     reason: str | None = Field(None, max_length=500)
+
+
+class ProductionCanvasCandidateBranchRequest(BaseModel):
+    candidate_id: int = Field(..., ge=1)
+    instruction: str | None = Field(None, max_length=1000)
 
 
 class ProductionCanvasTimelinePlacementRequest(BaseModel):

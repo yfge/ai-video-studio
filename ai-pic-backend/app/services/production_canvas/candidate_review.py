@@ -90,6 +90,21 @@ def _prompt(frame: dict[str, Any], media_type: str) -> str | None:
     return _string(frame.get(key)) or _string(frame.get("description"))
 
 
+def _candidate_lineage(
+    frame: dict[str, Any], url: str, run_id: str, node_id: str
+) -> dict[str, Any]:
+    raw = frame.get("canvas_candidate_lineage")
+    for item in raw if isinstance(raw, list) else []:
+        if (
+            isinstance(item, dict)
+            and item.get("url") == url
+            and item.get("run_id") == run_id
+            and item.get("node_id") == node_id
+        ):
+            return item
+    return {}
+
+
 def list_canvas_media_candidates(
     db: Session,
     user: User,
@@ -114,6 +129,7 @@ def list_canvas_media_candidates(
         if requested_indexes is not None and frame_index not in requested_indexes:
             continue
         for url in _candidate_urls(frame, media_type):
+            lineage = _candidate_lineage(frame, url, run_id, node.id)
             candidate = materialize_canvas_candidate(
                 db,
                 user,
@@ -125,6 +141,9 @@ def list_canvas_media_candidates(
                 model=_model(frame, node),
                 duration_seconds=frame.get("duration_seconds"),
                 selected_output_id=node.selected_output_id,
+                parent_candidate_id=lineage.get("parent_candidate_id"),
+                branch_task_id=lineage.get("branch_task_id"),
+                branch_instruction=_string(lineage.get("branch_instruction")),
             )
             key = (candidate.asset_id, frame_index)
             if key in seen:

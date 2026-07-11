@@ -26,6 +26,9 @@ class CanvasCandidateReference(BaseModel):
     reviewed_by: int | None = None
     reviewed_at: datetime | None = None
     rejection_reason: str | None = None
+    parent_candidate_id: int | None = Field(None, ge=1)
+    branch_task_id: int | None = Field(None, ge=1)
+    branch_instruction: str | None = None
 
 
 def _metadata(asset: MediaAsset) -> dict:
@@ -71,6 +74,9 @@ def _candidate_from_asset(
         reviewed_by=reference.reviewed_by,
         reviewed_at=reference.reviewed_at,
         rejection_reason=None if selected else reference.rejection_reason,
+        parent_candidate_id=reference.parent_candidate_id,
+        branch_task_id=reference.branch_task_id,
+        branch_instruction=reference.branch_instruction,
     )
 
 
@@ -140,6 +146,9 @@ def materialize_canvas_candidate(
     model: str | None,
     duration_seconds: float | None,
     selected_output_id: int | None,
+    parent_candidate_id: int | None = None,
+    branch_task_id: int | None = None,
+    branch_instruction: str | None = None,
 ) -> ProductionCanvasMediaCandidate:
     repository = ProductionCanvasCandidateRepository(db)
     asset = repository.find_owned_by_location(
@@ -174,6 +183,9 @@ def materialize_canvas_candidate(
         model=model,
         duration_seconds=duration_seconds,
         selected=asset.id == selected_output_id,
+        parent_candidate_id=parent_candidate_id,
+        branch_task_id=branch_task_id,
+        branch_instruction=branch_instruction,
     )
 
 
@@ -196,6 +208,9 @@ def remember_canvas_candidate_history(
             prompt=candidate.prompt,
             model=candidate.model,
             duration_seconds=candidate.duration_seconds,
+            parent_candidate_id=candidate.parent_candidate_id,
+            branch_task_id=candidate.branch_task_id,
+            branch_instruction=candidate.branch_instruction,
         )
         references = _references(asset)
         identity = (reference.run_id, reference.node_id, reference.frame_index)

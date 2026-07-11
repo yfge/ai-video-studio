@@ -11,6 +11,7 @@ from app.repositories.storyboard_media_repository import (
     save_storyboard_image_frames,
 )
 from app.services.ai_service import ai_service
+from app.services.storyboard.candidate_lineage import record_canvas_candidate_lineage
 
 from .image_task_frame_generation import generate_frame_image
 from .image_task_prompt_runtime import resolve_dimensions
@@ -46,6 +47,7 @@ def _process_storyboard_image_task(
     start_enabled: bool = True,
     end_enabled: bool = True,
     require_reference_images: bool = False,
+    canvas_branch: dict[str, Any] | None = None,
 ):
     from app.core.database import SessionLocal
     from app.models.task import TaskStatus
@@ -135,6 +137,12 @@ def _process_storyboard_image_task(
                 },
                 prompt_manager=prompt_manager,
                 ai_service=ai_service,
+            )
+            record_canvas_candidate_lineage(
+                frames[idx],
+                result_meta.get("generated_urls") or [],
+                canvas_branch,
+                task_id=task_id,
             )
             if resolved_style_spec_used is None and result_meta.get("style_spec"):
                 resolved_style_spec_used = result_meta["style_spec"]

@@ -13,12 +13,14 @@ from app.schemas.production_canvas import (
 )
 from app.schemas.production_canvas_review import (
     ProductionCanvasCandidateApprovalRequest,
+    ProductionCanvasCandidateBranchRequest,
     ProductionCanvasCandidateRejectionRequest,
     ProductionCanvasTimelinePlacementRequest,
 )
 from app.services.production_canvas import (
     approve_canvas_media_candidate,
     attach_canvas_run,
+    branch_canvas_media_candidate,
     build_canvas_skill_plan,
     control_canvas_run,
     execute_canvas_skill,
@@ -170,6 +172,21 @@ async def reject_production_canvas_media_candidate(
             request.candidate_id,
             request.reason,
         )
+    except ValueError as exc:
+        raise _candidate_http_error(exc) from exc
+    return {"success": True, "data": run.model_dump(by_alias=True)}
+
+
+@router.post("/runs/{run_id}/nodes/{node_id}/branches", response_model=dict)
+async def branch_production_canvas_media_candidate(
+    run_id: str,
+    node_id: str,
+    request: ProductionCanvasCandidateBranchRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        run = branch_canvas_media_candidate(db, current_user, run_id, node_id, request)
     except ValueError as exc:
         raise _candidate_http_error(exc) from exc
     return {"success": True, "data": run.model_dump(by_alias=True)}

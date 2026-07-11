@@ -211,6 +211,8 @@ def build_parameters_payload(
         payload.pop("reference_images", None)
     if timeline_rework:
         payload["timeline_rework"] = timeline_rework
+    if isinstance(opts.get("canvas_branch"), dict):
+        payload["canvas_branch"] = dict(opts["canvas_branch"])
     return payload
 
 

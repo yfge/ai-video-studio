@@ -72,6 +72,7 @@ def storyboard_image_generate_task(
         start_enabled=payload.get("start_enabled", True),
         end_enabled=payload.get("end_enabled", True),
         require_reference_images=bool(payload.get("require_reference_images")),
+        canvas_branch=payload.get("canvas_branch"),
     )
     from app.services.task_agent_run import persist_task_agent_run
 
@@ -109,6 +110,7 @@ def storyboard_video_generate_task(
         # Preserve endpoint contract: allow callers to disable/enable end-frame usage.
         "use_end_frame": payload.get("use_end_frame"),
         "timeline_rework_by_frame": payload.get("timeline_rework_by_frame"),
+        "canvas_branch": payload.get("canvas_branch"),
     }
     try:
         _process_storyboard_video_task(

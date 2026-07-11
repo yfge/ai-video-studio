@@ -218,6 +218,9 @@ export interface ProductionCanvasMediaCandidate {
   reviewed_by?: number | null;
   reviewed_at?: string | null;
   rejection_reason?: string | null;
+  parent_candidate_id?: number | null;
+  branch_task_id?: number | null;
+  branch_instruction?: string | null;
 }
 
 export interface ProductionCanvasStaleImpactNode {

@@ -23,6 +23,8 @@ from app.services.storyboard.video_generation_queue import (
 )
 from sqlalchemy.orm import Session
 
+from .candidate_branch_context import resolve_canvas_candidate_branch
+
 
 def execute_storyboard_images(
     db: Session,
@@ -39,24 +41,32 @@ def execute_storyboard_images(
             required_inputs=["script_id"],
         )
 
+    branch = resolve_canvas_candidate_branch(db, user, request, media_type="image")
     references = resolve_canvas_reference_artifacts(
         db,
         user,
         request.reference_artifacts,
     )
+    reference_images = list(references.image_urls)
+    if branch and branch.candidate.url not in reference_images:
+        reference_images.append(branch.candidate.url)
     queue_result = queue_storyboard_image_generation(
         db,
         script_id=script.id,
         user_id=user.id,
-        frame_indexes=request.frame_indexes,
+        frame_indexes=(
+            [branch.candidate.frame_index] if branch else request.frame_indexes
+        ),
         model=request.model,
         aspect_ratio=request.aspect_ratio,
-        reference_images=references.image_urls,
+        reference_images=reference_images,
         require_reference_images=(
             request.require_reference_images
             if request.require_reference_images is not None
             else True
         ),
+        prompt=branch.prompt if branch else None,
+        canvas_branch=branch.metadata if branch else None,
     )
     if queue_result.child_task_id is None:
         return blocked_result(
@@ -97,9 +107,19 @@ def execute_storyboard_images(
                 "model": request.model,
                 "aspect_ratio": request.aspect_ratio,
                 "reference_artifacts": references.artifacts,
-                "reference_image_count": len(references.image_urls),
+                "reference_image_count": len(reference_images),
                 "unresolved_reference_artifacts": references.unresolved,
                 "require_reference_images": queue_result.require_reference_images,
+                **(
+                    {
+                        "branch_parent_candidate_id": branch.candidate.asset_id,
+                        "branch_task_id": queue_result.child_task_id,
+                        "branch_frame_index": branch.candidate.frame_index,
+                        "branch_instruction": branch.instruction,
+                    }
+                    if branch
+                    else {}
+                ),
                 **({"canvas_run_id": request.run_id} if request.run_id else {}),
             },
             reuse_targets=skill.reuse_targets if skill else [],
@@ -122,21 +142,25 @@ def execute_storyboard_video_candidates(
             required_inputs=["script_id"],
         )
 
+    branch = resolve_canvas_candidate_branch(db, user, request, media_type="video")
     try:
         queue_result = queue_storyboard_video_generation_task(
             db,
             user,
             script,
-            prompt=None,
-            frame_indexes=request.frame_indexes,
+            prompt=branch.prompt if branch else None,
+            frame_indexes=(
+                [branch.candidate.frame_index] if branch else request.frame_indexes
+            ),
             model=request.model,
             duration=request.duration,
             fps=request.fps,
             resolution=request.resolution,
             ratio=request.ratio,
             camera_fixed=request.camera_fixed,
-            start_frame_url=request.start_frame_url,
+            start_frame_url=None if branch else request.start_frame_url,
             target_business_id=request.run_id,
+            canvas_branch=branch.metadata if branch else None,
         )
     except ValueError as exc:
         reason = str(exc)
@@ -186,14 +210,26 @@ def execute_storyboard_video_candidates(
                 "timeline_id": queue_result.timeline_id,
                 "timeline_version": queue_result.timeline_version,
                 "mapped_clip_count": queue_result.mapped_clip_count,
-                "frame_indexes": request.frame_indexes,
+                "frame_indexes": (
+                    [branch.candidate.frame_index] if branch else request.frame_indexes
+                ),
                 "model": request.model,
                 "duration": request.duration,
                 "fps": request.fps,
                 "resolution": request.resolution,
                 "ratio": request.ratio,
                 "camera_fixed": request.camera_fixed,
-                "start_frame_url": request.start_frame_url,
+                "start_frame_url": None if branch else request.start_frame_url,
+                **(
+                    {
+                        "branch_parent_candidate_id": branch.candidate.asset_id,
+                        "branch_task_id": task.id,
+                        "branch_frame_index": branch.candidate.frame_index,
+                        "branch_instruction": branch.instruction,
+                    }
+                    if branch
+                    else {}
+                ),
                 **({"canvas_run_id": request.run_id} if request.run_id else {}),
             },
             reuse_targets=skill.reuse_targets if skill else [],

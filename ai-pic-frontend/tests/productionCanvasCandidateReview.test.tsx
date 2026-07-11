@@ -80,6 +80,8 @@ describe("ProductionCanvasCandidateReview", () => {
     let approvedCandidateId: number | null = null;
     let rejectedCandidateId: number | null = null;
     let rejectionReason: string | null = null;
+    let branchCandidateId: number | null = null;
+    let branchInstruction: string | null = null;
     globalThis.fetch = async (input, init) => {
       const url = String(input);
       requests.push({
@@ -104,6 +106,15 @@ describe("ProductionCanvasCandidateReview", () => {
         rejectedCandidateId = Number(body.candidate_id);
         rejectionReason = body.reason;
         approvedCandidateId = null;
+        return new Response(
+          JSON.stringify({ success: true, data: runResponse(null) }),
+          { headers: { "content-type": "application/json" } },
+        );
+      }
+      if (url.endsWith("/branches")) {
+        const body = JSON.parse(String(init?.body));
+        branchCandidateId = Number(body.candidate_id);
+        branchInstruction = body.instruction;
         return new Response(
           JSON.stringify({ success: true, data: runResponse(null) }),
           { headers: { "content-type": "application/json" } },
@@ -182,6 +193,41 @@ describe("ProductionCanvasCandidateReview", () => {
 
       await waitFor(() => assert.equal(utils.getAllByRole("img").length, 2));
       assert.ok(utils.getAllByText("帧 2 · Clip clip-001 · gpt-image-2"));
+
+      fireEvent.click(utils.getAllByRole("button", { name: "从此分支" })[0]);
+      fireEvent.input(utils.getByLabelText("分支指令（可选）"), {
+        target: { value: "保留构图，改成夜景" },
+      });
+      fireEvent.click(utils.getByRole("button", { name: "开始生成" }));
+      await waitFor(() => assert.equal(branchCandidateId, 11));
+      assert.equal(branchInstruction, "保留构图，改成夜景");
+      assert.ok(utils.getByRole("status"));
+      const branchRequest = requests.find((request) =>
+        request.url.endsWith("/branches"),
+      );
+      assert.equal(branchRequest?.method, "POST");
+      assert.deepEqual(JSON.parse(branchRequest?.body || "{}"), {
+        candidate_id: 11,
+        instruction: "保留构图，改成夜景",
+      });
+      const candidateLoadsAfterBranch = requests.filter((request) =>
+        request.url.endsWith("/candidates"),
+      ).length;
+      utils.rerender(
+        createElement(ProductionCanvasCandidateReview, {
+          node: { ...imageNode, status: "running" },
+          runId: "canvas-review-run",
+          onCanvasStateUpdated: (state) => {
+            updatedState = state;
+          },
+        }),
+      );
+      await waitFor(() => assert.ok(utils.getByRole("status")));
+      assert.equal(
+        requests.filter((request) => request.url.endsWith("/candidates"))
+          .length,
+        candidateLoadsAfterBranch,
+      );
 
       fireEvent.click(utils.getAllByRole("button", { name: "选用" })[0]);
       await waitFor(() =>

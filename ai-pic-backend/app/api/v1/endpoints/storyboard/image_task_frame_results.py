@@ -18,6 +18,7 @@ def process_single_image(fr, idx, prompt, ref_images, gen_fn, persist_fn, result
             result_meta["style_spec_resolution"] = result.get("style_spec_resolution")
     final_urls, original_urls = _persist_all_variants(result, idx, persist_fn, "single")
     if final_urls:
+        result_meta["generated_urls"] = final_urls
         fr["image_url"] = final_urls[0]
         fr["start_image_url"] = final_urls[0]
         fr["start_image_urls"] = final_urls
@@ -77,6 +78,8 @@ def process_keyframe_pair(
         start_finals, start_originals = _persist_all_variants(
             start_result, idx, persist_fn, "start"
         )
+        if start_finals:
+            result_meta.setdefault("generated_urls", []).extend(start_finals)
         _merge_keyframe_urls(fr, "start", start_finals, start_originals)
 
     if end_enabled:
@@ -94,6 +97,8 @@ def process_keyframe_pair(
         end_finals, end_originals = _persist_all_variants(
             end_result, idx, persist_fn, "end"
         )
+        if end_finals:
+            result_meta.setdefault("generated_urls", []).extend(end_finals)
         _merge_keyframe_urls(fr, "end", end_finals, end_originals)
 
 

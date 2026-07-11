@@ -51,6 +51,8 @@ class ProductionCanvasSkillExecuteRequest(ProductionCanvasPlanRequest):
     resolution: str | None = Field(None, max_length=32)
     ratio: str | None = Field(None, max_length=16)
     camera_fixed: bool | None = None
+    branch_parent_candidate_id: int | None = Field(None, ge=1)
+    branch_instruction: str | None = Field(None, max_length=1000)
 
 
 class ProductionCanvasAssetSummary(BaseModel):
