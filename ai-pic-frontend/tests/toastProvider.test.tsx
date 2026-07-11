@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
 import React from "react";
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+} from "@testing-library/react";
 import { JSDOM } from "jsdom";
 
 import {
@@ -83,9 +89,10 @@ describe("toast provider", () => {
     const { utils, notify } = renderToastHarness();
     notify("短暂提示", "info", { durationMs: 30 });
     await waitFor(() => assert.ok(utils.getByText("短暂提示")));
-    await waitFor(() => assert.equal(utils.queryByText("短暂提示"), null), {
-      timeout: 2000,
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 60));
     });
+    assert.equal(utils.queryByText("短暂提示"), null);
   });
 
   it("dismisses on manual close", async () => {
