@@ -1,7 +1,13 @@
 from __future__ import annotations
 
-from app.schemas.production_canvas import ProductionCanvasSavedState
-from app.services.production_canvas.graph_runtime import evaluate_canvas_graph
+from app.schemas.production_canvas import (
+    ProductionCanvasSavedState,
+    ProductionCanvasSkillExecuteRequest,
+)
+from app.services.production_canvas.graph_runtime import (
+    evaluate_canvas_graph,
+    resolve_canvas_graph_request,
+)
 
 
 def test_graph_evaluation_orders_disconnected_dag_and_preserves_review_state():
@@ -68,3 +74,65 @@ def test_graph_evaluation_orders_disconnected_dag_and_preserves_review_state():
     assert states["target"].status == "ready"
     assert states["target"].missing_inputs == []
     assert states["independent"].status == "review"
+
+
+def test_selected_image_resolves_as_explicit_video_start_frame():
+    state = ProductionCanvasSavedState.model_validate(
+        {
+            "graph_version": 2,
+            "nodes": [
+                {
+                    "id": "image",
+                    "label": "Image",
+                    "title": "Image candidates",
+                    "status": "approved",
+                    "x": 0,
+                    "y": 0,
+                    "width": 200,
+                    "kind": "pipeline",
+                    "selected_output_id": 42,
+                    "selected_output_url": "https://example.com/approved.png",
+                    "output_ports": [{"id": "approved_image", "type": "image"}],
+                },
+                {
+                    "id": "video",
+                    "label": "Video",
+                    "title": "Video candidates",
+                    "status": "ready",
+                    "x": 240,
+                    "y": 0,
+                    "width": 200,
+                    "kind": "pipeline",
+                    "skill": "video.candidates",
+                    "input_ports": [
+                        {"id": "start_frame", "type": "image", "required": True}
+                    ],
+                },
+            ],
+            "edges": [
+                {
+                    "edge_id": "approved-image-to-video",
+                    "from": "image",
+                    "from_port": "approved_image",
+                    "to": "video",
+                    "to_port": "start_frame",
+                    "binding_type": "selected_output",
+                }
+            ],
+            "viewport": {"x": 0, "y": 0, "zoom": 1},
+        }
+    )
+    request = ProductionCanvasSkillExecuteRequest(
+        prompt="生成视频",
+        skill="video.candidates",
+        node_id="video",
+        frame_indexes=[0],
+    )
+
+    resolution = resolve_canvas_graph_request(state, request)
+
+    assert resolution is not None
+    assert resolution.resolved_inputs == {
+        "start_frame": "https://example.com/approved.png"
+    }
+    assert resolution.request.start_frame_url == "https://example.com/approved.png"

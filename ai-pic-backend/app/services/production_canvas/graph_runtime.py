@@ -144,6 +144,11 @@ def _request_updates(values: dict[str, Any]) -> dict[str, Any]:
             value = value[0]
         if value is not None:
             updates[field] = value
+    start_frame = values.get("start_frame")
+    if isinstance(start_frame, list) and start_frame:
+        start_frame = start_frame[0]
+    if isinstance(start_frame, str) and start_frame:
+        updates["start_frame_url"] = start_frame
     references: list[str] = []
     for port_id in ("start_frame", "storyboard_frame"):
         value = values.get(port_id)

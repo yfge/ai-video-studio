@@ -40,6 +40,7 @@ class ProductionCanvasSkillExecuteRequest(ProductionCanvasPlanRequest):
     node_id: str | None = Field(None, max_length=120)
     execution_scope: Literal["node", "downstream"] = "node"
     reference_artifacts: list[str] = Field(default_factory=list, max_length=20)
+    start_frame_url: str | None = None
     frame_indexes: list[int] | None = None
     model: str | None = Field(None, max_length=120)
     aspect_ratio: str | None = Field(None, max_length=16)

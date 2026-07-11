@@ -194,6 +194,7 @@ def test_production_canvas_execute_video_skill_dispatches_existing_task(
             "skill": "video.candidates",
             "script_id": script.id,
             "frame_indexes": [1],
+            "start_frame_url": "https://example.com/approved-frame.png",
             "model": "minimax:video-01",
             "duration": 6,
             "fps": 30,
@@ -238,7 +239,7 @@ def test_production_canvas_execute_video_skill_dispatches_existing_task(
     assert params["selections"] == [
         {
             "frame_index": 1,
-            "start_image_url": "https://example.com/start-frame-2-latest.png",
+            "start_image_url": "https://example.com/approved-frame.png",
         }
     ]
     assert dispatched["task_id"] == task.id

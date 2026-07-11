@@ -40,6 +40,7 @@ def queue_storyboard_video_generation_task(
     resolution: str | None = None,
     ratio: str | None = None,
     camera_fixed: bool | None = None,
+    start_frame_url: str | None = None,
     target_business_id: str | None = None,
 ) -> StoryboardVideoQueueResult:
     frames = load_storyboard_frames(db, int(script.id))
@@ -47,7 +48,12 @@ def queue_storyboard_video_generation_task(
         raise ValueError("no_storyboard_frames")
 
     indexes = _normalize_frame_indexes(frame_indexes, len(frames))
-    selections = _latest_candidate_selections(frames, indexes)
+    if start_frame_url:
+        if indexes is None or len(indexes) != 1:
+            raise ValueError("start_frame_requires_single_frame")
+        selections = [{"frame_index": indexes[0], "start_image_url": start_frame_url}]
+    else:
+        selections = _latest_candidate_selections(frames, indexes)
     timeline = TimelineRepository(db).get_latest_for_episode_script(
         episode_id=int(script.episode_id),
         script_id=int(script.id),

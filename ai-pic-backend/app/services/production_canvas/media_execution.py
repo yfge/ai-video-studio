@@ -135,6 +135,7 @@ def execute_storyboard_video_candidates(
             resolution=request.resolution,
             ratio=request.ratio,
             camera_fixed=request.camera_fixed,
+            start_frame_url=request.start_frame_url,
             target_business_id=request.run_id,
         )
     except ValueError as exc:
@@ -155,6 +156,13 @@ def execute_storyboard_video_candidates(
                     f"Timeline 版本。 reason={reason}"
                 ),
                 required_inputs=["timeline_clips", "storyboard_support_frames"],
+            )
+        if reason == "start_frame_requires_single_frame":
+            return blocked_result(
+                request,
+                title="Video Candidates 需要单一目标镜头",
+                detail="选用图片只能绑定一个 frame index，请先在节点中指定单一媒体帧。",
+                required_inputs=["frame_indexes"],
             )
         raise
 
@@ -185,6 +193,7 @@ def execute_storyboard_video_candidates(
                 "resolution": request.resolution,
                 "ratio": request.ratio,
                 "camera_fixed": request.camera_fixed,
+                "start_frame_url": request.start_frame_url,
                 **({"canvas_run_id": request.run_id} if request.run_id else {}),
             },
             reuse_targets=skill.reuse_targets if skill else [],
