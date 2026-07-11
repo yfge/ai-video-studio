@@ -77,6 +77,11 @@ describe("ProductionCanvasPlanner", () => {
       assert.ok(
         utils.getAllByText("复用现有 IP：林妹妹；环境：共享办公区").length >= 1,
       );
+      const diagnostics = utils.getByText("高级诊断").closest("details");
+      assert.ok(diagnostics);
+      assert.equal(diagnostics.hasAttribute("open"), false);
+      fireEvent.click(utils.getByText("高级诊断"));
+      assert.equal(diagnostics.hasAttribute("open"), true);
       assert.ok(utils.getByText("后台复用"));
       assert.ok(utils.getByText("Environment repository"));
       assert.ok(utils.getByText("candidate_environment_ids: 2"));
