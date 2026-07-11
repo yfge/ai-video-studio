@@ -21,6 +21,7 @@ import {
   CANVAS_BASE_HEIGHT,
   CANVAS_BASE_WIDTH,
 } from "./productionCanvasViewModel";
+import { virtualizedProductionCanvasNodes } from "./productionCanvasVirtualization";
 
 type WorldBounds = {
   minX: number;
@@ -93,16 +94,24 @@ export function ProductionCanvasSurface({
     return () => observer.disconnect();
   }, [canvasRef]);
   const collapsedNodeIds = collapsedProductionCanvasNodeIds(canvasState);
-  const visibleNodes = (
+  const logicalVisibleNodes = (
     visibleNodeIds
       ? canvasState.nodes.filter((node) => visibleNodeIds.has(node.id))
       : canvasState.nodes
   ).filter((node) => !collapsedNodeIds.has(node.id));
+  const selectedNodeIds = new Set(selectedProductionCanvasNodeIds(canvasState));
+  const alwaysRenderIds = new Set(selectedNodeIds);
+  if (executingNodeId) alwaysRenderIds.add(executingNodeId);
+  const visibleNodes = virtualizedProductionCanvasNodes(
+    logicalVisibleNodes,
+    canvasState.viewport,
+    canvasSize,
+    alwaysRenderIds,
+  );
   const renderedNodeIds = new Set(visibleNodes.map((node) => node.id));
   const visibleEdges = canvasState.edges.filter(
     (edge) => renderedNodeIds.has(edge.from) && renderedNodeIds.has(edge.to),
   );
-  const selectedNodeIds = new Set(selectedProductionCanvasNodeIds(canvasState));
   const connections = useProductionCanvasPortConnections({
     canvasRef,
     edges: canvasState.edges,
@@ -117,6 +126,7 @@ export function ProductionCanvasSurface({
       aria-label="短剧生产链路无限画布"
       className="relative h-[560px] overflow-hidden touch-none bg-[#f8fafc]"
       data-production-canvas="infinite-canvas"
+      data-rendered-node-count={visibleNodes.length}
       role="region"
       tabIndex={0}
       onKeyDown={onCanvasKeyDown}
@@ -175,7 +185,7 @@ export function ProductionCanvasSurface({
           />
         ))}
       </div>
-      {!visibleNodes.length ? (
+      {!logicalVisibleNodes.length ? (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-gray-500">
           无匹配节点
         </div>
@@ -183,7 +193,7 @@ export function ProductionCanvasSurface({
       <ProductionCanvasMinimap
         bounds={worldBounds}
         canvasSize={canvasSize}
-        nodes={visibleNodes}
+        nodes={logicalVisibleNodes}
         selectedNodeId={selectedNodeId}
         viewport={canvasState.viewport}
         onFocusNode={onFocusNode}
@@ -192,7 +202,7 @@ export function ProductionCanvasSurface({
       <ProductionCanvasConnectionOverlay
         discovery={connections.discovery}
         draft={connections.draft}
-        nodes={visibleNodes}
+        nodes={logicalVisibleNodes}
         onCancel={connections.cancel}
         onChoose={connections.choose}
       />

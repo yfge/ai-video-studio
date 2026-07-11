@@ -1,6 +1,7 @@
 # Production Canvas Design
 
-> Status: Implemented through Phase 3; Phase 4 collaboration and reuse complete
+> Status: Implemented through Phase 4; consolidated release validation remains
+> open
 >
 > Last updated: 2026-07-12
 
@@ -381,11 +382,8 @@ As of 2026-07-12, Phases 1-3 are implemented on the real `/canvas` route:
 - Task attempts and media assets remain execution evidence; the saved graph and
   review state remain the current orchestration definition.
 
-The remaining product gaps are deliberately outside the completed first
-vertical slice:
+The remaining release gap is deliberately outside the completed feature phases:
 
-- Large-production performance budgets, viewport virtualization, and scale
-  regression evidence have not yet been defined.
 - Before release, the complete provider-backed image-to-video-to-Timeline path
   still needs one consolidated current-environment browser run; existing
   evidence is distributed across the implementation slices.
@@ -431,16 +429,31 @@ Status: Complete for the interaction and run-control scope below.
 Exit criterion: a multi-scene production remains understandable and recoverable
 after partial failure or upstream revision.
 
-### Phase 4: Collaboration and reuse
+### Phase 4: Collaboration, reuse, and scale
 
-Status: In progress. Candidate regeneration, parent-candidate lineage,
-role-based collaboration, comments, activity history, and reusable domain
-subflows are implemented; scale work remains.
+Status: Complete.
 
 - [Complete] Add comments, approver identity, permissions, and activity history.
 - [Complete] Add reusable domain templates and subflows without exposing
   provider-specific implementation graphs.
-- Add performance budgets and virtualization for large productions.
+- [Complete] Add performance budgets and viewport virtualization for large
+  productions.
+
+Large-production performance contract:
+
+- The regression baseline is 500 nodes, 1,000 edges, and 100 sections. Filters,
+  connection discovery, section state, and the minimap continue to operate on
+  the complete logical graph.
+- Above 80 logical visible nodes, the surface mounts only node cards intersecting
+  the viewport plus 240 CSS pixels of overscan. At 100% zoom in an 1180 x 520
+  viewport, the 500-node regression fixture must mount no more than 60 heavy
+  node cards.
+- Selected and executing nodes remain mounted even outside the viewport so
+  keyboard actions, execution state, and focus transitions do not lose their
+  targets. Edges render only when both endpoint cards are mounted.
+- Small canvases keep the non-virtualized rendering path. Unit and real-browser
+  scale checks provide the regression evidence; this is a structural render
+  budget, not a device-dependent wall-clock benchmark.
 
 Exit criterion: a production team can review, approve, and reuse workflows
 without sharing operator credentials or rebuilding graph structure manually.
