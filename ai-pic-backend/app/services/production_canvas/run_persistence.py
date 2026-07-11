@@ -219,23 +219,3 @@ def save_canvas_state(
     db.commit()
     db.refresh(task)
     return _run_response_from_task(task, payload)
-
-
-def save_canvas_skill_result(
-    db: Session,
-    user: User,
-    run_id: str,
-    result: ProductionCanvasSkillResult,
-) -> bool:
-    task_and_payload = _canvas_run_task(db, user, run_id, for_update=True)
-    if task_and_payload is None:
-        return False
-    task, payload = task_and_payload
-    payload["skill_results"] = [
-        item
-        for item in payload.get("skill_results") or []
-        if not isinstance(item, dict) or item.get("skill") != result.skill
-    ] + [result.model_dump()]
-    task.parameters = json.dumps(payload, ensure_ascii=False)
-    db.commit()
-    return True

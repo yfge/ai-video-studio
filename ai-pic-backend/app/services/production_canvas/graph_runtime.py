@@ -7,6 +7,7 @@ from typing import Any
 from app.schemas.production_canvas import (
     ProductionCanvasGraphEvaluation,
     ProductionCanvasGraphNodeState,
+    ProductionCanvasNodeExecution,
     ProductionCanvasSavedNode,
     ProductionCanvasSavedState,
     ProductionCanvasSkillExecuteRequest,
@@ -20,6 +21,28 @@ class CanvasGraphResolution:
     resolved_inputs: dict[str, Any]
     missing_inputs: list[str]
     execution_order: list[str]
+
+
+def apply_canvas_node_execution(
+    state: ProductionCanvasSavedState,
+    execution: ProductionCanvasNodeExecution,
+) -> ProductionCanvasSavedState:
+    if not execution.node_id:
+        return state
+    nodes = [
+        (
+            node.model_copy(
+                update={
+                    "outputs": {**node.outputs, **execution.skill_result.outputs},
+                    "status": execution.skill_result.status,
+                }
+            )
+            if node.id == execution.node_id
+            else node
+        )
+        for node in state.nodes
+    ]
+    return state.model_copy(update={"nodes": nodes})
 
 
 def _node_value(node: ProductionCanvasSavedNode, port_id: str, selected: bool):

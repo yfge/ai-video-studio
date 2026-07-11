@@ -189,13 +189,17 @@ class ProductionCanvasRunResponse(ProductionCanvasPlanResponse):
     saved_state: ProductionCanvasSavedState | None = None
 
 
-class ProductionCanvasSkillExecuteResponse(BaseModel):
+class ProductionCanvasNodeExecution(BaseModel):
     skill_result: ProductionCanvasSkillResult
     task_id: int | None = None
     task_status: str | None = None
     node_id: str | None = None
     resolved_inputs: dict[str, Any] = Field(default_factory=dict)
+
+
+class ProductionCanvasSkillExecuteResponse(ProductionCanvasNodeExecution):
     execution_order: list[str] = Field(default_factory=list)
+    executions: list[ProductionCanvasNodeExecution] = Field(default_factory=list)
 
 
 class ProductionCanvasGraphNodeState(BaseModel):

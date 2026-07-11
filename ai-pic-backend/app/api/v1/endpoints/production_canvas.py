@@ -16,7 +16,7 @@ from app.services.production_canvas import (
     execute_canvas_skill,
     load_canvas_skill_run,
     persist_canvas_skill_run,
-    save_canvas_skill_result,
+    save_canvas_execution_response,
     save_canvas_state,
 )
 from app.services.production_canvas.graph_runtime import evaluate_canvas_graph
@@ -54,7 +54,7 @@ async def execute_production_canvas_skill(
         request,
     )
     if request.run_id:
-        save_canvas_skill_result(db, current_user, request.run_id, result.skill_result)
+        save_canvas_execution_response(db, current_user, request.run_id, result)
     return {"success": True, "data": result.model_dump()}
 
 

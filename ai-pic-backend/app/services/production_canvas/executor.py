@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from app.models.user import User
 from app.schemas.production_canvas import (
+    ProductionCanvasNodeExecution,
+    ProductionCanvasSavedState,
     ProductionCanvasSkillExecuteRequest,
     ProductionCanvasSkillExecuteResponse,
 )
@@ -10,7 +12,11 @@ from app.services.production_canvas.asset_generation import (
     execute_virtual_ip_image_generation,
 )
 from app.services.production_canvas.execution_common import blocked_result
-from app.services.production_canvas.graph_runtime import resolve_canvas_graph_request
+from app.services.production_canvas.graph_runtime import (
+    CanvasGraphResolution,
+    apply_canvas_node_execution,
+    resolve_canvas_graph_request,
+)
 from app.services.production_canvas.immediate_execution import (
     execute_asset_selection,
     execute_brief_compose,
@@ -71,6 +77,78 @@ def _dispatch_canvas_skill(
     )
 
 
+def _resolved_execution(
+    db: Session,
+    user: User,
+    resolution: CanvasGraphResolution,
+) -> ProductionCanvasSkillExecuteResponse:
+    if resolution.missing_inputs:
+        response = blocked_result(
+            resolution.request,
+            title="画布节点等待类型化输入",
+            detail="必填端口尚未从已连接的上游输出解析完成。",
+            required_inputs=resolution.missing_inputs,
+        )
+    else:
+        response = _dispatch_canvas_skill(db, user, resolution.request)
+    return response.model_copy(
+        update={
+            "node_id": resolution.node_id,
+            "resolved_inputs": resolution.resolved_inputs,
+            "execution_order": resolution.execution_order,
+        }
+    )
+
+
+def _node_execution(
+    response: ProductionCanvasSkillExecuteResponse,
+) -> ProductionCanvasNodeExecution:
+    return ProductionCanvasNodeExecution(
+        skill_result=response.skill_result,
+        task_id=response.task_id,
+        task_status=response.task_status,
+        node_id=response.node_id,
+        resolved_inputs=response.resolved_inputs,
+    )
+
+
+def _execute_downstream(
+    db: Session,
+    user: User,
+    request: ProductionCanvasSkillExecuteRequest,
+    state: ProductionCanvasSavedState,
+    first_resolution: CanvasGraphResolution,
+) -> ProductionCanvasSkillExecuteResponse:
+    executions: list[ProductionCanvasNodeExecution] = []
+    working_state = state
+    node_by_id = {node.id: node for node in state.nodes}
+    for node_id in first_resolution.execution_order:
+        node = node_by_id[node_id]
+        node_request = request.model_copy(
+            update={
+                "node_id": node_id,
+                "skill": node.skill or "",
+                "execution_scope": "node",
+            }
+        )
+        resolution = resolve_canvas_graph_request(working_state, node_request)
+        if resolution is None:
+            break
+        response = _resolved_execution(db, user, resolution)
+        execution = _node_execution(response)
+        executions.append(execution)
+        working_state = apply_canvas_node_execution(working_state, execution)
+        if response.skill_result.status in {"blocked", "failed", "cancelled"}:
+            break
+
+    first = executions[0]
+    return ProductionCanvasSkillExecuteResponse(
+        **first.model_dump(),
+        execution_order=first_resolution.execution_order,
+        executions=executions,
+    )
+
+
 def execute_canvas_skill(
     db: Session,
     user: User,
@@ -87,29 +165,8 @@ def execute_canvas_skill(
             detail="node_id 与当前 Run 的 graph v2 定义不一致，执行已拒绝。",
             required_inputs=["graph_node"],
         )
-    if resolution and resolution.missing_inputs:
-        response = blocked_result(
-            resolution.request,
-            title="画布节点等待类型化输入",
-            detail="必填端口尚未从已连接的上游输出解析完成。",
-            required_inputs=resolution.missing_inputs,
-        )
-        return response.model_copy(
-            update={
-                "node_id": resolution.node_id,
-                "resolved_inputs": resolution.resolved_inputs,
-                "execution_order": resolution.execution_order,
-            }
-        )
-
-    resolved_request = resolution.request if resolution else request
-    response = _dispatch_canvas_skill(db, user, resolved_request)
     if resolution is None:
-        return response
-    return response.model_copy(
-        update={
-            "node_id": resolution.node_id,
-            "resolved_inputs": resolution.resolved_inputs,
-            "execution_order": resolution.execution_order,
-        }
-    )
+        return _dispatch_canvas_skill(db, user, request)
+    if request.execution_scope == "downstream":
+        return _execute_downstream(db, user, request, state, resolution)
+    return _resolved_execution(db, user, resolution)
