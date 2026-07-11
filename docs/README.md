@@ -55,6 +55,8 @@ Keep durable engineering rules in repository docs like the files above. Do not t
 
 ## Design Documents
 
+- `docs/design/production-canvas.md` — executable short-drama production canvas,
+  typed dependency graph, candidate review, and Timeline integration design.
 - `docs/design/duration-orchestrator-agent.md` — Duration Orchestrator Agent 设计（端到端时长闭环验证）
 - `docs/design/image-generation-unification.md` — 图像生成统一化设计（Virtual IP / Environment / Storyboard）
 - `docs/design/story-episode-generation-quality.md` — story/episode generation quality (strict validation + repair, audit trail)

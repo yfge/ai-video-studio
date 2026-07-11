@@ -7,10 +7,14 @@
 - 目标用户：专业短剧制作团队，不是小白一键成片用户。
 - 产品模式：ToB 生产工作流系统，不是通用 AI 视频玩具。
 - 第一性原理：`Timeline` 是系统的单一事实来源（SSOT）。
+- 无限画布定位：生产编排、候选评审和执行证据视图；画布布局不改变
+  Timeline clip 顺序、时长或版本。
 - 默认生产模式：对白/音轨时间轴驱动时长，图像/视频生成只是向时间轴填充 clip 资产。
 - 故事板定义：只在选中 Timeline `video` clip（分镜）内生成和使用，作为该
   clip 的视觉参考资产；不再生成整剧/整条 Timeline 的故事板。
 - 当前目标：把 `audio -> timeline -> clip -> render -> export` 做成产品核心闭环。
+- 当前画布目标：先跑通 `图片候选 -> 人工选用 -> 视频候选 -> 人工选用 ->
+stable clip_id -> Timeline`，不继续把快捷键和白板工具当作主链完成度。
 
 ## 看板规则
 
@@ -41,6 +45,9 @@
 
 ## 状态概览
 
+- P0：无限画布已有交互、保存恢复、动态节点、Skill 执行和任务证据基础；
+  当前缺口是边尚未成为执行输入契约，媒体节点尚未承担候选预览、选用和
+  Timeline 回填。设计真源见 `docs/design/production-canvas.md`。
 - P0：Timeline Spec v1 文档、DB/API foundation、`audio_timeline.beats` 导入桥、Timeline readiness 优先级、默认 storyboard support 生成源、dry-run backfill、versioned render/export 回写、delete/rollback、schema/import 校验、clip asset lineage 后端基础和 stable `clip_id` rework API 已落地。
 - P0：把对白音轨、beats、占位分镜、渲染导出收成一条可重渲主链。
 - P0：优先清理会阻断这条主链的 legacy 和稳定性问题。
@@ -76,6 +83,40 @@
 - [x] 为 Timeline Spec 增加 schema 校验、导入校验和权限校验。
 - [x] 补 first-class clip asset lineage 后端基础：源音频、storyboard 视频和 render 输出按 `clip_id` 关联。
 - [x] 补更完整的导出幂等测试，并和 rework 操作联动。
+
+## P0: Production Canvas Vertical Slice
+
+:link: `docs/design/production-canvas.md`
+
+当前阻塞：
+
+- 当前边只表达视觉关系，尚未定义类型化端口、输入映射、依赖调度和下游
+  stale 传播。
+- 图片/视频节点主要显示标题、状态和原始输出，尚不能在节点内预览、比较、
+  选用候选并驱动下游。
+- approved video 尚未通过画布显式写入 stable `clip_id` 和当前 Timeline
+  version，因此画布仍是任务看板，不是生产链路事实入口。
+
+### 任务（可执行图→候选评审→Timeline）
+
+- [ ] 定义并持久化版本化节点端口与类型化边；后端校验兼容类型、重复边、
+      自环、环路和恢复数据。
+- [ ] 让后端按图依赖计算 Ready、Run Node、Run Downstream 和 stale descendants；
+      边变化必须改变真实 Skill 请求输入。
+- [ ] 图片候选节点展示真实持久化资产、生成历史和人工选用状态，并输出
+      `approved_image`。
+- [ ] 视频候选节点通过 `approved_image -> start_frame` 消费选中图片，展示任务
+      进度、失败重试、可播放候选和人工选用状态。
+- [ ] approved video 通过显式操作写入 stable `clip_id` 和当前 Timeline version，
+      回写新 Timeline version 与 media lineage；上游选用变化时标记下游 stale，
+      不得静默覆盖 Timeline。
+- [ ] 用真实浏览器完成图片候选到视频再到 Timeline 的全链路验证，证据包含
+      console、network、task、媒体预览、选用状态和 Timeline 资产断言，落到
+      `artifacts/runs/<run_id>/`。
+
+退出标准：操作员不复制 URL 或业务 ID，即可在画布中完成一个真实镜头的
+图片生成、人工选图、视频生成、人工选片和 Timeline 回填；刷新并通过 Run ID
+恢复后，图定义、选用状态、执行证据和 Timeline 绑定保持一致。
 
 ## P1: Production Stability
 
