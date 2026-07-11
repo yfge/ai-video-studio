@@ -5,6 +5,7 @@ import type {
 } from "react";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
 import { duplicateManualProductionCanvasNote } from "./productionCanvasNoteActions";
+import { duplicateProductionCanvasSelection } from "./productionCanvasSelection";
 import {
   applyProductionCanvasKeyboardNudge,
   getProductionCanvasKeyboardNudge,
@@ -68,12 +69,13 @@ export function useProductionCanvasKeyboardCommands({
       (event.ctrlKey || event.metaKey) &&
       !event.altKey &&
       !event.shiftKey &&
-      isManualProductionCanvasNote(selectedNode) &&
       event.key.toLowerCase() === "d"
     ) {
       event.preventDefault();
       setCanvasState((state) =>
-        duplicateManualProductionCanvasNote(state, state.selectedNodeId),
+        isManualProductionCanvasNote(selectedNode)
+          ? duplicateManualProductionCanvasNote(state, state.selectedNodeId)
+          : duplicateProductionCanvasSelection(state),
       );
       return;
     }

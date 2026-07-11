@@ -25,6 +25,11 @@ import {
 } from "./productionCanvasViewModel";
 import { useProductionCanvasInteractionControls } from "./useProductionCanvasInteractionControls";
 import { useProductionCanvasKeyboardCommands } from "./useProductionCanvasKeyboardCommands";
+import {
+  selectProductionCanvasNode,
+  selectedProductionCanvasNodeIds,
+} from "./productionCanvasSelection";
+import { useProductionCanvasSelectionActions } from "./useProductionCanvasSelectionActions";
 
 export function useProductionCanvasController(storageKey?: string | null) {
   const [canvasState, setCanvasState] = useState(createProductionCanvasState);
@@ -37,6 +42,7 @@ export function useProductionCanvasController(storageKey?: string | null) {
   const selectedNode = canvasState.nodes.find(
     (node) => node.id === canvasState.selectedNodeId,
   );
+  const selectionActions = useProductionCanvasSelectionActions(setCanvasState);
   const zoomLabel = `${Math.round(canvasState.viewport.zoom * 100)}%`;
   const {
     handleCanvasPointerDown,
@@ -61,8 +67,10 @@ export function useProductionCanvasController(storageKey?: string | null) {
     window.localStorage.setItem(storageKey, JSON.stringify(canvasState));
   }, [canvasState, storageKey, storageLoaded]);
 
-  const handleSelectNode = (nodeId: string) =>
-    setCanvasState((state) => ({ ...state, selectedNodeId: nodeId }));
+  const handleSelectNode = (nodeId: string, additive = false) =>
+    setCanvasState((state) =>
+      selectProductionCanvasNode(state, nodeId, additive),
+    );
 
   const handleAddEdge = (edge: ProductionCanvasEdge) =>
     setCanvasState((state) => ({
@@ -84,6 +92,9 @@ export function useProductionCanvasController(storageKey?: string | null) {
           state.selectedNodeId === nodeId
             ? next.nodes[0]?.id || ""
             : state.selectedNodeId,
+        selectedNodeIds: selectedProductionCanvasNodeIds(state).filter(
+          (id) => id !== nodeId,
+        ),
       };
     });
   };
@@ -124,6 +135,7 @@ export function useProductionCanvasController(storageKey?: string | null) {
       return {
         ...state,
         selectedNodeId: node.id,
+        selectedNodeIds: [node.id],
         viewport: centerProductionCanvasOnNode(state.viewport, node, {
           width,
           height,
@@ -165,6 +177,7 @@ export function useProductionCanvasController(storageKey?: string | null) {
         ...state,
         nodes,
         selectedNodeId: nodes[nodes.length - 1]?.id || state.selectedNodeId,
+        selectedNodeIds: [nodes[nodes.length - 1]?.id || state.selectedNodeId],
       };
     });
     canvasRef.current?.focus({ preventScroll: true });
@@ -192,6 +205,7 @@ export function useProductionCanvasController(storageKey?: string | null) {
           ...nodes,
         ],
         selectedNodeId: nodes[0]?.id || state.selectedNodeId,
+        selectedNodeIds: [nodes[0]?.id || state.selectedNodeId],
       };
       return {
         ...nextState,
@@ -223,6 +237,7 @@ export function useProductionCanvasController(storageKey?: string | null) {
     handleZoomButton,
     replaceCanvasState: setCanvasState,
     selectedNode,
+    selectionActions,
     worldBounds,
     zoomLabel,
   };

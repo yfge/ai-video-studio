@@ -25,6 +25,7 @@ export type ProductionCanvasState = {
   nodes: ProductionCanvasNode[];
   viewport: ProductionCanvasViewport;
   selectedNodeId: string;
+  selectedNodeIds?: string[];
 };
 
 export const productionCanvasDefaultViewport: ProductionCanvasViewport = {

@@ -1,5 +1,8 @@
 import {
-  moveProductionCanvasNode,
+  moveProductionCanvasNodes,
+  selectedProductionCanvasNodeIds,
+} from "./productionCanvasSelection";
+import {
   panProductionCanvas,
   type ProductionCanvasState,
 } from "./productionCanvasState";
@@ -32,9 +35,9 @@ export function applyProductionCanvasKeyboardNudge(
   }
   return {
     ...state,
-    nodes: moveProductionCanvasNode(
+    nodes: moveProductionCanvasNodes(
       state.nodes,
-      state.selectedNodeId,
+      selectedProductionCanvasNodeIds(state),
       nudge[0],
       nudge[1],
     ),

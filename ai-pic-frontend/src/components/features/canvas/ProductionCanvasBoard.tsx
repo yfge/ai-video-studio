@@ -1,11 +1,7 @@
 "use client";
-import Link from "next/link";
 import type * as React from "react";
-import {
-  OperatorPanel,
-  OperatorShell,
-  operatorButtonClass,
-} from "@/components/shared";
+import { OperatorPanel, OperatorShell } from "@/components/shared";
+import { ProductionCanvasBackLink } from "./ProductionCanvasBackLink";
 import { ProductionCanvasInfoPanels } from "./ProductionCanvasInfoPanels";
 import { ProductionCanvasPlanningHeader } from "./ProductionCanvasPlanningHeader";
 import { ProductionCanvasSidePanel } from "./ProductionCanvasSidePanel";
@@ -22,24 +18,16 @@ import {
 } from "./productionCanvasDoubleClick";
 import { duplicateManualProductionCanvasNote } from "./productionCanvasNoteActions";
 import { PRODUCTION_CANVAS_STORAGE_KEY } from "./productionCanvasViewModel";
-type ProductionCanvasBoardProps = { initialRunId?: string | null };
-export function ProductionCanvasBoard(props: ProductionCanvasBoardProps = {}) {
+export function ProductionCanvasBoard(
+  props: { initialRunId?: string | null } = {},
+) {
   return (
     <OperatorShell
       title="创作画布"
       subtitle="从现有项目编排剧本、分镜、图片候选、视频候选和时间线"
       breadcrumb={["IP 中心", "创作画布"]}
       showGlobalSearch={false}
-      rightSlot={
-        <div className="hidden sm:block">
-          <Link
-            href="/stories"
-            className={operatorButtonClass("secondary", "whitespace-nowrap")}
-          >
-            返回故事生产
-          </Link>
-        </div>
-      }
+      rightSlot={<ProductionCanvasBackLink />}
     >
       <ProductionCanvasContent initialRunId={props.initialRunId} />
     </OperatorShell>
@@ -77,6 +65,7 @@ export function ProductionCanvasContent({
     handleZoomButton,
     replaceCanvasState,
     selectedNode,
+    selectionActions,
     worldBounds,
     zoomLabel,
   } = useProductionCanvasController(storageKey);
@@ -180,6 +169,7 @@ export function ProductionCanvasContent({
             canvasState={canvasState}
             executingNodeId={planner.executingNodeId}
             selectedNodeId={selectedNode?.id}
+            selectionActions={selectionActions}
             worldBounds={worldBounds}
             onAddEdge={handleAddEdge}
             onCanvasDoubleClick={handleCanvasDoubleClick}

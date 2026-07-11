@@ -11,10 +11,15 @@ import {
   type ProductionCanvasFilters,
 } from "./productionCanvasFilters";
 import { ProductionCanvasSurface } from "./ProductionCanvasSurface";
+import { ProductionCanvasSelectionToolbar } from "./ProductionCanvasSelectionToolbar";
+import type { ProductionCanvasSelectionActions } from "./useProductionCanvasSelectionActions";
 
-type WorkspaceProps = ComponentProps<typeof ProductionCanvasSurface>;
+type WorkspaceProps = ComponentProps<typeof ProductionCanvasSurface> & {
+  selectionActions: ProductionCanvasSelectionActions;
+};
 
 export function ProductionCanvasWorkspace(props: WorkspaceProps) {
+  const { selectionActions, ...surfaceProps } = props;
   const [filters, setFilters] = useState(emptyProductionCanvasFilters);
   const nodes = props.canvasState.nodes;
   const facets = useMemo(() => productionCanvasFilterFacets(nodes), [nodes]);
@@ -92,7 +97,14 @@ export function ProductionCanvasWorkspace(props: WorkspaceProps) {
           清除筛选
         </button>
       </div>
-      <ProductionCanvasSurface {...props} visibleNodeIds={visibleNodeIds} />
+      <ProductionCanvasSelectionToolbar
+        actions={selectionActions}
+        canvasState={props.canvasState}
+      />
+      <ProductionCanvasSurface
+        {...surfaceProps}
+        visibleNodeIds={visibleNodeIds}
+      />
     </>
   );
 }

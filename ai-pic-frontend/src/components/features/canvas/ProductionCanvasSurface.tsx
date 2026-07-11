@@ -14,6 +14,7 @@ import {
 import { CanvasNodeCard } from "./ProductionCanvasNodeCard";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
 import type { ProductionCanvasState } from "./productionCanvasState";
+import { selectedProductionCanvasNodeIds } from "./productionCanvasSelection";
 import {
   CANVAS_BASE_HEIGHT,
   CANVAS_BASE_WIDTH,
@@ -61,7 +62,7 @@ export function ProductionCanvasSurface({
     event: ReactPointerEvent<HTMLButtonElement>,
     nodeId: string,
   ) => void;
-  onSelectNode: (nodeId: string) => void;
+  onSelectNode: (nodeId: string, additive?: boolean) => void;
   selectedNodeId?: string;
   visibleNodeIds?: Set<string>;
   worldBounds: WorldBounds;
@@ -91,6 +92,7 @@ export function ProductionCanvasSurface({
         (edge) => visibleNodeIds.has(edge.from) && visibleNodeIds.has(edge.to),
       )
     : canvasState.edges;
+  const selectedNodeIds = new Set(selectedProductionCanvasNodeIds(canvasState));
   const connections = useProductionCanvasPortConnections({
     canvasRef,
     edges: canvasState.edges,
@@ -146,7 +148,7 @@ export function ProductionCanvasSurface({
             )}
             executing={executingNodeId === node.id}
             node={node}
-            selected={node.id === selectedNodeId}
+            selected={selectedNodeIds.has(node.id)}
             worldBounds={worldBounds}
             onExecuteNode={onExecuteNode}
             onFocusNode={onFocusNode}

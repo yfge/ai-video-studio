@@ -8,7 +8,11 @@ import {
 } from "react";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
 import {
-  moveProductionCanvasNode,
+  moveProductionCanvasNodes,
+  selectedProductionCanvasNodeIds,
+  selectProductionCanvasNode,
+} from "./productionCanvasSelection";
+import {
   panProductionCanvas,
   zoomProductionCanvas,
   type ProductionCanvasState,
@@ -23,7 +27,7 @@ import {
 type CanvasDragState =
   | {
       type: "node";
-      nodeId: string;
+      nodeIds: string[];
       startX: number;
       startY: number;
       originNodes: ProductionCanvasNode[];
@@ -58,10 +62,27 @@ export function useProductionCanvasInteractionControls({
     event.stopPropagation();
     canvasRef.current?.setPointerCapture(event.pointerId);
     canvasRef.current?.focus({ preventScroll: true });
-    setCanvasState((state) => ({ ...state, selectedNodeId: nodeId }));
+    const selected = selectedProductionCanvasNodeIds(canvasState);
+    const additive = event.shiftKey || event.metaKey || event.ctrlKey;
+    if (additive && selected.includes(nodeId)) {
+      setCanvasState((state) =>
+        selectProductionCanvasNode(state, nodeId, true),
+      );
+      return;
+    }
+    const nodeIds = additive
+      ? [...selected, nodeId]
+      : selected.includes(nodeId) && selected.length > 1
+      ? selected
+      : [nodeId];
+    setCanvasState((state) => ({
+      ...state,
+      selectedNodeId: nodeId,
+      selectedNodeIds: nodeIds,
+    }));
     dragRef.current = {
       type: "node",
-      nodeId,
+      nodeIds,
       startX: event.clientX,
       startY: event.clientY,
       originNodes: canvasState.nodes,
@@ -86,7 +107,11 @@ export function useProductionCanvasInteractionControls({
     canvasRef.current?.setPointerCapture(event.pointerId);
     canvasRef.current?.focus({ preventScroll: true });
     if (event.button === 0 && !event.altKey) {
-      setCanvasState((state) => ({ ...state, selectedNodeId: "" }));
+      setCanvasState((state) => ({
+        ...state,
+        selectedNodeId: "",
+        selectedNodeIds: [],
+      }));
     }
     dragRef.current = {
       type: "pan",
@@ -105,9 +130,9 @@ export function useProductionCanvasInteractionControls({
     if (drag.type === "node") {
       setCanvasState((state) => ({
         ...state,
-        nodes: moveProductionCanvasNode(
+        nodes: moveProductionCanvasNodes(
           drag.originNodes,
-          drag.nodeId,
+          drag.nodeIds,
           (event.clientX - drag.startX) / drag.zoom,
           (event.clientY - drag.startY) / drag.zoom,
         ),

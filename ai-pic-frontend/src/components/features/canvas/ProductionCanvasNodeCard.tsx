@@ -32,7 +32,7 @@ export function CanvasNodeCard({
   selected: boolean;
   worldBounds?: { minX: number; minY: number };
   onFocusNode?: (nodeId: string) => void;
-  onSelect: (nodeId: string) => void;
+  onSelect: (nodeId: string, additive?: boolean) => void;
   onPointerDown: (
     event: ReactPointerEvent<HTMLButtonElement>,
     nodeId: string,
@@ -99,7 +99,9 @@ export function CanvasNodeCard({
         aria-label={`${node.label} ${displayTitle}`}
         aria-pressed={selected}
         onClick={(event) => {
-          onSelect(node.id);
+          if (event.detail === 0) {
+            onSelect(node.id, event.shiftKey || event.metaKey || event.ctrlKey);
+          }
           event.currentTarget
             .closest<HTMLElement>("[data-production-canvas='infinite-canvas']")
             ?.focus({ preventScroll: true });

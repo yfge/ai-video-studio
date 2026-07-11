@@ -115,6 +115,30 @@ describe("ProductionCanvasBoard", () => {
     );
   });
 
+  it("multi-selects, aligns, and duplicates production nodes", () => {
+    const utils = render(<ProductionCanvasContent storageKey={null} />, {
+      container: dom.window.document.body,
+    });
+    const brief = utils.getByLabelText("Brief IP、受众、题材和单集目标");
+    const script = utils.getByLabelText("Script 短剧节拍、对白和质量门禁");
+
+    fireEvent.click(brief);
+    fireEvent.click(script, { shiftKey: true });
+    assert.ok(utils.getByText("已选 2 个节点"));
+    fireEvent.click(utils.getByRole("button", { name: "左对齐" }));
+    assert.equal(
+      brief.parentElement?.style.left,
+      script.parentElement?.style.left,
+    );
+    fireEvent.click(utils.getByRole("button", { name: "复制生产节点" }));
+    assert.ok(
+      utils.container.querySelector("[data-canvas-node='brief-copy-1']"),
+    );
+    assert.ok(
+      utils.container.querySelector("[data-canvas-node='script-copy-1']"),
+    );
+  });
+
   it("selects a node and exposes its details in the inspector", () => {
     const utils = render(<ProductionCanvasContent storageKey={null} />, {
       container: dom.window.document.body,

@@ -73,7 +73,7 @@ describe("ProductionCanvas manual note duplication", () => {
     );
   });
 
-  it("leaves Cmd+D untouched for production and task evidence nodes", () => {
+  it("duplicates production nodes while leaving task evidence untouched", () => {
     const utils = render(<ProductionCanvasContent storageKey={null} />, {
       container: dom.window.document.body,
     });
@@ -82,7 +82,10 @@ describe("ProductionCanvas manual note duplication", () => {
     );
 
     assert.ok(canvas);
-    assert.equal(fireEvent.keyDown(canvas, { key: "d", metaKey: true }), true);
+    assert.equal(fireEvent.keyDown(canvas, { key: "d", metaKey: true }), false);
+    assert.ok(
+      utils.container.querySelector("[data-canvas-node='brief-copy-1']"),
+    );
     assert.equal(
       utils.container.querySelectorAll("[data-canvas-node^='note-']").length,
       0,
