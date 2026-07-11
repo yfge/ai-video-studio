@@ -133,6 +133,20 @@ export function useProductionCanvasController(storageKey?: string | null) {
     canvasRef.current?.focus({ preventScroll: true });
   };
 
+  const handleNavigate = (point: { x: number; y: number }) => {
+    const width = canvasRef.current?.clientWidth || CANVAS_BASE_WIDTH;
+    const height = canvasRef.current?.clientHeight || CANVAS_BASE_HEIGHT;
+    setCanvasState((state) => ({
+      ...state,
+      viewport: {
+        ...state.viewport,
+        x: Math.round(width / 2 - point.x * state.viewport.zoom),
+        y: Math.round(height / 2 - point.y * state.viewport.zoom),
+      },
+    }));
+    canvasRef.current?.focus({ preventScroll: true });
+  };
+
   const handleAddNote = (targetPosition?: { x: number; y: number }) => {
     const rect = canvasRef.current?.getBoundingClientRect();
     setCanvasState((state) => {
@@ -199,6 +213,7 @@ export function useProductionCanvasController(storageKey?: string | null) {
     handleFit,
     handleFocusSelectedNode,
     handleNodePointerDown,
+    handleNavigate,
     handleReset,
     handleRemoveEdge,
     handleRemoveNode,

@@ -85,11 +85,34 @@ describe("ProductionCanvasBoard", () => {
     );
     assert.ok(utils.getByRole("button", { name: "添加便签" }));
     assert.ok(utils.getByRole("button", { name: "适配" }));
+    assert.ok(utils.getByRole("navigation", { name: "画布小地图" }));
     assert.equal(
       utils.getByRole("button", { name: "定位选中" }).hasAttribute("disabled"),
       false,
     );
     assert.ok(utils.getByText("100%"));
+  });
+
+  it("navigates to nodes from the minimap", () => {
+    const utils = render(<ProductionCanvasContent storageKey={null} />, {
+      container: dom.window.document.body,
+    });
+    const world = utils.container.querySelector<HTMLElement>(
+      "[data-production-canvas-world='true']",
+    );
+
+    assert.ok(world);
+    fireEvent.click(utils.getByRole("button", { name: "小地图定位 Timeline" }));
+    assert.equal(
+      utils.container
+        .querySelector("[data-canvas-node='timeline']")
+        ?.getAttribute("aria-current"),
+      "true",
+    );
+    assert.notEqual(
+      world.style.transform,
+      "translate(0px, 0px) scale(1) translate(0px, 0px)",
+    );
   });
 
   it("selects a node and exposes its details in the inspector", () => {

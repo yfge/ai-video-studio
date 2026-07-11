@@ -1,9 +1,6 @@
 "use client";
 import Link from "next/link";
-import type {
-  KeyboardEvent as ReactKeyboardEvent,
-  MouseEvent as ReactMouseEvent,
-} from "react";
+import type * as React from "react";
 import {
   OperatorPanel,
   OperatorShell,
@@ -70,6 +67,7 @@ export function ProductionCanvasContent({
     handleFit,
     handleFocusSelectedNode,
     handleNodePointerDown,
+    handleNavigate,
     handleReset,
     handleRemoveEdge,
     handleRemoveNode,
@@ -105,7 +103,7 @@ export function ProductionCanvasContent({
     );
     focusCanvas();
   };
-  const handleCanvasDoubleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+  const handleCanvasDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
     const nodeId = nodeIdFromCanvasDoubleClick(event);
     if (nodeId) {
       handleFocusSelectedNode(nodeId);
@@ -115,7 +113,7 @@ export function ProductionCanvasContent({
       notePositionFromCanvasDoubleClick(event, canvasState.viewport),
     );
   };
-  const handleBoardKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+  const handleBoardKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (
       !event.altKey &&
       !event.ctrlKey &&
@@ -190,6 +188,7 @@ export function ProductionCanvasContent({
             onCanvasPointerUp={handleCanvasPointerUp}
             onExecuteNode={(node) => void executeNode(node, "node")}
             onFocusNode={handleFocusSelectedNode}
+            onNavigate={handleNavigate}
             onNodePointerDown={handleNodePointerDown}
             onSelectNode={handleSelectNode}
           />

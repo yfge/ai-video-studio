@@ -4,10 +4,16 @@ import type {
   PointerEvent as ReactPointerEvent,
   RefObject,
 } from "react";
+import { useEffect, useState } from "react";
 import { CanvasEdges } from "./ProductionCanvasElements";
+import { ProductionCanvasMinimap } from "./ProductionCanvasMinimap";
 import { CanvasNodeCard } from "./ProductionCanvasNodeCard";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
 import type { ProductionCanvasState } from "./productionCanvasState";
+import {
+  CANVAS_BASE_HEIGHT,
+  CANVAS_BASE_WIDTH,
+} from "./productionCanvasViewModel";
 
 type WorldBounds = {
   minX: number;
@@ -27,6 +33,7 @@ export function ProductionCanvasSurface({
   onCanvasPointerUp,
   onExecuteNode,
   onFocusNode,
+  onNavigate,
   onNodePointerDown,
   onSelectNode,
   selectedNodeId,
@@ -43,6 +50,7 @@ export function ProductionCanvasSurface({
   onCanvasPointerUp: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onExecuteNode: (node: ProductionCanvasNode) => void;
   onFocusNode: (nodeId?: string) => void;
+  onNavigate: (point: { x: number; y: number }) => void;
   onNodePointerDown: (
     event: ReactPointerEvent<HTMLButtonElement>,
     nodeId: string,
@@ -52,6 +60,23 @@ export function ProductionCanvasSurface({
   visibleNodeIds?: Set<string>;
   worldBounds: WorldBounds;
 }) {
+  const [canvasSize, setCanvasSize] = useState({
+    width: CANVAS_BASE_WIDTH,
+    height: CANVAS_BASE_HEIGHT,
+  });
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (!entry) return;
+      setCanvasSize({
+        width: entry.contentRect.width || CANVAS_BASE_WIDTH,
+        height: entry.contentRect.height || CANVAS_BASE_HEIGHT,
+      });
+    });
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, [canvasRef]);
   const visibleNodes = visibleNodeIds
     ? canvasState.nodes.filter((node) => visibleNodeIds.has(node.id))
     : canvasState.nodes;
@@ -113,6 +138,15 @@ export function ProductionCanvasSurface({
           无匹配节点
         </div>
       ) : null}
+      <ProductionCanvasMinimap
+        bounds={worldBounds}
+        canvasSize={canvasSize}
+        nodes={visibleNodes}
+        selectedNodeId={selectedNodeId}
+        viewport={canvasState.viewport}
+        onFocusNode={onFocusNode}
+        onNavigate={onNavigate}
+      />
     </div>
   );
 }
