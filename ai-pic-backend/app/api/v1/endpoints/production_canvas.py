@@ -19,6 +19,7 @@ from app.services.production_canvas import (
     save_canvas_skill_result,
     save_canvas_state,
 )
+from app.services.production_canvas.graph_runtime import evaluate_canvas_graph
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -67,6 +68,21 @@ async def get_production_canvas_run(
     if run is None:
         raise HTTPException(status_code=404, detail="Production canvas run not found")
     return {"success": True, "data": run.model_dump(by_alias=True)}
+
+
+@router.get("/runs/{run_id}/graph", response_model=dict)
+async def get_production_canvas_graph(
+    run_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    run = load_canvas_skill_run(db, current_user, run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Production canvas run not found")
+    if run.saved_state is None:
+        raise HTTPException(status_code=409, detail="Production canvas graph not saved")
+    evaluation = evaluate_canvas_graph(run.saved_state)
+    return {"success": True, "data": evaluation.model_dump()}
 
 
 @router.put("/runs/{run_id}/state", response_model=dict)

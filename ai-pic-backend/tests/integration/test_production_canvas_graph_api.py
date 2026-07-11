@@ -80,6 +80,16 @@ def test_typed_canvas_graph_api_saves_and_restores_bindings(client):
     restored_state = restored.json()["data"]["saved_state"]
     assert restored_state == saved_state
 
+    graph = client.get(f"/api/v1/production-canvas/runs/{run_id}/graph")
+    assert graph.status_code == 200
+    evaluation = graph.json()["data"]
+    video_state = next(
+        item for item in evaluation["node_states"] if item["node_id"] == "video"
+    )
+    assert video_state["status"] == "draft"
+    assert video_state["missing_inputs"] == ["start_frame"]
+    assert evaluation["execution_order"] == ["image", "video"]
+
 
 def test_typed_canvas_graph_api_rejects_incompatible_binding(client):
     run_id = _create_run(client)
@@ -93,3 +103,89 @@ def test_typed_canvas_graph_api_rejects_incompatible_binding(client):
 
     assert response.status_code == 422
     assert "Incompatible canvas port types" in response.text
+
+
+def test_typed_canvas_edge_overrides_real_execution_context(client):
+    run_id = _create_run(client)
+    state = {
+        "graph_version": 2,
+        "nodes": [
+            {
+                **_node(
+                    "source-brief",
+                    output_ports=[{"id": "production_brief", "type": "text"}],
+                ),
+                "outputs": {"production_brief": "来自类型化边的生产目标"},
+            },
+            {
+                **_node(
+                    "target-brief",
+                    input_ports=[
+                        {
+                            "id": "production_brief",
+                            "type": "text",
+                            "required": True,
+                        }
+                    ],
+                ),
+                "skill": "brief.compose",
+                "status": "blocked",
+            },
+        ],
+        "edges": [
+            {
+                "edge_id": "source-brief-to-target-brief",
+                "from": "source-brief",
+                "from_port": "production_brief",
+                "to": "target-brief",
+                "to_port": "production_brief",
+                "binding_type": "value",
+                "required": True,
+            }
+        ],
+        "viewport": {"x": 0, "y": 0, "zoom": 1},
+    }
+    saved = client.put(
+        f"/api/v1/production-canvas/runs/{run_id}/state",
+        json=state,
+    )
+    assert saved.status_code == 200
+
+    response = client.post(
+        "/api/v1/production-canvas/execute",
+        json={
+            "prompt": "客户端旧目标",
+            "skill": "brief.compose",
+            "node_id": "target-brief",
+            "run_id": run_id,
+        },
+    )
+
+    assert response.status_code == 200
+    result = response.json()["data"]
+    assert result["node_id"] == "target-brief"
+    assert result["resolved_inputs"] == {"production_brief": "来自类型化边的生产目标"}
+    assert result["execution_order"] == ["target-brief"]
+    assert result["skill_result"]["outputs"]["prompt"] == ("来自类型化边的生产目标")
+
+    state["nodes"][0]["outputs"] = {}
+    missing = client.put(
+        f"/api/v1/production-canvas/runs/{run_id}/state",
+        json=state,
+    )
+    assert missing.status_code == 200
+    blocked = client.post(
+        "/api/v1/production-canvas/execute",
+        json={
+            "prompt": "客户端旧目标",
+            "skill": "brief.compose",
+            "node_id": "target-brief",
+            "run_id": run_id,
+        },
+    )
+    assert blocked.status_code == 200
+    blocked_result = blocked.json()["data"]
+    assert blocked_result["skill_result"]["status"] == "blocked"
+    assert blocked_result["skill_result"]["outputs"]["required_inputs"] == [
+        "production_brief"
+    ]

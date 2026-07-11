@@ -36,6 +36,8 @@ class ProductionCanvasPlanRequest(BaseModel):
 class ProductionCanvasSkillExecuteRequest(ProductionCanvasPlanRequest):
     skill: str = Field(..., min_length=1, max_length=80)
     run_id: str | None = Field(None, max_length=32)
+    node_id: str | None = Field(None, max_length=120)
+    execution_scope: Literal["node", "downstream"] = "node"
     reference_artifacts: list[str] = Field(default_factory=list, max_length=20)
     frame_indexes: list[int] | None = None
     model: str | None = Field(None, max_length=120)
@@ -191,3 +193,18 @@ class ProductionCanvasSkillExecuteResponse(BaseModel):
     skill_result: ProductionCanvasSkillResult
     task_id: int | None = None
     task_status: str | None = None
+    node_id: str | None = None
+    resolved_inputs: dict[str, Any] = Field(default_factory=dict)
+    execution_order: list[str] = Field(default_factory=list)
+
+
+class ProductionCanvasGraphNodeState(BaseModel):
+    node_id: str
+    status: CanvasNodeStatus
+    missing_inputs: list[str] = Field(default_factory=list)
+
+
+class ProductionCanvasGraphEvaluation(BaseModel):
+    graph_version: int
+    node_states: list[ProductionCanvasGraphNodeState] = Field(default_factory=list)
+    execution_order: list[str] = Field(default_factory=list)

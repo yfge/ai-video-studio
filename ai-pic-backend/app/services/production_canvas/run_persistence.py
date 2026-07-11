@@ -189,6 +189,21 @@ def load_canvas_skill_run(
     return _run_response_from_task(task, payload)
 
 
+def load_canvas_saved_state(
+    db: Session,
+    user: User,
+    run_id: str,
+) -> ProductionCanvasSavedState | None:
+    task_and_payload = _canvas_run_task(db, user, run_id)
+    if task_and_payload is None:
+        return None
+    _, payload = task_and_payload
+    raw_state = payload.get("saved_state")
+    if not isinstance(raw_state, dict):
+        return None
+    return ProductionCanvasSavedState.model_validate(raw_state)
+
+
 def save_canvas_state(
     db: Session,
     user: User,
