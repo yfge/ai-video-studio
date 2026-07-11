@@ -135,7 +135,7 @@ describe("ProductionCanvasMediaControls", () => {
       });
       fireEvent.click(utils.getByLabelText("要求参考图"));
       await waitFor(() => assert.ok(utils.getByText("frame_indexes: 1, 2")));
-      fireEvent.click(utils.getByRole("button", { name: "后台执行" }));
+      fireEvent.click(utils.getByRole("button", { name: "运行节点" }));
       await waitFor(() =>
         assert.equal(executeRequests[0]?.skill, "image.candidates"),
       );
@@ -167,7 +167,7 @@ describe("ProductionCanvasMediaControls", () => {
       });
       fireEvent.click(utils.getByLabelText("固定镜头"));
       await waitFor(() => assert.ok(utils.getByText("duration: 6")));
-      fireEvent.click(utils.getByRole("button", { name: "后台执行" }));
+      fireEvent.click(utils.getByRole("button", { name: "运行节点" }));
       await waitFor(() =>
         assert.equal(executeRequests[1]?.skill, "video.candidates"),
       );

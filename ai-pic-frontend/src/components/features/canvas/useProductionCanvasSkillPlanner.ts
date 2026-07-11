@@ -7,6 +7,7 @@ import {
   type ProductionCanvasContextKey,
 } from "./productionCanvasContext";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
+import { productionCanvasExecutionPublications } from "./productionCanvasExecutionResults";
 import { applyProductionCanvasContext } from "./productionCanvasState";
 import { useProductionCanvasExecutionTracker } from "./useProductionCanvasExecutionTracker";
 import {
@@ -17,8 +18,6 @@ import {
   outputString,
   outputStringArray,
   productionCanvasPlanNodeToCanvasNode,
-  productionCanvasSkillResultToNode,
-  productionCanvasSkillResultToTaskNode,
   taskOutputNumber,
 } from "./productionCanvasSkillNodes";
 
@@ -60,12 +59,14 @@ function upsertCanvasNodes(
 
 export function useProductionCanvasSkillPlanner({
   currentRunId,
+  nodes,
   onNodesCreated,
   onRunCreated,
   taskMaxPollMs,
   taskPollIntervalMs,
 }: {
   currentRunId?: string | null;
+  nodes: ProductionCanvasNode[];
   onNodesCreated: (nodes: ProductionCanvasNode[]) => void;
   onRunCreated?: (runId: string) => void;
   taskMaxPollMs?: number;
@@ -94,6 +95,7 @@ export function useProductionCanvasSkillPlanner({
   const executeSkillRequest = async (
     node: ProductionCanvasNode,
     fallbackPrompt?: string,
+    executionScope: "node" | "downstream" = "node",
   ) => {
     const requestContext = productionCanvasRequestContext(
       fallbackPrompt ? emptyProductionCanvasContext : context,
@@ -105,6 +107,8 @@ export function useProductionCanvasSkillPlanner({
         outputString(node.outputs, "prompt") ||
         node.title,
       skill: node.skill || "",
+      node_id: node.id,
+      execution_scope: executionScope,
       run_id:
         (currentRunId || "").trim() ||
         outputString(node.outputs, "canvas_run_id"),
@@ -139,16 +143,7 @@ export function useProductionCanvasSkillPlanner({
     if (!response.success || !response.data) {
       throw new Error(response.error || "Skill 执行失败");
     }
-    const skillNode = productionCanvasSkillResultToNode(
-      node,
-      response.data.skill_result,
-    );
-    const taskNode = productionCanvasSkillResultToTaskNode(
-      node,
-      response.data.skill_result,
-      response.data,
-    );
-    return taskNode ? [skillNode, taskNode] : [skillNode];
+    return productionCanvasExecutionPublications(response.data, node, nodes);
   };
 
   const executeReadyNodes = async (
@@ -166,9 +161,11 @@ export function useProductionCanvasSkillPlanner({
       if (!node) return;
       attemptedNodeIds.add(node.id);
       setExecutingNodeId(node.id);
-      const resultNodes = await executeSkillRequest(node, fallbackPrompt);
-      publishExecutionNodes(node, resultNodes);
-      workingNodes = upsertCanvasNodes(workingNodes, resultNodes);
+      const publications = await executeSkillRequest(node, fallbackPrompt);
+      for (const publication of publications) {
+        publishExecutionNodes(publication.sourceNode, publication.resultNodes);
+        workingNodes = upsertCanvasNodes(workingNodes, publication.resultNodes);
+      }
     }
   };
 
@@ -205,12 +202,22 @@ export function useProductionCanvasSkillPlanner({
     }
   };
 
-  const executeSkillNode = async (node: ProductionCanvasNode) => {
+  const executeSkillNode = async (
+    node: ProductionCanvasNode,
+    executionScope: "node" | "downstream" = "node",
+  ) => {
     if (!node.skill || executingNodeId) return;
     setExecutingNodeId(node.id);
     setExecutionError(null);
     try {
-      publishExecutionNodes(node, await executeSkillRequest(node));
+      const publications = await executeSkillRequest(
+        node,
+        undefined,
+        executionScope,
+      );
+      for (const publication of publications) {
+        publishExecutionNodes(publication.sourceNode, publication.resultNodes);
+      }
     } catch (err) {
       setExecutionError({
         message: err instanceof Error ? err.message : String(err),

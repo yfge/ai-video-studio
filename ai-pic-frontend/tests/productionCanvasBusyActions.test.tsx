@@ -41,7 +41,15 @@ describe("ProductionCanvasBusyActions", () => {
     );
 
     assert.equal(
-      utils.getByRole("button", { name: "执行中" }).getAttribute("aria-busy"),
+      utils
+        .getByRole("button", { name: "节点执行中" })
+        .getAttribute("aria-busy"),
+      "true",
+    );
+    assert.equal(
+      utils
+        .getByRole("button", { name: "下游执行中" })
+        .getAttribute("aria-busy"),
       "true",
     );
 

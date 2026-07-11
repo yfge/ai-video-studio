@@ -18,6 +18,7 @@ export function ProductionCanvasSidePanel({
   onAddEdge,
   onDuplicateNote,
   onExecuteNode,
+  onExecuteDownstream,
   onRefreshTaskNode,
   onRefreshTasks,
   onRemoveEdge,
@@ -39,6 +40,7 @@ export function ProductionCanvasSidePanel({
   onAddEdge: (edge: ProductionCanvasEdge) => void;
   onDuplicateNote: (nodeId: string) => void;
   onExecuteNode: (node: ProductionCanvasNode) => void;
+  onExecuteDownstream: (node: ProductionCanvasNode) => void;
   onRefreshTaskNode: (node: ProductionCanvasNode) => void;
   onRefreshTasks: (nodes: ProductionCanvasNode[]) => void;
   onRemoveEdge: (edge: ProductionCanvasEdge) => void;
@@ -59,6 +61,7 @@ export function ProductionCanvasSidePanel({
         executingNodeId={executingNodeId}
         executionError={executionError}
         onExecuteNode={onExecuteNode}
+        onExecuteDownstream={onExecuteDownstream}
         onRefreshTaskNode={onRefreshTaskNode}
         taskSyncError={taskSyncError}
         taskSyncingNodeId={taskSyncingNodeId}

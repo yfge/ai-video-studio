@@ -30,6 +30,8 @@ export interface ProductionCanvasSkillExecuteRequest
   extends ProductionCanvasPlanRequest {
   skill: string;
   run_id?: string | null;
+  node_id?: string | null;
+  execution_scope?: "node" | "downstream";
   reference_artifacts?: string[];
   frame_indexes?: number[] | null;
   model?: string | null;
@@ -170,8 +172,16 @@ export interface ProductionCanvasRunResponse
   saved_state?: ProductionCanvasSavedState | null;
 }
 
-export interface ProductionCanvasSkillExecuteResponse {
+export interface ProductionCanvasNodeExecutionResponse {
   skill_result: ProductionCanvasSkillResult;
   task_id?: number | null;
   task_status?: string | null;
+  node_id?: string | null;
+  resolved_inputs?: Record<string, unknown>;
+}
+
+export interface ProductionCanvasSkillExecuteResponse
+  extends ProductionCanvasNodeExecutionResponse {
+  execution_order?: string[];
+  executions?: ProductionCanvasNodeExecutionResponse[];
 }

@@ -1,4 +1,5 @@
 import type {
+  ProductionCanvasNodeExecutionResponse,
   ProductionCanvasPlanNode,
   ProductionCanvasPlanResponse,
   ProductionCanvasSkillExecuteResponse,
@@ -171,7 +172,9 @@ export function productionCanvasSkillResultToNode(
 export function productionCanvasSkillResultToTaskNode(
   node: ProductionCanvasNode,
   result: ProductionCanvasSkillResult,
-  response: ProductionCanvasSkillExecuteResponse,
+  response:
+    | ProductionCanvasSkillExecuteResponse
+    | ProductionCanvasNodeExecutionResponse,
 ): ProductionCanvasNode | null {
   const taskId =
     response.task_id ?? outputNumber(result.outputs, "dispatched_task_id");

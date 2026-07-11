@@ -391,7 +391,7 @@ describe("ProductionCanvasPlanner", () => {
       const canvas = utils.container.querySelector<HTMLElement>(
         "[data-production-canvas='infinite-canvas']",
       );
-      const executeButton = utils.getByRole("button", { name: "后台执行" });
+      const executeButton = utils.getByRole("button", { name: "运行节点" });
 
       assert.ok(canvas);
       executeButton.focus();
@@ -615,7 +615,7 @@ describe("ProductionCanvasPlanner", () => {
       fireEvent.click(utils.getByLabelText("Second Skill 第二个手动节点"));
       assert.equal(
         utils
-          .getByRole("button", { name: "后台执行" })
+          .getByRole("button", { name: "运行节点" })
           .hasAttribute("disabled"),
         true,
       );

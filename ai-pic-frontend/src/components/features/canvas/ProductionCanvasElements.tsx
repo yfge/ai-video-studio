@@ -94,6 +94,7 @@ export function CanvasInspector({
   executingNodeId,
   executionError,
   onExecuteNode,
+  onExecuteDownstream,
   onRefreshTaskNode,
   taskSyncError,
   taskSyncingNodeId,
@@ -102,6 +103,7 @@ export function CanvasInspector({
   executingNodeId?: string | null;
   executionError?: string | null;
   onExecuteNode?: (node: ProductionCanvasNode) => void;
+  onExecuteDownstream?: (node: ProductionCanvasNode) => void;
   onRefreshTaskNode?: (node: ProductionCanvasNode) => void;
   taskSyncError?: string | null;
   taskSyncingNodeId?: string | null;
@@ -205,15 +207,26 @@ export function CanvasInspector({
         </button>
       ) : null}
       {canExecute ? (
-        <button
-          type="button"
-          aria-busy={executing || undefined}
-          className={operatorButtonClass("primary", "mt-2 w-full")}
-          disabled={executing || executeDisabled}
-          onClick={() => onExecuteNode?.(node)}
-        >
-          {executing ? "执行中" : "后台执行"}
-        </button>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            aria-busy={executing || undefined}
+            className={operatorButtonClass("secondary", "w-full")}
+            disabled={executing || executeDisabled}
+            onClick={() => onExecuteNode?.(node)}
+          >
+            {executing ? "节点执行中" : "运行节点"}
+          </button>
+          <button
+            type="button"
+            aria-busy={executing || undefined}
+            className={operatorButtonClass("primary", "w-full")}
+            disabled={executing || executeDisabled}
+            onClick={() => onExecuteDownstream?.(node)}
+          >
+            {executing ? "下游执行中" : "运行下游"}
+          </button>
+        </div>
       ) : null}
       {executionError ? (
         <div className="mt-2 text-xs leading-5 text-red-600" role="alert">

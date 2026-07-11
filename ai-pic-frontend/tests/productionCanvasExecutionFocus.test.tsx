@@ -65,6 +65,15 @@ describe("ProductionCanvas execution focus", () => {
           { headers: { "content-type": "application/json" } },
         );
       }
+      if (url.includes("/production-canvas/runs/") && url.endsWith("/state")) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: { run_id: "canvas-run-execution-focus" },
+          }),
+          { headers: { "content-type": "application/json" } },
+        );
+      }
       throw new Error(`Unexpected request ${url}`);
     };
 
@@ -90,7 +99,7 @@ describe("ProductionCanvas execution focus", () => {
       fireEvent.click(utils.getByLabelText("Manual Skill 需要手动执行的节点"));
 
       const inspectorExecute = utils.getByRole("button", {
-        name: "后台执行",
+        name: "运行节点",
       });
       inspectorExecute.focus();
       fireEvent.click(inspectorExecute);

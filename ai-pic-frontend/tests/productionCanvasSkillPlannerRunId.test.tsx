@@ -75,6 +75,7 @@ describe("useProductionCanvasSkillPlanner run id routing", () => {
     function Harness() {
       const planner = useProductionCanvasSkillPlanner({
         currentRunId: "current-run",
+        nodes: [staleRunNode],
         onNodesCreated: () => {},
       });
       return (

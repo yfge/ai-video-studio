@@ -67,10 +67,11 @@ export function useProductionCanvasRunPersistence({
     ) => {
       if (busy) {
         setStatus("保存中");
-        return;
+        return false;
       }
       const signature = stateSignature(targetRunId, state);
-      if (mode === "auto" && signature === lastSavedSignature.current) return;
+      if (mode === "auto" && signature === lastSavedSignature.current)
+        return true;
       setBusy(true);
       setStatus(mode === "auto" ? "自动保存中" : "保存中");
       try {
@@ -81,14 +82,16 @@ export function useProductionCanvasRunPersistence({
         );
         if (!response.success || !response.data) {
           setStatus(response.error || "保存失败");
-          return;
+          return false;
         }
         const nextRunId = response.data.run_id || targetRunId;
         lastSavedSignature.current = stateSignature(nextRunId, state);
         setRunIdValue(nextRunId);
         setStatus(mode === "auto" ? "已自动保存" : "已保存");
+        return true;
       } catch (err) {
         setStatus(err instanceof Error ? err.message : String(err));
+        return false;
       } finally {
         setBusy(false);
       }
@@ -100,9 +103,9 @@ export function useProductionCanvasRunPersistence({
     const targetRunId = resolvedRunId();
     if (!targetRunId) {
       setStatus("缺少 Run ID");
-      return;
+      return false;
     }
-    await saveCanvasState(targetRunId, canvasState, "manual");
+    return saveCanvasState(targetRunId, canvasState, "manual");
   };
 
   useEffect(() => {

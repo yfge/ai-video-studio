@@ -18,6 +18,7 @@ import { useProductionCanvasSkillPlanner } from "./useProductionCanvasSkillPlann
 import { useProductionCanvasController } from "./useProductionCanvasController";
 import { useProductionCanvasRunPersistence } from "./useProductionCanvasRunPersistence";
 import { useProductionCanvasTaskSync } from "./useProductionCanvasTaskSync";
+import { useSavedNodeExecution } from "./useProductionCanvasNodeExecution";
 import {
   nodeIdFromCanvasDoubleClick,
   notePositionFromCanvasDoubleClick,
@@ -89,6 +90,7 @@ export function ProductionCanvasContent({
   });
   const planner = useProductionCanvasSkillPlanner({
     currentRunId: persistence.runId,
+    nodes: canvasState.nodes,
     onNodesCreated: appendNodes,
     onRunCreated: persistence.setRunId,
   });
@@ -96,6 +98,7 @@ export function ProductionCanvasContent({
     onNodeUpdated: handleUpdateNode,
   });
   const focusCanvas = () => canvasRef.current?.focus({ preventScroll: true });
+  const executeNode = useSavedNodeExecution(persistence, planner, focusCanvas);
   const handleDuplicateNote = (nodeId: string) => {
     replaceCanvasState((state) =>
       duplicateManualProductionCanvasNote(state, nodeId),
@@ -185,10 +188,7 @@ export function ProductionCanvasContent({
             onCanvasPointerDown={handleCanvasPointerDown}
             onCanvasPointerMove={handleCanvasPointerMove}
             onCanvasPointerUp={handleCanvasPointerUp}
-            onExecuteNode={(nodeToExecute) => {
-              void planner.executeSkillNode(nodeToExecute);
-              focusCanvas();
-            }}
+            onExecuteNode={(node) => void executeNode(node, "node")}
             onFocusNode={handleFocusSelectedNode}
             onNodePointerDown={handleNodePointerDown}
             onSelectNode={handleSelectNode}
@@ -210,10 +210,8 @@ export function ProductionCanvasContent({
             focusCanvas();
           }}
           onDuplicateNote={handleDuplicateNote}
-          onExecuteNode={(node) => {
-            void planner.executeSkillNode(node);
-            focusCanvas();
-          }}
+          onExecuteNode={(node) => void executeNode(node, "node")}
+          onExecuteDownstream={(node) => void executeNode(node, "downstream")}
           onRefreshTaskNode={(node) => {
             void taskSync.refreshTaskNode(node);
             focusCanvas();
