@@ -235,6 +235,7 @@ def test_production_canvas_execute_video_skill_dispatches_existing_task(
     assert params["timeline_rework_by_frame"]["1"]["clip_id"] == (
         "video_scene_001_beat_002_002"
     )
+    assert params["timeline_rework_by_frame"]["1"]["source_timeline_version"] == 1
     assert params["timeline_rework_by_frame"]["1"]["auto_render"] is False
     assert params["selections"] == [
         {

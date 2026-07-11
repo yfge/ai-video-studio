@@ -78,6 +78,7 @@ export function ProductionCanvasSidePanel({
         onDuplicateNote={onDuplicateNote}
         onReturnFocus={onReturnFocus}
         onRefreshTasks={onRefreshTasks}
+        onRetryNode={onExecuteNode}
         onRemoveEdge={onRemoveEdge}
         onRemoveNode={onRemoveNode}
         onSelectNode={onSelectNode}
@@ -86,6 +87,7 @@ export function ProductionCanvasSidePanel({
         onCanvasStateUpdated={onCanvasStateUpdated}
         refreshError={refreshError}
         refreshingTasks={refreshingTasks}
+        retryingNode={executingNodeId === node?.id}
         runId={runId}
       />
       <OperatorPanel className="p-4">

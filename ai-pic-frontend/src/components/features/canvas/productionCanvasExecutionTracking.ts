@@ -162,6 +162,25 @@ function terminalTaskEvidence(node: ProductionCanvasNode) {
   return sourceNodeId ? { node, sourceNodeId, taskId, taskStatus } : null;
 }
 
+const taskEvidenceKeys = [
+  "task_id",
+  "task_status",
+  "task_title",
+  "task_type",
+  "task_progress_detail",
+  "task_error_message",
+  "task_updated_at",
+  "result_file_path",
+] as const;
+
+function reconciledTaskOutputs(outputs: Record<string, unknown> | undefined) {
+  return Object.fromEntries(
+    taskEvidenceKeys
+      .filter((key) => outputs && key in outputs)
+      .map((key) => [key, outputs?.[key]]),
+  );
+}
+
 export function reconcileProductionCanvasExecutionTasks(
   nodes: ProductionCanvasNode[],
 ) {
@@ -191,7 +210,10 @@ export function reconcileProductionCanvasExecutionTasks(
           ? ("review" as const)
           : ("blocked" as const),
       detail: evidence.node.detail || node.detail,
-      outputs: { ...node.outputs, ...evidence.node.outputs },
+      outputs: {
+        ...node.outputs,
+        ...reconciledTaskOutputs(evidence.node.outputs),
+      },
     };
   });
 }

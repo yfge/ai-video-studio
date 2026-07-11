@@ -123,9 +123,12 @@ def _timeline_rework_contexts(
         source = frames[index].get("source")
         source = source if isinstance(source, dict) else {}
         clip_id = source.get("clip_id")
+        source_version = source.get("timeline_version")
         if (
             source.get("timeline_id") != timeline.id
-            or source.get("timeline_version") != timeline.version
+            or not isinstance(source_version, int)
+            or source_version < 1
+            or source_version > timeline.version
             or clip_id not in clip_ids
         ):
             raise ValueError("timeline_clip_mapping_missing")
@@ -133,6 +136,7 @@ def _timeline_rework_contexts(
             "timeline_id": timeline.id,
             "timeline_business_id": timeline.business_id,
             "timeline_version": timeline.version,
+            "source_timeline_version": source_version,
             "clip_id": clip_id,
             "action": "re_render",
             "asset_role": "generated_video",

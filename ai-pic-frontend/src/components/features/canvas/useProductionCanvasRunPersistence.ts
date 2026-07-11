@@ -12,6 +12,10 @@ import {
   productionCanvasStateFromRun,
   toProductionCanvasSavedState,
 } from "./productionCanvasPersistence";
+import {
+  mergeConfirmedCanvasState,
+  productionCanvasStateSignature,
+} from "./productionCanvasPersistenceSync";
 import type { ProductionCanvasState } from "./productionCanvasState";
 
 export function productionCanvasRunIdFromInput(value: string) {
@@ -57,15 +61,6 @@ export function useProductionCanvasRunPersistence({
     [canvasState, runId],
   );
 
-  const stateSignature = useCallback(
-    (targetRunId: string, state: ProductionCanvasState) =>
-      JSON.stringify({
-        runId: targetRunId,
-        state: toProductionCanvasSavedState(state),
-      }),
-    [],
-  );
-
   const saveCanvasState = useCallback(
     async (
       targetRunId: string,
@@ -76,7 +71,7 @@ export function useProductionCanvasRunPersistence({
         setStatus("保存中");
         return false;
       }
-      const signature = stateSignature(targetRunId, state);
+      const signature = productionCanvasStateSignature(targetRunId, state);
       if (mode === "auto" && signature === lastSavedSignature.current)
         return true;
       setBusy(true);
@@ -95,26 +90,17 @@ export function useProductionCanvasRunPersistence({
         const serverState = response.data.saved_state
           ? productionCanvasStateFromRun(response.data)
           : null;
+        const acknowledgedState = serverState
+          ? mergeConfirmedCanvasState(state, serverState)
+          : state;
         if (serverState) {
-          const serverNodes = new Map(
-            serverState.nodes.map((node) => [node.id, node]),
+          replaceCanvasState((current) =>
+            mergeConfirmedCanvasState(current, serverState),
           );
-          replaceCanvasState((current) => ({
-            ...current,
-            nodes: current.nodes.map((node) => {
-              const serverNode = serverNodes.get(node.id);
-              if (!serverNode) return node;
-              return {
-                ...node,
-                status: serverNode.status,
-                executionInputFingerprint: serverNode.executionInputFingerprint,
-              };
-            }),
-          }));
         }
-        lastSavedSignature.current = stateSignature(
+        lastSavedSignature.current = productionCanvasStateSignature(
           nextRunId,
-          serverState || state,
+          acknowledgedState,
         );
         setRunIdValue(nextRunId);
         setStatus(mode === "auto" ? "已自动保存" : "已保存");
@@ -126,7 +112,7 @@ export function useProductionCanvasRunPersistence({
         setBusy(false);
       }
     },
-    [busy, replaceCanvasState, stateSignature],
+    [busy, replaceCanvasState],
   );
 
   const saveCanvas = async () => {
@@ -143,7 +129,7 @@ export function useProductionCanvasRunPersistence({
     if (initialRunIdValue && !lastSavedSignature.current) return;
     const targetRunId = resolvedRunId();
     if (!targetRunId) return;
-    const signature = stateSignature(targetRunId, canvasState);
+    const signature = productionCanvasStateSignature(targetRunId, canvasState);
     if (signature === lastSavedSignature.current) return;
     autosaveTimer.current = setTimeout(() => {
       void saveCanvasState(targetRunId, canvasState, "auto");
@@ -158,8 +144,23 @@ export function useProductionCanvasRunPersistence({
     initialRunIdValue,
     resolvedRunId,
     saveCanvasState,
-    stateSignature,
   ]);
+
+  const adoptServerState = useCallback(
+    (state: ProductionCanvasState) => {
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+      const targetRunId = resolvedRunId(state);
+      replaceCanvasState(state);
+      if (targetRunId) {
+        lastSavedSignature.current = productionCanvasStateSignature(
+          targetRunId,
+          state,
+        );
+      }
+      setStatus("已同步");
+    },
+    [replaceCanvasState, resolvedRunId],
+  );
 
   const resetRun = useCallback(() => {
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
@@ -209,7 +210,10 @@ export function useProductionCanvasRunPersistence({
         const restoredState = productionCanvasStateFromRun(response.data);
         const nextRunId = response.data.run_id || targetRunId;
         replaceCanvasState(restoredState);
-        lastSavedSignature.current = stateSignature(nextRunId, restoredState);
+        lastSavedSignature.current = productionCanvasStateSignature(
+          nextRunId,
+          restoredState,
+        );
         setRunIdValue(nextRunId);
         setStatus("已恢复");
       } catch (err) {
@@ -218,7 +222,7 @@ export function useProductionCanvasRunPersistence({
         setBusy(false);
       }
     },
-    [busy, replaceCanvasState, resolvedRunId, stateSignature],
+    [busy, replaceCanvasState, resolvedRunId],
   );
 
   useEffect(() => {
@@ -234,6 +238,7 @@ export function useProductionCanvasRunPersistence({
   }, [initialRunIdValue, restoreCanvas]);
 
   return {
+    adoptServerState,
     busy,
     resetRun,
     restoreCanvas,

@@ -232,7 +232,7 @@ export function ProductionCanvasContent({
           onSelectNode={handleFocusSelectedNode}
           onUpdateNode={handleUpdateNode}
           onUpdateNodeOutputs={handleUpdateNodeOutputs}
-          onCanvasStateUpdated={replaceCanvasState}
+          onCanvasStateUpdated={persistence.adoptServerState}
           refreshError={taskSync.syncSummaryError}
           refreshingTasks={Boolean(taskSync.syncingNodeId)}
           runId={persistence.runId}

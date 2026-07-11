@@ -10,13 +10,13 @@ import logging
 from typing import Any, Callable, Dict, Optional
 
 from app.services.minimax_client import MinimaxAPIError, MinimaxClient
-
-logger = logging.getLogger(__name__)
-
 from app.services.video.video_duration import resolve_duration_ceil
 
 from ..base import AIModelType, AIResponse, AITaskType
 from ..polling_utils import TaskPoller, minimax_status_mapper
+from .video_resolution import normalize_minimax_video_resolution
+
+logger = logging.getLogger(__name__)
 
 
 async def generate_video(
@@ -67,7 +67,7 @@ async def generate_video(
             "model": model,
             "first_frame_image": first_frame_image,
             "duration": dur_int,
-            "resolution": resolution,
+            "resolution": normalize_minimax_video_resolution(model, resolution),
             "prompt_optimizer": prompt_optimizer,
             "aigc_watermark": aigc_watermark,
         }

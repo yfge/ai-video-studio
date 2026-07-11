@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.models.script import Episode, Script, Story
-from app.models.timeline import MediaAsset
+from app.models.timeline import MediaAsset, TimelineClipAsset
 from app.models.user import User
 
 
@@ -261,6 +261,32 @@ def test_approved_video_is_explicitly_placed_in_versioned_timeline(client, db_se
     ).json()["items"]
     assert lineage[0]["media_asset_id"] == candidates[0]["asset_id"]
     assert lineage[0]["asset_role"] == "generated_video"
+
+    generated = MediaAsset(
+        asset_type="video",
+        origin="provider_rework",
+        file_url="https://example.com/generated-v2.mp4",
+        created_by=user.id,
+    )
+    db_session.add(generated)
+    db_session.flush()
+    db_session.add(
+        TimelineClipAsset(
+            timeline_id=timeline["id"],
+            timeline_version=2,
+            clip_id=clip_id,
+            track_type="video",
+            asset_role="generated_video",
+            media_asset_id=generated.id,
+            source="provider_rework",
+            created_by=user.id,
+        )
+    )
+    db_session.commit()
+    relisted = client.get(
+        f"/api/v1/production-canvas/runs/{run_id}/nodes/video-review/candidates"
+    ).json()["data"]["candidates"]
+    assert relisted[-1]["url"] == "https://example.com/generated-v2.mp4"
 
     conflict = client.post(
         f"/api/v1/production-canvas/runs/{run_id}/nodes/video-review/timeline-placement",

@@ -17,6 +17,7 @@ from app.services.production_canvas.stale_runtime import canvas_node_input_finge
 from sqlalchemy.orm import Session
 
 from .run_persistence import load_canvas_saved_state, save_canvas_state
+from .timeline_candidates import list_timeline_video_candidates
 
 _MEDIA_SKILLS = {
     "image.candidates": ("image", "approved_image"),
@@ -135,7 +136,8 @@ def list_canvas_media_candidates(
     requested_indexes = _frame_indexes(node)
     candidates: list[ProductionCanvasMediaCandidate] = []
     seen: set[tuple[int, int]] = set()
-    for frame_index, frame in enumerate(load_storyboard_frames(db, script.id)):
+    frames = load_storyboard_frames(db, script.id)
+    for frame_index, frame in enumerate(frames):
         if requested_indexes is not None and frame_index not in requested_indexes:
             continue
         for url in _candidate_urls(frame, media_type):
@@ -160,6 +162,10 @@ def list_canvas_media_candidates(
                     selected=asset.id == node.selected_output_id,
                 )
             )
+    if media_type == "video":
+        candidates.extend(
+            list_timeline_video_candidates(db, node, frames, requested_indexes, seen)
+        )
     db.commit()
     return ProductionCanvasMediaCandidateList(
         node_id=node.id,

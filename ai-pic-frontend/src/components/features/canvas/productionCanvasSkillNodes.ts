@@ -152,13 +152,20 @@ export function productionCanvasSkillResultToNode(
 ): ProductionCanvasNode {
   const outputUrl = outputString(result.outputs, "output_url");
   const isRenderResult = Boolean(outputNumber(result.outputs, "render_job_id"));
+  const previousOutputs = { ...node.outputs };
+  if (outputNumber(result.outputs, "dispatched_task_id")) {
+    delete previousOutputs.task_error_message;
+    delete previousOutputs.task_progress_detail;
+    delete previousOutputs.task_updated_at;
+    delete previousOutputs.required_inputs;
+  }
   return {
     ...node,
     label: result.label,
     title: result.title,
     status: result.status,
     detail: result.detail,
-    outputs: { ...node.outputs, ...result.outputs },
+    outputs: { ...previousOutputs, ...result.outputs },
     reuseTargets: result.reuse_targets,
     actionHref: outputUrl || (isRenderResult ? undefined : node.actionHref),
     actionLabel: outputUrl

@@ -10,6 +10,7 @@ from app.services.providers.polling_utils import TaskStatus, minimax_status_mapp
 from app.services.video.video_duration import resolve_duration_ceil
 
 from .video import _retrieve_video_file
+from .video_resolution import normalize_minimax_video_resolution
 
 logger = get_logger(__name__)
 
@@ -44,7 +45,7 @@ def _build_payload(
         "model": model,
         "first_frame_image": first_frame_image,
         "duration": dur_int,
-        "resolution": resolution,
+        "resolution": normalize_minimax_video_resolution(model, resolution),
         "prompt_optimizer": prompt_optimizer,
         "aigc_watermark": aigc_watermark,
     }

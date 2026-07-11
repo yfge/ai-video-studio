@@ -117,13 +117,15 @@ export function applyProductionCanvasContext(nodes: ProductionCanvasNode[]) {
       ...node.outputs,
       ...sharedOutputs,
     };
-    if (
+    const scopedMediaNode =
       (node.skill === "image.candidates" ||
         node.skill === "video.candidates") &&
-      Array.isArray(node.outputs?.frame_indexes) &&
-      outputNumber(node.outputs, "script_id")
-    ) {
-      outputs.script_id = node.outputs?.script_id;
+      Array.isArray(node.outputs?.frame_indexes);
+    if (scopedMediaNode) {
+      for (const key of ["script_id", "timeline_id", "timeline_version"]) {
+        const value = outputNumber(node.outputs, key);
+        if (value) outputs[key] = value;
+      }
     }
     if (!sharedOutputs.reference_artifacts) {
       delete outputs.reference_artifacts;

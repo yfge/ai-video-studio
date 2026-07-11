@@ -5,6 +5,7 @@ import {
   productionCanvasExecutionFailure,
   productionCanvasExecutionFromRenderJob,
   productionCanvasExecutionFromTask,
+  reconcileProductionCanvasExecutionTasks,
 } from "../src/components/features/canvas/productionCanvasExecutionTracking";
 import type { ProductionCanvasNode } from "../src/components/features/canvas/productionCanvasModel";
 import type { Task } from "../src/utils/api/types";
@@ -93,5 +94,37 @@ describe("production canvas execution tracking", () => {
     assert.equal(nodes[1].outputs?.render_status, "succeeded");
     assert.equal(nodes[0].actionHref, "/media/final.mp4");
     assert.equal(nodes[1].actionLabel, "打开成片");
+  });
+
+  it("does not restore stale Timeline context from task evidence", () => {
+    const reconciled = reconcileProductionCanvasExecutionTasks([
+      {
+        ...skillNode,
+        outputs: {
+          dispatched_task_id: 99,
+          task_status: "pending",
+          timeline_id: 71,
+          timeline_version: 8,
+        },
+      },
+      {
+        ...taskNode,
+        status: "review",
+        outputs: {
+          ...taskNode.outputs,
+          task_status: "completed",
+          timeline_id: 71,
+          timeline_version: 7,
+          result_file_path: "timeline_videos:71:v7:1",
+        },
+      },
+    ]);
+
+    assert.equal(reconciled[0].outputs?.timeline_version, 8);
+    assert.equal(reconciled[0].outputs?.task_status, "completed");
+    assert.equal(
+      reconciled[0].outputs?.result_file_path,
+      "timeline_videos:71:v7:1",
+    );
   });
 });
