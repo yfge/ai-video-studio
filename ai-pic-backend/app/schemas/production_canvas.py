@@ -206,8 +206,23 @@ class ProductionCanvasPlanResponse(BaseModel):
     nodes: list[ProductionCanvasPlanNode]
 
 
+class ProductionCanvasExecutionAttempt(BaseModel):
+    attempt_id: int = Field(..., ge=1)
+    node_id: str
+    skill: str
+    status: CanvasNodeStatus
+    definition_version: int = Field(..., ge=1)
+    definition_mode: Literal["current", "original"] = "current"
+    task_id: int | None = None
+    task_status: str | None = None
+    created_at: datetime
+
+
 class ProductionCanvasRunResponse(ProductionCanvasPlanResponse):
     saved_state: ProductionCanvasSavedState | None = None
+    execution_attempts: list[ProductionCanvasExecutionAttempt] = Field(
+        default_factory=list
+    )
 
 
 class ProductionCanvasMediaCandidate(BaseModel):
@@ -249,6 +264,22 @@ class ProductionCanvasNodeExecution(BaseModel):
 class ProductionCanvasSkillExecuteResponse(ProductionCanvasNodeExecution):
     execution_order: list[str] = Field(default_factory=list)
     executions: list[ProductionCanvasNodeExecution] = Field(default_factory=list)
+
+
+class ProductionCanvasRunActionRequest(BaseModel):
+    action: Literal["run_ready", "resume", "cancel", "retry"]
+    node_id: str | None = Field(None, max_length=120)
+    definition_mode: Literal["current", "original"] = "current"
+
+
+class ProductionCanvasRunActionResponse(BaseModel):
+    action: Literal["run_ready", "resume", "cancel", "retry"]
+    definition_mode: Literal["current", "original"] = "current"
+    run: ProductionCanvasRunResponse
+    executions: list[ProductionCanvasNodeExecution] = Field(default_factory=list)
+    execution_order: list[str] = Field(default_factory=list)
+    skipped_node_ids: list[str] = Field(default_factory=list)
+    cancelled_task_ids: list[int] = Field(default_factory=list)
 
 
 class ProductionCanvasGraphNodeState(BaseModel):

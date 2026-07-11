@@ -7,6 +7,7 @@ from .execution_persistence import (
     save_canvas_skill_result,
 )
 from .executor import execute_canvas_skill
+from .run_control import control_canvas_run
 from .run_persistence import (
     attach_canvas_run,
     load_canvas_skill_run,
@@ -20,6 +21,7 @@ __all__ = [
     "attach_canvas_run",
     "approve_canvas_media_candidate",
     "build_canvas_skill_plan",
+    "control_canvas_run",
     "execute_canvas_skill",
     "load_canvas_skill_run",
     "list_canvas_media_candidates",

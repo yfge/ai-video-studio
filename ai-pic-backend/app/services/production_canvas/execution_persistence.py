@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 
 from app.models.user import User
 from app.schemas.production_canvas import (
     ProductionCanvasNodeExecution,
+    ProductionCanvasSavedState,
     ProductionCanvasSkillExecuteResponse,
     ProductionCanvasSkillResult,
 )
@@ -39,17 +41,91 @@ def _response_executions(
     ]
 
 
+def _definition_snapshot(
+    state: ProductionCanvasSavedState | None,
+    node_id: str,
+) -> tuple[dict, list[dict]]:
+    if state is None:
+        return {}, []
+    node = next((item for item in state.nodes if item.id == node_id), None)
+    incoming = [
+        edge.model_dump(by_alias=True, mode="json")
+        for edge in state.edges
+        if edge.to_node == node_id
+    ]
+    return (
+        node.model_dump(by_alias=True, mode="json") if node else {},
+        incoming,
+    )
+
+
+def _append_execution_attempts(
+    payload: dict,
+    executions: list[ProductionCanvasNodeExecution],
+    state: ProductionCanvasSavedState | None,
+    definition_mode: str,
+) -> None:
+    attempts = list(payload.get("execution_attempts") or [])
+    for execution in executions:
+        if not execution.node_id:
+            continue
+        node, incoming_edges = _definition_snapshot(state, execution.node_id)
+        attempts.append(
+            {
+                "attempt_id": len(attempts) + 1,
+                "node_id": execution.node_id,
+                "skill": execution.skill_result.skill,
+                "status": execution.skill_result.status,
+                "definition_version": int(node.get("definition_version") or 1),
+                "definition_mode": definition_mode,
+                "task_id": execution.task_id,
+                "task_status": execution.task_status,
+                "created_at": datetime.now(UTC).isoformat(),
+                "definition_node": node,
+                "incoming_edges": incoming_edges,
+            }
+        )
+    payload["execution_attempts"] = attempts
+
+
+def latest_canvas_execution_attempt(
+    db: Session,
+    user: User,
+    run_id: str,
+    node_id: str,
+) -> dict | None:
+    task_and_payload = _canvas_run_task(db, user, run_id)
+    if task_and_payload is None:
+        return None
+    attempts = task_and_payload[1].get("execution_attempts") or []
+    failed = [
+        item
+        for item in attempts
+        if isinstance(item, dict)
+        and item.get("node_id") == node_id
+        and item.get("status") in {"blocked", "cancelled", "failed"}
+    ]
+    return failed[-1] if failed else None
+
+
 def save_canvas_execution_response(
     db: Session,
     user: User,
     run_id: str,
     response: ProductionCanvasSkillExecuteResponse,
+    *,
+    definition_state: ProductionCanvasSavedState | None = None,
+    definition_mode: str = "current",
 ) -> bool:
     task_and_payload = _canvas_run_task(db, user, run_id, for_update=True)
     if task_and_payload is None:
         return False
     task, payload = task_and_payload
     executions = _response_executions(response)
+    raw_state = payload.get("saved_state")
+    if definition_state is None and isinstance(raw_state, dict):
+        definition_state = ProductionCanvasSavedState.model_validate(raw_state)
+    _append_execution_attempts(payload, executions, definition_state, definition_mode)
     results_by_skill = {
         execution.skill_result.skill: execution.skill_result.model_dump()
         for execution in executions

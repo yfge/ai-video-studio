@@ -7,6 +7,7 @@ from app.schemas.production_canvas import (
     ProductionCanvasCandidateApprovalRequest,
     ProductionCanvasPlanRequest,
     ProductionCanvasPlanResponse,
+    ProductionCanvasRunActionRequest,
     ProductionCanvasSavedState,
     ProductionCanvasSkillExecuteRequest,
     ProductionCanvasSkillExecuteResponse,
@@ -16,6 +17,7 @@ from app.services.production_canvas import (
     approve_canvas_media_candidate,
     attach_canvas_run,
     build_canvas_skill_plan,
+    control_canvas_run,
     execute_canvas_skill,
     list_canvas_media_candidates,
     load_canvas_skill_run,
@@ -32,6 +34,12 @@ router = APIRouter()
 
 
 def _candidate_http_error(exc: ValueError) -> HTTPException:
+    code = str(exc)
+    status = 404 if code.endswith("not_found") else 409
+    return HTTPException(status_code=status, detail=code)
+
+
+def _run_action_http_error(exc: ValueError) -> HTTPException:
     code = str(exc)
     status = 404 if code.endswith("not_found") else 409
     return HTTPException(status_code=status, detail=code)
@@ -79,6 +87,20 @@ async def get_production_canvas_run(
     if run is None:
         raise HTTPException(status_code=404, detail="Production canvas run not found")
     return {"success": True, "data": run.model_dump(by_alias=True)}
+
+
+@router.post("/runs/{run_id}/actions", response_model=dict)
+async def control_production_canvas_run(
+    run_id: str,
+    request: ProductionCanvasRunActionRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        result = control_canvas_run(db, current_user, run_id, request)
+    except ValueError as exc:
+        raise _run_action_http_error(exc) from exc
+    return {"success": True, "data": result.model_dump(by_alias=True)}
 
 
 @router.get("/runs/{run_id}/graph", response_model=dict)

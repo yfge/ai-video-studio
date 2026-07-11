@@ -78,7 +78,7 @@ def _dispatch_canvas_skill(
     )
 
 
-def _resolved_execution(
+def execute_canvas_resolution(
     db: Session,
     user: User,
     resolution: CanvasGraphResolution,
@@ -140,7 +140,7 @@ def _execute_downstream(
         resolution = resolve_canvas_graph_request(working_state, node_request)
         if resolution is None:
             break
-        response = _resolved_execution(db, user, resolution, working_state)
+        response = execute_canvas_resolution(db, user, resolution, working_state)
         execution = _node_execution(response)
         executions.append(execution)
         working_state = apply_canvas_node_execution(working_state, execution)
@@ -175,4 +175,4 @@ def execute_canvas_skill(
         return _dispatch_canvas_skill(db, user, request)
     if request.execution_scope == "downstream":
         return _execute_downstream(db, user, request, state, resolution)
-    return _resolved_execution(db, user, resolution, state)
+    return execute_canvas_resolution(db, user, resolution, state)

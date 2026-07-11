@@ -6,6 +6,7 @@ from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
 from app.repositories.task_repository import TaskRepository
 from app.schemas.production_canvas import (
+    ProductionCanvasExecutionAttempt,
     ProductionCanvasPlanRequest,
     ProductionCanvasPlanResponse,
     ProductionCanvasRunResponse,
@@ -108,6 +109,11 @@ def _run_response_from_task(
             "run_id": task.business_id,
             "task_id": task.id,
             "saved_state": saved_state,
+            "execution_attempts": [
+                ProductionCanvasExecutionAttempt.model_validate(item)
+                for item in payload.get("execution_attempts") or []
+                if isinstance(item, dict)
+            ],
         }
     )
     return ProductionCanvasRunResponse(**data)
