@@ -7,6 +7,7 @@ from app.api.v1.endpoints import (
     image_gen_profiles,
     migrations,
     production_canvas,
+    production_canvas_collaboration,
     prompts,
     scoring,
     scripts,
@@ -88,6 +89,11 @@ api_router.include_router(tasks.router, prefix="/tasks", tags=["tasks"])
 api_router.include_router(workbench.router, prefix="/workbench", tags=["workbench"])
 api_router.include_router(
     production_canvas.router,
+    prefix="/production-canvas",
+    tags=["production-canvas"],
+)
+api_router.include_router(
+    production_canvas_collaboration.router,
     prefix="/production-canvas",
     tags=["production-canvas"],
 )

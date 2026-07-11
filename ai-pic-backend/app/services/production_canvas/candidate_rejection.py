@@ -5,6 +5,7 @@ from app.schemas.production_canvas import ProductionCanvasRunResponse
 from app.services.production_canvas.stale_runtime import canvas_node_input_fingerprint
 from sqlalchemy.orm import Session
 
+from .access_control import require_canvas_access
 from .candidate_review import list_canvas_media_candidates
 from .candidate_review_state import set_canvas_candidate_review
 from .run_persistence import (
@@ -35,6 +36,7 @@ def reject_canvas_media_candidate(
     candidate_id: int,
     reason: str | None,
 ) -> ProductionCanvasRunResponse:
+    require_canvas_access(db, user, run_id, "approve")
     review = list_canvas_media_candidates(db, user, run_id, node_id)
     if not any(item.asset_id == candidate_id for item in review.candidates):
         raise ValueError("canvas_candidate_not_found")
@@ -99,7 +101,7 @@ def reject_canvas_media_candidate(
             ]
         }
     )
-    run = save_canvas_state(db, user, run_id, next_state)
+    run = save_canvas_state(db, user, run_id, next_state, capability="approve")
     if run is None:
         raise ValueError("canvas_run_state_not_found")
     return run

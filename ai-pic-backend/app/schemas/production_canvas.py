@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
+from app.schemas.production_canvas_collaboration import CanvasAccessRole
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 CanvasNodeKind = Literal["pipeline", "note", "skill_result"]
@@ -221,6 +222,7 @@ class ProductionCanvasExecutionAttempt(BaseModel):
 
 
 class ProductionCanvasRunResponse(ProductionCanvasPlanResponse):
+    access_role: CanvasAccessRole = "owner"
     saved_state: ProductionCanvasSavedState | None = None
     execution_attempts: list[ProductionCanvasExecutionAttempt] = Field(
         default_factory=list

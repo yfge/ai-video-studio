@@ -32,6 +32,10 @@ from app.services.production_canvas import (
     save_canvas_client_state,
     save_canvas_execution_response,
 )
+from app.services.production_canvas.access_control import (
+    require_canvas_access,
+    require_canvas_access_if_run_exists,
+)
 from app.services.production_canvas.graph_runtime import evaluate_canvas_graph
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -41,12 +45,16 @@ router = APIRouter()
 
 def _candidate_http_error(exc: ValueError) -> HTTPException:
     code = str(exc)
+    if code == "canvas_access_forbidden":
+        return HTTPException(status_code=403, detail=code)
     status = 404 if code.endswith("not_found") else 409
     return HTTPException(status_code=status, detail=code)
 
 
 def _run_action_http_error(exc: ValueError) -> HTTPException:
     code = str(exc)
+    if code == "canvas_access_forbidden":
+        return HTTPException(status_code=403, detail=code)
     status = 404 if code.endswith("not_found") else 409
     return HTTPException(status_code=status, detail=code)
 
@@ -73,6 +81,13 @@ async def execute_production_canvas_skill(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
+    if request.run_id:
+        try:
+            require_canvas_access_if_run_exists(
+                db, current_user, request.run_id, "execute"
+            )
+        except ValueError as exc:
+            raise _run_action_http_error(exc) from exc
     result: ProductionCanvasSkillExecuteResponse = execute_canvas_skill(
         db,
         current_user,
@@ -103,6 +118,7 @@ async def control_production_canvas_run(
     db: Session = Depends(get_db),
 ):
     try:
+        require_canvas_access(db, current_user, run_id, "execute")
         result = control_canvas_run(db, current_user, run_id, request)
     except ValueError as exc:
         raise _run_action_http_error(exc) from exc
@@ -147,6 +163,7 @@ async def approve_production_canvas_media_candidate(
     db: Session = Depends(get_db),
 ):
     try:
+        require_canvas_access(db, current_user, run_id, "approve")
         run = approve_canvas_media_candidate(
             db, current_user, run_id, node_id, request.candidate_id
         )
@@ -164,6 +181,7 @@ async def reject_production_canvas_media_candidate(
     db: Session = Depends(get_db),
 ):
     try:
+        require_canvas_access(db, current_user, run_id, "approve")
         run = reject_canvas_media_candidate(
             db,
             current_user,
@@ -186,6 +204,7 @@ async def branch_production_canvas_media_candidate(
     db: Session = Depends(get_db),
 ):
     try:
+        require_canvas_access(db, current_user, run_id, "execute")
         run = branch_canvas_media_candidate(db, current_user, run_id, node_id, request)
     except ValueError as exc:
         raise _candidate_http_error(exc) from exc
@@ -201,6 +220,7 @@ async def place_production_canvas_video_in_timeline(
     db: Session = Depends(get_db),
 ):
     try:
+        require_canvas_access(db, current_user, run_id, "approve")
         run = place_canvas_video_in_timeline(db, current_user, run_id, node_id, request)
     except ValueError as exc:
         raise _candidate_http_error(exc) from exc
@@ -214,6 +234,10 @@ async def save_production_canvas_run_state(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
+    try:
+        require_canvas_access(db, current_user, run_id, "edit")
+    except ValueError as exc:
+        raise _run_action_http_error(exc) from exc
     run = save_canvas_client_state(db, current_user, run_id, request)
     if run is None:
         raise HTTPException(status_code=404, detail="Production canvas run not found")

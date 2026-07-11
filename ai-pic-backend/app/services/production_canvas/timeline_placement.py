@@ -12,6 +12,7 @@ from app.schemas.timeline import TimelineUpdate
 from app.services.timeline_service import TimelineService
 from sqlalchemy.orm import Session
 
+from .access_control import canvas_run_owner, require_canvas_access
 from .run_persistence import load_canvas_saved_state, save_canvas_state
 
 
@@ -63,6 +64,8 @@ def place_canvas_video_in_timeline(
     node_id: str,
     request: ProductionCanvasTimelinePlacementRequest,
 ) -> ProductionCanvasRunResponse:
+    require_canvas_access(db, user, run_id, "approve")
+    owner = canvas_run_owner(db, user, run_id)
     state = load_canvas_saved_state(db, user, run_id)
     if state is None:
         raise ValueError("canvas_run_state_not_found")
@@ -76,7 +79,7 @@ def place_canvas_video_in_timeline(
         raise ValueError("canvas_video_target_not_bound")
 
     service = TimelineService(db)
-    timeline = service.get_timeline(timeline_id, user)
+    timeline = service.get_timeline(timeline_id, owner)
     spec = _replace_clip_asset(
         timeline.spec,
         clip_id=clip_id,
@@ -88,7 +91,7 @@ def place_canvas_video_in_timeline(
     placed = service.update_timeline(
         timeline_id,
         TimelineUpdate(expected_version=request.expected_version, spec=spec),
-        user,
+        owner,
     )
     updated_node = node.model_copy(
         update={
@@ -109,7 +112,7 @@ def place_canvas_video_in_timeline(
             ]
         }
     )
-    run = save_canvas_state(db, user, run_id, next_state)
+    run = save_canvas_state(db, user, run_id, next_state, capability="approve")
     if run is None:
         raise ValueError("canvas_run_state_not_found")
     return run

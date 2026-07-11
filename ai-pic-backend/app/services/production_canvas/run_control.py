@@ -26,6 +26,8 @@ from app.services.production_canvas.run_persistence import load_canvas_skill_run
 from app.services.production_canvas.run_requests import request_for_canvas_node
 from sqlalchemy.orm import Session
 
+from .access_control import require_canvas_access
+
 
 def _run_and_state(
     db: Session, user: User, run_id: str
@@ -179,6 +181,7 @@ def control_canvas_run(
     run_id: str,
     request: ProductionCanvasRunActionRequest,
 ) -> ProductionCanvasRunActionResponse:
+    require_canvas_access(db, user, run_id, "execute")
     if request.action in {"run_ready", "resume"}:
         return _execute_run_nodes(db, user, run_id, request.action)
     if request.action == "retry":

@@ -23,6 +23,16 @@ class TaskRepository(BaseRepository[Task]):
             .first()
         )
 
+    def get_canvas_run_task(self, business_id: str) -> Task | None:
+        return (
+            self.session.query(Task)
+            .filter(
+                Task.business_id == business_id,
+                Task.is_deleted.is_(False),
+            )
+            .first()
+        )
+
     def list_for_user(
         self,
         *,

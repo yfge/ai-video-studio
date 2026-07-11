@@ -3,6 +3,7 @@ from app.schemas.production_canvas import ProductionCanvasRunResponse
 from app.schemas.production_canvas_review import ProductionCanvasCandidateBranchRequest
 from sqlalchemy.orm import Session
 
+from .access_control import require_canvas_access
 from .execution_persistence import save_canvas_execution_response
 from .executor import execute_canvas_skill
 from .run_persistence import load_canvas_skill_run
@@ -16,6 +17,7 @@ def branch_canvas_media_candidate(
     node_id: str,
     branch: ProductionCanvasCandidateBranchRequest,
 ) -> ProductionCanvasRunResponse:
+    require_canvas_access(db, user, run_id, "execute")
     run = load_canvas_skill_run(db, user, run_id)
     if run is None or run.saved_state is None:
         raise ValueError("canvas_run_state_not_found")

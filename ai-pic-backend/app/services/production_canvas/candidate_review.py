@@ -17,6 +17,7 @@ from app.services.production_canvas.stale_runtime import (
 )
 from sqlalchemy.orm import Session
 
+from .access_control import canvas_run_owner, require_canvas_access
 from .candidate_history import (
     load_canvas_candidate_history,
     materialize_canvas_candidate,
@@ -111,18 +112,19 @@ def list_canvas_media_candidates(
     run_id: str,
     node_id: str,
 ) -> ProductionCanvasMediaCandidateList:
+    owner = canvas_run_owner(db, user, run_id)
     state = load_canvas_saved_state(db, user, run_id)
     if state is None:
         raise ValueError("canvas_run_state_not_found")
     node = _review_node(state, node_id)
     script_id = node.outputs.get("script_id")
-    script = load_script(db, user, script_id if isinstance(script_id, int) else None)
+    script = load_script(db, owner, script_id if isinstance(script_id, int) else None)
     if script is None:
         raise ValueError("canvas_script_not_found")
 
     media_type, _ = _MEDIA_SKILLS[node.skill]
     requested_indexes = _frame_indexes(node)
-    candidates = load_canvas_candidate_history(db, user, run_id, node, media_type)
+    candidates = load_canvas_candidate_history(db, owner, run_id, node, media_type)
     seen = {(item.asset_id, item.frame_index) for item in candidates}
     frames = load_storyboard_frames(db, script.id)
     for frame_index, frame in enumerate(frames):
@@ -132,7 +134,7 @@ def list_canvas_media_candidates(
             lineage = _candidate_lineage(frame, url, run_id, node.id)
             candidate = materialize_canvas_candidate(
                 db,
-                user,
+                owner,
                 media_type=media_type,
                 url=url,
                 frame_index=frame_index,
@@ -173,6 +175,7 @@ def approve_canvas_media_candidate(
     node_id: str,
     candidate_id: int,
 ) -> ProductionCanvasRunResponse:
+    require_canvas_access(db, user, run_id, "approve")
     review = list_canvas_media_candidates(db, user, run_id, node_id)
     candidate = next(
         (item for item in review.candidates if item.asset_id == candidate_id), None
@@ -232,7 +235,7 @@ def approve_canvas_media_candidate(
             ]
         }
     )
-    run = save_canvas_state(db, user, run_id, next_state)
+    run = save_canvas_state(db, user, run_id, next_state, capability="approve")
     if run is None:
         raise ValueError("canvas_run_state_not_found")
     return run

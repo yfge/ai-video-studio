@@ -117,7 +117,9 @@ def save_canvas_execution_response(
     definition_state: ProductionCanvasSavedState | None = None,
     definition_mode: str = "current",
 ) -> bool:
-    task_and_payload = _canvas_run_task(db, user, run_id, for_update=True)
+    task_and_payload = _canvas_run_task(
+        db, user, run_id, capability="execute", for_update=True
+    )
     if task_and_payload is None:
         return False
     task, payload = task_and_payload

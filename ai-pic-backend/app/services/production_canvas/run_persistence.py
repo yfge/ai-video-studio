@@ -4,7 +4,6 @@ import json
 
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
-from app.repositories.task_repository import TaskRepository
 from app.schemas.production_canvas import (
     ProductionCanvasExecutionAttempt,
     ProductionCanvasPlanRequest,
@@ -13,22 +12,13 @@ from app.schemas.production_canvas import (
     ProductionCanvasSavedState,
     ProductionCanvasSkillResult,
 )
+from app.schemas.production_canvas_collaboration import CanvasAccessRole
 from app.services.production_canvas.nodes import build_plan_nodes
 from app.services.production_canvas.skills import list_canvas_skill_definitions
 from app.services.production_canvas.stale_runtime import apply_canvas_stale_state
 from sqlalchemy.orm import Session
 
-
-def _canvas_run_payload(task: Task) -> dict | None:
-    if not task.parameters:
-        return None
-    try:
-        payload = json.loads(task.parameters)
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(payload, dict) or payload.get("kind") != "production_canvas_run":
-        return None
-    return payload
+from .access_control import CanvasCapability, canvas_access_role, canvas_run_access
 
 
 def _run_context(payload: dict) -> dict:
@@ -96,6 +86,7 @@ def _current_run_payload(payload: dict) -> dict:
 def _run_response_from_task(
     task: Task,
     payload: dict,
+    access_role: CanvasAccessRole = "owner",
 ) -> ProductionCanvasRunResponse | None:
     saved_state = None
     raw_saved_state = payload.get("saved_state")
@@ -108,6 +99,7 @@ def _run_response_from_task(
         {
             "run_id": task.business_id,
             "task_id": task.id,
+            "access_role": access_role,
             "saved_state": saved_state,
             "execution_attempts": [
                 ProductionCanvasExecutionAttempt.model_validate(item)
@@ -120,23 +112,15 @@ def _run_response_from_task(
 
 
 def _canvas_run_task(
-    db: Session, user: User, run_id: str, *, for_update: bool = False
+    db: Session,
+    user: User,
+    run_id: str,
+    *,
+    capability: CanvasCapability = "view",
+    for_update: bool = False,
 ) -> tuple[Task, dict] | None:
-    if not run_id:
-        return None
-    task = TaskRepository(db).get_by(
-        business_id=run_id,
-        user_id=user.id,
-        is_deleted=False,
-    )
-    if not task:
-        return None
-    if for_update:
-        db.refresh(task, with_for_update=True)
-    payload = _canvas_run_payload(task)
-    if payload is None:
-        return None
-    return task, payload
+    access = canvas_run_access(db, user, run_id, capability, for_update=for_update)
+    return (access[0], access[1]) if access else None
 
 
 def persist_canvas_skill_run(
@@ -193,7 +177,8 @@ def load_canvas_skill_run(
     if task_and_payload is None:
         return None
     task, payload = task_and_payload
-    return _run_response_from_task(task, payload)
+    role = canvas_access_role(task, payload, user)
+    return _run_response_from_task(task, payload, role or "owner")
 
 
 def load_canvas_saved_state(
@@ -216,8 +201,12 @@ def save_canvas_state(
     user: User,
     run_id: str,
     state: ProductionCanvasSavedState,
+    *,
+    capability: CanvasCapability = "edit",
 ) -> ProductionCanvasRunResponse | None:
-    task_and_payload = _canvas_run_task(db, user, run_id, for_update=True)
+    task_and_payload = _canvas_run_task(
+        db, user, run_id, capability=capability, for_update=True
+    )
     if task_and_payload is None:
         return None
     task, payload = task_and_payload
@@ -229,7 +218,8 @@ def save_canvas_state(
     task.parameters = json.dumps(payload, ensure_ascii=False)
     db.commit()
     db.refresh(task)
-    return _run_response_from_task(task, payload)
+    role = canvas_access_role(task, payload, user)
+    return _run_response_from_task(task, payload, role or "owner")
 
 
 def save_canvas_client_state(
