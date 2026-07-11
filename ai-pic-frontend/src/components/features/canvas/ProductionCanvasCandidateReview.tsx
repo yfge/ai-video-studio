@@ -73,7 +73,7 @@ export function ProductionCanvasCandidateReview({
   const [candidates, setCandidates] = useState<
     ProductionCanvasMediaCandidate[]
   >([]);
-  const [busyId, setBusyId] = useState<number | "load" | null>(null);
+  const [busyId, setBusyId] = useState<number | "load" | "place" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -124,6 +124,28 @@ export function ProductionCanvasCandidateReview({
           selected: item.asset_id === candidate.asset_id,
         })),
       );
+      onCanvasStateUpdated(productionCanvasStateFromRun(response.data));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const placeInTimeline = async () => {
+    const expectedVersion = node.outputs?.timeline_version;
+    if (typeof expectedVersion !== "number") return;
+    setBusyId("place");
+    setError(null);
+    try {
+      const response = await productionCanvasAPI.placeNodeVideoInTimeline(
+        runId,
+        node.id,
+        expectedVersion,
+      );
+      if (!response.success || !response.data) {
+        throw new Error(response.error || "放入 Timeline 失败");
+      }
       onCanvasStateUpdated(productionCanvasStateFromRun(response.data));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -184,6 +206,27 @@ export function ProductionCanvasCandidateReview({
                     : "选用"}
                 </button>
               </div>
+              {candidate.media_type === "video" && candidate.selected ? (
+                <button
+                  type="button"
+                  className={operatorButtonClass(
+                    "primary",
+                    "mt-2 h-8 w-full px-3 text-xs",
+                  )}
+                  disabled={
+                    busyId !== null ||
+                    typeof node.outputs?.timeline_version !== "number" ||
+                    node.outputs?.placed_media_asset_id === candidate.asset_id
+                  }
+                  onClick={() => void placeInTimeline()}
+                >
+                  {node.outputs?.placed_media_asset_id === candidate.asset_id
+                    ? `已放入 Timeline v${node.outputs?.timeline_version}`
+                    : busyId === "place"
+                    ? "写入中"
+                    : "放入 Timeline"}
+                </button>
+              ) : null}
             </article>
           ))}
         </div>

@@ -10,6 +10,7 @@ from app.schemas.production_canvas import (
     ProductionCanvasSavedState,
     ProductionCanvasSkillExecuteRequest,
     ProductionCanvasSkillExecuteResponse,
+    ProductionCanvasTimelinePlacementRequest,
 )
 from app.services.production_canvas import (
     approve_canvas_media_candidate,
@@ -19,6 +20,7 @@ from app.services.production_canvas import (
     list_canvas_media_candidates,
     load_canvas_skill_run,
     persist_canvas_skill_run,
+    place_canvas_video_in_timeline,
     save_canvas_execution_response,
     save_canvas_state,
 )
@@ -120,6 +122,21 @@ async def approve_production_canvas_media_candidate(
         run = approve_canvas_media_candidate(
             db, current_user, run_id, node_id, request.candidate_id
         )
+    except ValueError as exc:
+        raise _candidate_http_error(exc) from exc
+    return {"success": True, "data": run.model_dump(by_alias=True)}
+
+
+@router.post("/runs/{run_id}/nodes/{node_id}/timeline-placement", response_model=dict)
+async def place_production_canvas_video_in_timeline(
+    run_id: str,
+    node_id: str,
+    request: ProductionCanvasTimelinePlacementRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        run = place_canvas_video_in_timeline(db, current_user, run_id, node_id, request)
     except ValueError as exc:
         raise _candidate_http_error(exc) from exc
     return {"success": True, "data": run.model_dump(by_alias=True)}

@@ -219,6 +219,10 @@ class ProductionCanvasCandidateApprovalRequest(BaseModel):
     candidate_id: int = Field(..., ge=1)
 
 
+class ProductionCanvasTimelinePlacementRequest(BaseModel):
+    expected_version: int = Field(..., ge=1)
+
+
 class ProductionCanvasNodeExecution(BaseModel):
     skill_result: ProductionCanvasSkillResult
     task_id: int | None = None

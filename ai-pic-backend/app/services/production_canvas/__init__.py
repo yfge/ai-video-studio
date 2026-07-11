@@ -14,6 +14,7 @@ from .run_persistence import (
     save_canvas_state,
 )
 from .skill_planner import build_canvas_skill_plan
+from .timeline_placement import place_canvas_video_in_timeline
 
 __all__ = [
     "attach_canvas_run",
@@ -23,6 +24,7 @@ __all__ = [
     "load_canvas_skill_run",
     "list_canvas_media_candidates",
     "persist_canvas_skill_run",
+    "place_canvas_video_in_timeline",
     "save_canvas_skill_result",
     "save_canvas_execution_response",
     "save_canvas_state",

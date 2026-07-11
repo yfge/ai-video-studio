@@ -32,6 +32,7 @@ def _create_script(db_session, user: User) -> Script:
                             "https://example.com/frame-2.png",
                             "https://example.com/frame-2-latest.png",
                         ],
+                        "video_urls": ["https://example.com/frame-2.mp4"],
                         "source": {
                             "kind": "timeline_clip",
                             "clip_id": "video_scene_001_beat_002_002",
@@ -99,6 +100,21 @@ def _review_state(script_id: int) -> dict:
     }
 
 
+def _video_review_state(script_id: int, timeline_id: int, version: int) -> dict:
+    state = _review_state(script_id)
+    video = state["nodes"][1]
+    video["outputs"] = {
+        "script_id": script_id,
+        "timeline_id": timeline_id,
+        "timeline_version": version,
+        "frame_indexes": [1],
+    }
+    state["nodes"] = [video]
+    state["edges"] = []
+    state["selected_node_id"] = "video-review"
+    return state
+
+
 def test_candidate_approval_persists_asset_and_stales_downstream(
     client,
     db_session,
@@ -156,3 +172,98 @@ def test_candidate_approval_persists_asset_and_stales_downstream(
     )
     selected = [item["selected"] for item in relisted.json()["data"]["candidates"]]
     assert selected == [False, True]
+
+
+def test_approved_video_is_explicitly_placed_in_versioned_timeline(client, db_session):
+    user = db_session.query(User).filter(User.username == "test_admin").first()
+    script = _create_script(db_session, user)
+    clip_id = "video_scene_001_beat_002_002"
+    timeline_response = client.post(
+        f"/api/v1/episodes/{script.episode_id}/timelines",
+        json={
+            "script_id": script.id,
+            "spec": {
+                "spec_version": "timeline.v1",
+                "episode_id": script.episode_id,
+                "script_id": script.id,
+                "version": 1,
+                "source_audio_timeline_version": 1,
+                "fps": 24,
+                "resolution": "1080x1920",
+                "duration_ms": 2800,
+                "tracks": [
+                    {
+                        "track_type": "video",
+                        "clips": [
+                            {
+                                "clip_id": clip_id,
+                                "track_type": "video",
+                                "scene_id": "scene_001",
+                                "beat_id": "beat_002",
+                                "ordinal": 2,
+                                "start_ms": 0,
+                                "end_ms": 2800,
+                                "duration_ms": 2800,
+                                "source": {
+                                    "kind": "audio_timeline_beat",
+                                    "scene_id": "scene_001",
+                                    "beat_id": "beat_002",
+                                    "audio_timeline_version": 1,
+                                },
+                                "source_refs": {"scene_beat_id": "beat_002"},
+                                "asset_ref": None,
+                                "placeholder": True,
+                            }
+                        ],
+                    }
+                ],
+            },
+        },
+    )
+    assert timeline_response.status_code == 200, timeline_response.text
+    timeline = timeline_response.json()
+    plan = client.post(
+        "/api/v1/production-canvas/plan",
+        json={"prompt": "选片并放入 Timeline", "script_id": script.id},
+    )
+    run_id = plan.json()["data"]["run_id"]
+    saved = client.put(
+        f"/api/v1/production-canvas/runs/{run_id}/state",
+        json=_video_review_state(script.id, timeline["id"], timeline["version"]),
+    )
+    assert saved.status_code == 200
+    candidates = client.get(
+        f"/api/v1/production-canvas/runs/{run_id}/nodes/video-review/candidates"
+    ).json()["data"]["candidates"]
+    approved = client.post(
+        f"/api/v1/production-canvas/runs/{run_id}/nodes/video-review/approval",
+        json={"candidate_id": candidates[0]["asset_id"]},
+    )
+    assert approved.status_code == 200
+
+    placed = client.post(
+        f"/api/v1/production-canvas/runs/{run_id}/nodes/video-review/timeline-placement",
+        json={"expected_version": timeline["version"]},
+    )
+    assert placed.status_code == 200
+    node = placed.json()["data"]["saved_state"]["nodes"][0]
+    assert node["outputs"]["timeline_version"] == 2
+    assert node["outputs"]["placed_timeline_clip_id"] == clip_id
+    current = client.get(f"/api/v1/timelines/{timeline['id']}").json()
+    clip = current["spec"]["tracks"][0]["clips"][0]
+    assert current["version"] == 2
+    assert clip["clip_id"] == clip_id
+    assert clip["asset_ref"]["media_asset_id"] == candidates[0]["asset_id"]
+    assert clip["asset_ref"]["url"] == candidates[0]["url"]
+    lineage = client.get(
+        f"/api/v1/timelines/{timeline['id']}/clip-assets",
+        params={"timeline_version": 2, "clip_id": clip_id},
+    ).json()["items"]
+    assert lineage[0]["media_asset_id"] == candidates[0]["asset_id"]
+    assert lineage[0]["asset_role"] == "generated_video"
+
+    conflict = client.post(
+        f"/api/v1/production-canvas/runs/{run_id}/nodes/video-review/timeline-placement",
+        json={"expected_version": timeline["version"]},
+    )
+    assert conflict.status_code == 409

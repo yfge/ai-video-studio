@@ -117,6 +117,14 @@ export function applyProductionCanvasContext(nodes: ProductionCanvasNode[]) {
       ...node.outputs,
       ...sharedOutputs,
     };
+    if (
+      (node.skill === "image.candidates" ||
+        node.skill === "video.candidates") &&
+      Array.isArray(node.outputs?.frame_indexes) &&
+      outputNumber(node.outputs, "script_id")
+    ) {
+      outputs.script_id = node.outputs?.script_id;
+    }
     if (!sharedOutputs.reference_artifacts) {
       delete outputs.reference_artifacts;
     }

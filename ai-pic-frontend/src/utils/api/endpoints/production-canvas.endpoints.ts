@@ -84,11 +84,28 @@ async function approveNodeCandidate(
   );
 }
 
+async function placeNodeVideoInTimeline(
+  runId: string,
+  nodeId: string,
+  expectedVersion: number,
+): Promise<ApiResponse<ProductionCanvasRunResponse>> {
+  return httpClient<ProductionCanvasRunResponse>(
+    `/api/v1/production-canvas/runs/${encodeURIComponent(
+      runId,
+    )}/nodes/${encodeURIComponent(nodeId)}/timeline-placement`,
+    {
+      method: "POST",
+      body: JSON.stringify({ expected_version: expectedVersion }),
+    },
+  );
+}
+
 export const productionCanvasAPI = {
   approveNodeCandidate,
   createPlan,
   executeSkill,
   getNodeCandidates,
   getRun,
+  placeNodeVideoInTimeline,
   saveRunState,
 };

@@ -68,11 +68,23 @@ describe("productionCanvasState", () => {
         y: 0,
         width: 220,
         skill: "image.candidates",
-        outputs: { script_id: 42 },
+        outputs: { script_id: 42, frame_indexes: [0] },
+      },
+      {
+        id: "skill-report",
+        label: "Report",
+        title: "共享最新剧本",
+        status: "ready",
+        x: 780,
+        y: 0,
+        width: 220,
+        skill: "report.summarize",
+        outputs: { script_id: 130 },
       },
     ]);
 
     const candidates = nodes.find((node) => node.skill === "image.candidates");
+    assert.equal(candidates?.outputs?.script_id, 42);
     assert.deepEqual(candidates?.outputs?.reference_artifacts, [
       "virtual_ip_image:84:148",
       "environment_images:13:1",
