@@ -7,6 +7,7 @@ import type {
 import { useEffect, useState } from "react";
 import { CanvasEdges } from "./ProductionCanvasElements";
 import { ProductionCanvasMinimap } from "./ProductionCanvasMinimap";
+import { ProductionCanvasSectionFrames } from "./ProductionCanvasSectionFrames";
 import {
   ProductionCanvasConnectionOverlay,
   useProductionCanvasPortConnections,
@@ -15,6 +16,7 @@ import { CanvasNodeCard } from "./ProductionCanvasNodeCard";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
 import type { ProductionCanvasState } from "./productionCanvasState";
 import { selectedProductionCanvasNodeIds } from "./productionCanvasSelection";
+import { collapsedProductionCanvasNodeIds } from "./productionCanvasSections";
 import {
   CANVAS_BASE_HEIGHT,
   CANVAS_BASE_WIDTH,
@@ -40,6 +42,7 @@ export function ProductionCanvasSurface({
   onExecuteNode,
   onFocusNode,
   onNavigate,
+  onToggleSection,
   onNodePointerDown,
   onSelectNode,
   selectedNodeId,
@@ -58,6 +61,7 @@ export function ProductionCanvasSurface({
   onExecuteNode: (node: ProductionCanvasNode) => void;
   onFocusNode: (nodeId?: string) => void;
   onNavigate: (point: { x: number; y: number }) => void;
+  onToggleSection: (sectionId: string) => void;
   onNodePointerDown: (
     event: ReactPointerEvent<HTMLButtonElement>,
     nodeId: string,
@@ -84,14 +88,16 @@ export function ProductionCanvasSurface({
     observer.observe(canvas);
     return () => observer.disconnect();
   }, [canvasRef]);
-  const visibleNodes = visibleNodeIds
-    ? canvasState.nodes.filter((node) => visibleNodeIds.has(node.id))
-    : canvasState.nodes;
-  const visibleEdges = visibleNodeIds
-    ? canvasState.edges.filter(
-        (edge) => visibleNodeIds.has(edge.from) && visibleNodeIds.has(edge.to),
-      )
-    : canvasState.edges;
+  const collapsedNodeIds = collapsedProductionCanvasNodeIds(canvasState);
+  const visibleNodes = (
+    visibleNodeIds
+      ? canvasState.nodes.filter((node) => visibleNodeIds.has(node.id))
+      : canvasState.nodes
+  ).filter((node) => !collapsedNodeIds.has(node.id));
+  const renderedNodeIds = new Set(visibleNodes.map((node) => node.id));
+  const visibleEdges = canvasState.edges.filter(
+    (edge) => renderedNodeIds.has(edge.from) && renderedNodeIds.has(edge.to),
+  );
   const selectedNodeIds = new Set(selectedProductionCanvasNodeIds(canvasState));
   const connections = useProductionCanvasPortConnections({
     canvasRef,
@@ -135,6 +141,11 @@ export function ProductionCanvasSurface({
         }}
       >
         <div className="absolute inset-0 bg-[linear-gradient(#e5e7eb_1px,transparent_1px),linear-gradient(90deg,#e5e7eb_1px,transparent_1px)] bg-[size:32px_32px]" />
+        <ProductionCanvasSectionFrames
+          sections={canvasState.sections || []}
+          worldBounds={worldBounds}
+          onToggle={onToggleSection}
+        />
         <CanvasEdges
           edges={visibleEdges}
           nodes={visibleNodes}

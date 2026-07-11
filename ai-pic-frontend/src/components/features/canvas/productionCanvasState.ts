@@ -4,6 +4,7 @@ import {
   type ProductionCanvasEdge,
   type ProductionCanvasNode,
 } from "./productionCanvasModel";
+import type { ProductionCanvasSection } from "./productionCanvasSectionModel";
 import {
   clampProductionCanvasZoom,
   cloneProductionCanvasEdges,
@@ -26,6 +27,7 @@ export type ProductionCanvasState = {
   viewport: ProductionCanvasViewport;
   selectedNodeId: string;
   selectedNodeIds?: string[];
+  sections?: ProductionCanvasSection[];
 };
 
 export const productionCanvasDefaultViewport: ProductionCanvasViewport = {
@@ -44,6 +46,7 @@ export function createProductionCanvasState(
     nodes: applyProductionCanvasContext(clonedNodes),
     viewport: { ...productionCanvasDefaultViewport },
     selectedNodeId: clonedNodes[0]?.id || "",
+    sections: [],
   };
 }
 

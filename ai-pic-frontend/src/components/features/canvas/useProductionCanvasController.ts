@@ -6,7 +6,6 @@ import type {
 import {
   addProductionCanvasEdge,
   removeProductionCanvasEdge,
-  removeProductionCanvasNode,
   updateProductionCanvasNode,
   updateProductionCanvasNodeOutputs,
   type ProductionCanvasOutputPatch,
@@ -25,11 +24,12 @@ import {
 } from "./productionCanvasViewModel";
 import { useProductionCanvasInteractionControls } from "./useProductionCanvasInteractionControls";
 import { useProductionCanvasKeyboardCommands } from "./useProductionCanvasKeyboardCommands";
-import {
-  selectProductionCanvasNode,
-  selectedProductionCanvasNodeIds,
-} from "./productionCanvasSelection";
+import { selectProductionCanvasNode } from "./productionCanvasSelection";
 import { useProductionCanvasSelectionActions } from "./useProductionCanvasSelectionActions";
+import {
+  removeProductionCanvasSectionNode,
+  toggleProductionCanvasSection,
+} from "./productionCanvasSections";
 
 export function useProductionCanvasController(storageKey?: string | null) {
   const [canvasState, setCanvasState] = useState(createProductionCanvasState);
@@ -71,6 +71,8 @@ export function useProductionCanvasController(storageKey?: string | null) {
     setCanvasState((state) =>
       selectProductionCanvasNode(state, nodeId, additive),
     );
+  const handleToggleSection = (sectionId: string) =>
+    setCanvasState((state) => toggleProductionCanvasSection(state, sectionId));
 
   const handleAddEdge = (edge: ProductionCanvasEdge) =>
     setCanvasState((state) => ({
@@ -83,20 +85,7 @@ export function useProductionCanvasController(storageKey?: string | null) {
       edges: removeProductionCanvasEdge(state.edges, edge),
     }));
   const handleRemoveNode = (nodeId: string) => {
-    setCanvasState((state) => {
-      const next = removeProductionCanvasNode(state.nodes, state.edges, nodeId);
-      return {
-        ...state,
-        ...next,
-        selectedNodeId:
-          state.selectedNodeId === nodeId
-            ? next.nodes[0]?.id || ""
-            : state.selectedNodeId,
-        selectedNodeIds: selectedProductionCanvasNodeIds(state).filter(
-          (id) => id !== nodeId,
-        ),
-      };
-    });
+    setCanvasState((state) => removeProductionCanvasSectionNode(state, nodeId));
   };
   const handleUpdateNodeOutputs = (
     nodeId: string,
@@ -234,6 +223,7 @@ export function useProductionCanvasController(storageKey?: string | null) {
     handleSelectNode,
     handleUpdateNode,
     handleUpdateNodeOutputs,
+    handleToggleSection,
     handleZoomButton,
     replaceCanvasState: setCanvasState,
     selectedNode,

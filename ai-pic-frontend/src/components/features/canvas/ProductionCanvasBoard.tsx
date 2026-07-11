@@ -62,6 +62,7 @@ export function ProductionCanvasContent({
     handleSelectNode,
     handleUpdateNode,
     handleUpdateNodeOutputs,
+    handleToggleSection,
     handleZoomButton,
     replaceCanvasState,
     selectedNode,
@@ -182,6 +183,7 @@ export function ProductionCanvasContent({
             onNavigate={handleNavigate}
             onNodePointerDown={handleNodePointerDown}
             onSelectNode={handleSelectNode}
+            onToggleSection={handleToggleSection}
           />
         </OperatorPanel>
         <ProductionCanvasSidePanel

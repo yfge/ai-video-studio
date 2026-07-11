@@ -154,10 +154,23 @@ export interface ProductionCanvasSavedEdge {
   binding_order?: number | null;
 }
 
+export interface ProductionCanvasSavedSection {
+  id: string;
+  title: string;
+  scope: "episode" | "scene";
+  node_ids: string[];
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  collapsed?: boolean;
+}
+
 export interface ProductionCanvasSavedState {
   graph_version?: 1 | 2;
   nodes: ProductionCanvasSavedNode[];
   edges?: ProductionCanvasSavedEdge[];
+  sections?: ProductionCanvasSavedSection[];
   viewport: ProductionCanvasViewport;
   selected_node_id?: string | null;
 }

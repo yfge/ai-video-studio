@@ -23,6 +23,7 @@ CanvasPortType = Literal[
 ]
 CanvasBindingType = Literal["value", "selected_output"]
 ReuseTargetKind = Literal["api", "repository", "service", "worker", "artifact"]
+CanvasSectionScope = Literal["episode", "scene"]
 
 
 class ProductionCanvasPlanRequest(BaseModel):
@@ -167,10 +168,23 @@ class ProductionCanvasSavedEdge(BaseModel):
     binding_order: int | None = Field(None, ge=0)
 
 
+class ProductionCanvasSavedSection(BaseModel):
+    id: str = Field(..., min_length=1, max_length=120)
+    title: str = Field(..., min_length=1, max_length=120)
+    scope: CanvasSectionScope
+    node_ids: list[str] = Field(default_factory=list, max_length=200)
+    x: float
+    y: float
+    width: float = Field(..., gt=0)
+    height: float = Field(..., gt=0)
+    collapsed: bool = False
+
+
 class ProductionCanvasSavedState(BaseModel):
     graph_version: Literal[1, 2] = 1
     nodes: list[ProductionCanvasSavedNode] = Field(default_factory=list)
     edges: list[ProductionCanvasSavedEdge] = Field(default_factory=list)
+    sections: list[ProductionCanvasSavedSection] = Field(default_factory=list)
     viewport: ProductionCanvasViewport
     selected_node_id: str | None = Field(None, max_length=120)
 

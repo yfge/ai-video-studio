@@ -58,6 +58,20 @@ export function ProductionCanvasSelectionToolbar({
       >
         复制生产节点
       </button>
+      <button
+        type="button"
+        className={operatorButtonClass("secondary")}
+        onClick={() => actions.createSection("scene")}
+      >
+        创建场景分区
+      </button>
+      <button
+        type="button"
+        className={operatorButtonClass("secondary")}
+        onClick={() => actions.createSection("episode")}
+      >
+        创建剧集分区
+      </button>
     </div>
   );
 }

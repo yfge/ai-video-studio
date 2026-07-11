@@ -24,10 +24,23 @@ def _reject_cycles(node_ids: set[str], edges: list[Any]) -> None:
         raise ValueError("Executable canvas graph cannot contain cycles")
 
 
+def _validate_sections(state: Any, node_ids: set[str]) -> None:
+    section_ids: set[str] = set()
+    for section in state.sections:
+        if section.id in section_ids:
+            raise ValueError(f"Canvas section ids must be unique: {section.id}")
+        section_ids.add(section.id)
+        if len(section.node_ids) != len(set(section.node_ids)):
+            raise ValueError(f"Canvas section members must be unique: {section.id}")
+        if not set(section.node_ids).issubset(node_ids):
+            raise ValueError(f"Canvas section references an unknown node: {section.id}")
+
+
 def validate_saved_graph(state: Any) -> None:
     node_by_id = {node.id: node for node in state.nodes}
     if len(node_by_id) != len(state.nodes):
         raise ValueError("Canvas node ids must be unique")
+    _validate_sections(state, set(node_by_id))
     if state.graph_version == 1:
         return
 

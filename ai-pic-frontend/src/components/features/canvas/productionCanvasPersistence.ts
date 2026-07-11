@@ -118,6 +118,17 @@ export function toProductionCanvasSavedState(
   return {
     graph_version: state.edges.every(isTypedProductionCanvasEdge) ? 2 : 1,
     edges: canvasEdgesToSavedEdges(state.edges),
+    sections: (state.sections || []).map((section) => ({
+      id: section.id,
+      title: section.title,
+      scope: section.scope,
+      node_ids: section.nodeIds,
+      x: section.x,
+      y: section.y,
+      width: section.width,
+      height: section.height,
+      collapsed: Boolean(section.collapsed),
+    })),
     nodes: state.nodes.map(canvasNodeToSavedNode),
     viewport: state.viewport,
     selected_node_id: state.selectedNodeId,
@@ -155,6 +166,17 @@ export function productionCanvasStateFromRun(
         ),
       },
       selectedNodeId: selectedNodeId(restored.nodes, saved.selected_node_id),
+      sections: (saved.sections || []).map((section) => ({
+        id: section.id,
+        title: section.title,
+        scope: section.scope,
+        nodeIds: section.node_ids,
+        x: section.x,
+        y: section.y,
+        width: section.width,
+        height: section.height,
+        collapsed: section.collapsed,
+      })),
     };
   }
 

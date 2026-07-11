@@ -77,6 +77,43 @@ def test_legacy_canvas_graph_remains_compatible_without_ports():
     assert state.edges[0].edge_id is None
 
 
+def test_canvas_sections_validate_membership_and_identity():
+    payload = _typed_state()
+    payload["sections"] = [
+        {
+            "id": "scene-1",
+            "title": "Scene 1",
+            "scope": "scene",
+            "node_ids": ["image", "video"],
+            "x": -20,
+            "y": -20,
+            "width": 480,
+            "height": 240,
+        }
+    ]
+    state = ProductionCanvasSavedState.model_validate(payload)
+    assert state.sections[0].node_ids == ["image", "video"]
+
+    payload["sections"][0]["node_ids"].append("missing")
+    with pytest.raises(ValidationError, match="references an unknown node"):
+        ProductionCanvasSavedState.model_validate(payload)
+
+    payload = _typed_state()
+    section = {
+        "id": "scene-1",
+        "title": "Scene 1",
+        "scope": "scene",
+        "node_ids": ["image"],
+        "x": 0,
+        "y": 0,
+        "width": 300,
+        "height": 200,
+    }
+    payload["sections"] = [section, deepcopy(section)]
+    with pytest.raises(ValidationError, match="section ids must be unique"):
+        ProductionCanvasSavedState.model_validate(payload)
+
+
 @pytest.mark.parametrize(
     ("mutation", "message"),
     [

@@ -13,6 +13,7 @@ import {
   finiteCanvasNumber,
   positiveCanvasNumber,
 } from "./productionCanvasGeometry";
+import type { ProductionCanvasSection } from "./productionCanvasSectionModel";
 
 export const PRODUCTION_CANVAS_STORAGE_KEY = "production-canvas-layout-v1";
 export const CANVAS_BASE_WIDTH = 1180;
@@ -65,6 +66,24 @@ function storedEdges(edges: unknown, fallback: ProductionCanvasState) {
   return edges.filter(isCanvasEdge);
 }
 
+function storedSections(value: unknown): ProductionCanvasSection[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((section): section is ProductionCanvasSection => {
+    if (!section || typeof section !== "object") return false;
+    const item = section as Partial<ProductionCanvasSection>;
+    return (
+      typeof item.id === "string" &&
+      typeof item.title === "string" &&
+      (item.scope === "episode" || item.scope === "scene") &&
+      Array.isArray(item.nodeIds) &&
+      Number.isFinite(item.x) &&
+      Number.isFinite(item.y) &&
+      Number.isFinite(item.width) &&
+      Number.isFinite(item.height)
+    );
+  });
+}
+
 export function readStoredCanvasState(storageKey: string | null | undefined) {
   const fallback = createProductionCanvasState();
   if (!storageKey || typeof window === "undefined") return fallback;
@@ -90,7 +109,12 @@ export function readStoredCanvasState(storageKey: string | null | undefined) {
         ? parsed.selectedNodeId
         : restored.nodes[0]?.id || "";
 
-    return { ...restored, viewport, selectedNodeId };
+    return {
+      ...restored,
+      viewport,
+      selectedNodeId,
+      sections: storedSections(parsed.sections),
+    };
   } catch {
     return fallback;
   }

@@ -139,6 +139,26 @@ describe("ProductionCanvasBoard", () => {
     );
   });
 
+  it("creates and collapses scene sections from selected nodes", () => {
+    const utils = render(<ProductionCanvasContent storageKey={null} />, {
+      container: dom.window.document.body,
+    });
+    fireEvent.click(utils.getByLabelText("Brief IP、受众、题材和单集目标"));
+    fireEvent.click(utils.getByLabelText("Script 短剧节拍、对白和质量门禁"), {
+      shiftKey: true,
+    });
+    fireEvent.click(utils.getByRole("button", { name: "创建场景分区" }));
+    const section = utils.getByRole("region", { name: "场景分区 1" });
+    assert.ok(section);
+    fireEvent.click(utils.getByRole("button", { name: "场景分区 1" }));
+    assert.equal(
+      utils.container.querySelector("[data-canvas-node='brief']"),
+      null,
+    );
+    fireEvent.click(utils.getByRole("button", { name: "场景分区 1" }));
+    assert.ok(utils.container.querySelector("[data-canvas-node='brief']"));
+  });
+
   it("selects a node and exposes its details in the inspector", () => {
     const utils = render(<ProductionCanvasContent storageKey={null} />, {
       container: dom.window.document.body,
