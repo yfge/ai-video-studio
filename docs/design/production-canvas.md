@@ -367,6 +367,9 @@ As of 2026-07-12, Phases 1-3 are implemented on the real `/canvas` route:
   autosave.
 - Approved video placement targets a stable Timeline clip and expected Timeline
   version, then returns the updated version and media lineage to the canvas.
+- The planning header loads accessible IP, environment, episode, and script
+  options by name. Script choices are scoped to the selected episode, so the
+  operator does not copy Episode or Script IDs into the canvas workflow.
 - Scene and episode sections, minimap navigation, search and filters,
   multi-select layout operations, duplication, undo/redo, diagnostics, retry,
   resume, and cancel are available as production recovery tools.
@@ -467,6 +470,8 @@ of truth for existing commands, Run IDs, request IDs, and browser artifacts.
 
 - A real image-generation execution creates previewable candidates on its
   canvas node.
+- The operator selects the episode and optional existing script by name; changing
+  the episode clears an incompatible script selection.
 - Selecting one image persists an approved asset identity and changes the image
   node to Approved.
 - A typed `approved_image -> start_frame` edge makes the video node Ready.

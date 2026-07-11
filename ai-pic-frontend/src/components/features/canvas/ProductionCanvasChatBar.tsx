@@ -23,9 +23,13 @@ export function ProductionCanvasChatBar({
 }: {
   assetOptions?: {
     environments: ProductionCanvasAssetOption[];
+    episodes?: ProductionCanvasAssetOption[];
     error: string | null;
     load?: () => Promise<void>;
+    loadScripts?: (episodeId: string) => Promise<void>;
     loading: boolean;
+    scripts?: ProductionCanvasAssetOption[];
+    scriptsLoading?: boolean;
     virtualIPs: ProductionCanvasAssetOption[];
   };
   context: ProductionCanvasContextDraft;
@@ -94,7 +98,54 @@ export function ProductionCanvasChatBar({
             </select>
           </label>
         ))}
-        {productionCanvasContextFields.slice(2).map((field) => (
+        <label className="min-w-0">
+          <span className="text-[11px] font-semibold text-gray-600">剧集</span>
+          <select
+            aria-label="剧集"
+            value={context.episode_id}
+            disabled={assetOptions.loading}
+            onFocus={() => void assetOptions.load?.()}
+            onChange={(event) => {
+              const episodeId = event.target.value;
+              onContextChange("episode_id", episodeId);
+              onContextChange("script_id", "");
+              void assetOptions.loadScripts?.(episodeId);
+            }}
+            className="mt-1 h-8 w-full rounded-md border border-gray-200 bg-white px-2 text-xs text-gray-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 disabled:text-gray-400"
+          >
+            <option value="">
+              {assetOptions.loading ? "加载中" : "选择剧集"}
+            </option>
+            {(assetOptions.episodes || []).map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.name} (#{option.id})
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="min-w-0">
+          <span className="text-[11px] font-semibold text-gray-600">剧本</span>
+          <select
+            aria-label="剧本"
+            value={context.script_id}
+            disabled={!context.episode_id || assetOptions.scriptsLoading}
+            onFocus={() => void assetOptions.loadScripts?.(context.episode_id)}
+            onChange={(event) =>
+              onContextChange("script_id", event.target.value)
+            }
+            className="mt-1 h-8 w-full rounded-md border border-gray-200 bg-white px-2 text-xs text-gray-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 disabled:text-gray-400"
+          >
+            <option value="">
+              {assetOptions.scriptsLoading ? "加载中" : "选择剧本（可选）"}
+            </option>
+            {(assetOptions.scripts || []).map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.name} (#{option.id})
+              </option>
+            ))}
+          </select>
+        </label>
+        {productionCanvasContextFields.slice(4).map((field) => (
           <label key={field.key} className="min-w-0">
             <span className="text-[11px] font-semibold text-gray-600">
               {field.label}

@@ -49,7 +49,11 @@ describe("ProductionCanvasPlanner", () => {
       fireEvent.input(utils.getByLabelText("生产目标"), {
         target: { value: "基于林妹妹做第 4 集，办公室轻喜剧" },
       });
-      fireEvent.input(utils.getByLabelText("剧集 ID"), {
+      fireEvent.focus(utils.getByLabelText("剧集"));
+      await waitFor(() =>
+        assert.ok(utils.getByRole("option", { name: /办公室轻喜剧/ })),
+      );
+      fireEvent.change(utils.getByLabelText("剧集"), {
         target: { value: "123" },
       });
       fireEvent.input(utils.getByLabelText("任务 ID"), {

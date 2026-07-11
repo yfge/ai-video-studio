@@ -56,10 +56,18 @@ describe("ProductionCanvasChatBar", () => {
     assert.equal(button.hasAttribute("disabled"), true);
   });
 
-  it("keeps context id inputs numeric", () => {
+  it("selects an episode and clears a script from the previous episode", () => {
     const changes: Array<[string, string]> = [];
     const utils = render(
       <ProductionCanvasChatBar
+        assetOptions={{
+          environments: [],
+          episodes: [{ id: 12, name: "第 4 集 · 办公室危机" }],
+          error: null,
+          loading: false,
+          scripts: [{ id: 34, name: "办公室危机 V2" }],
+          virtualIPs: [],
+        }}
         context={emptyProductionCanvasContext}
         onCreate={() => {}}
         onContextChange={(key, value) => changes.push([key, value])}
@@ -70,11 +78,14 @@ describe("ProductionCanvasChatBar", () => {
       { container: dom.window.document.body },
     );
 
-    fireEvent.input(utils.getByLabelText("剧集 ID"), {
-      target: { value: "12a-3" },
+    fireEvent.change(utils.getByLabelText("剧集"), {
+      target: { value: "12" },
     });
 
-    assert.deepEqual(changes, [["episode_id", "123"]]);
+    assert.deepEqual(changes, [
+      ["episode_id", "12"],
+      ["script_id", ""],
+    ]);
   });
 
   it("selects canvas assets by name while emitting their numeric ids", () => {
@@ -83,8 +94,10 @@ describe("ProductionCanvasChatBar", () => {
       <ProductionCanvasChatBar
         assetOptions={{
           environments: [{ id: 22, name: "办公室" }],
+          episodes: [],
           error: null,
           loading: false,
+          scripts: [],
           virtualIPs: [{ id: 11, name: "林晚" }],
         }}
         context={emptyProductionCanvasContext}

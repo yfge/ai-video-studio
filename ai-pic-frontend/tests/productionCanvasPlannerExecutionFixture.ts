@@ -18,6 +18,18 @@ export function installCanvasPlanExecutionFetch(): PlannerFetchStub {
 
   globalThis.fetch = async (input: FetchInput, init?: FetchInit) => {
     const url = String(input);
+    if (url.includes("/api/v1/episodes?")) {
+      return jsonResponse([
+        { id: 123, episode_number: 4, title: "办公室轻喜剧" },
+      ]);
+    }
+    if (
+      url.includes("/api/v1/virtual-ips/") ||
+      url.includes("/api/v1/story-structure/environments")
+    ) {
+      return jsonResponse([]);
+    }
+    if (url.includes("/api/v1/scripts?")) return jsonResponse([]);
     if (url.includes("/api/v1/tasks/77")) {
       taskRequests.push(url);
       return jsonResponse(
