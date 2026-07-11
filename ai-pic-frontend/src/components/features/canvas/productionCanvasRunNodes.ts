@@ -71,6 +71,10 @@ export function savedNodeToCanvasNode(
     actionLabel: node.action_label || undefined,
     definitionVersion: node.definition_version,
     executionInputFingerprint: node.execution_input_fingerprint || undefined,
+    selectedOutputId: node.selected_output_id || undefined,
+    selectedOutputUrl: node.selected_output_url || undefined,
+    selectedOutputReviewedBy: node.selected_output_reviewed_by || undefined,
+    selectedOutputReviewedAt: node.selected_output_reviewed_at || undefined,
     inputPorts: node.input_ports?.map((port) => ({
       ...port,
       label: port.id,

@@ -25,14 +25,12 @@ export type ProductionCanvasPort = {
   required?: boolean;
   multiple?: boolean;
 };
-
 export type ProductionCanvasReuseTarget = {
   kind: "api" | "repository" | "service" | "worker" | "artifact";
   label: string;
   target: string;
   description?: string | null;
 };
-
 export type ProductionCanvasEdge = {
   from: string;
   to: string;
@@ -43,7 +41,6 @@ export type ProductionCanvasEdge = {
   required?: boolean;
   bindingOrder?: number;
 };
-
 export type ProductionCanvasNode = {
   id: string;
   label: string;
@@ -62,10 +59,13 @@ export type ProductionCanvasNode = {
   actionLabel?: string;
   definitionVersion?: number;
   executionInputFingerprint?: string;
+  selectedOutputId?: number;
+  selectedOutputUrl?: string;
+  selectedOutputReviewedBy?: number;
+  selectedOutputReviewedAt?: string;
   inputPorts?: ProductionCanvasPort[];
   outputPorts?: ProductionCanvasPort[];
 };
-
 const edge = (
   from: string,
   fromPort: string,

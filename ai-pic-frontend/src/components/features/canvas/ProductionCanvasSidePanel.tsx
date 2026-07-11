@@ -27,8 +27,10 @@ export function ProductionCanvasSidePanel({
   onSelectNode,
   onUpdateNode,
   onUpdateNodeOutputs,
+  onCanvasStateUpdated,
   refreshError,
   refreshingTasks,
+  runId,
   taskSyncError,
   taskSyncingNodeId,
 }: {
@@ -49,8 +51,10 @@ export function ProductionCanvasSidePanel({
   onSelectNode: (nodeId: string) => void;
   onUpdateNode: (nodeId: string, patch: Partial<ProductionCanvasNode>) => void;
   onUpdateNodeOutputs: NodeToolsProps["onUpdateNodeOutputs"];
+  onCanvasStateUpdated: NodeToolsProps["onCanvasStateUpdated"];
   refreshError?: string | null;
   refreshingTasks?: boolean;
+  runId: string;
   taskSyncError?: string | null;
   taskSyncingNodeId?: string | null;
 }) {
@@ -79,8 +83,10 @@ export function ProductionCanvasSidePanel({
         onSelectNode={onSelectNode}
         onUpdateNode={onUpdateNode}
         onUpdateNodeOutputs={onUpdateNodeOutputs}
+        onCanvasStateUpdated={onCanvasStateUpdated}
         refreshError={refreshError}
         refreshingTasks={refreshingTasks}
+        runId={runId}
       />
       <OperatorPanel className="p-4">
         <div className="text-xs font-semibold text-gray-950">画布操作</div>

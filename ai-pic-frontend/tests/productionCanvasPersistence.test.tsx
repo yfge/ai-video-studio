@@ -347,7 +347,7 @@ describe("ProductionCanvasPersistence", () => {
           "http://localhost/canvas?run_id=canvas-run-123",
         ),
       );
-      assert.ok(utils.getByText("已复制链接"));
+      await waitFor(() => assert.ok(utils.getByText("已复制链接")));
 
       fireEvent.click(utils.getByRole("button", { name: "保存画布" }));
       await waitFor(() => assert.equal(savedBodies.length, 1));

@@ -232,8 +232,10 @@ export function ProductionCanvasContent({
           onSelectNode={handleFocusSelectedNode}
           onUpdateNode={handleUpdateNode}
           onUpdateNodeOutputs={handleUpdateNodeOutputs}
+          onCanvasStateUpdated={replaceCanvasState}
           refreshError={taskSync.syncSummaryError}
           refreshingTasks={Boolean(taskSync.syncingNodeId)}
+          runId={persistence.runId}
           taskSyncError={
             taskSync.syncError && taskSync.syncError.nodeId === selectedNode?.id
               ? taskSync.syncError.message

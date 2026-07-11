@@ -2,6 +2,7 @@ import { httpClient } from "../client";
 import type {
   ProductionCanvasPlanRequest,
   ProductionCanvasPlanResponse,
+  ProductionCanvasMediaCandidateList,
   ProductionCanvasRunResponse,
   ProductionCanvasSavedState,
   ProductionCanvasSkillExecuteRequest,
@@ -55,9 +56,39 @@ async function saveRunState(
   );
 }
 
+async function getNodeCandidates(
+  runId: string,
+  nodeId: string,
+): Promise<ApiResponse<ProductionCanvasMediaCandidateList>> {
+  return httpClient<ProductionCanvasMediaCandidateList>(
+    `/api/v1/production-canvas/runs/${encodeURIComponent(
+      runId,
+    )}/nodes/${encodeURIComponent(nodeId)}/candidates`,
+    { method: "GET" },
+  );
+}
+
+async function approveNodeCandidate(
+  runId: string,
+  nodeId: string,
+  candidateId: number,
+): Promise<ApiResponse<ProductionCanvasRunResponse>> {
+  return httpClient<ProductionCanvasRunResponse>(
+    `/api/v1/production-canvas/runs/${encodeURIComponent(
+      runId,
+    )}/nodes/${encodeURIComponent(nodeId)}/approval`,
+    {
+      method: "POST",
+      body: JSON.stringify({ candidate_id: candidateId }),
+    },
+  );
+}
+
 export const productionCanvasAPI = {
+  approveNodeCandidate,
   createPlan,
   executeSkill,
+  getNodeCandidates,
   getRun,
   saveRunState,
 };

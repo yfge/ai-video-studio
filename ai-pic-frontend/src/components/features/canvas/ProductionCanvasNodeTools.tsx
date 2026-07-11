@@ -1,5 +1,6 @@
 import { OperatorPanel } from "@/components/shared";
 import { ProductionCanvasEdgeControls } from "./ProductionCanvasEdgeControls";
+import { ProductionCanvasCandidateReview } from "./ProductionCanvasCandidateReview";
 import { ProductionCanvasMediaControls } from "./ProductionCanvasMediaControls";
 import { ProductionCanvasNoteControls } from "./ProductionCanvasNoteControls";
 import { ProductionCanvasTaskSummary } from "./ProductionCanvasTaskSummary";
@@ -26,8 +27,10 @@ export function ProductionCanvasNodeTools({
   onSelectNode,
   onUpdateNode,
   onUpdateNodeOutputs,
+  onCanvasStateUpdated,
   refreshError,
   refreshingTasks,
+  runId,
 }: {
   edges: ProductionCanvasEdge[];
   node?: ProductionCanvasNode;
@@ -41,8 +44,12 @@ export function ProductionCanvasNodeTools({
   onSelectNode: (nodeId: string) => void;
   onUpdateNode: (nodeId: string, patch: Partial<ProductionCanvasNode>) => void;
   onUpdateNodeOutputs: (nodeId: string, patch: OutputPatch) => void;
+  onCanvasStateUpdated: Parameters<
+    typeof ProductionCanvasCandidateReview
+  >[0]["onCanvasStateUpdated"];
   refreshError?: string | null;
   refreshingTasks?: boolean;
+  runId: string;
 }) {
   return (
     <OperatorPanel className="space-y-3 p-4">
@@ -64,6 +71,11 @@ export function ProductionCanvasNodeTools({
       <ProductionCanvasMediaControls
         node={node}
         onUpdateNodeOutputs={onUpdateNodeOutputs}
+      />
+      <ProductionCanvasCandidateReview
+        node={node}
+        onCanvasStateUpdated={onCanvasStateUpdated}
+        runId={runId}
       />
       <ProductionCanvasNoteControls
         node={node}

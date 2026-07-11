@@ -43,6 +43,10 @@ function canvasNodeToSavedNode(
     action_label: node.actionLabel,
     definition_version: node.definitionVersion || 1,
     execution_input_fingerprint: node.executionInputFingerprint,
+    selected_output_id: node.selectedOutputId,
+    selected_output_url: node.selectedOutputUrl,
+    selected_output_reviewed_by: node.selectedOutputReviewedBy,
+    selected_output_reviewed_at: node.selectedOutputReviewedAt,
     input_ports: node.inputPorts?.map(({ id, type, required, multiple }) => ({
       id,
       type,

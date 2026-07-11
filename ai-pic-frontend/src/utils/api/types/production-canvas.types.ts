@@ -135,6 +135,10 @@ export interface ProductionCanvasSavedNode {
   action_label?: string | null;
   definition_version?: number;
   execution_input_fingerprint?: string | null;
+  selected_output_id?: number | null;
+  selected_output_url?: string | null;
+  selected_output_reviewed_by?: number | null;
+  selected_output_reviewed_at?: string | null;
   input_ports?: ProductionCanvasSavedPort[];
   output_ports?: ProductionCanvasSavedPort[];
 }
@@ -171,6 +175,25 @@ export interface ProductionCanvasPlanResponse {
 export interface ProductionCanvasRunResponse
   extends ProductionCanvasPlanResponse {
   saved_state?: ProductionCanvasSavedState | null;
+}
+
+export interface ProductionCanvasMediaCandidate {
+  asset_id: number;
+  asset_business_id: string;
+  media_type: "image" | "video";
+  url: string;
+  frame_index: number;
+  clip_id?: string | null;
+  prompt?: string | null;
+  model?: string | null;
+  duration_seconds?: number | null;
+  selected: boolean;
+}
+
+export interface ProductionCanvasMediaCandidateList {
+  node_id: string;
+  selected_output_id?: number | null;
+  candidates: ProductionCanvasMediaCandidate[];
 }
 
 export interface ProductionCanvasNodeExecutionResponse {
