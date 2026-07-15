@@ -135,6 +135,37 @@ def test_timeline_batch_parent_records_timeline_video_result(monkeypatch):
     assert task.result_file_path == "timeline_videos:71:v6:1"
 
 
+def test_parent_waits_for_every_requested_frame_child(monkeypatch):
+    task = SimpleNamespace(
+        id=46,
+        user_id=7,
+        parameters=json.dumps({"script_id": 130, "frames": [0, 1]}),
+        status=TaskStatus.PROCESSING,
+        result_file_path=None,
+        error_message=None,
+    )
+    children = [
+        SimpleNamespace(
+            status=VideoGenerationTaskStatus.SUCCEEDED,
+            script_id=130,
+            frame_index=0,
+            error_message=None,
+        )
+    ]
+    _patch_parent_dependencies(monkeypatch, task)
+    db = MagicMock()
+
+    parent_status.refresh_parent_task_status(
+        db,
+        SimpleNamespace(list_by_task_id=lambda _task_id: children),
+        task.id,
+    )
+
+    assert task.status is TaskStatus.PROCESSING
+    assert task.result_file_path is None
+    db.commit.assert_called_once()
+
+
 def _patch_parent_dependencies(monkeypatch, task):
     monkeypatch.setattr(
         parent_status,

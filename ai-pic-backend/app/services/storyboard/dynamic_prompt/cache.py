@@ -7,7 +7,7 @@ import json
 from typing import Any, Dict, Optional
 
 # Bump when the LLM template or context shape changes to invalidate all caches.
-TEMPLATE_VERSION = "storyboard_dynamic_image_prompt:v1"
+TEMPLATE_VERSION = "storyboard_dynamic_image_prompt:v3"
 
 BUNDLE_KEY = "llm_prompt_bundle"
 REQUIRED_PROMPT_FIELDS = (

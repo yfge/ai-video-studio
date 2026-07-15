@@ -10,11 +10,19 @@ from __future__ import annotations
 import base64
 from typing import Any, Dict, Optional
 
-from app.services.video.video_trim import download_video_bytes, trim_video_bytes
+from app.services.video.video_trim import (
+    download_video_bytes,
+    extract_video_frame_bytes,
+    frame_aligned_duration,
+    probe_video_duration_bytes,
+    trim_video_bytes,
+    video_exceeds_target_by_more_than_one_frame,
+)
 from app.services.video.video_upload_utils import (
     get_oss_url_or_original,
     upload_video_bytes_base64_to_oss,
     upload_video_bytes_to_oss,
+    upload_video_last_frame_bytes_to_oss,
     upload_video_url_to_oss,
 )
 
@@ -59,13 +67,41 @@ async def upload_video_with_optional_trim(
 
     untrimmed_oss_result = None
     untrimmed_video_url = None
+    source_bytes = None
+    input_ext = (
+        ".webm"
+        if isinstance(video_mime_type, str) and "webm" in video_mime_type.lower()
+        else ".mp4"
+    )
+
+    if trim_target and trim_target > 0:
+        try:
+            source_bytes = (
+                base64.b64decode(video_bytes_base64)
+                if video_bytes_base64
+                else await download_video_bytes(source_url)
+            )
+            actual_source_duration = probe_video_duration_bytes(
+                source_bytes,
+                input_ext=input_ext,
+            )
+            if actual_source_duration is not None:
+                should_trim = video_exceeds_target_by_more_than_one_frame(
+                    actual_source_duration,
+                    float(trim_target),
+                    fps,
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Video duration probe failed, fallback: %s", exc)
 
     if should_trim:
         try:
-            if video_bytes_base64:
-                source_bytes = base64.b64decode(video_bytes_base64)
-            else:
-                source_bytes = await download_video_bytes(source_url)
+            if source_bytes is None:
+                source_bytes = (
+                    base64.b64decode(video_bytes_base64)
+                    if video_bytes_base64
+                    else await download_video_bytes(source_url)
+                )
 
             untrimmed_oss_result = await upload_video_bytes_to_oss(
                 video_bytes=source_bytes,
@@ -86,10 +122,28 @@ async def upload_video_with_optional_trim(
             trimmed_bytes = trim_video_bytes(
                 video_bytes=source_bytes,
                 target_seconds=float(trim_target),
-                input_ext=".webm"
-                if isinstance(video_mime_type, str) and "webm" in video_mime_type.lower()
-                else ".mp4",
+                target_fps=fps,
+                input_ext=input_ext,
             )
+            trimmed_frame_count, actual_trim_duration = frame_aligned_duration(
+                float(trim_target), fps
+            )
+            trimmed_last_frame_oss_result = None
+            if trimmed_frame_count:
+                try:
+                    last_frame_bytes = extract_video_frame_bytes(
+                        video_bytes=trimmed_bytes,
+                        frame_index=trimmed_frame_count - 1,
+                    )
+                    trimmed_last_frame_oss_result = (
+                        await upload_video_last_frame_bytes_to_oss(
+                            image_bytes=last_frame_bytes,
+                            provider=provider,
+                            logger=logger,
+                        )
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Trimmed last frame extraction failed: %s", exc)
             trimmed_oss_result = await upload_video_bytes_to_oss(
                 video_bytes=trimmed_bytes,
                 video_mime_type=video_mime_type,
@@ -111,6 +165,9 @@ async def upload_video_with_optional_trim(
                 "untrimmed_video_url": untrimmed_video_url,
                 "untrimmed_video_oss_upload": untrimmed_oss_result,
                 "duration": round(float(trim_target), 3),
+                "actual_trim_duration_seconds": round(actual_trim_duration, 6),
+                "trimmed_video_frame_count": trimmed_frame_count,
+                "trimmed_last_frame_oss_upload": trimmed_last_frame_oss_result,
                 "provider_duration_seconds": provider_duration_seconds,
                 "target_duration_seconds": round(float(trim_target), 3),
             }

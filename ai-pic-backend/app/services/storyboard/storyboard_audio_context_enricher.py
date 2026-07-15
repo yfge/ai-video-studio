@@ -34,14 +34,13 @@ def enrich_storyboard_frames_with_story_context(
     frames: Sequence[Dict[str, Any]],
     max_reference_images: int = 3,
     max_character_cards: int = 3,
+    update_prompt_context: bool = True,
 ) -> None:
     """Mutate storyboard frames in-place with story character cards + reference images."""
     max_reference_images = max(0, min(int(max_reference_images), 3))
     max_character_cards = max(0, int(max_character_cards))
 
     visuals, alias_to_canonical = load_story_character_visuals(db, story_id=story_id)
-    if not visuals and not alias_to_canonical:
-        return
 
     scene_ids: list[int] = []
     scene_numbers: list[int] = []
@@ -81,6 +80,17 @@ def enrich_storyboard_frames_with_story_context(
                 if not canonical or canonical in normalized:
                     continue
                 normalized.append(canonical)
+
+        context_text = _frame_character_context(frame).casefold()
+        if context_text:
+            for alias, canonical in alias_to_canonical.items():
+                if (
+                    len(alias.strip()) >= 2
+                    and alias.casefold() in context_text
+                    and canonical in visuals
+                    and canonical not in normalized
+                ):
+                    normalized.append(canonical)
 
         prompt_chars = [c for c in normalized if c not in GENERIC_ROLE_BASES]
         frame["characters"] = prompt_chars
@@ -125,7 +135,11 @@ def enrich_storyboard_frames_with_story_context(
             char_refs: list[str] = []
             for name in ordered_chars:
                 visual = visuals.get(name)
-                if visual and isinstance(visual.anchor_url, str) and visual.anchor_url.strip():
+                if (
+                    visual
+                    and isinstance(visual.anchor_url, str)
+                    and visual.anchor_url.strip()
+                ):
                     char_refs.append(visual.anchor_url.strip())
             char_refs = dedupe_strs(char_refs)
 
@@ -136,12 +150,16 @@ def enrich_storyboard_frames_with_story_context(
             else:
                 selected = char_refs[:max_reference_images]
 
-            frame["reference_images"] = dedupe_strs(selected)[:max_reference_images] or None
+            frame["reference_images"] = (
+                dedupe_strs(selected)[:max_reference_images] or None
+            )
 
         # Merge context into visual-only prompt_description via template.
-        base = str(frame.get("prompt_description") or frame.get("description") or "").strip()
+        base = str(
+            frame.get("prompt_description") or frame.get("description") or ""
+        ).strip()
         env_text = truncate(env_hint or "", 160) if env_hint else None
-        if base and (card_lines or env_text):
+        if update_prompt_context and base and (card_lines or env_text):
             rendered = prompt_manager.render_prompt(
                 PromptTemplate.STORYBOARD_AUDIO_VISUAL_CONTEXT.value,
                 {
@@ -151,3 +169,18 @@ def enrich_storyboard_frames_with_story_context(
                 },
             )
             frame["prompt_description"] = compact(rendered)
+
+
+def _frame_character_context(frame: Dict[str, Any]) -> str:
+    values = [
+        frame.get(key)
+        for key in (
+            "description",
+            "beat_text",
+            "speaker_name",
+        )
+    ]
+    shot_plan = frame.get("timeline_shot_plan")
+    if isinstance(shot_plan, dict):
+        values.extend(value for value in shot_plan.values() if isinstance(value, str))
+    return "\n".join(value for value in values if isinstance(value, str))

@@ -56,7 +56,10 @@ export function useTimelineClipProviderGenerationActions({
     if (!timelineId || !timelineVersion || !clipId) {
       return warnMissingContext(setSubmitError, onNotify);
     }
-    const panelCount = parseOptionalNumber(storyboardPanelCount) ?? 4;
+    const panelCount =
+      storyboardPanelCount === "auto"
+        ? null
+        : parseOptionalNumber(storyboardPanelCount);
     setGeneratingStoryboard(true);
     setSubmitError(null);
     try {

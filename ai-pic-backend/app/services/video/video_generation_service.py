@@ -147,12 +147,14 @@ class VideoGenerationService:
             provider=response.provider,
             logger=self.logger,
         )
-        last_frame_oss_result = await upload_video_last_frame_to_oss(
-            last_frame_url=original_last_frame_url,
-            prompt=prompt,
-            provider=response.provider,
-            logger=self.logger,
-        )
+        last_frame_oss_result = video_result.pop("trimmed_last_frame_oss_upload", None)
+        if not (last_frame_oss_result or {}).get("success"):
+            last_frame_oss_result = await upload_video_last_frame_to_oss(
+                last_frame_url=original_last_frame_url,
+                prompt=prompt,
+                provider=response.provider,
+                logger=self.logger,
+            )
 
         return {
             **video_result,

@@ -40,3 +40,14 @@ def test_gpt_image_2_rejects_invalid_custom_size():
     )
 
     assert normalized_size == "1024x1024"
+
+
+@pytest.mark.unit
+def test_codex_accepts_storyboard_grid_aspect_ratios():
+    size, ratio, rules = normalize_image_params(
+        "codex", "gpt-image-2", "auto", "2:1", strict=False
+    )
+
+    assert size == "auto"
+    assert ratio == "2:1"
+    assert "3:2" in rules.aspect_ratio_options

@@ -31,6 +31,14 @@ def parse_json_dict(payload: Any) -> Optional[Dict[str, Any]]:
     return None
 
 
+def provider_failure_errors(response: Any) -> Optional[List[Dict[str, Any]]]:
+    if bool(getattr(response, "success", False)):
+        return None
+    message = coerce_text(getattr(response, "error", None)).strip()
+    message = message or "AI provider request failed"
+    return [{"loc": [], "msg": message, "type": "provider_error"}]
+
+
 def _validation_errors_json_safe(exc: ValidationError) -> List[Dict[str, Any]]:
     return exc.errors(include_context=False, include_input=False)
 
@@ -43,14 +51,7 @@ def validate_payload(
 ) -> Tuple[
     Optional[Dict[str, Any]], Optional[List[Dict[str, Any]]], Optional[Dict[str, Any]]
 ]:
-    """
-    Validate a provider output against a Pydantic model.
-
-    Returns (normalized, validation_errors, raw_json) where:
-    - normalized is the model_dump() dict when validation succeeds.
-    - validation_errors is a JSON-serializable Pydantic error list when validation fails.
-    - raw_json is the extracted JSON dict (before model_dump), if available.
-    """
+    """Return normalized payload, safe validation errors, and extracted JSON."""
     raw_json = parse_json_dict(payload)
     if extractor is not None:
         raw_json = extractor(raw_json)
@@ -123,17 +124,7 @@ async def generate_with_repair(
     max_tokens: int | None = None,
     stream: bool = False,
 ) -> Dict[str, Any]:
-    """
-    Generate structured JSON using AI manager and repair invalid outputs.
-
-    Returns:
-    - content: last raw text
-    - normalized: validated dict or None
-    - validation_errors: final validation errors (when normalized is None)
-    - raw_json: last extracted json dict (best-effort)
-    - repair_attempts: list of attempts (excluding the initial try)
-    - first_attempt: first attempt payload
-    """
+    """Generate structured JSON and repair only successful-but-invalid outputs."""
     response = await ai_manager.generate_text(
         prompt=base_prompt,
         temperature=temperature,
@@ -145,9 +136,14 @@ async def generate_with_repair(
         stream=stream,
     )
     content_text = coerce_text(getattr(response, "data", None))
-    normalized, errors, raw_json = validate_payload(
-        pydantic_model, content_text, extractor=extractor
-    )
+    response_success = bool(getattr(response, "success", False))
+    errors = provider_failure_errors(response)
+    if errors is not None:
+        normalized, raw_json = None, None
+    else:
+        normalized, errors, raw_json = validate_payload(
+            pydantic_model, content_text, extractor=extractor
+        )
     if normalized is not None and extra_validator is not None:
         extra_errors = extra_validator(normalized)
         if extra_errors:
@@ -155,7 +151,7 @@ async def generate_with_repair(
             errors = extra_errors
 
     first_attempt = {
-        "success": bool(getattr(response, "success", False)),
+        "success": response_success,
         "provider_used": getattr(response, "provider", None),
         "model_used": getattr(response, "model", None),
         "usage": getattr(response, "usage", None),
@@ -166,6 +162,15 @@ async def generate_with_repair(
     }
 
     repair_attempts: List[Dict[str, Any]] = []
+    if not response_success:
+        return {
+            "content": content_text,
+            "normalized": None,
+            "validation_errors": errors,
+            "raw_json": raw_json,
+            "repair_attempts": repair_attempts,
+            "first_attempt": first_attempt,
+        }
     if normalized is not None:
         return {
             "content": content_text,
@@ -194,17 +199,22 @@ async def generate_with_repair(
             stream=stream,
         )
         content_text = coerce_text(getattr(repair, "data", None))
-        normalized, errors, raw_json = validate_payload(
-            pydantic_model, content_text, extractor=extractor
-        )
-        if normalized is not None and extra_validator is not None:
-            extra_errors = extra_validator(normalized)
-            if extra_errors:
-                normalized = None
-                errors = extra_errors
+        repair_success = bool(getattr(repair, "success", False))
+        errors = provider_failure_errors(repair)
+        if errors is not None:
+            normalized, raw_json = None, None
+        else:
+            normalized, errors, raw_json = validate_payload(
+                pydantic_model, content_text, extractor=extractor
+            )
+            if normalized is not None and extra_validator is not None:
+                extra_errors = extra_validator(normalized)
+                if extra_errors:
+                    normalized = None
+                    errors = extra_errors
         repair_attempts.append(
             {
-                "success": bool(getattr(repair, "success", False)),
+                "success": repair_success,
                 "provider_used": getattr(repair, "provider", None),
                 "model_used": getattr(repair, "model", None),
                 "usage": getattr(repair, "usage", None),
@@ -215,6 +225,8 @@ async def generate_with_repair(
                 "validation_errors": errors,
             }
         )
+        if not repair_success:
+            break
         if normalized is not None:
             return {
                 "content": content_text,

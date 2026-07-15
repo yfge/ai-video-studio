@@ -12,6 +12,10 @@ from app.services.storyboard.storyboard_image_generation_request import (
     is_codex_overload,
     normalize_storyboard_request,
 )
+from app.services.storyboard.storyboard_image_quality_gate import (
+    validate_storyboard_output_aspect_ratio,
+    validate_storyboard_output_aspect_ratio_strict,
+)
 
 
 def _get_backend_base() -> str:
@@ -147,6 +151,16 @@ async def generate_storyboard_image_urls(
     urls = _dedupe_urls(_extract_urls(response.data))
     if not urls:
         raise RuntimeError("Storyboard image generation returned no images")
+    if normalized.provider == "codex":
+        aspect_ratio_checks = await validate_storyboard_output_aspect_ratio_strict(
+            urls,
+            expected_aspect_ratio=normalized.aspect_ratio,
+        )
+    else:
+        aspect_ratio_checks = validate_storyboard_output_aspect_ratio(
+            urls,
+            expected_aspect_ratio=normalized.aspect_ratio,
+        )
 
     response_meta = getattr(response, "metadata", None)
     if not isinstance(response_meta, dict):
@@ -162,6 +176,7 @@ async def generate_storyboard_image_urls(
         "provider": normalized.provider,
         "model_id": normalized.model_id,
         "generation_profile": normalized.generation_profile,
+        "style": normalized.style,
         "size": normalized.size,
         "aspect_ratio": normalized.aspect_ratio,
         "width": normalized.width,
@@ -179,6 +194,7 @@ async def generate_storyboard_image_urls(
         "reference_images_count": len(extra),
         "reference_images_hash": hash_reference_images(extra),
         "audit_warnings": list(normalized.audit.warnings or []),
+        "output_aspect_ratio_checks": aspect_ratio_checks,
     }
     if fallback_from_model:
         image_gen_meta["fallback_from_model"] = fallback_from_model

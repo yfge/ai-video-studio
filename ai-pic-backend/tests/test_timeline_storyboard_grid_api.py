@@ -194,7 +194,9 @@ def test_timeline_clip_storyboard_rejects_missing_clip(client, db_session):
 
 def test_timeline_clip_storyboard_rejects_non_video_clip(client, db_session):
     _, episode, script = _bootstrap_episode(db_session)
-    timeline = _create_timeline(client, episode, script, _timeline_spec(episode, script))
+    timeline = _create_timeline(
+        client, episode, script, _timeline_spec(episode, script)
+    )
 
     response = client.post(
         "/api/v1/timelines/"
@@ -255,6 +257,7 @@ def test_timeline_clip_storyboard_creates_generation_task_for_selected_clip_only
     assert params["clip_id"] == "video_scene_001_beat_002_001"
     assert params["generation_profile"] == "clip_storyboard"
     assert params["panel_count"] == 4
+    assert params["panel_selection"]["mode"] == "fixed"
     assert params["style"] == "3d_cartoon"
     assert "storyboard sheet" in params["sheet_prompt"].lower()
     assert len(params["panels"]) == 4

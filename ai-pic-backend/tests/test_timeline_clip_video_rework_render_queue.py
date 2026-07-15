@@ -119,3 +119,85 @@ def test_video_task_success_queues_rework_render_job(client, db_session, monkeyp
     assert queued_render.preset["rework"]["video_generation_task_id"] == video_task.id
     assert queued_render.preset["rework"]["provider_task_id"] == "provider-task-2"
     assert dispatched == {"render_job_id": queued_render.id, "user_id": user.id}
+
+
+def test_video_task_success_waits_for_all_timeline_clips_before_render(
+    client, db_session, monkeypatch
+):
+    dispatched = []
+    monkeypatch.setattr(
+        "app.services.video.video_task_timeline_rework_updater."
+        "dispatch_provider_rework_render_job",
+        lambda *_args, **_kwargs: dispatched.append(True),
+    )
+    user = db_session.query(User).filter(User.username == "test_admin").one()
+    episode, script = _bootstrap_episode(db_session)
+    original_video = _media_asset(
+        db_session,
+        asset_type="video",
+        origin="upload",
+        file_url="https://example.com/generated-ready.mp4",
+        mime_type="video/mp4",
+    )
+    start_asset = _media_asset(
+        db_session,
+        asset_type="image",
+        origin="upload",
+        file_url="https://example.com/missing-start.png",
+        mime_type="image/png",
+    )
+    clip_id = "video_scene_001_beat_001_001"
+    spec = _append_video_clip(
+        _timeline_spec(episode, script),
+        clip_id=clip_id,
+        video_asset=original_video,
+    )
+    spec = _append_video_clip(
+        spec,
+        clip_id="video_scene_001_beat_002_002",
+        start_asset=start_asset,
+    )
+    missing_clip = spec["tracks"][-1]["clips"][0]
+    missing_clip.update(
+        {"start_ms": 1200, "end_ms": 7200, "duration_ms": 6000, "ordinal": 2}
+    )
+    spec["duration_ms"] = 7200
+    timeline = _create_timeline(client, episode, script, spec)
+    params = {
+        "timeline_rework": {
+            "timeline_id": timeline["id"],
+            "timeline_version": timeline["version"],
+            "clip_id": clip_id,
+            "action": "re_render",
+            "asset_role": "generated_video",
+            "auto_render": True,
+            "render_type": "final",
+            "render_preset": {"fps": 24, "resolution": "1080x1920"},
+        }
+    }
+    video_task = VideoGenerationTask(
+        user_id=user.id,
+        provider="mock-provider",
+        provider_task_id="provider-task-ready-before-final",
+        model="mock-video",
+        model_type="image_to_video",
+        prompt="Regenerate one clip while another is missing",
+        parameters=json.dumps(params),
+        status=VideoGenerationTaskStatus.SUCCEEDED,
+    )
+    db_session.add(video_task)
+    db_session.commit()
+
+    apply_timeline_rework_result(
+        db_session,
+        video_task,
+        {"video_url": "https://example.com/generated-rework.mp4", "duration": 1.2},
+        params,
+    )
+
+    assert (
+        not db_session.query(RenderJob)
+        .filter(RenderJob.timeline_id == timeline["id"])
+        .count()
+    )
+    assert dispatched == []

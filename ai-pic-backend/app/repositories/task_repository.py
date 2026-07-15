@@ -69,3 +69,29 @@ class TaskRepository(BaseRepository[Task]):
             .order_by(Task.id.desc())
             .all()
         )
+
+    def list_active_by_request_fingerprint(
+        self,
+        *,
+        user_id: int,
+        task_type: TaskType,
+        request_fingerprint: str,
+    ) -> list[Task]:
+        """List active tasks whose JSON payload may contain one fingerprint.
+
+        The caller must decode and compare the full value. The text predicate is
+        only a narrow database-side candidate filter for the legacy JSON column.
+        """
+        fingerprint_token = f'"request_fingerprint": "{request_fingerprint}"'
+        return (
+            self.session.query(Task)
+            .filter(
+                Task.user_id == user_id,
+                Task.task_type == task_type,
+                Task.status.in_([TaskStatus.PENDING, TaskStatus.PROCESSING]),
+                Task.is_deleted.is_(False),
+                Task.parameters.contains(fingerprint_token),
+            )
+            .order_by(Task.id.desc())
+            .all()
+        )

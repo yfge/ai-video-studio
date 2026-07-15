@@ -58,6 +58,7 @@ def build_clip_storyboard_character_context(
             {
                 "name": visual.canonical_name,
                 "virtual_ip_id": visual.virtual_ip_id,
+                "appearance_brief": visual.card_brief.split("；", 1)[0],
                 "anchor_url": visual.anchor_url,
             }
         )

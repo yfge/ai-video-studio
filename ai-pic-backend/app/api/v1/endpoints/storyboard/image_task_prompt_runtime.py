@@ -66,6 +66,7 @@ def compile_storyboard_image_prompt(
 def render_storyboard_image_prompt(
     compiled_prompt: dict[str, Any],
     *,
+    style: str | None,
     reference_notes: list[dict[str, Any]],
     labeled_references: list[dict[str, Any]] | None,
     prompt_manager,
@@ -74,6 +75,7 @@ def render_storyboard_image_prompt(
         PromptTemplate.STORYBOARD_IMAGE_PROMPT.value,
         {
             "base_prompt": compiled_prompt["image_prompt"],
+            "style": style,
             "reference_notes": reference_notes,
         },
     )

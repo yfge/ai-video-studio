@@ -87,6 +87,7 @@ def test_storyboard_image_prompt_template_includes_quality_and_constraints():
         "storyboard_image_prompt",
         {
             "base_prompt": "夜色中的仓库，景别: 中景",
+            "style": "realistic",
             "reference_notes": [{"type": "frame"}],
         },
     )
@@ -97,6 +98,9 @@ def test_storyboard_image_prompt_template_includes_quality_and_constraints():
     assert "no readable text" in prompt.lower()
     assert "no split-screen" in prompt.lower()
     assert "no multiple faces" not in prompt.lower()
+    assert "不得混入其他角色身份" in prompt
+    assert "不得把环境参考图中的人物带入" in prompt
+    assert "显式风格“realistic”是最高优先级" in prompt
 
 
 def test_prompt_template_audit_has_version_and_hash():

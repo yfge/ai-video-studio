@@ -86,9 +86,9 @@ def _frame_from_shot_plan(
         "scene_index": scene_index,
         "description": description,
         "beat_type": clip.get("beat_type") or "shot_plan",
-        "speaker_name": None,
+        "speaker_name": clip.get("speaker_name"),
         "beat_text": shot_plan.get("dialogue_source") or clip.get("text"),
-        "characters": _shot_plan_characters(shot_plan),
+        "characters": _shot_plan_characters(clip, shot_plan),
         "prompt_description": prompt_description,
         "duration_seconds": round(int(clip["duration_ms"]) / 1000.0, 3),
         "generation_source": "timeline_spec",
@@ -147,7 +147,22 @@ def _clips_for_track(tracks: list[Any], track_type: str) -> list[dict[str, Any]]
     return []
 
 
-def _shot_plan_characters(shot_plan: dict[str, Any]) -> list[str]:
+def _shot_plan_characters(clip: dict[str, Any], shot_plan: dict[str, Any]) -> list[str]:
+    candidates: list[str] = []
+    for key in ("characters", "character_names"):
+        values = clip.get(key)
+        if not isinstance(values, list):
+            continue
+        candidates.extend(
+            value.strip()
+            for value in values
+            if isinstance(value, str) and value.strip()
+        )
+    speaker = clip.get("speaker_name")
+    if isinstance(speaker, str) and speaker.strip():
+        candidates.append(speaker.strip())
+    if candidates:
+        return list(dict.fromkeys(candidates))
     anchor = shot_plan.get("character_anchor")
     if not isinstance(anchor, str) or not anchor.strip():
         return []

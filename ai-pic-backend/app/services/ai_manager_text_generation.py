@@ -55,6 +55,23 @@ async def generate_text_with_fallback(
 
     original_model = model
     last_model_used = original_model
+    model_providers = {
+        provider_name
+        for provider_name in available_providers
+        if original_model
+        and any(
+            item.model_id == original_model
+            and item.model_type == AIModelType.TEXT_GENERATION
+            for item in getattr(providers[provider_name], "available_models", [])
+        )
+    }
+    if model_providers and not prefer_provider:
+        available_providers = [
+            *[name for name in available_providers if name in model_providers],
+            *[name for name in available_providers if name not in model_providers],
+        ]
+    last_error: str | None = None
+    last_provider: str | None = None
 
     if not available_providers:
         return failure_responses.manager_failure_response(
@@ -79,16 +96,22 @@ async def generate_text_with_fallback(
     )
     log_prompt(prompt)
 
-    for _ in range(max_retries):
+    for attempt_index in range(max_retries):
         provider_name = select_provider(available_providers, prefer_provider)
         if not provider_name:
             break
 
         provider = providers[provider_name]
         update_request_count(provider_name)
+        requested_model = (
+            original_model
+            if provider_name in model_providers
+            or (not model_providers and attempt_index == 0)
+            else None
+        )
         provider_model = await model_resolution.resolve_text_model(
             provider,
-            original_model,
+            requested_model,
             get_models_for_type,
         )
         last_model_used = provider_model
@@ -112,9 +135,14 @@ async def generate_text_with_fallback(
                 model=provider_model,
                 response=response,
             )
+            if not response.success and response.error:
+                last_error = response.error
+                last_provider = provider_name
             if response.success or not enable_fallback:
                 return response
         except Exception as exc:
+            last_error = str(exc)
+            last_provider = provider_name
             if not enable_fallback:
                 return failure_responses.exception_failure_response(
                     action="文本生成失败",
@@ -128,9 +156,11 @@ async def generate_text_with_fallback(
         if provider_name in available_providers:
             available_providers.remove(provider_name)
 
-    return failure_responses.manager_failure_response(
-        error="所有文本生成提供商都失败了",
-        model=last_model_used,
+    return failure_responses.terminal_failure_response(
+        default_error="所有文本生成提供商都失败了",
+        last_error=last_error,
+        last_provider=last_provider,
+        model=last_model_used or "unknown",
         task_type=AITaskType.STORY_GENERATION,
         model_type=AIModelType.TEXT_GENERATION,
     )

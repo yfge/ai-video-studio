@@ -36,6 +36,17 @@ def test_scene_context_character_fallback_by_name_match():
     assert context["characters"][0]["name"] == "阿龙"
 
 
+def test_scene_context_keeps_costume_details_late_in_character_description():
+    ctx = make_ref_ctx()
+    ctx.vip_map[7].description = (
+        "脸部与发型设定。" + ("身份细节" * 40) + "服装固定为浅色素净长裙。"
+    )
+
+    context = build_scene_context(make_script(), 1, ctx, ["阿龙入场"])
+
+    assert "服装固定为浅色素净长裙" in context["characters"][0]["appearance"]
+
+
 def test_scene_context_handles_missing_scene():
     context = build_scene_context(make_script(scenes=[]), 9, make_ref_ctx(), [])
     assert context["scene"]["scene_number"] == 9
@@ -48,6 +59,44 @@ def test_frame_input_includes_neighbor_summaries():
     assert frame_input["prev_summary"] == "醉步入场"
     assert frame_input["next_summary"] == ""
     assert frame_input["duration"] == 0.9
+
+
+def test_frame_input_carries_exact_character_and_costume_anchor():
+    frames = make_frames()
+    frames[1]["characters"] = ["阿龙"]
+    frames[1][
+        "prompt_description"
+    ] = "阿龙穿旧布衣短打，发型、服装和年龄感与角色卡一致。"
+
+    frame_input = build_frame_input(
+        frames,
+        1,
+        scene_characters=[
+            {"name": "阿龙", "appearance": "30岁武者，旧布衣短打"},
+            {"name": "掌柜", "appearance": "灰色长衫"},
+        ],
+    )
+
+    assert frame_input["characters"] == [
+        {"name": "阿龙", "appearance": "30岁武者，旧布衣短打"}
+    ]
+    assert "旧布衣短打" in frame_input["visual_context"]
+
+
+def test_frame_input_resolves_explicit_character_when_scene_context_misses_it():
+    frames = make_frames()
+    frames[1]["characters"] = ["阿龙"]
+
+    frame_input = build_frame_input(
+        frames,
+        1,
+        scene_characters=[],
+        ref_ctx=make_ref_ctx(),
+    )
+
+    assert frame_input["characters"] == [
+        {"name": "阿龙", "appearance": "30岁武者，旧布衣短打"}
+    ]
 
 
 def test_group_target_frames_by_scene_skips_invalid_indexes():

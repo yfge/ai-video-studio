@@ -60,12 +60,29 @@ def test_clip_storyboard_context_binds_single_story_character(db_session):
         {
             "name": "林晚",
             "virtual_ip_id": virtual_ip.id,
+            "appearance_brief": "林晚: 林晚 character profile",
             "anchor_url": "https://cdn.example/linwan.png",
         }
     ]
     assert result.reference_images == [
-        "https://manual.example/ref.png",
         "https://cdn.example/linwan.png",
+        "https://manual.example/ref.png",
+    ]
+    assert result.bound_context["reference_bindings"] == [
+        {
+            "index": 1,
+            "role": "character_identity",
+            "label": "林晚",
+            "source": "canonical_virtual_ip",
+            "url": "https://cdn.example/linwan.png",
+        },
+        {
+            "index": 2,
+            "role": "general_reference",
+            "label": "manual reference",
+            "source": "request_reference_images",
+            "url": "https://manual.example/ref.png",
+        },
     ]
     assert result.panels[0]["bound_context"] == result.bound_context
 

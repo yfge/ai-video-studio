@@ -33,7 +33,7 @@ export function TimelineClipVideoReworkCard({
   ratio,
   reason,
   videoReferenceChoice,
-  storyboardPanelIndex,
+  storyboardAvailable,
   startEndReferenceAvailable,
   manualReferenceAvailable,
   episodeCharacters,
@@ -68,7 +68,7 @@ export function TimelineClipVideoReworkCard({
   ratio: string;
   reason: string;
   videoReferenceChoice: TimelineVideoReferenceChoice;
-  storyboardPanelIndex?: number | null;
+  storyboardAvailable: boolean;
   startEndReferenceAvailable: boolean;
   manualReferenceAvailable: boolean;
   episodeCharacters: EpisodeCharacter[];
@@ -193,7 +193,7 @@ export function TimelineClipVideoReworkCard({
         />
         <VideoReferenceSelect
           value={videoReferenceChoice}
-          storyboardPanelIndex={storyboardPanelIndex}
+          storyboardAvailable={storyboardAvailable}
           startEndAvailable={startEndReferenceAvailable}
           manualRefsAvailable={manualReferenceAvailable}
           onChange={onVideoReferenceChoiceChange}

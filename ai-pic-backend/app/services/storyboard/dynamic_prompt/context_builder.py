@@ -4,10 +4,14 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from app.services.storyboard.dynamic_prompt.character_context import (
+    build_frame_characters,
+    character_appearance,
+)
+
 MAX_DIALOGUES = 6
 MAX_STAGE_NOTES = 4
 DIALOGUE_CHAR_LIMIT = 80
-APPEARANCE_CHAR_LIMIT = 120
 STORY_TONE_CHAR_LIMIT = 150
 NEIGHBOR_SUMMARY_LIMIT = 80
 
@@ -50,7 +54,10 @@ def find_scene(script: Any, scene_number: Optional[int]) -> Dict[str, Any]:
     scenes = getattr(script, "scenes", None) or []
     if scene_number is not None:
         for raw in scenes:
-            if isinstance(raw, dict) and _to_int(raw.get("scene_number")) == scene_number:
+            if (
+                isinstance(raw, dict)
+                and _to_int(raw.get("scene_number")) == scene_number
+            ):
                 return raw
         index = scene_number - 1
         if 0 <= index < len(scenes) and isinstance(scenes[index], dict):
@@ -126,10 +133,7 @@ def build_scene_characters(
         if vip is None:
             continue
         name = getattr(vip, "name", None) or f"角色{cid}"
-        appearance = _trim(
-            getattr(vip, "description", None) or getattr(vip, "style_prompt", None),
-            APPEARANCE_CHAR_LIMIT,
-        )
+        appearance = character_appearance(vip)
         if appearance:
             characters.append({"name": str(name), "appearance": appearance})
     return characters
@@ -164,7 +168,13 @@ def build_scene_context(
     }
 
 
-def build_frame_input(frames: List[dict], index: int) -> Dict[str, Any]:
+def build_frame_input(
+    frames: List[dict],
+    index: int,
+    *,
+    scene_characters: List[Dict[str, str]] | None = None,
+    ref_ctx: Any = None,
+) -> Dict[str, Any]:
     """Build one frame's template input with neighbor summaries for continuity."""
     frame = frames[index]
     prev_frame = frames[index - 1] if index > 0 else None
@@ -178,15 +188,23 @@ def build_frame_input(frames: List[dict], index: int) -> Dict[str, Any]:
             NEIGHBOR_SUMMARY_LIMIT,
         )
 
+    description = _trim(frame.get("description") or frame.get("ai_prompt"), 200)
+    visual_context = _trim(frame.get("prompt_description"), 260)
+    if visual_context == description:
+        visual_context = ""
     return {
         "frame_index": index,
         "shot_type": frame.get("shot_type") or "",
         "camera_movement": frame.get("camera_movement") or "",
         "composition": frame.get("composition") or "",
         "duration": frame.get("duration_seconds"),
-        "description": _trim(
-            frame.get("description") or frame.get("ai_prompt"), 200
+        "description": description,
+        "characters": build_frame_characters(
+            frame,
+            scene_characters or [],
+            ref_ctx=ref_ctx,
         ),
+        "visual_context": visual_context,
         "prev_summary": _summary(prev_frame),
         "next_summary": _summary(next_frame),
     }

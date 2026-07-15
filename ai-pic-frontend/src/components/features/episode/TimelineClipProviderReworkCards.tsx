@@ -44,7 +44,7 @@ export function TimelineClipProviderReworkCards({
   storyboardModel,
   storyboardStyle,
   storyboardPanelCount,
-  storyboardPanelIndex,
+  storyboardAvailable,
   storyboardSheetUrl,
   episodeCharacters,
   episodeCharactersLoading,
@@ -98,7 +98,7 @@ export function TimelineClipProviderReworkCards({
   storyboardModel: string;
   storyboardStyle: "2d_cartoon" | "3d_cartoon" | "live_action";
   storyboardPanelCount: string;
-  storyboardPanelIndex?: number | null;
+  storyboardAvailable: boolean;
   storyboardSheetUrl?: string | null;
   episodeCharacters: EpisodeCharacter[];
   episodeCharactersLoading: boolean;
@@ -207,7 +207,7 @@ export function TimelineClipProviderReworkCards({
             ratio={ratio}
             reason={reason}
             videoReferenceChoice={videoReferenceChoice}
-            storyboardPanelIndex={storyboardPanelIndex}
+            storyboardAvailable={storyboardAvailable}
             startEndReferenceAvailable={productionReadiness.keyframesReady}
             manualReferenceAvailable={manualReferenceAvailable}
             episodeCharacters={episodeCharacters}

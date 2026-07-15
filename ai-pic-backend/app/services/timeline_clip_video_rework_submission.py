@@ -2,29 +2,27 @@
 
 from __future__ import annotations
 
-import json
-from datetime import datetime, timedelta
 from typing import Any
 
 from app.models.task import TaskStatus
-from app.models.video_generation_task import VideoGenerationTaskStatus
 from app.repositories.task_repository import TaskRepository
 from app.repositories.video_generation_task_repository import (
     VideoGenerationTaskRepository,
 )
 from app.services.video.video_task_dispatcher import VideoTaskDispatcher
-from app.services.video.video_task_generation_metadata import (
-    build_video_generation_metadata,
+from app.services.video.video_task_submission_failure import (
+    TimelineVideoSubmissionAttempt,
+    persist_timeline_video_submission_failure,
 )
 from app.services.video.video_task_submission_helpers import submit_provider_task
+from app.services.video.video_task_submission_persistence import (
+    persist_submitted_timeline_video_task,
+)
 from app.services.video.video_task_utils import (
     abs_url,
-    build_parameters_payload,
     coerce_duration,
     normalize_submission_options,
 )
-
-VIDEO_REWORK_TASK_TIMEOUT = timedelta(hours=1)
 
 
 class TimelineClipVideoReworkSubmissionService:
@@ -49,35 +47,50 @@ class TimelineClipVideoReworkSubmissionService:
         target_duration_seconds = float(payload.get("duration") or 5.0)
         request_duration_seconds = coerce_duration(target_duration_seconds)
         model_type = self._model_type(start_url, reference_images)
-        response = submit_provider_task(
-            self.dispatcher,
+        attempt = TimelineVideoSubmissionAttempt(
+            task_id=task_id,
+            user_id=user_id,
             prompt=prompt,
             start_url=start_url,
             end_url=end_url,
             reference_images=reference_images,
-            duration=request_duration_seconds,
+            target_duration_seconds=target_duration_seconds,
+            provider_duration_seconds=request_duration_seconds,
+            model_type=model_type,
             opts=opts,
+            timeline_rework=self._timeline_rework_context(payload),
         )
+        try:
+            response = submit_provider_task(
+                self.dispatcher,
+                prompt=prompt,
+                start_url=start_url,
+                end_url=end_url,
+                reference_images=reference_images,
+                duration=request_duration_seconds,
+                opts=opts,
+            )
+        except Exception as exc:
+            error_message = f"视频任务提交异常: {exc}"
+            self._record_failure(attempt, error_message, None)
+            self._fail_parent(task, error_message)
         if not response.success:
-            self._record_failure(task_id, user_id, prompt, response.error, model_type)
-            task.status = TaskStatus.FAILED
-            task.error_message = response.error or "视频重做任务提交失败"
-            self.db.commit()
-            raise RuntimeError(task.error_message)
+            error_message = response.error or "视频重做任务提交失败"
+            self._record_failure(attempt, error_message, response)
+            self._fail_parent(task, error_message)
 
         provider_task_id = self._string_value((response.data or {}).get("task_id"))
         if not provider_task_id:
-            self._record_failure(task_id, user_id, prompt, "未返回任务ID", model_type)
-            task.status = TaskStatus.FAILED
-            task.error_message = "未返回任务ID"
-            self.db.commit()
-            raise RuntimeError(task.error_message)
+            error_message = "未返回任务ID"
+            self._record_failure(attempt, error_message, response)
+            self._fail_parent(task, error_message)
         model_type = self._response_model_type(response) or model_type
 
         provider_duration_seconds = int(
             (response.data or {}).get("duration") or request_duration_seconds
         )
-        self._create_video_task(
+        persist_submitted_timeline_video_task(
+            self.video_tasks,
             task_id=task_id,
             user_id=user_id,
             response=response,
@@ -90,83 +103,28 @@ class TimelineClipVideoReworkSubmissionService:
             provider_duration_seconds=provider_duration_seconds,
             model_type=model_type,
             opts=opts,
-            payload=payload,
+            timeline_rework=self._timeline_rework_context(payload),
         )
         self.db.commit()
 
-    def _create_video_task(
-        self,
-        *,
-        task_id: int,
-        user_id: int,
-        response,
-        provider_task_id: str,
-        prompt: str | None,
-        start_url: str | None,
-        end_url: str | None,
-        reference_images: list[str] | None,
-        target_duration_seconds: float,
-        provider_duration_seconds: int,
-        model_type: str,
-        opts: dict[str, Any],
-        payload: dict[str, Any],
-    ) -> None:
-        params_payload = build_parameters_payload(
-            prompt,
-            start_url,
-            end_url,
-            reference_images,
-            provider_duration_seconds,
-            opts,
-            target_duration_seconds=round(float(target_duration_seconds), 3),
-            provider_duration_seconds=provider_duration_seconds,
-        )
-        params_payload["timeline_rework"] = self._timeline_rework_context(payload)
-        self.video_tasks.create(
-            task_id=task_id,
-            script_id=None,
-            frame_index=None,
-            user_id=user_id,
-            provider=response.provider,
-            provider_task_id=provider_task_id,
-            model=response.model,
-            model_type=model_type,
-            prompt=prompt,
-            parameters=json.dumps(params_payload, ensure_ascii=False),
-            generation_metadata=build_video_generation_metadata(
-                response.provider,
-                response.model,
-                provider_task_id,
-                model_type,
-                params_payload,
-            ),
-            status=VideoGenerationTaskStatus.SUBMITTED,
-            submitted_at=datetime.utcnow(),
-            expires_at=datetime.utcnow() + VIDEO_REWORK_TASK_TIMEOUT,
-        )
-
     def _record_failure(
         self,
-        task_id: int,
-        user_id: int,
-        prompt: str | None,
-        error_message: str | None,
-        model_type: str = "image_to_video",
+        attempt: TimelineVideoSubmissionAttempt,
+        error_message: str,
+        response: Any | None,
     ) -> None:
-        self.video_tasks.create(
-            task_id=task_id,
-            script_id=None,
-            frame_index=None,
-            user_id=user_id,
-            provider="unknown",
-            provider_task_id="",
-            model=None,
-            model_type=model_type,
-            prompt=prompt,
-            parameters=json.dumps({}, ensure_ascii=False),
-            status=VideoGenerationTaskStatus.FAILED,
-            error_message=error_message or "视频重做任务提交失败",
+        persist_timeline_video_submission_failure(
+            self.video_tasks,
+            attempt=attempt,
+            error_message=error_message,
+            response=response,
         )
+
+    def _fail_parent(self, task: Any, error_message: str) -> None:
+        task.status = TaskStatus.FAILED
+        task.error_message = error_message
+        self.db.commit()
+        raise RuntimeError(error_message)
 
     @staticmethod
     def _timeline_rework_context(payload: dict[str, Any]) -> dict[str, Any]:

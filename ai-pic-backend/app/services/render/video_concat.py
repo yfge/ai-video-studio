@@ -19,6 +19,13 @@ from app.services.render.video_ffmpeg import (
     replace_audio,
     trim_clip_to_duration,
 )
+from app.services.render.video_render_normalize import (
+    constrain_render_duration,
+    prepare_render_clips,
+    probe_render_video,
+    render_video_matches_spec,
+)
+from app.services.render.video_render_spec import RenderVideoSpec
 
 logger = get_logger()
 
@@ -71,6 +78,7 @@ async def concat_video_clips(
     audio_segments: Optional[List[VideoAudioSegment]] = None,
     keep_original_audio: bool = True,
     subtitles: Optional[List[VideoSubtitleCue]] = None,
+    render_spec: RenderVideoSpec | None = None,
 ) -> dict:
     """Concatenate video clips into single video.
 
@@ -90,16 +98,16 @@ async def concat_video_clips(
         logger.info(f"Downloading {len(clips)} clips...")
         raw_paths = await download_all_clips(clips, work_dir)
 
-        logger.info("Trimming clips to target durations...")
-        trimmed_paths = []
-        for i, (raw_path, clip) in enumerate(zip(raw_paths, clips)):
-            trimmed_path = os.path.join(work_dir, f"trimmed_{i:03d}.mp4")
-            if trim_clip_to_duration(
-                raw_path, trimmed_path, clip.target_duration_seconds
-            ):
-                trimmed_paths.append(trimmed_path)
-            else:
-                trimmed_paths.append(raw_path)
+        logger.info("Normalizing clips to the render contract...")
+        trimmed_paths, prepare_error = prepare_render_clips(
+            raw_paths,
+            [clip.target_duration_seconds for clip in clips],
+            [clip.description for clip in clips],
+            work_dir,
+            render_spec,
+        )
+        if prepare_error:
+            return {"success": False, "error": prepare_error}
 
         logger.info("Concatenating clips...")
         concat_output = os.path.join(work_dir, "concat.mp4")
@@ -141,6 +149,23 @@ async def concat_video_clips(
         else:
             os.rename(composed_output, output_path)
 
+        if render_spec:
+            constrained_output = os.path.join(work_dir, "duration-bounded.mp4")
+            if not constrain_render_duration(
+                output_path, constrained_output, render_spec
+            ):
+                return {"success": False, "error": "Render duration constraint failed"}
+            os.replace(constrained_output, output_path)
+
+            probe = probe_render_video(output_path)
+            if not render_video_matches_spec(probe, render_spec):
+                return {
+                    "success": False,
+                    "error": f"Render output contract mismatch: {probe}",
+                }
+        else:
+            probe = {}
+
         probe_cmd = [
             "ffprobe",
             "-v",
@@ -168,6 +193,7 @@ async def concat_video_clips(
             "audio_segment_count": len(audio_segment_items),
             "has_burned_subtitles": bool(subtitle_cues),
             "subtitle_count": len(subtitle_cues),
+            "render_probe": probe,
         }
 
     finally:

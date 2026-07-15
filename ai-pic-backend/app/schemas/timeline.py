@@ -10,6 +10,7 @@ TimelineClipReworkAction = Literal["re_dub", "re_cut", "re_render"]
 TimelineClipVideoReworkAction = Literal["re_cut", "re_render"]
 TimelineClipVideoReferenceMode = Literal[
     "start_end",
+    "clip_storyboard_sheet",
     "clip_storyboard_panel",
     "storyboard_grid_panel",
 ]
@@ -63,9 +64,9 @@ class TimelineStoryboardGridGenerateResponse(BaseModel):
 
 
 class TimelineClipStoryboardGenerateRequest(TimelineVersionRequest):
-    panel_count: int = Field(4, ge=2, le=9)
+    panel_count: Optional[int] = Field(None, ge=2, le=9)
     style: TimelineClipStoryboardStyle = "3d_cartoon"
-    model: Optional[str] = Field(None, max_length=128)
+    model: Optional[str] = Field("codex:gpt-image-2", max_length=128)
     generation_profile: Optional[str] = Field("clip_storyboard", max_length=128)
     size: Optional[str] = Field("1536x1536", max_length=32)
     aspect_ratio: Optional[str] = Field("1:1", max_length=32)

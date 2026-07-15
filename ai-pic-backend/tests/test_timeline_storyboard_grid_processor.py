@@ -1,6 +1,5 @@
 import anyio
 import pytest
-
 from app.models.task import TaskStatus
 from app.models.timeline import MediaAsset, TimelineClipAsset
 from app.services.storyboard.grid_storyboard_sheet_processor import (
@@ -189,6 +188,47 @@ def test_grid_storyboard_processor_rejects_rebase_when_panel_snapshot_changed(
     db_session.refresh(task)
     assert task.status == TaskStatus.FAILED
     assert "support_views" not in timeline.spec
+
+
+def test_clip_storyboard_processor_does_not_resurrect_cancelled_task(db_session):
+    user, episode, script = bootstrap_episode(db_session)
+    timeline = create_timeline(
+        db_session,
+        episode,
+        script,
+        append_video_clips(timeline_spec(episode, script)),
+        user,
+    )
+    task = create_grid_task(db_session, timeline, user)
+    selected_clip_id = "video_scene_001_beat_002_001"
+
+    async def image_generator_cancelled_after_provider_return(**kwargs):
+        task.status = TaskStatus.CANCELLED
+        task.error_message = "cancelled during generation"
+        db_session.commit()
+        return await fake_image_generator(**kwargs)
+
+    async def unexpected_image_persister(**kwargs):
+        raise AssertionError("cancelled task must not persist an image")
+
+    processor = GridStoryboardSheetProcessor(
+        db_session,
+        image_generator=image_generator_cancelled_after_provider_return,
+        image_persister=unexpected_image_persister,
+    )
+    anyio.run(
+        processor.process_grid_sheet_task,
+        task.id,
+        _clip_storyboard_payload(timeline, selected_clip_id),
+        user.id,
+    )
+
+    db_session.refresh(timeline)
+    db_session.refresh(task)
+    assert task.status == TaskStatus.CANCELLED
+    assert timeline.version == 1
+    assert "support_views" not in timeline.spec
+    assert db_session.query(MediaAsset).count() == 0
 
 
 def _clip_storyboard_payload(timeline, clip_id: str) -> dict:

@@ -13,6 +13,7 @@ from app.models.timeline import MediaAsset, RenderJob, Timeline
 from app.repositories.timeline_repository import MediaAssetRepository
 from app.services.media import upload_bytes
 from app.services.render.timeline_render_types import TimelineClipVideo
+from app.services.render.video_render_normalize import probe_render_video
 from app.services.timeline_clip_asset_lineage import TimelineClipAssetLineageService
 from sqlalchemy.orm import Session
 
@@ -28,7 +29,14 @@ async def persist_timeline_render_output(
 ) -> MediaAsset:
     output_bytes = Path(output_path).read_bytes()
     sha256 = hashlib.sha256(output_bytes).hexdigest()
-    duration_ms = int(sum(clip.duration_seconds for clip in clips) * 1000)
+    try:
+        render_probe = probe_render_video(output_path)
+    except Exception:  # Output was already contract-checked by the render pipeline.
+        render_probe = {}
+    duration_seconds = render_probe.get("duration_seconds") or sum(
+        clip.duration_seconds for clip in clips
+    )
+    duration_ms = round(float(duration_seconds) * 1000)
     filename = (
         f"timeline_{timeline.id}_v{job.timeline_version}_"
         f"{job.render_type}_{job.id}.mp4"
@@ -76,6 +84,7 @@ async def persist_timeline_render_output(
             "render_job_id": job.id,
             "render_type": job.render_type,
             "preset": job.preset or {},
+            "render_probe": render_probe,
             "clip_ids": [clip.clip_id for clip in clips],
             "created_at": datetime.now(tz=timezone.utc).isoformat(),
         },

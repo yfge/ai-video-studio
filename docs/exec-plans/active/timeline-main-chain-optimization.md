@@ -186,6 +186,86 @@ Exit criteria:
 - Deprecated audio-timeline storyboard endpoint remains a compatibility path
   and explicitly marks `source_role=legacy_audio_timeline_support_view`.
 
+### P1: Distinguish Identity-Bound And Identity-Free Storyboard Frames
+
+Timeline-generated support frames can explicitly carry `characters: []` for
+object, insert, and environment-only shots. Those frames do not need a character
+identity reference, while frames with named characters still must not generate
+without their bound references. Historical frames that omit `characters` remain
+conservative and continue to require references.
+
+Optimization:
+
+- Treat an explicit empty `characters` list as an identity-free frame.
+- Keep `require_reference_images=true` as the pipeline safety contract, but
+  apply it per frame: identity-bound and legacy/unknown frames require a usable
+  reference; identity-free frames may generate without one.
+- Keep all eligible indexes in one child task so task lineage and progress remain
+  stable.
+
+Exit criteria:
+
+- Queue tests prove an explicit identity-free frame is not skipped while a
+  legacy frame with no character classification is still skipped.
+- Processor tests prove the same task can enforce references for character
+  frames and allow an explicit identity-free frame through without a reference.
+
+### P1: Promote Generated Support Images Into Clip Asset Lineage
+
+Timeline-derived storyboard frames already carry a stable `timeline_clip_id`,
+but the historical storyboard image worker only wrote generated URLs back to
+`scripts.extra_metadata.storyboard.frames`. Provider-backed clip video tasks
+therefore could not reuse those generated images unless the Timeline Spec was
+mutated by a separate keyframe workflow.
+
+Optimization:
+
+- After storyboard images are persisted, idempotently create/reuse `media_assets`
+  and link each generated frame to `timeline_clip_assets` with role
+  `storyboard_image`, source Timeline version, task id, and frame provenance.
+- Keep the Timeline Spec and version unchanged; this is support-asset lineage,
+  not an editorial timing change.
+- Resolve clip-video start images from embedded Timeline refs first, then current
+  and historical `storyboard_image` lineage for the same stable `clip_id`.
+
+Exit criteria:
+
+- Lineage tests prove generated support images are linked idempotently by stable
+  clip id without incrementing Timeline version.
+- Video rework API tests prove a clip with no embedded start-frame ref consumes
+  its `storyboard_image` lineage URL as `image_url`.
+
+### P1: Hydrate Missing Reference Context When Reusing Placeholders
+
+A non-overwrite Timeline pipeline can reuse storyboard placeholders from the
+same Timeline ID and version without rebuilding prompts or incrementing
+`storyboard_version`. Reuse must not bypass newer character/environment binding
+logic: legacy placeholders can otherwise keep empty `reference_images` and be
+filtered out before paid image generation starts.
+
+Optimization:
+
+- Copy current placeholder frames and run reference-context enrichment without
+  rewriting `prompt_description`, frame IDs, timing, or operator-selected refs.
+- Backfill missing `speaker_name` and explicit character identity from the
+  matching current Timeline video clip before enrichment, so older placeholders
+  retain canonical character semantics without prompt-text inference.
+- Persist the refreshed frames without incrementing `storyboard_version`, and
+  only when enrichment changes the payload.
+- Allow environment references to hydrate identity-free frames even when the
+  story has no character visual registry.
+- Queue image generation from the refreshed frame payload, not the stale
+  pre-refresh list.
+
+Exit criteria:
+
+- A same-Timeline placeholder reuse test proves missing character refs are
+  persisted and queued while frame ID, prompt, manual refs, and storyboard
+  version remain unchanged.
+- A reference-only enrichment test proves environment refs work without any
+  character visuals and prompt text is not rewritten.
+- The reuse path performs no text/image/video provider request.
+
 ### P1: Consolidate Storyboard Timeline Builders
 
 There are multiple implementations that can build storyboard frames from an
@@ -201,17 +281,146 @@ old builders and `app/services/audio/__init__.py` exports the older
 
 Optimization:
 
-- Declare `storyboard_from_timeline.py` the canonical support-view builder.
-- Move any unique duration adjustment or prompt behavior from old builders into
-  the canonical module if still needed.
-- Stop exporting old storyboard builders from `app/services/audio/__init__.py`.
-- Keep old tests only for compatibility wrappers, not as primary behavior.
+- Declare `episode_timeline_beats.py` and `storyboard_from_timeline.py` the
+  canonical beat and support-view builders.
+- Keep `timeline_processor.py` only as a thin import-compatible wrapper; it must
+  not own frame construction, prompt optimization, persistence, or timing logic.
+- Retire its legacy storyboard-only duration resegmentation. Timeline/audio
+  timing is authoritative, so a support view must not independently split or
+  merge source windows.
+- Export canonical builders directly from `app/services/audio/__init__.py`.
+- Keep old tests only for compatibility-wrapper delegation, while canonical
+  behavior remains covered at the canonical module paths.
 
 Exit criteria:
 
 - One canonical builder owns support-view generation.
-- Contract checks or tests prevent new call sites from importing the old
-  builders.
+- A source-contract test prevents application modules from importing
+  `timeline_processor`; only the compatibility module and its focused tests may
+  reference that path.
+
+### P1: Make Storyboard Image Dispatch Idempotent While Active
+
+Repeated Timeline or canvas execution can submit the same storyboard frame set
+while its previous image task is still pending or processing. Creating another
+Celery task for the same effective inputs risks duplicate provider charges and
+competing writes to the same storyboard frames.
+
+Optimization:
+
+- Compute a versioned SHA-256 fingerprint from the user/script, selected frame
+  snapshots, model and generation parameters, references, prompt override,
+  canvas branch, and optional execution scope.
+- Exclude mutable worker checkpoint outputs (`image_url`, generated keyframes,
+  compiled prompt metadata, candidate lineage, and task checkpoint markers)
+  while retaining every source prompt/reference field consumed by generation.
+- Reuse a matching non-deleted `pending` or `processing`
+  `STORYBOARD_IMAGE_GENERATION` task and do not dispatch Celery again.
+- Keep terminal tasks retryable: `completed`, `failed`, and `cancelled` requests
+  create a new task so explicit regeneration and recovery still work.
+- Persist the full fingerprint in task parameters and verify it after the
+  repository lookup rather than trusting a partial match.
+- If Celery dispatch raises after task creation, mark the task `failed` with the
+  dispatch error before returning the failure. A retry must not reuse an orphan
+  `pending` row that was never dispatched.
+
+Exit criteria:
+
+- Repeating an identical request while its first task is active returns the
+  same task ID, reports `status=reused`, and calls Celery exactly once.
+- Changing a frame prompt, model, references, or execution scope creates a new
+  request fingerprint and task.
+- A first-frame checkpoint during an active multi-frame task does not change the
+  request fingerprint or enqueue a duplicate batch.
+- Failed/cancelled/completed tasks are not reused.
+- A dispatch exception leaves the created task in `failed`, not `pending`.
+
+### P1: Make Storyboard Video Dispatch Idempotent While Active
+
+Repeated Production Canvas execution can enqueue the same image-to-video inputs
+while the first parent task is pending or processing. Each duplicate parent can
+fan out into another set of paid Seedance submissions.
+
+Optimization:
+
+- Compute a versioned SHA-256 fingerprint from the user/script, selected frame
+  snapshots, resolved start images, model and video options, Timeline rework
+  mapping, canvas branch, and target run scope.
+- Reuse a matching active `VIDEO_GENERATION` parent task without dispatching a
+  second Celery message; expose the reuse decision in the canvas skill output.
+- Keep completed, failed, and cancelled requests retryable.
+- Mark a newly persisted parent task `failed` if Celery dispatch raises, so a
+  later retry cannot reuse work that never reached the worker.
+
+Exit criteria:
+
+- Identical active requests return the same task and dispatch exactly once.
+- Changing the model, selected frame, or run scope creates a new task.
+- All terminal statuses can be retried.
+- Dispatch failure is durable as `failed` with the transport error recorded.
+
+### P1: Checkpoint Paid Storyboard Video Submissions Per Frame
+
+A multi-frame parent submits provider jobs sequentially. Deferring the database
+commit until the whole loop finishes can lose an earlier paid provider task ID
+if a later submission or failure-record write raises. Also, generated video
+output fields must not alter an active request fingerprint while siblings are
+still running.
+
+Optimization:
+
+- Commit each submitted or failed `VideoGenerationTask` child before starting
+  the next provider request.
+- Convert unexpected provider submission exceptions into durable failed child
+  rows so the parent accounts for every requested frame.
+- On a replay of the same parent, reuse an existing child for that frame and
+  submit only missing children; explicit regeneration still uses a new parent.
+- Do not mark the parent complete until child frame indexes cover every explicit
+  frame requested in the parent payload.
+- Fingerprint only the frame fields consumed by video submission, excluding
+  mutable generated-video outputs such as `video_url` and `video_generation`.
+- Keep provider inputs such as prompt, start/end images, references, duration,
+  and Timeline rework mapping in the fingerprint.
+
+Exit criteria:
+
+- A later database failure cannot roll back an earlier provider task ID.
+- A provider transport exception becomes a failed child while earlier submitted
+  children remain pollable.
+- Replaying a partially submitted parent does not call the provider again for
+  already recorded frames.
+- Polling one successful child cannot complete a two-frame parent.
+- A sibling video result checkpoint does not create a duplicate active parent.
+- Prompt, image, reference, duration, model, frame, or scope changes still
+  produce a new request.
+
+### P1: Checkpoint Paid Storyboard Images Per Frame
+
+The storyboard image worker can generate many paid frames in one Celery task.
+Persisting only after the final frame means a later provider error discards all
+earlier successful results and their clip lineage even though those calls were
+already billed.
+
+Optimization:
+
+- After each frame returns generated URLs, immediately persist the accumulated
+  storyboard frame state.
+- Record the completing task ID on each successful frame. If that same Celery
+  task is replayed, remove completed frames before dynamic-prompt construction
+  and provider submission so only missing frames incur work or cost.
+- Sync that frame's image into stable Timeline clip lineage and commit before
+  starting the next provider request.
+- Keep the parent task failed when a later frame fails, while preserving every
+  successful earlier image for targeted retry and downstream video generation.
+
+Exit criteria:
+
+- A two-frame regression proves frame 1 and its `storyboard_image` clip link are
+  durable when frame 2 raises a provider error.
+- Replaying the same failed two-frame task skips frame 1 and retries only frame
+  2; it does not rebuild dynamic prompts or regenerate paid output for frame 1.
+- Existing image persistence, reference enforcement, and identity-free tests
+  remain green.
 
 ### P2: Give Frontend A Native Timeline Workspace Model
 

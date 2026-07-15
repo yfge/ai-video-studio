@@ -5,7 +5,10 @@
 - 画面中不要出现文字、字幕、对白气泡、界面UI、边框、分割线、水印、logo。
 - 不要生成“分镜联系表/接触印相/多帧拼贴/Contact Sheet”，不要出现帧号/标签（例如 frame 00/01）。
 - 若提示词包含“镜头切换/转场/上一镜头”等，仅作剪辑备注，不要在画面中表现多个镜头。
-- 若提供参考图像：优先匹配人物脸/服装/发型与环境光线/色彩，保持镜头风格统一与延续性。
+- 若提供人物参考图：必须精确匹配该镜头指定人物的脸、年龄感、发型、服装、配色与体态；不得混入其他角色身份，不得自行改装或把具体服装泛化为普通现代/休闲服。
+- 若提供环境参考图：只用来确定空间、光线与色彩，不得把环境参考图中的人物带入当前镜头。
+{% if style %}- 显式风格“{{ style }}”是最高优先级；下方画面描述中与其冲突的旧风格词一律忽略，只保留叙事、主体、动作、构图、光线与环境信息。
+{% endif %}
 
 Quality: {{ img.quality_high(subject="scene") }}, {{ img.quality_storyboard() }}
 Constraints: {{ img.constraint_no_text_artifacts() }}, {{ img.constraint_no_collage_storyboard() }}, {{ img.constraint_no_deformities_basic() }}, {{ img.constraint_no_low_quality() }}

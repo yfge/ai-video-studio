@@ -18,7 +18,9 @@ storyboard is a support-view artifact generated from one selected video clip and
 its `timeline_shot_plan`, prompt layers, `motion_timeline`, and fallback prompt.
 Store the sheet as a generated `media_assets` image, link every panel back to
 the selected stable `clip_id`, and let provider-backed video generation use the
-sheet as a reference image with panel-specific prompts.
+whole sheet as one ordered temporal reference. The LLM-authored shot plan supplies
+structured visual beats; backend policy deterministically maps those beats and
+clip duration to a supported 2/4/6/9 layout.
 
 **Deprecated behavior:** Do not add or call new whole-Timeline storyboard
 generation flows. `POST /api/v1/timelines/{timeline_id}/storyboard-grid/generate`
@@ -32,8 +34,10 @@ rows.
 
 **New data contract:**
 
-- Request includes `expected_version`, `panel_count`, `style`, `model`,
-  `size`/`aspect_ratio`, and optional `reference_images`.
+- Request includes `expected_version`, optional `panel_count`, `style`, `model`,
+  `size`/`aspect_ratio`, and optional `reference_images`. Omitting `panel_count`
+  selects auto mode; an explicit value remains operator-controlled and is
+  normalized to a supported 2/4/6/9 layout.
 - Generated task payload kind is `timeline_clip_storyboard`.
 - Persist generated sheet as `media_assets.asset_role="clip_storyboard_sheet"`.
 - Write preview metadata to
@@ -41,8 +45,11 @@ rows.
 - Write only the selected clip:
   `clip.source_refs.clip_storyboard` and
   `clip.clip_storyboard_sheet_asset_ref`.
-- New video rework reference mode is `clip_storyboard_panel`; payloads may set
-  `use_clip_storyboard: true`.
+- Default video rework reference mode is `clip_storyboard_sheet`; payloads may
+  set `use_clip_storyboard: true`. The prompt consumes every panel from left to
+  right and top to bottom as temporal anchors for one continuous clip.
+- `clip_storyboard_panel` remains a legacy read/compatibility mode only; new UI
+  flows do not expose it as the default.
 
 The remaining older sections in this document describe the historical grid plan
 and should be read only as implementation background where they do not conflict
@@ -1029,10 +1036,15 @@ Use the required sections:
 
 ```markdown
 ## User Prompt
+
 ## Goals
+
 ## Changes
+
 ## Validation
+
 ## Next Steps
+
 ## Linked Commits
 ```
 

@@ -15,7 +15,8 @@ async def test_timeline_render_passes_source_audio_to_composer(
 ):
     output_path = tmp_path / "audio-render.mp4"
 
-    async def fake_render_to_temp_file(_clips, _subtitles, audio_track):
+    async def fake_render_to_temp_file(_clips, _subtitles, audio_track, *, render_spec):
+        assert render_spec.fps == 24
         assert audio_track is not None
         assert audio_track.url == "https://example.com/dialogue.mp3"
         assert audio_track.source == "timeline.source.episode_audio"

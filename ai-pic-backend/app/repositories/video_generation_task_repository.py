@@ -37,6 +37,20 @@ class VideoGenerationTaskRepository(BaseRepository[VideoGenerationTask]):
             .all()
         )
 
+    def get_latest_for_task_frame(
+        self, *, task_id: int, frame_index: int
+    ) -> Optional[VideoGenerationTask]:
+        return (
+            self.session.query(self.model)
+            .filter(
+                self.model.is_deleted.is_(False),
+                self.model.task_id == task_id,
+                self.model.frame_index == frame_index,
+            )
+            .order_by(self.model.id.desc())
+            .first()
+        )
+
     def count_by_task_id(
         self,
         task_id: int,

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from typing import Sequence
 
 from app.models.script import Script
-from app.models.task import Task, TaskType
+from app.models.task import Task
 from app.models.timeline import Timeline
 from app.models.user import User
 from app.repositories.storyboard_media_repository import (
@@ -13,8 +12,26 @@ from app.repositories.storyboard_media_repository import (
     resolve_storyboard_aspect_ratio,
 )
 from app.repositories.timeline_repository import TimelineRepository
+from app.services.storyboard.storyboard_video_task_dispatch import (
+    create_or_reuse_storyboard_video_task,
+)
 from app.services.task_worker import storyboard_video_generate_task
 from sqlalchemy.orm import Session
+
+VIDEO_WORKER_FRAME_INPUT_KEYS = (
+    "frame_id",
+    "description",
+    "ai_prompt",
+    "start_image_url",
+    "start_image_urls",
+    "image_url",
+    "end_image_url",
+    "end_image_urls",
+    "reference_images",
+    "start_ms",
+    "end_ms",
+    "duration_seconds",
+)
 
 
 @dataclass(frozen=True)
@@ -25,6 +42,7 @@ class StoryboardVideoQueueResult:
     timeline_id: int
     timeline_version: int
     mapped_clip_count: int
+    reused: bool
 
 
 def queue_storyboard_video_generation_task(
@@ -90,27 +108,38 @@ def queue_storyboard_video_generation_task(
         "timeline_rework_by_frame": timeline_rework_by_frame,
         "canvas_branch": canvas_branch,
     }
-    task = Task(
-        title=f"分镜视频候选生成 - 剧本{script.id}",
-        description="Production canvas video.candidates skill dispatch",
-        task_type=TaskType.VIDEO_GENERATION,
-        prompt=f"Storyboard video generation for script {script.id}",
-        parameters=json.dumps(payload, ensure_ascii=False),
-        user_id=user.id,
+    target_indexes = indexes if indexes is not None else list(range(len(frames)))
+    dispatch_result = create_or_reuse_storyboard_video_task(
+        db,
+        user_id=int(user.id),
+        script_id=int(script.id),
         target_business_id=target_business_id,
+        payload=payload,
+        frame_snapshots=[
+            _video_worker_frame_snapshot(frames[index], index)
+            for index in target_indexes
+        ],
+        dispatch=storyboard_video_generate_task.delay,
     )
-    db.add(task)
-    db.commit()
-    db.refresh(task)
-    storyboard_video_generate_task.delay(task.id, payload, user.id)
     return StoryboardVideoQueueResult(
-        task=task,
+        task=dispatch_result.task,
         frame_count=len(frames),
         selected_candidate_count=len(selections),
         timeline_id=int(timeline.id),
         timeline_version=int(timeline.version),
         mapped_clip_count=len(timeline_rework_by_frame),
+        reused=dispatch_result.reused,
     )
+
+
+def _video_worker_frame_snapshot(frame: dict, frame_index: int) -> dict:
+    """Capture provider inputs while excluding mutable generated-video outputs."""
+    return {
+        "frame_index": frame_index,
+        "frame": {
+            key: frame[key] for key in VIDEO_WORKER_FRAME_INPUT_KEYS if key in frame
+        },
+    }
 
 
 def _timeline_rework_contexts(

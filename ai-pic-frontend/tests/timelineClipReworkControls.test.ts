@@ -105,7 +105,7 @@ describe("timeline clip rework controls", () => {
         asset_role: "generated_video",
         use_end_frame: false,
         return_last_frame: true,
-        reference_mode: "clip_storyboard_panel",
+        reference_mode: "clip_storyboard_sheet",
         use_clip_storyboard: true,
       },
     );
@@ -237,7 +237,7 @@ describe("timeline clip rework controls", () => {
     assert.ok(utils.getByRole("button", { name: "生成片段分镜图" }));
     assert.ok(utils.getByRole("button", { name: "生成/重做此片段视频" }));
     assert.ok(utils.getByLabelText("视频参考来源"));
-    assert.ok(utils.getByRole("option", { name: "分镜 Panel 4" }));
+    assert.ok(utils.getByRole("option", { name: "片段宫格故事板（整张）" }));
     assert.ok(utils.getByLabelText("附加参考图 URL"));
     assert.ok(utils.getByLabelText("画面风格"));
     assert.ok(utils.getByLabelText("分镜 panel 数"));
@@ -251,7 +251,9 @@ describe("timeline clip rework controls", () => {
     assert.ok(
       within(videoModelSelect).getByRole("option", { name: "自动选择模型" }),
     );
-    assert.ok(within(videoModelSelect).getByRole("option", { name: "Seedance 2.0" }));
+    assert.ok(
+      within(videoModelSelect).getByRole("option", { name: "Seedance 2.0" }),
+    );
     assert.ok(utils.getByLabelText("画面比例"));
     assert.ok(utils.getByRole("option", { name: "9:16" }));
     assert.ok(utils.getByLabelText("重做动作"));
@@ -291,7 +293,15 @@ describe("timeline clip rework controls", () => {
     assert.ok(within(sharedContext).getByText("环境图：1 张"));
   });
 
-  it("disables start-end video reference when keyframes are missing", () => {
+  it("uses the full storyboard sheet when keyframes are missing", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ task_id: 96, status: "pending" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
     const utils = render(
       React.createElement(TimelineClipProviderReworkControls, {
         timelineId: 8,
@@ -303,8 +313,9 @@ describe("timeline clip rework controls", () => {
     );
 
     assert.ok(utils.getAllByText("首尾帧待生成").length >= 1);
-    assert.ok(
-      utils.getAllByText("先完成片段分镜图和首尾帧后才能生视频").length >= 1,
+    assert.equal(
+      (utils.getByLabelText("视频参考来源") as HTMLSelectElement).value,
+      "clip_storyboard_sheet",
     );
     assert.equal(
       (
@@ -312,16 +323,31 @@ describe("timeline clip rework controls", () => {
           name: "生成/重做此片段视频",
         }) as HTMLButtonElement
       ).disabled,
-      true,
+      false,
     );
     assert.equal(
       (utils.getByRole("option", { name: /首尾帧/ }) as HTMLOptionElement)
         .disabled,
       true,
     );
+    fireEvent.click(utils.getByRole("button", { name: "生成/重做此片段视频" }));
+    await waitFor(() => assert.equal(calls.length, 1));
+    assert.equal(
+      calls[0].init?.body,
+      JSON.stringify({
+        expected_version: 3,
+        action: "re_cut",
+        resolution: "720p",
+        asset_role: "generated_video",
+        use_end_frame: false,
+        return_last_frame: true,
+        reference_mode: "clip_storyboard_sheet",
+        use_clip_storyboard: true,
+      }),
+    );
   });
 
-  it("requires both clip storyboard and keyframes before video generation", async () => {
+  it("uses start and end frames when the storyboard is missing", async () => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
     globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
       calls.push({ url: String(url), init });
@@ -344,12 +370,24 @@ describe("timeline clip rework controls", () => {
     const videoButton = utils.getByRole("button", {
       name: "生成/重做此片段视频",
     }) as HTMLButtonElement;
-    assert.equal(videoButton.disabled, true);
-    assert.ok(
-      utils.getAllByText("先完成片段分镜图和首尾帧后才能生视频").length >= 1,
+    assert.equal(videoButton.disabled, false);
+    assert.equal(
+      (utils.getByLabelText("视频参考来源") as HTMLSelectElement).value,
+      "start_end",
     );
-    fireEvent.submit(videoButton.closest("form")!);
-    await waitFor(() => assert.equal(calls.length, 0));
+    fireEvent.click(videoButton);
+    await waitFor(() => assert.equal(calls.length, 1));
+    assert.equal(
+      calls[0].init?.body,
+      JSON.stringify({
+        expected_version: 3,
+        action: "re_cut",
+        resolution: "720p",
+        asset_role: "generated_video",
+        use_end_frame: true,
+        return_last_frame: true,
+      }),
+    );
   });
 
   it("does not let manual references bypass the video generation image gate", async () => {
@@ -367,7 +405,7 @@ describe("timeline clip rework controls", () => {
         timelineId: 8,
         timelineVersion: 3,
         clipId: "video_scene_1_beat_1_001",
-        item: videoClipWithoutStartEndFrames(),
+        item: videoClipWithoutVisualReferences(),
       }),
       { container: dom.window.document.body },
     );
@@ -467,8 +505,10 @@ describe("timeline clip rework controls", () => {
         action: "re_cut",
         resolution: "720p",
         asset_role: "generated_video",
-        use_end_frame: true,
+        use_end_frame: false,
         return_last_frame: true,
+        reference_mode: "clip_storyboard_sheet",
+        use_clip_storyboard: true,
         operator_reviewed: true,
       }),
     );
@@ -507,7 +547,6 @@ describe("timeline clip rework controls", () => {
       calls[0].init?.body,
       JSON.stringify({
         expected_version: 3,
-        panel_count: 4,
         style: "live_action",
         generation_profile: "clip_storyboard",
         size: "1536x1536",
@@ -517,7 +556,7 @@ describe("timeline clip rework controls", () => {
     );
 
     fireEvent.change(utils.getByLabelText("视频参考来源"), {
-      target: { value: "clip_storyboard_panel" },
+      target: { value: "clip_storyboard_sheet" },
     });
     fireEvent.click(utils.getByRole("button", { name: "生成/重做此片段视频" }));
     await waitFor(() => assert.equal(calls.length, 2));
@@ -534,9 +573,47 @@ describe("timeline clip rework controls", () => {
         asset_role: "generated_video",
         use_end_frame: false,
         return_last_frame: true,
-        reference_mode: "clip_storyboard_panel",
+        reference_mode: "clip_storyboard_sheet",
         use_clip_storyboard: true,
         reference_images: ["https://manual.example/ref.png"],
+      }),
+    );
+  });
+
+  it("keeps an explicit storyboard panel count when the operator selects one", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ task_id: 89, status: "pending" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    const utils = render(
+      React.createElement(TimelineClipProviderReworkControls, {
+        timelineId: 8,
+        timelineVersion: 3,
+        clipId: "video_scene_1_beat_1_001",
+        item: videoClipWithStoryboardPanel(),
+      }),
+      { container: dom.window.document.body },
+    );
+
+    fireEvent.change(utils.getByLabelText("分镜 panel 数"), {
+      target: { value: "6" },
+    });
+    fireEvent.click(utils.getByRole("button", { name: "生成片段分镜图" }));
+    await waitFor(() => assert.equal(calls.length, 1));
+    assert.equal(
+      calls[0].init?.body,
+      JSON.stringify({
+        expected_version: 3,
+        style: "live_action",
+        generation_profile: "clip_storyboard",
+        size: "1536x1536",
+        aspect_ratio: "1:1",
+        panel_count: 6,
       }),
     );
   });
@@ -574,7 +651,6 @@ describe("timeline clip rework controls", () => {
       calls[0].init?.body,
       JSON.stringify({
         expected_version: 3,
-        panel_count: 4,
         style: "live_action",
         generation_profile: "clip_storyboard",
         size: "1536x1536",
@@ -622,7 +698,6 @@ describe("timeline clip rework controls", () => {
       calls[0].init?.body,
       JSON.stringify({
         expected_version: 3,
-        panel_count: 4,
         style: "live_action",
         generation_profile: "clip_storyboard",
         size: "1536x1536",
@@ -674,7 +749,6 @@ describe("timeline clip rework controls", () => {
       calls[0].init?.body,
       JSON.stringify({
         expected_version: 3,
-        panel_count: 4,
         style: "live_action",
         generation_profile: "clip_storyboard",
         size: "1536x1536",
@@ -738,7 +812,6 @@ describe("timeline clip rework controls", () => {
       calls[0].init?.body,
       JSON.stringify({
         expected_version: 3,
-        panel_count: 4,
         style: "live_action",
         generation_profile: "clip_storyboard",
         size: "1536x1536",
@@ -840,7 +913,6 @@ describe("timeline clip rework controls", () => {
       calls[0].init?.body,
       JSON.stringify({
         expected_version: 3,
-        panel_count: 4,
         style: "live_action",
         generation_profile: "clip_storyboard",
         size: "1536x1536",
@@ -891,7 +963,6 @@ describe("timeline clip rework controls", () => {
       calls[0].init?.body,
       JSON.stringify({
         expected_version: 3,
-        panel_count: 4,
         style: "live_action",
         generation_profile: "clip_storyboard",
         size: "1536x1536",
@@ -943,7 +1014,6 @@ describe("timeline clip rework controls", () => {
       calls[0].init?.body,
       JSON.stringify({
         expected_version: 3,
-        panel_count: 4,
         style: "live_action",
         generation_profile: "clip_storyboard",
         size: "1536x1536",
@@ -1011,8 +1081,10 @@ describe("timeline clip rework controls", () => {
         action: "re_cut",
         resolution: "720p",
         asset_role: "generated_video",
-        use_end_frame: true,
+        use_end_frame: false,
         return_last_frame: true,
+        reference_mode: "clip_storyboard_sheet",
+        use_clip_storyboard: true,
         character_virtual_ip_ids: [32],
         character_reference_images: ["https://cdn.example/courier-pose.png"],
         environment_reference_images: ["https://cdn.example/interior-env.png"],
@@ -1134,7 +1206,9 @@ describe("timeline clip rework controls", () => {
         .getAttribute("aria-pressed"),
       "true",
     );
-    fireEvent.click(within(envDialog).getByRole("button", { name: "应用选择" }));
+    fireEvent.click(
+      within(envDialog).getByRole("button", { name: "应用选择" }),
+    );
     fireEvent.click(utils.getByRole("button", { name: "生成片段分镜图" }));
     await waitFor(() =>
       assert.ok(
@@ -1149,7 +1223,6 @@ describe("timeline clip rework controls", () => {
       storyboardCall?.init?.body,
       JSON.stringify({
         expected_version: 3,
-        panel_count: 4,
         style: "live_action",
         generation_profile: "clip_storyboard",
         size: "1536x1536",
@@ -1274,8 +1347,22 @@ function videoClipWithoutStoryboardPanel() {
   };
 }
 
-function videoClipWithTimelineShotPlanOnly() {
+function videoClipWithoutVisualReferences() {
   const clip = videoClipWithoutStoryboardPanel();
+  return {
+    ...clip,
+    meta: {
+      ...clip.meta,
+      start_frame_asset_ref: undefined,
+      end_frame_asset_ref: undefined,
+      start_frame_url: undefined,
+      end_frame_url: undefined,
+    },
+  };
+}
+
+function videoClipWithTimelineShotPlanOnly() {
+  const clip = videoClipWithoutVisualReferences();
   return {
     ...clip,
     meta: {

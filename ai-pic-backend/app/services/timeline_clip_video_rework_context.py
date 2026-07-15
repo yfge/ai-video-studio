@@ -55,7 +55,11 @@ def apply_video_rework_bound_context(
         return
     existing_refs = list(task_payload.get("reference_images") or [])
     context_refs = context.reference_images
-    if reference_mode in {"clip_storyboard_panel", "storyboard_grid_panel"}:
+    if reference_mode in {
+        "clip_storyboard_sheet",
+        "clip_storyboard_panel",
+        "storyboard_grid_panel",
+    }:
         merged_refs = [*existing_refs, *context_refs]
     else:
         merged_refs = [*context_refs, *existing_refs]

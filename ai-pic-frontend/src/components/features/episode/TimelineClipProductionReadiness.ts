@@ -21,7 +21,7 @@ export interface TimelineClipProductionReadiness {
 }
 
 export const VIDEO_IMAGE_GATE_MESSAGE =
-  "先完成片段分镜图和首尾帧后才能生视频";
+  "先生成片段宫格故事板或首尾帧后才能生视频";
 
 export function timelineClipProductionReadiness(
   item: TimelineItem | null,
@@ -36,7 +36,7 @@ export function timelineClipProductionReadiness(
   const humanReviewReady =
     !humanReview.required || humanReview.approved || operatorReviewed;
   const imageReady =
-    (storyboardReady && keyframesReady) || timelineClipHasShotPlan(item);
+    storyboardReady || keyframesReady || timelineClipHasShotPlan(item);
   const canGenerateVideo = imageReady && humanReviewReady;
   let videoGateMessage: string | null = null;
   if (!canGenerateVideo) {

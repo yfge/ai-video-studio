@@ -10,7 +10,6 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 import httpx
-
 from app.core.config import settings
 from app.core.logging import get_logger
 
@@ -32,7 +31,7 @@ from .codex_models import (
 from .codex_payload import build_codex_payload, parse_codex_sse
 
 DEFAULT_CODEX_RESPONSES_URL = "https://chatgpt.com/backend-api/codex/responses"
-CODEX_IMAGE_TIMEOUT_SECONDS = 600.0
+CODEX_IMAGE_TIMEOUT_SECONDS = 240.0
 
 logger = get_logger(__name__)
 
@@ -150,8 +149,7 @@ class CodexProvider(BaseProvider):
 
             image_data, meta, size, ref_count = await run_codex_image_generation(
                 prompt=prompt,
-                references=kwargs.get("reference_images")
-                or kwargs.get("extra_images"),
+                references=kwargs.get("reference_images") or kwargs.get("extra_images"),
                 size_hint=kwargs.get("size"),
                 width=kwargs.get("width"),
                 height=kwargs.get("height"),

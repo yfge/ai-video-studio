@@ -18,12 +18,10 @@ from app.schemas.timeline import (
     TimelineStoryboardGridGenerateRequest,
     TimelineStoryboardGridGenerateResponse,
 )
-from app.services.storyboard.clip_storyboard_context import (
-    build_clip_storyboard_context,
+from app.services.storyboard.clip_storyboard_sheet_payload import (
+    build_clip_storyboard_sheet_task_payload,
 )
 from app.services.storyboard.grid_storyboard_prompt_bridge import (
-    build_clip_storyboard_panels,
-    build_clip_storyboard_sheet_prompt,
     build_grid_storyboard_panels,
     grid_layout,
 )
@@ -90,7 +88,13 @@ class GridStoryboardSheetService:
                 detail="clip storyboard requires a video clip",
             )
 
-        task_payload = self._clip_task_payload(timeline, clip_id, clip, payload)
+        task_payload = build_clip_storyboard_sheet_task_payload(
+            self.db,
+            timeline=timeline,
+            clip_id=clip_id,
+            clip=clip,
+            payload=payload,
+        )
         task = self.tasks.create(
             target_business_id=timeline.business_id,
             title=f"Timeline clip storyboard - {clip_id}",
@@ -144,65 +148,11 @@ class GridStoryboardSheetService:
             "style": payload.style,
             "model": payload.model,
             "generation_profile": payload.generation_profile,
-            "size": payload.size,
-            "aspect_ratio": payload.aspect_ratio,
+            "size": "auto" if layout.aspect_ratio != "1:1" else payload.size,
+            "aspect_ratio": layout.aspect_ratio,
             "width": payload.width,
             "height": payload.height,
             "reference_images": payload.reference_images or [],
-            "panels": panels,
-            "sheet_prompt": sheet_prompt,
-        }
-
-    def _clip_task_payload(
-        self,
-        timeline: Timeline,
-        clip_id: str,
-        clip: dict[str, Any],
-        payload: TimelineClipStoryboardGenerateRequest,
-    ) -> dict[str, Any]:
-        panels = build_clip_storyboard_panels(clip, payload.panel_count)
-        if not panels:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="clip storyboard panels missing",
-            )
-
-        context = build_clip_storyboard_context(
-            self.db,
-            timeline=timeline,
-            clip=clip,
-            panels=panels,
-            request_reference_images=payload.reference_images or [],
-            request_character_virtual_ip_ids=payload.character_virtual_ip_ids or [],
-            request_character_reference_images=payload.character_reference_images or [],
-            request_environment_reference_images=payload.environment_reference_images
-            or [],
-        )
-        panels = context.panels
-        layout = grid_layout(payload.panel_count)
-        sheet_prompt = build_clip_storyboard_sheet_prompt(panels, style=payload.style)
-        return {
-            "kind": "timeline_clip_storyboard",
-            "timeline_id": timeline.id,
-            "timeline_business_id": timeline.business_id,
-            "timeline_version": timeline.version,
-            "expected_version": payload.expected_version,
-            "clip_id": clip_id,
-            "panel_count": layout.panel_count,
-            "columns": layout.columns,
-            "rows": layout.rows,
-            "style": payload.style,
-            "model": payload.model,
-            "generation_profile": payload.generation_profile,
-            "size": payload.size,
-            "aspect_ratio": payload.aspect_ratio,
-            "width": payload.width,
-            "height": payload.height,
-            "reference_images": context.reference_images,
-            "character_virtual_ip_ids": payload.character_virtual_ip_ids or [],
-            "character_reference_images": payload.character_reference_images or [],
-            "environment_reference_images": payload.environment_reference_images or [],
-            "bound_context": context.bound_context,
             "panels": panels,
             "sheet_prompt": sheet_prompt,
         }

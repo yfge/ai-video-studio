@@ -1,10 +1,12 @@
-from app.models.story_structure import Scene, SceneBeat
 from app.models.script import Episode
+from app.models.story_structure import Scene, SceneBeat
 from app.services.audio.episode_audio_padding import pad_to_episode_target_duration
 from app.services.audio.episode_timeline_beats import build_episode_timeline_beats
 from app.services.audio.storyboard_from_timeline import (
     build_storyboard_frames_from_audio_timeline,
+    generate_storyboard_from_episode_audio_timeline,
 )
+from tests.factories import EpisodeFactory, ScriptFactory, StoryFactory, setup_factories
 
 
 def test_build_episode_timeline_beats_offsets_scene_windows() -> None:
@@ -80,9 +82,7 @@ def test_pad_episode_timeline_to_target_adds_action_beats() -> None:
     padding_beats = [beat for beat in padded if beat.get("padding")]
     assert padding_beats
     assert {beat["beat_type"] for beat in padding_beats} == {"action"}
-    assert all(
-        0 < beat["end_ms"] - beat["start_ms"] <= 8000 for beat in padding_beats
-    )
+    assert all(0 < beat["end_ms"] - beat["start_ms"] <= 8000 for beat in padding_beats)
     assert "倒计时" in padding_beats[0]["text"]
 
 
@@ -195,3 +195,48 @@ def test_audio_timeline_storyboard_prompt_description_blurs_readable_text() -> N
 
     assert "屏幕文字模糊不可读" in (frames[0].get("ai_prompt") or "")
     assert ".pdf" not in (frames[0].get("ai_prompt") or "").lower()
+
+
+def test_generate_audio_timeline_storyboard_persists_canonical_support_view(
+    db_session,
+) -> None:
+    setup_factories(db_session)
+    story = StoryFactory()
+    episode = EpisodeFactory(story=story)
+    script = ScriptFactory(episode=episode, extra_metadata={})
+    db_session.commit()
+    episode.extra_metadata = {
+        "audio_timeline": {
+            "script_id": script.id,
+            "episode_audio": {"version": 4},
+            "beats": [
+                {
+                    "scene_id": 1,
+                    "scene_number": 1,
+                    "beat_id": 11,
+                    "beat_type": "dialogue",
+                    "speaker_name": "林晚",
+                    "text": "你好",
+                    "start_ms": 0,
+                    "end_ms": 1000,
+                }
+            ],
+        }
+    }
+    db_session.add(episode)
+    db_session.commit()
+    previous_storyboard_version = script.storyboard_version or 0
+
+    result = generate_storyboard_from_episode_audio_timeline(
+        db_session,
+        script=script,
+        episode=episode,
+        legacy_support_view=True,
+    )
+
+    assert result["meta"]["source_role"] == "legacy_audio_timeline_support_view"
+    assert result["meta"]["audio_timeline_version"] == 4
+    assert result["frames"][0]["start_ms"] == 0
+    assert result["frames"][0]["end_ms"] == 1000
+    db_session.refresh(script)
+    assert script.storyboard_version == previous_storyboard_version + 1

@@ -6,7 +6,6 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import anyio
-
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.prompts.template_audit import sha256_text
@@ -20,9 +19,7 @@ from app.services.storyboard.dynamic_prompt.context_builder import (
     build_scene_context,
     group_target_frames_by_scene,
 )
-from app.services.storyboard.dynamic_prompt.generator import (
-    generate_prompts_for_scene,
-)
+from app.services.storyboard.dynamic_prompt.generator import generate_prompts_for_scene
 
 logger = get_logger("storyboard_dynamic_prompt")
 
@@ -57,9 +54,13 @@ def build_dynamic_prompt_bundles(
         return {}
 
     try:
-        return _build_bundles(script, frames, target_indexes, ref_ctx, style, style_spec, ai_manager)
+        return _build_bundles(
+            script, frames, target_indexes, ref_ctx, style, style_spec, ai_manager
+        )
     except Exception as exc:
-        logger.warning("dynamic prompt generation failed, fallback to compiler: %s", exc)
+        logger.warning(
+            "dynamic prompt generation failed, fallback to compiler: %s", exc
+        )
         return {}
 
 
@@ -88,7 +89,12 @@ def _build_bundles(
         chunk_inputs: List[Dict[str, Any]] = []
         chunk_fingerprints: Dict[int, str] = {}
         for idx in indexes:
-            frame_input = build_frame_input(frames, idx)
+            frame_input = build_frame_input(
+                frames,
+                idx,
+                scene_characters=scene_context.get("characters") or [],
+                ref_ctx=ref_ctx,
+            )
             fingerprint = compute_input_fingerprint(scene_context, frame_input)
             cached = read_cached_bundle(frames[idx], fingerprint)
             if cached:

@@ -62,7 +62,7 @@ def compute_image_ui(provider: str, model_id: str) -> ImageUiRules:
         # ChatGPT image_generation tool sizes; "auto" first so the default
         # leaves sizing to the aspect_ratio mapping in codex_image.
         size_options = ["auto", "1024x1024", "1536x1024", "1024x1536"]
-        aspect_ratio_options = ["1:1", "16:9", "9:16"]
+        aspect_ratio_options = ["1:1", "2:1", "3:2", "16:9", "9:16"]
         supports_aspect_ratio = True
     elif provider_key == "openai":
         if "gpt-image-2" in mid:

@@ -1,5 +1,6 @@
 from app.models.script import Script
 from app.models.task import Task, TaskStatus, TaskType
+from app.models.timeline import Timeline, TimelineClipAsset
 from tests.factories import ScriptFactory, UserFactory, setup_factories
 
 
@@ -63,6 +64,7 @@ def test_storyboard_image_task_persists_image_gen_single(
 
     import app.api.v1.endpoints.storyboard.image_task_processor as sb_image_task
 
+    monkeypatch.setattr(sb_image_task, "ai_service", mock_ai_service)
     monkeypatch.setattr(
         sb_image_task.prompt_manager,
         "render_prompt",
@@ -103,6 +105,116 @@ def test_storyboard_image_task_persists_image_gen_single(
         session.close()
 
 
+def test_storyboard_image_task_links_timeline_frame_by_stable_clip_id(
+    db_session, test_db, mock_ai_service, monkeypatch
+):
+    setup_factories(db_session)
+    user = UserFactory()
+    script = ScriptFactory()
+    timeline = Timeline(
+        episode_id=script.episode_id,
+        script_id=script.id,
+        title="Timeline image lineage",
+        status="draft",
+        spec={
+            "tracks": [
+                {
+                    "track_type": "video",
+                    "clips": [{"clip_id": "video_scene_1_beat_1_001"}],
+                }
+            ]
+        },
+        version=3,
+        created_by=user.id,
+    )
+    db_session.add(timeline)
+    db_session.commit()
+    script.extra_metadata = {
+        "storyboard": {
+            "frames": [
+                {
+                    "frame_id": "frame-001",
+                    "scene_number": 1,
+                    "description": "Frame 1",
+                    "reference_images": ["https://example.com/ref.png"],
+                    "timeline_id": timeline.id,
+                    "timeline_version": timeline.version,
+                    "timeline_clip_id": "video_scene_1_beat_1_001",
+                }
+            ]
+        }
+    }
+    task = Task(
+        title="Storyboard image generation",
+        task_type=TaskType.IMAGE_GENERATION,
+        status=TaskStatus.PENDING,
+        user_id=user.id,
+    )
+    db_session.add_all([script, task])
+    db_session.commit()
+
+    _patch_session_local(monkeypatch, test_db)
+    import app.api.v1.endpoints.storyboard.image_task_processor as sb_image_task
+
+    monkeypatch.setattr(sb_image_task, "ai_service", mock_ai_service)
+    monkeypatch.setattr(
+        sb_image_task.prompt_manager,
+        "render_prompt",
+        lambda *_args, **_kwargs: "test-prompt",
+    )
+    _patch_storyboard_generate(
+        monkeypatch,
+        image_gen_factory=lambda _prompt: {"generation_profile": "identity"},
+    )
+
+    sb_image_task._process_storyboard_image_task(task.id, script.id, [0])
+
+    session = test_db()
+    try:
+        refreshed = session.query(Script).filter_by(id=script.id).first()
+        frame = refreshed.extra_metadata["storyboard"]["frames"][0]
+        link = (
+            session.query(TimelineClipAsset)
+            .filter_by(
+                timeline_id=timeline.id,
+                timeline_version=3,
+                clip_id="video_scene_1_beat_1_001",
+                asset_role="storyboard_image",
+            )
+            .one()
+        )
+        assert link.source == "storyboard_image_generation"
+        assert link.media_asset.file_url == frame["start_image_url"]
+        assert session.get(Timeline, timeline.id).version == 3
+        from app.services.storyboard.timeline_image_lineage import (
+            sync_storyboard_frame_images_to_timeline,
+        )
+
+        linked_again = sync_storyboard_frame_images_to_timeline(
+            session,
+            script_id=script.id,
+            task_id=task.id,
+            user_id=user.id,
+            frames=[frame],
+            frame_indexes=[0],
+        )
+        session.commit()
+        assert linked_again == 0
+        assert (
+            session.query(TimelineClipAsset)
+            .filter_by(
+                timeline_id=timeline.id,
+                timeline_version=3,
+                clip_id="video_scene_1_beat_1_001",
+                asset_role="storyboard_image",
+            )
+            .count()
+            == 1
+        )
+    finally:
+        session.close()
+
+
 def test_storyboard_image_task_persists_image_gen_start_end(
     db_session, test_db, mock_ai_service, monkeypatch
 ):
@@ -134,6 +246,7 @@ def test_storyboard_image_task_persists_image_gen_start_end(
 
     import app.api.v1.endpoints.storyboard.image_task_processor as sb_image_task
 
+    monkeypatch.setattr(sb_image_task, "ai_service", mock_ai_service)
     monkeypatch.setattr(
         sb_image_task.prompt_manager,
         "render_prompt",

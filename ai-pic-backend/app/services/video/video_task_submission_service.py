@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from app.models.task import Task, TaskStatus
@@ -12,25 +10,22 @@ from app.repositories.video_generation_task_repository import (
     VideoGenerationTaskRepository,
 )
 from app.services.video.video_task_dispatcher import VideoTaskDispatcher
-from app.services.video.video_task_generation_metadata import (
-    build_video_generation_metadata,
-)
 from app.services.video.video_task_submission_helpers import (
     resolve_target_duration_seconds,
     submit_provider_task,
 )
+from app.services.video.video_task_submission_persistence import (
+    persist_failed_video_task,
+    persist_submitted_video_task,
+)
 from app.services.video.video_task_utils import (
     abs_url,
-    build_parameters_payload,
     build_selection_map,
     coerce_duration,
     normalize_submission_options,
     resolve_frame_urls,
     resolve_prompt,
-    timeline_rework_for_frame,
 )
-
-VIDEO_TASK_TIMEOUT = timedelta(hours=1)
 
 
 class VideoTaskSubmissionService:
@@ -57,21 +52,38 @@ class VideoTaskSubmissionService:
         submitted = 0
         failures: list[str] = []
         for idx in target_indexes:
-            submitted_one, error = self._submit_frame(
-                task,
-                script_id,
-                idx,
-                frames,
-                selection_by_index,
-                opts,
+            existing = self.repo.get_latest_for_task_frame(
+                task_id=task.id,
+                frame_index=idx,
             )
+            if existing:
+                submitted_one, error = self._reuse_existing_frame(existing, idx)
+            else:
+                submitted_one, error = self._submit_frame(
+                    task,
+                    script_id,
+                    idx,
+                    frames,
+                    selection_by_index,
+                    opts,
+                )
             if submitted_one:
                 submitted += 1
             if error:
                 failures.append(error)
+            self.db.commit()
 
-        self.db.commit()
         self._finalize_submission(task, submitted, failures)
+
+    @staticmethod
+    def _reuse_existing_frame(existing, frame_index: int) -> tuple[bool, str | None]:
+        if existing.status in {
+            VideoGenerationTaskStatus.FAILED,
+            VideoGenerationTaskStatus.TIMEOUT,
+        }:
+            detail = existing.error_message or existing.status.value
+            return False, f"frame {frame_index}: {detail}"
+        return True, None
 
     def _load_task(self, task_id: int) -> Task:
         task = TaskRepository(self.db).get_by_id(task_id)
@@ -128,15 +140,20 @@ class VideoTaskSubmissionService:
                 if isinstance(item, str) and item.strip()
             ] or None
 
-        response = submit_provider_task(
-            self.dispatcher,
-            prompt=prompt_value,
-            start_url=start_url,
-            end_url=end_url,
-            reference_images=reference_images,
-            duration=request_duration_seconds,
-            opts=opts,
-        )
+        try:
+            response = submit_provider_task(
+                self.dispatcher,
+                prompt=prompt_value,
+                start_url=start_url,
+                end_url=end_url,
+                reference_images=reference_images,
+                duration=request_duration_seconds,
+                opts=opts,
+            )
+        except Exception as exc:
+            error_message = f"视频任务提交异常: {exc}"
+            self._record_failure(task, script_id, frame_index, error_message)
+            return False, f"frame {frame_index}: {error_message}"
         if not response.success:
             self._record_failure(task, script_id, frame_index, response.error)
             return False, f"frame {frame_index}: {response.error}"
@@ -149,7 +166,8 @@ class VideoTaskSubmissionService:
         provider_duration_seconds = int(
             (response.data or {}).get("duration") or request_duration_seconds
         )
-        self._create_task_record(
+        persist_submitted_video_task(
+            self.repo,
             task=task,
             script_id=script_id,
             frame_index=frame_index,
@@ -163,56 +181,6 @@ class VideoTaskSubmissionService:
             opts=opts,
         )
         return True, None
-
-    def _create_task_record(
-        self,
-        *,
-        task: Task,
-        script_id: int,
-        frame_index: int,
-        response,
-        prompt: Optional[str],
-        start_url: Optional[str],
-        end_url: Optional[str],
-        reference_images: list[str] | None,
-        target_duration_seconds: float,
-        provider_duration_seconds: int,
-        opts: Dict[str, Any],
-    ) -> None:
-        provider_task_id = str((response.data or {}).get("task_id"))
-        params_payload = build_parameters_payload(
-            prompt,
-            start_url,
-            end_url,
-            reference_images,
-            provider_duration_seconds,
-            opts,
-            target_duration_seconds=round(float(target_duration_seconds), 3),
-            provider_duration_seconds=provider_duration_seconds,
-            timeline_rework=timeline_rework_for_frame(opts, frame_index),
-        )
-        self.repo.create(
-            task_id=task.id,
-            script_id=script_id,
-            frame_index=frame_index,
-            user_id=task.user_id,
-            provider=response.provider,
-            provider_task_id=provider_task_id,
-            model=response.model,
-            model_type="image_to_video",
-            prompt=prompt,
-            parameters=json.dumps(params_payload, ensure_ascii=False),
-            generation_metadata=build_video_generation_metadata(
-                response.provider,
-                response.model,
-                provider_task_id,
-                "image_to_video",
-                params_payload,
-            ),
-            status=VideoGenerationTaskStatus.SUBMITTED,
-            submitted_at=datetime.utcnow(),
-            expires_at=datetime.utcnow() + VIDEO_TASK_TIMEOUT,
-        )
 
     def _finalize_submission(
         self, task: Task, submitted: int, failures: List[str]
@@ -234,17 +202,10 @@ class VideoTaskSubmissionService:
         frame_index: int,
         error_message: str,
     ) -> None:
-        self.repo.create(
-            task_id=task.id,
+        persist_failed_video_task(
+            self.repo,
+            task=task,
             script_id=script_id,
             frame_index=frame_index,
-            user_id=task.user_id,
-            provider="unknown",
-            provider_task_id="",
-            model=None,
-            model_type="image_to_video",
-            prompt=None,
-            parameters=json.dumps({}, ensure_ascii=False),
-            status=VideoGenerationTaskStatus.FAILED,
             error_message=error_message,
         )

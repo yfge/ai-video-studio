@@ -36,5 +36,17 @@ def frame_has_reference_images(frame: dict[str, Any]) -> bool:
     )
 
 
+def frame_requires_reference_images(frame: dict[str, Any]) -> bool:
+    """Keep legacy frames safe while allowing explicit identity-free shots."""
+
+    explicit = frame.get("requires_reference_images")
+    if isinstance(explicit, bool):
+        return explicit
+    characters = frame.get("characters")
+    if isinstance(characters, list):
+        return bool(characters)
+    return True
+
+
 def _has_non_empty_url(value: Any) -> bool:
     return isinstance(value, str) and bool(value.strip())

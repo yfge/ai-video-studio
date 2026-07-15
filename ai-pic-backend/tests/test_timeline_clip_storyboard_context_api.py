@@ -46,14 +46,16 @@ def test_timeline_clip_storyboard_auto_binds_character_reference_images(
 
     assert response.status_code == 200, response.text
     params = json.loads(db_session.get(Task, response.json()["task_id"]).parameters)
+    assert params["model"] == "codex:gpt-image-2"
     assert params["reference_images"] == [
-        "https://manual.example/ref.png",
         "https://cdn.example/linwan.png",
+        "https://manual.example/ref.png",
     ]
     assert params["bound_context"]["characters"] == [
         {
             "name": "林晚",
             "virtual_ip_id": virtual_ip.id,
+            "appearance_brief": "林晚: 林晚 character profile",
             "anchor_url": "https://cdn.example/linwan.png",
         }
     ]
@@ -96,6 +98,7 @@ def test_timeline_clip_storyboard_binds_episode_character_ip_from_clip_metadata(
         {
             "name": "快递员",
             "virtual_ip_id": virtual_ip.id,
+            "appearance_brief": "快递员: 快递员 character profile",
             "anchor_url": "https://cdn.example/courier.png",
         }
     ]
@@ -143,6 +146,7 @@ def test_timeline_clip_storyboard_binds_request_character_ip_selection(
         {
             "name": "快递员",
             "virtual_ip_id": virtual_ip.id,
+            "appearance_brief": "快递员: 快递员 character profile",
             "anchor_url": "https://cdn.example/courier.png",
         }
     ]
@@ -150,7 +154,7 @@ def test_timeline_clip_storyboard_binds_request_character_ip_selection(
     assert dispatched["payload"]["bound_context"] == params["bound_context"]
 
 
-def test_timeline_clip_storyboard_prioritizes_selected_reference_images(
+def test_timeline_clip_storyboard_prioritizes_canonical_selected_ip_anchor(
     client,
     db_session,
     monkeypatch,
@@ -179,7 +183,10 @@ def test_timeline_clip_storyboard_prioritizes_selected_reference_images(
             "character_virtual_ip_ids": [virtual_ip.id],
             "character_reference_images": ["https://selected.example/ip.png"],
             "environment_reference_images": ["https://selected.example/env.png"],
-            "reference_images": ["https://manual.example/ref.png"],
+            "reference_images": [
+                "https://selected.example/ip.png",
+                "https://manual.example/ref.png",
+            ],
         },
     )
 
@@ -190,11 +197,21 @@ def test_timeline_clip_storyboard_prioritizes_selected_reference_images(
         "https://selected.example/env.png"
     ]
     assert params["reference_images"] == [
-        "https://selected.example/ip.png",
+        "https://cdn.example/courier.png",
         "https://selected.example/env.png",
         "https://manual.example/ref.png",
-        "https://cdn.example/courier.png",
     ]
+    assert (
+        "noncanonical_character_references_ignored"
+        in params["bound_context"]["warnings"]
+    )
+    assert params["bound_context"]["reference_bindings"][0] == {
+        "index": 1,
+        "role": "character_identity",
+        "label": "快递员",
+        "source": "canonical_virtual_ip",
+        "url": "https://cdn.example/courier.png",
+    }
     assert dispatched["payload"]["reference_images"] == params["reference_images"]
 
 

@@ -1,5 +1,3 @@
-"""Storyboard image generation task processor."""
-
 import copy as _copy
 from typing import Any, List, Optional
 
@@ -12,19 +10,24 @@ from app.repositories.storyboard_media_repository import (
 )
 from app.services.ai_service import ai_service
 from app.services.storyboard.candidate_lineage import record_canvas_candidate_lineage
+from app.services.storyboard.storyboard_image_queue_inputs import (
+    frame_requires_reference_images,
+)
+from app.services.storyboard.timeline_image_lineage import (
+    sync_storyboard_frame_images_to_timeline,
+)
 
 from .image_task_frame_generation import generate_frame_image
 from .image_task_prompt_runtime import resolve_dimensions
 from .image_task_refs import load_image_ref_context
+from .image_task_resume import (
+    checkpoint_image_task_frame,
+    ensure_requested_frame_indexes_generated,
+    partition_image_task_indexes,
+    task_is_cancelled,
+)
 
 logger = get_logger("storyboard_image_task")
-
-
-def _task_is_cancelled(db, task) -> bool:
-    if task is None:
-        return False
-    db.refresh(task)
-    return task.status.value == "cancelled"
 
 
 def _process_storyboard_image_task(
@@ -63,7 +66,7 @@ def _process_storyboard_image_task(
     try:
         task = get_task_by_id(db, task_id)
         if task:
-            if _task_is_cancelled(db, task):
+            if task_is_cancelled(db, task):
                 logger.info(f"[SBIMG] task cancelled before start | task={task_id}")
                 return
             task.status = TaskStatus.PROCESSING
@@ -84,7 +87,10 @@ def _process_storyboard_image_task(
         frames = [
             _copy.deepcopy(fr) if isinstance(fr, dict) else fr for fr in frames_src
         ]
-        target_indexes = frame_indexes or list(range(len(frames)))
+        requested_indexes = frame_indexes or list(range(len(frames)))
+        target_indexes, generated_frame_indexes = partition_image_task_indexes(
+            frames, requested_indexes, task_id
+        )
 
         logger.info(
             f"[SBIMG] task start | script={script_id} task={task_id} "
@@ -107,16 +113,14 @@ def _process_storyboard_image_task(
             prompt_override=prompt_override,
             ai_service=ai_service,
         )
-        if _task_is_cancelled(db, task):
+        if task_is_cancelled(db, task):
             logger.info(f"[SBIMG] task cancelled after prompt | task={task_id}")
             return
 
         resolved_style_spec_used: dict | None = None
         resolved_style_spec_resolution_used: Any = None
-        generated_frame_indexes: list[int] = []
-
         for idx in target_indexes:
-            if _task_is_cancelled(db, task):
+            if task_is_cancelled(db, task):
                 logger.info(
                     f"[SBIMG] task cancelled before frame | task={task_id} frame={idx}"
                 )
@@ -150,13 +154,23 @@ def _process_storyboard_image_task(
                     "keyframe_mode": keyframe_mode,
                     "start_enabled": start_enabled,
                     "end_enabled": end_enabled,
-                    "require_reference_images": require_reference_images,
+                    "require_reference_images": (
+                        require_reference_images
+                        and frame_requires_reference_images(frames[idx])
+                    ),
                     "script_id": script_id,
                     "dynamic_prompt_bundle": dynamic_prompt_bundles.get(idx),
                 },
                 prompt_manager=prompt_manager,
                 ai_service=ai_service,
             )
+            if task_is_cancelled(db, task):
+                logger.info(
+                    f"[SBIMG] task cancelled after frame generation; "
+                    f"discarding result | task={task_id} frame={idx}"
+                )
+                return
+            checkpoint_image_task_frame(frames[idx], task_id, result_meta)
             record_canvas_candidate_lineage(
                 frames[idx],
                 result_meta.get("generated_urls") or [],
@@ -170,15 +184,34 @@ def _process_storyboard_image_task(
                 resolved_style_spec_resolution_used = result_meta.get(
                     "style_spec_resolution"
                 )
+            if result_meta.get("generated_urls"):
+                save_storyboard_image_frames(
+                    db,
+                    script_id=script_id,
+                    storyboard=sb,
+                    frames=frames,
+                    style=style,
+                    style_preset_id=style_preset_id,
+                    style_spec=style_spec,
+                    resolved_style_spec=resolved_style_spec_used,
+                    resolved_resolution=resolved_style_spec_resolution_used,
+                )
+                sync_storyboard_frame_images_to_timeline(
+                    db,
+                    script_id=script_id,
+                    task_id=task_id,
+                    user_id=task.user_id if task else None,
+                    frames=frames,
+                    frame_indexes=[idx],
+                )
+                db.commit()
 
-        if _task_is_cancelled(db, task):
+        if task_is_cancelled(db, task):
             logger.info(f"[SBIMG] task cancelled before save | task={task_id}")
             return
-        if target_indexes and not generated_frame_indexes:
-            raise RuntimeError(
-                "storyboard image generation produced no persisted images "
-                f"for frames: {target_indexes}"
-            )
+        ensure_requested_frame_indexes_generated(
+            requested_indexes, generated_frame_indexes
+        )
         save_storyboard_image_frames(
             db,
             script_id=script_id,
@@ -190,15 +223,23 @@ def _process_storyboard_image_task(
             resolved_style_spec=resolved_style_spec_used,
             resolved_resolution=resolved_style_spec_resolution_used,
         )
+        sync_storyboard_frame_images_to_timeline(
+            db,
+            script_id=script_id,
+            task_id=task_id,
+            user_id=task.user_id if task else None,
+            frames=frames,
+            frame_indexes=generated_frame_indexes,
+        )
         if task:
-            if _task_is_cancelled(db, task):
+            if task_is_cancelled(db, task):
                 return
             task.status = TaskStatus.COMPLETED
             db.commit()
     except Exception as e:
         task = get_task_by_id(db, task_id)
         if task:
-            if _task_is_cancelled(db, task):
+            if task_is_cancelled(db, task):
                 return
             task.status = TaskStatus.FAILED
             task.error_message = str(e)

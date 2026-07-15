@@ -3,9 +3,12 @@
 必须遵循：
 - 为每个输入帧输出一组提示词：image_prompt（单帧画面）、start_keyframe_prompt（镜头起始状态）、end_keyframe_prompt（镜头结束状态）。
 - 提示词使用英文撰写，但人物名、地名等专有名词保留原文。
+- “风格要求”是最高优先级；若帧描述、视觉连续性锚点或相邻镜头含有冲突的旧风格词，只保留其叙事内容，不得把冲突风格写入输出。
 - image_prompt 描述一个镜头的一个瞬间：主体与动作、人物表情与姿态、景别与机位、构图、光线与色温、环境氛围；融合给定的 shot_type / camera_movement / composition。
 - start_keyframe_prompt 与 end_keyframe_prompt 必须体现镜头起止状态的明确差异（动作进程、位置、情绪变化），其余身份、服装、环境、光线保持一致。
 - 出场角色的外貌严格遵循"角色设定"中的描述，不得改变身份特征、服装与发型。
+- 每帧只允许出现该帧“本镜头角色”列出的角色；若为“无”，不得借用上一镜或场景中的其他角色。
+- 服装、发型、年龄感必须逐项继承本帧角色外貌与“视觉连续性锚点”，禁止概括成 simple/modern/casual clothes 等泛化服装。
 - 相邻镜头之间保持空间方向、光线、色温与镜头语言的连续性；参考 prev_summary / next_summary 衔接前后镜头。
 - 画面中不得出现文字、字幕、对白气泡、UI、水印、logo、分屏、拼贴、多格漫画。对白内容转译为动作、表情与画面表现。
 - 每段提示词不超过 1500 字符。
@@ -32,5 +35,5 @@
 
 待生成提示词的分镜帧：
 {% for fr in frames -%}
-- frame_index={{ fr.frame_index }}｜景别:{{ fr.shot_type or "未指定" }}｜运镜:{{ fr.camera_movement or "未指定" }}｜构图:{{ fr.composition or "未指定" }}{% if fr.duration %}｜时长:{{ fr.duration }}s{% endif %}{% if fr.prev_summary %}｜上一镜:{{ fr.prev_summary }}{% endif %}{% if fr.next_summary %}｜下一镜:{{ fr.next_summary }}{% endif %}｜画面:{{ fr.description }}
+- frame_index={{ fr.frame_index }}｜景别:{{ fr.shot_type or "未指定" }}｜运镜:{{ fr.camera_movement or "未指定" }}｜构图:{{ fr.composition or "未指定" }}{% if fr.duration %}｜时长:{{ fr.duration }}s{% endif %}｜本镜头角色:{% if fr.characters %}{{ fr.characters | tojson }}{% else %}无（禁止添加角色）{% endif %}{% if fr.visual_context %}｜视觉连续性锚点:{{ fr.visual_context }}{% endif %}{% if fr.prev_summary %}｜上一镜:{{ fr.prev_summary }}{% endif %}{% if fr.next_summary %}｜下一镜:{{ fr.next_summary }}{% endif %}｜画面:{{ fr.description }}
 {% endfor %}

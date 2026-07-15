@@ -80,7 +80,14 @@ async def test_timeline_render_success_creates_media_asset(
 ):
     output_path = tmp_path / "render.mp4"
 
-    async def fake_render_to_temp_file(_clips, _subtitles, _audio_track):
+    async def fake_render_to_temp_file(
+        _clips, _subtitles, _audio_track, *, render_spec
+    ):
+        assert (render_spec.width, render_spec.height, render_spec.fps) == (
+            720,
+            1280,
+            24,
+        )
         output_path.write_bytes(b"rendered video")
         return str(output_path)
 
@@ -143,7 +150,8 @@ async def test_timeline_render_resolves_legacy_storyboard_video_by_timing(
 ):
     output_path = tmp_path / "legacy-render.mp4"
 
-    async def fake_render_to_temp_file(clips, _subtitles, _audio_track):
+    async def fake_render_to_temp_file(clips, _subtitles, _audio_track, *, render_spec):
+        assert render_spec.total_duration_seconds == 1.0
         assert [clip.source for clip in clips] == ["legacy_storyboard_timing"]
         assert clips[0].url == "https://example.com/legacy-frame.mp4"
         output_path.write_bytes(b"rendered video")

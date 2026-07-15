@@ -187,7 +187,7 @@ def build_parameters_payload(
         "prompt": prompt,
         "image_url": start_url,
         "end_image_url": end_url,
-        "reference_images": reference_images[:3] if reference_images else None,
+        "reference_images": reference_images[:9] if reference_images else None,
         "duration": duration,
         "provider_duration_seconds": provider_duration_seconds,
         "target_duration_seconds": target_duration_seconds,

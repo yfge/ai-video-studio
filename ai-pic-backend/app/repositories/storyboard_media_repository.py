@@ -44,10 +44,14 @@ def resolve_storyboard_aspect_ratio(
         if episode
         else None
     )
+    if episode and episode.aspect_ratio:
+        return episode.aspect_ratio
     if episode and episode.extra_metadata:
         value = episode.extra_metadata.get("aspect_ratio")
         if value:
             return value
+    if story and story.default_aspect_ratio:
+        return story.default_aspect_ratio
     if story and story.extra_metadata:
         return story.extra_metadata.get("aspect_ratio")
     return None
@@ -137,3 +141,23 @@ def save_storyboard_image_frames(
     script.extra_metadata = extra
     db.add(script)
     db.commit()
+
+
+def save_storyboard_reference_context(
+    db,
+    *,
+    script: Script,
+    frames: list[Any],
+) -> None:
+    """Persist enriched support frames without creating a storyboard version."""
+
+    extra = dict(script.extra_metadata or {})
+    existing = extra.get("storyboard")
+    storyboard = dict(existing) if isinstance(existing, dict) else {}
+    storyboard["frames"] = frames
+    extra["storyboard"] = storyboard
+    script.extra_metadata = extra
+    script.storyboard_updated_at = datetime.utcnow()
+    db.add(script)
+    db.commit()
+    db.refresh(script)

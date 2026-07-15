@@ -206,6 +206,37 @@ async def upload_video_last_frame_to_oss(
         return None
 
 
+async def upload_video_last_frame_bytes_to_oss(
+    *,
+    image_bytes: bytes,
+    provider: str,
+    logger: Any,
+    oss_service_override: Any | None = None,
+) -> Optional[Dict[str, Any]]:
+    service = oss_service_override or oss_service
+    if not image_bytes or not service:
+        return None
+    try:
+        return await upload_media_bytes(
+            content=image_bytes,
+            filename="last-frame.png",
+            media_type="image",
+            prefix="ai-generated/video-last-frames",
+            metadata=build_generation_metadata(
+                provider=provider,
+                model=None,
+                media_type="image",
+                mime_type="image/png",
+                sha256=hashlib.sha256(image_bytes).hexdigest(),
+                extra={"type": "trimmed_video_last_frame"},
+            ),
+            oss_service_override=service,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Trimmed last frame OSS upload failed: %s", exc)
+        return None
+
+
 def get_oss_url_or_original(
     oss_result: Optional[Dict[str, Any]],
     original_url: str,

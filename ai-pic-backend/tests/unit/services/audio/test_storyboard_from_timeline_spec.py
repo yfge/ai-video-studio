@@ -59,6 +59,7 @@ def _timeline_spec_with_shot_plan(
                     "scene_number": 1,
                     "beat_id": 2,
                     "beat_type": "dialogue",
+                    "speaker_name": "A",
                     "start_ms": 0,
                     "end_ms": 1200,
                     "duration_ms": 1200,
@@ -141,6 +142,8 @@ def test_build_storyboard_frames_from_timeline_spec_prefers_shot_plan():
     assert frames[0]["timeline_clip_id"] == "video_scene_1_beat_2_001"
     assert frames[0]["source"]["kind"] == "timeline_clip"
     assert frames[0]["source"]["shot_plan"] == "timeline_shot_plan"
+    assert frames[0]["speaker_name"] == "A"
+    assert frames[0]["characters"] == ["A"]
     assert frames[0]["timeline_shot_plan"]["provider"] == "deepseek"
     assert frames[0]["shot_plan_prompt_layers"]["direction_anchor"] == (
         "朝向机器人发现门锁秘密的悬疑镜头"

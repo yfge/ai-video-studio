@@ -6,6 +6,7 @@ from typing import Any
 
 from app.models.timeline import RenderJob, Timeline, TimelineClipAsset
 from app.repositories.timeline_repository import RenderJobRepository
+from app.services.render.timeline_render_clips import TimelineClipResolver
 from app.services.timeline_render_dispatch import (
     dispatch_timeline_render_job_for_user_id,
 )
@@ -27,6 +28,8 @@ def queue_provider_rework_render_job(
     """Create an idempotent render job for a successful provider rework."""
 
     if not _truthy(context.get("auto_render")):
+        return None, False
+    if not _timeline_render_ready(db, timeline):
         return None, False
 
     render_type = _render_type(context.get("render_type"))
@@ -54,6 +57,11 @@ def queue_provider_rework_render_job(
     )
     db.flush()
     return job, True
+
+
+def _timeline_render_ready(db: Session, timeline: Timeline) -> bool:
+    resolved, missing = TimelineClipResolver(db).resolve(timeline)
+    return bool(resolved) and not missing
 
 
 def dispatch_provider_rework_render_job(

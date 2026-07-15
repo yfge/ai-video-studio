@@ -439,8 +439,13 @@ and shot-plan prompt bundles, visual generation has two supported forms:
 - start/end frame mode: generate per-clip first/last images, then generate each
   video clip from those keyframes;
 - clip storyboard mode: generate a storyboard sheet for one selected Timeline
-  `video` clip, then use panels from that sheet as visual reference for reworking
-  that same clip.
+  `video` clip, then use the whole ordered sheet as visual reference for
+  reworking that same clip.
+
+The shot-plan LLM emits structured `motion_timeline` visual beats; it does not
+choose an arbitrary free-form grid size. When the request omits `panel_count`,
+backend policy maps distinct beats plus clip duration to 2/4/6/9 panels. Explicit
+operator counts remain fixed after normalization to those supported layouts.
 
 Clip storyboard sheets are support assets. They do not create, reorder, resize,
 or replace Timeline clips, and they do not own render/export state. Store preview
@@ -448,7 +453,15 @@ metadata under `timeline.spec.support_views.clip_storyboards[clip_id]`, keep the
 quick lookup on the selected clip as `clip.source_refs.clip_storyboard`, and
 persist the sheet as a `media_assets` image with the `clip_storyboard_sheet`
 role. Video clip rework may use the sheet as a provider reference through
-`reference_mode="clip_storyboard_panel"` and a panel-specific prompt.
+`reference_mode="clip_storyboard_sheet"`. Its video prompt reads every panel
+left-to-right and top-to-bottom as ordered action anchors, preserves the clip's
+exact target duration, and explicitly suppresses the sheet borders, gutters,
+panel numbers, and split-screen layout in the rendered video.
+
+`reference_mode="clip_storyboard_panel"` remains readable for legacy tasks, but
+new UI submissions default to the full-sheet sequence. Storyboard-sheet mode and
+start/end-frame mode are alternative video reference paths; either one may make
+a clip ready when its other gates pass.
 
 Legacy `support_views.storyboard_grid`, `storyboard_grid_sheet`, and
 `reference_mode="storyboard_grid_panel"` data may remain readable for existing

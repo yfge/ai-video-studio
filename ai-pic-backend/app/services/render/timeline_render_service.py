@@ -25,6 +25,10 @@ from app.services.render.video_concat import (
     VideoSubtitleCue,
     concat_video_clips,
 )
+from app.services.render.video_render_spec import (
+    RenderVideoSpec,
+    resolve_render_video_spec,
+)
 from sqlalchemy.orm import Session
 
 logger = get_logger()
@@ -113,7 +117,17 @@ class TimelineRenderService:
                 "audio_segment_count": audio_segment_count,
             },
         )
-        output_path = await self._render_to_temp_file(resolved, subtitles, audio_track)
+        render_spec = resolve_render_video_spec(
+            job.preset,
+            timeline.spec,
+            [clip.duration_seconds for clip in resolved],
+        )
+        output_path = await self._render_to_temp_file(
+            resolved,
+            subtitles,
+            audio_track,
+            render_spec=render_spec,
+        )
 
         self._mark_running(job, progress=80, log={"code": "persisting_output"})
         asset = await persist_timeline_render_output(
@@ -137,6 +151,7 @@ class TimelineRenderService:
             "audio_segment_count": audio_segment_count,
             "output_asset_id": asset.id,
             "output_url": asset.file_url or asset.file_path,
+            "render_probe": (asset.extra_metadata or {}).get("render_probe"),
         }
         self.db.add(job)
         self.db.commit()
@@ -148,6 +163,8 @@ class TimelineRenderService:
         clips: list[TimelineClipVideo],
         subtitles: list[TimelineSubtitleCue],
         audio_track: TimelineAudioTrack | None,
+        *,
+        render_spec: RenderVideoSpec,
     ) -> str:
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
             output_path = tmp.name
@@ -180,6 +197,7 @@ class TimelineRenderService:
                 )
                 for cue in subtitles
             ],
+            render_spec=render_spec,
         )
         if not result.get("success"):
             raise RuntimeError(str(result.get("error") or "timeline render failed"))

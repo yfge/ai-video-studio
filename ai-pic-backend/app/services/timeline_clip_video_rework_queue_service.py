@@ -9,10 +9,12 @@ from app.models.task import TaskType
 from app.models.timeline import Timeline
 from app.models.user import User
 from app.repositories.task_repository import TaskRepository
-from app.repositories.timeline_repository import MediaAssetRepository, TimelineRepository
-from app.schemas.timeline import TimelineClipVideoReworkTaskRequest, TimelineClipVideoReworkTaskResponse
+from app.repositories.timeline_repository import TimelineRepository
+from app.schemas.timeline import (
+    TimelineClipVideoReworkTaskRequest,
+    TimelineClipVideoReworkTaskResponse,
+)
 from app.services.timeline_clip_video_grid_reference import (
-    build_clip_storyboard_rework_payload,
     build_grid_storyboard_rework_payload,
 )
 from app.services.timeline_clip_video_rework_context import (
@@ -26,11 +28,16 @@ from app.services.timeline_clip_video_rework_helpers import (
     clip_duration_seconds,
     clip_prompt,
     dedupe_strings,
-    maybe_int,
-    requires_operator_review,
     render_preset,
+    render_ratio,
+    requires_operator_review,
     story_owner_filter,
-    string_value,
+)
+from app.services.timeline_clip_video_rework_images import (
+    TimelineClipVideoReworkImageResolver,
+)
+from app.services.timeline_clip_video_storyboard_reference import (
+    build_clip_storyboard_rework_payload,
 )
 from app.services.timeline_clip_visual_prompt_builder import (
     build_timeline_clip_video_motion_prompt,
@@ -43,7 +50,7 @@ class TimelineClipVideoReworkQueueService:
     def __init__(self, db: Session):
         self.db = db
         self.timelines = TimelineRepository(db)
-        self.media_assets = MediaAssetRepository(db)
+        self.images = TimelineClipVideoReworkImageResolver(db)
         self.tasks = TaskRepository(db)
 
     def queue_video_rework(
@@ -84,7 +91,9 @@ class TimelineClipVideoReworkQueueService:
         self.db.refresh(task)
         dispatch_timeline_clip_video_rework_task(task, task_payload, current_user)
         status_value = getattr(task.status, "value", task.status)
-        return TimelineClipVideoReworkTaskResponse(task_id=task.id, status=str(status_value))
+        return TimelineClipVideoReworkTaskResponse(
+            task_id=task.id, status=str(status_value)
+        )
 
     def _task_payload(
         self,
@@ -96,21 +105,27 @@ class TimelineClipVideoReworkQueueService:
         clip_storyboard_payload = None
         grid_payload = None
         reference_mode = payload.reference_mode or "start_end"
+        target_duration = payload.duration or clip_duration_seconds(clip)
         bound_context = build_video_rework_bound_context(
             self.db,
             timeline=timeline,
             clip=clip,
             payload=payload,
         )
-        if payload.use_clip_storyboard or reference_mode == "clip_storyboard_panel":
+        if payload.use_clip_storyboard or reference_mode in {
+            "clip_storyboard_sheet",
+            "clip_storyboard_panel",
+        }:
             prompt_metadata = {}
-            reference_mode = "clip_storyboard_panel"
+            if reference_mode != "clip_storyboard_panel":
+                reference_mode = "clip_storyboard_sheet"
             clip_storyboard_payload = build_clip_storyboard_rework_payload(
                 timeline,
                 clip_id,
                 clip,
                 payload,
-                asset_ref_url=self._asset_ref_url,
+                duration_seconds=target_duration,
+                asset_ref_url=self.images.asset_ref_url,
                 fallback_prompt=clip_prompt,
             )
             prompt = clip_storyboard_payload["prompt"]
@@ -124,7 +139,7 @@ class TimelineClipVideoReworkQueueService:
                 clip_id,
                 clip,
                 payload,
-                asset_ref_url=self._asset_ref_url,
+                asset_ref_url=self.images.asset_ref_url,
                 fallback_prompt=clip_prompt,
             )
             prompt = grid_payload["prompt"]
@@ -135,8 +150,8 @@ class TimelineClipVideoReworkQueueService:
                 clip,
                 payload.prompt,
             )
-            start_url = self._start_frame_url(clip)
-            end_url = self._end_frame_url(clip) if payload.use_end_frame else None
+            start_url = self.images.start_frame_url(timeline, clip_id, clip)
+            end_url = self.images.end_frame_url(clip) if payload.use_end_frame else None
 
         if not (prompt or start_url):
             raise HTTPException(
@@ -154,11 +169,11 @@ class TimelineClipVideoReworkQueueService:
             "prompt": prompt,
             "image_url": start_url,
             "end_image_url": end_url,
-            "duration": payload.duration or clip_duration_seconds(clip),
+            "duration": target_duration,
             "model": payload.model,
             "fps": payload.fps,
             "resolution": payload.resolution,
-            "ratio": payload.ratio,
+            "ratio": payload.ratio or render_ratio(timeline),
             "return_last_frame": payload.return_last_frame,
             "operator_reviewed": payload.operator_reviewed,
             "auto_render": True,
@@ -217,34 +232,3 @@ class TimelineClipVideoReworkQueueService:
                 detail="timeline not found",
             )
         return timeline
-
-    def _start_frame_url(self, clip: dict[str, Any]) -> str | None:
-        return (
-            self._asset_ref_url(clip.get("start_frame_asset_ref"))
-            or self._asset_ref_url(clip.get("storyboard_image_asset_ref"))
-            or string_value(clip.get("start_image_url"))
-            or string_value(clip.get("image_url"))
-        )
-
-    def _end_frame_url(self, clip: dict[str, Any]) -> str | None:
-        return self._asset_ref_url(clip.get("end_frame_asset_ref")) or string_value(
-            clip.get("end_image_url")
-        )
-
-    def _asset_ref_url(self, asset_ref: Any) -> str | None:
-        if not isinstance(asset_ref, dict):
-            return None
-        for key in ("file_url", "url", "image_url", "video_url", "file_path"):
-            value = string_value(asset_ref.get(key))
-            if value:
-                return value
-        asset_id = maybe_int(
-            asset_ref.get("media_asset_id")
-            or asset_ref.get("asset_id")
-            or asset_ref.get("image_asset_id")
-            or asset_ref.get("video_asset_id")
-        )
-        asset = self.media_assets.get_by_id(asset_id) if asset_id else None
-        if asset is None or asset.is_deleted:
-            return None
-        return asset.file_url or asset.file_path

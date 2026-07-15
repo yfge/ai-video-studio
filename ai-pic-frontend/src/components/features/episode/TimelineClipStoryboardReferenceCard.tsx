@@ -117,7 +117,8 @@ export function StoryboardReferenceCard({
                 }
                 className={operatorSelectClass("w-full")}
               >
-                {["2", "3", "4", "6", "8", "9"].map((count) => (
+                <option value="auto">智能（按动作节点）</option>
+                {["2", "4", "6", "9"].map((count) => (
                   <option key={count} value={count}>
                     {count} 格
                   </option>
@@ -240,6 +241,8 @@ function StoryboardImageModelSelect({
 
 function modelOptionValue(option: ImageModelOption) {
   const providerScopedId =
-    option.provider && option.id ? `${option.provider}:${option.id}` : option.id;
+    option.provider && option.id
+      ? `${option.provider}:${option.id}`
+      : option.id;
   return option.model_id || providerScopedId || option.name || "";
 }

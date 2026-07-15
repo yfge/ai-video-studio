@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from datetime import datetime, timezone
 from typing import Any
 
@@ -52,9 +54,14 @@ def clip_payload_matches_current_timeline(timeline, payload: dict[str, Any]) -> 
     payload_panels = payload.get("panels")
     if not clip_id or not isinstance(payload_panels, list) or not payload_panels:
         return False
-    current_clip = _clip_by_id(timeline.spec if isinstance(timeline.spec, dict) else {}, clip_id)
+    current_clip = _clip_by_id(
+        timeline.spec if isinstance(timeline.spec, dict) else {}, clip_id
+    )
     if current_clip is None:
         return False
+    source_signature = string_value(payload.get("clip_source_signature"))
+    if source_signature:
+        return source_signature == clip_source_signature(current_clip)
     from app.services.storyboard.grid_storyboard_prompt_bridge import (
         build_clip_storyboard_panels,
     )
@@ -62,6 +69,17 @@ def clip_payload_matches_current_timeline(timeline, payload: dict[str, Any]) -> 
     panel_count = maybe_int(payload.get("panel_count")) or len(payload_panels)
     current_panels = build_clip_storyboard_panels(current_clip, panel_count)
     return panel_snapshot_matches_current(payload_panels, current_panels)
+
+
+def clip_source_signature(clip: dict[str, Any]) -> str:
+    canonical = json.dumps(
+        clip,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def panel_snapshot_matches_current(
@@ -109,7 +127,10 @@ def _clip_by_id(spec: dict[str, Any], clip_id: str) -> dict[str, Any] | None:
             continue
         track_type = track.get("track_type") or track.get("type")
         for clip in track.get("clips") or []:
-            if isinstance(clip, dict) and (clip.get("clip_id") or clip.get("id")) == clip_id:
+            if (
+                isinstance(clip, dict)
+                and (clip.get("clip_id") or clip.get("id")) == clip_id
+            ):
                 return {**clip, "track_type": clip.get("track_type") or track_type}
     return None
 

@@ -93,6 +93,7 @@ TEXT_TO_IMAGE_KEYS_BY_PROVIDER: dict[str, set[str]] = {
         "prompt",
         "model",
         "prefer_provider",
+        "style",
         "size",
         "aspect_ratio",
         "width",

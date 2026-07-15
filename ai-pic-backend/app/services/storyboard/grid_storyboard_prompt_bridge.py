@@ -135,16 +135,39 @@ def build_clip_storyboard_panels(
                 visual_prompt,
                 motion,
                 index,
+                layout.panel_count,
                 fallback_layers["panel_moment"],
             ),
             "video_prompt": video_prompt,
             "source_refs": clip.get("source_refs") or {},
         }
-        panel.update(fallback_layers)
         panel.update(prompt_layers)
+        panel["panel_moment"] = fallback_layers["panel_moment"]
+        panel["shot_type"] = fallback_layers["shot_type"]
+        panel["composition_geometry"] = _clip_panel_composition(
+            fallback_layers["composition_geometry"],
+            prompt_layers.get("composition_geometry"),
+        )
+        if not panel.get("motion_timeline"):
+            panel["motion_timeline"] = fallback_layers["motion_timeline"]
+        if not panel.get("camera_movement"):
+            panel["camera_movement"] = fallback_layers["camera_movement"]
+        if not panel.get("emotional_landing"):
+            panel["emotional_landing"] = fallback_layers["emotional_landing"]
         panel["storyboard_panel_prompt"] = build_panel_prompt(panel)
         panels.append(panel)
     return panels
+
+
+def _clip_panel_composition(panel_composition: Any, base_composition: Any) -> str:
+    panel_text = str(panel_composition or "").strip()
+    base_text = str(base_composition or "").strip()
+    if panel_text and base_text:
+        return (
+            f"{panel_text}; preserve the clip's established screen direction and "
+            f"blocking: {base_text}"
+        )
+    return panel_text or base_text
 
 
 def _timeline_video_clips(timeline_spec: Mapping[str, Any]) -> List[Mapping[str, Any]]:
@@ -179,10 +202,14 @@ def _panel_visual_prompt(
     visual_prompt: str,
     motion_timeline: Any,
     panel_index: int,
+    panel_count: int,
     fallback_moment: str,
 ) -> str:
     if isinstance(motion_timeline, list) and motion_timeline:
-        point = motion_timeline[min(panel_index - 1, len(motion_timeline) - 1)]
+        point_index = round(
+            (panel_index - 1) * (len(motion_timeline) - 1) / max(panel_count - 1, 1)
+        )
+        point = motion_timeline[point_index]
         if isinstance(point, Mapping):
             action = point.get("action")
             at_ms = point.get("at_ms")

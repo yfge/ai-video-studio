@@ -77,7 +77,11 @@ export function buildTimelineClipVideoReworkTaskPayload({
   const cleanedReason = reason?.trim();
   if (cleanedReason) payload.reason = cleanedReason;
   const cleanedRefs = dedupeReferenceImages(referenceImages);
-  if (useClipStoryboard || referenceChoice === "clip_storyboard_panel") {
+  if (useClipStoryboard || referenceChoice === "clip_storyboard_sheet") {
+    payload.reference_mode = "clip_storyboard_sheet";
+    payload.use_clip_storyboard = true;
+    payload.use_end_frame = false;
+  } else if (referenceChoice === "clip_storyboard_panel") {
     payload.reference_mode = "clip_storyboard_panel";
     payload.use_clip_storyboard = true;
     payload.use_end_frame = false;

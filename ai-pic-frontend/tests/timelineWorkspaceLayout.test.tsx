@@ -104,11 +104,7 @@ describe("EpisodeTimelineWorkspace layout", () => {
     const calls = mockWorkspaceFetch({
       environments: [environment("老拐的家", 5)],
       environmentDetails: {
-        5: environment(
-          "老拐的家",
-          5,
-          "https://cdn.example/laoguai-home.png",
-        ),
+        5: environment("老拐的家", 5, "https://cdn.example/laoguai-home.png"),
       },
       storyCharacters: [
         storyCharacter("老拐", 1),
@@ -121,22 +117,25 @@ describe("EpisodeTimelineWorkspace layout", () => {
     });
 
     const utils = render(
-      workspace(videoTimelineWithCharacterNames(["老拐"]), undefined, undefined, {
-        normalizedScenes: [normalizedScene("INT. 老拐的客厅 - DAY", 90)],
-      }),
+      workspace(
+        videoTimelineWithCharacterNames(["老拐"]),
+        undefined,
+        undefined,
+        {
+          normalizedScenes: [normalizedScene("INT. 老拐的客厅 - DAY", 90)],
+        },
+      ),
       { container: dom.window.document.body },
     );
 
     await waitFor(() =>
       assert.equal(
-        (utils.getByLabelText("绑定角色 IP 老拐") as HTMLInputElement)
-          .checked,
+        (utils.getByLabelText("绑定角色 IP 老拐") as HTMLInputElement).checked,
         true,
       ),
     );
     assert.equal(
-      (utils.getByLabelText("绑定角色 IP 阿盖儿") as HTMLInputElement)
-        .checked,
+      (utils.getByLabelText("绑定角色 IP 阿盖儿") as HTMLInputElement).checked,
       false,
     );
     await waitFor(() => assert.ok(hasText(utils, "IP 图：1 张")));
@@ -159,7 +158,9 @@ describe("EpisodeTimelineWorkspace layout", () => {
         .getAttribute("aria-pressed"),
       "true",
     );
-    fireEvent.click(within(envDialog).getByRole("button", { name: "应用选择" }));
+    fireEvent.click(
+      within(envDialog).getByRole("button", { name: "应用选择" }),
+    );
 
     fireEvent.click(utils.getByRole("button", { name: "生成片段分镜图" }));
     await waitFor(() =>
@@ -174,16 +175,13 @@ describe("EpisodeTimelineWorkspace layout", () => {
       storyboardCall?.init?.body,
       JSON.stringify({
         expected_version: 3,
-        panel_count: 4,
         style: "live_action",
         generation_profile: "clip_storyboard",
         size: "1536x1536",
         aspect_ratio: "1:1",
         character_virtual_ip_ids: [1],
         character_reference_images: ["https://cdn.example/laoguai.png"],
-        environment_reference_images: [
-          "https://cdn.example/laoguai-home.png",
-        ],
+        environment_reference_images: ["https://cdn.example/laoguai-home.png"],
       }),
     );
   });
@@ -2457,7 +2455,7 @@ describe("EpisodeTimelineWorkspace layout", () => {
     assert.equal(videoButton.textContent?.trim(), "生成/重做此片段视频");
     assert.equal(
       videoButton.getAttribute("title"),
-      "先完成片段分镜图和首尾帧后才能生视频",
+      "先生成片段宫格故事板或首尾帧后才能生视频",
     );
     assert.doesNotMatch(storyboardButton.textContent || "", /分镜图分镜图/);
     assert.doesNotMatch(keyframeButton.textContent || "", /首尾帧首尾帧/);
@@ -3276,7 +3274,9 @@ describe("EpisodeTimelineWorkspace layout", () => {
         .getAttribute("aria-pressed"),
       "true",
     );
-    fireEvent.click(within(envDialog).getByRole("button", { name: "应用选择" }));
+    fireEvent.click(
+      within(envDialog).getByRole("button", { name: "应用选择" }),
+    );
 
     assert.ok(utils.getByLabelText("视频生成绑定上下文"));
     assert.ok(utils.getAllByText("环境图：1 张").length >= 1);

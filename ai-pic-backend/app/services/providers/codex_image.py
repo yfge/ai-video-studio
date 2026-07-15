@@ -13,7 +13,12 @@ from typing import Any, Dict, List, Optional, Sequence
 
 import httpx
 
-SUPPORTED_SIZES = ("1024x1024", "1536x1024", "1024x1536", "auto")
+from .codex_image_aspect import (
+    image_matches_aspect_ratio,
+    prompt_with_aspect_contract,
+    resolve_image_size,
+)
+
 DEFAULT_IMAGE_TOOL_MODEL = "gpt-5.4"
 REFERENCE_MAX_EDGE = 1024
 REFERENCE_FETCH_TIMEOUT = 20.0
@@ -83,27 +88,6 @@ def _downscale_to_data_url(content: bytes) -> str:
     return f"data:{mime};base64,{base64.b64encode(payload).decode('ascii')}"
 
 
-def resolve_image_size(
-    size: Optional[str],
-    width: Optional[int],
-    height: Optional[int],
-    aspect_ratio: Optional[str],
-) -> str:
-    """Map arbitrary size hints onto the sizes the image tool accepts."""
-    if isinstance(size, str) and size in SUPPORTED_SIZES and size != "auto":
-        return size
-    ratio = (aspect_ratio or "").strip()
-    if not ratio and width and height:
-        ratio = "16:9" if width > height else "9:16" if height > width else "1:1"
-    if ratio in {"16:9", "4:3", "3:2", "21:9"}:
-        return "1536x1024"
-    if ratio in {"9:16", "3:4", "2:3"}:
-        return "1024x1536"
-    if ratio == "1:1":
-        return "1024x1024"
-    return "auto"
-
-
 def build_codex_image_payload(
     *,
     prompt: str,
@@ -153,8 +137,16 @@ async def run_codex_image_generation(
         references = [references]
     inlined = await inline_reference_images(references)
     size = resolve_image_size(size_hint, width, height, aspect_ratio)
+    logger.info(
+        "Codex image canvas resolved | aspect_ratio=%s size=%s width=%s height=%s refs=%s",
+        aspect_ratio,
+        size,
+        width,
+        height,
+        len(inlined),
+    )
     payload = build_codex_image_payload(
-        prompt=prompt,
+        prompt=prompt_with_aspect_contract(prompt, aspect_ratio),
         model=DEFAULT_IMAGE_TOOL_MODEL,
         size=size,
         reference_images=inlined,
@@ -164,10 +156,30 @@ async def run_codex_image_generation(
     # The ChatGPT image tool intermittently returns server_error; one delayed
     # retry recovers transient failures (sustained ones are rate limiting).
     for attempt in range(2):
-        raw = await post_raw(payload)
-        image_data, meta = parse_codex_image_sse(raw)
-        if image_data:
-            break
+        try:
+            raw = await post_raw(payload)
+        except Exception as exc:
+            if attempt == 0 and _is_transient_reference_fetch_error(exc):
+                meta = {"error": str(exc)}
+                logger.warning(
+                    "Codex reference download timed out; retrying once: %s",
+                    exc,
+                )
+                await sleep(10)
+                continue
+            raise
+        candidate, meta = parse_codex_image_sse(raw)
+        if candidate:
+            matches, dimensions = image_matches_aspect_ratio(candidate, aspect_ratio)
+            if dimensions:
+                meta["actual_width"], meta["actual_height"] = dimensions
+            if matches:
+                image_data = candidate
+                break
+            meta["error"] = (
+                "Codex image physical aspect ratio mismatch: "
+                f"expected={aspect_ratio}, actual={dimensions}"
+            )
         logger.warning(
             "Codex image_generation failed (attempt %s): %s",
             attempt + 1,
@@ -180,6 +192,11 @@ async def run_codex_image_generation(
             meta.get("error") or "Codex image_generation returned no image result"
         )
     return image_data, meta, size, len(inlined)
+
+
+def _is_transient_reference_fetch_error(exc: Exception) -> bool:
+    message = str(exc).lower()
+    return "unable to download content" in message and "provided url" in message
 
 
 def parse_codex_image_sse(raw: str) -> tuple[Optional[str], Dict[str, Any]]:

@@ -139,6 +139,7 @@ export type TimelineClipReworkAction = "re_dub" | "re_cut" | "re_render";
 export type TimelineClipVideoReworkAction = "re_cut" | "re_render";
 export type TimelineClipVideoReferenceMode =
   | "start_end"
+  | "clip_storyboard_sheet"
   | "clip_storyboard_panel"
   | "storyboard_grid_panel";
 type TimelineStoryboardGridStyle = "2d_cartoon" | "3d_cartoon" | "live_action";

@@ -6,11 +6,22 @@ import json
 from dataclasses import dataclass
 from typing import Any, Sequence
 
-from app.models.task import Task, TaskType
-from app.repositories.storyboard_media_repository import load_storyboard_frames
+from app.models.task import Task
+from app.repositories.storyboard_media_repository import (
+    get_script_by_id,
+    load_storyboard_frames,
+    resolve_storyboard_aspect_ratio,
+)
 from app.services.storyboard.storyboard_image_queue_inputs import (
     frame_has_reference_images,
+    frame_requires_reference_images,
     normalize_frame_indexes,
+)
+from app.services.storyboard.storyboard_image_request_snapshot import (
+    storyboard_image_worker_frame_snapshot,
+)
+from app.services.storyboard.storyboard_image_task_dispatch import (
+    create_or_reuse_storyboard_image_task,
 )
 from app.services.task_worker import storyboard_image_generate_task
 from app.utils.model_utils import DEFAULT_OPENAI_IMAGE_MODEL
@@ -55,6 +66,7 @@ def queue_storyboard_image_generation(
     require_reference_images: bool = True,
     prompt: str | None = None,
     canvas_branch: dict[str, Any] | None = None,
+    idempotency_scope: str | None = None,
 ) -> StoryboardImageQueueResult:
     """Create the follow-up task that turns storyboard frames into images.
 
@@ -98,6 +110,7 @@ def queue_storyboard_image_generation(
             idx
             for idx in target_indexes
             if frame_has_reference_images(target_frames[idx])
+            or not frame_requires_reference_images(target_frames[idx])
         ]
         skipped_indexes = [idx for idx in target_indexes if idx not in queued_indexes]
     else:
@@ -114,12 +127,22 @@ def queue_storyboard_image_generation(
             reason="no_reference_images",
         )
 
+    resolved_aspect_ratio = aspect_ratio
+    if not resolved_aspect_ratio:
+        script = get_script_by_id(db, script_id)
+        if script:
+            resolved_aspect_ratio = resolve_storyboard_aspect_ratio(
+                db,
+                script=script,
+                requested=None,
+            )
+
     payload: dict[str, Any] = {
         "script_id": script_id,
         "frame_indexes": queued_indexes,
         "frames": queued_indexes,
         "model": model or DEFAULT_OPENAI_IMAGE_MODEL,
-        "aspect_ratio": aspect_ratio,
+        "aspect_ratio": resolved_aspect_ratio,
         "reference_images": global_reference_images,
         "keyframe_mode": "single",
         "start_enabled": True,
@@ -128,25 +151,26 @@ def queue_storyboard_image_generation(
         "require_reference_images": require_reference_images,
         "prompt": prompt,
         "canvas_branch": canvas_branch,
+        "idempotency_scope": idempotency_scope,
     }
-    task = Task(
-        title=f"分镜画面生成 - 剧本{script_id}",
-        description="分镜生成后的自动画面任务，使用场景/角色参考图生成镜头支撑帧",
-        task_type=TaskType.STORYBOARD_IMAGE_GENERATION,
-        prompt=f"Storyboard image generation for script {script_id}",
-        parameters=json.dumps(payload, ensure_ascii=False),
+    dispatch_result = create_or_reuse_storyboard_image_task(
+        db,
         user_id=user_id,
+        script_id=script_id,
+        payload=payload,
+        frame_snapshots=[
+            storyboard_image_worker_frame_snapshot(target_frames[idx], idx)
+            for idx in queued_indexes
+        ],
+        dispatch=storyboard_image_generate_task.delay,
     )
-    db.add(task)
-    db.commit()
-    db.refresh(task)
-    storyboard_image_generate_task.delay(task.id, payload, user_id)
     return StoryboardImageQueueResult(
-        status="queued",
-        child_task_id=task.id,
+        status="reused" if dispatch_result.reused else "queued",
+        child_task_id=dispatch_result.task.id,
         queued_frame_indexes=queued_indexes,
         skipped_frame_indexes=skipped_indexes,
         require_reference_images=require_reference_images,
+        reason="existing_active_task" if dispatch_result.reused else None,
     )
 
 
@@ -197,8 +221,9 @@ def storyboard_image_queue_progress_message(
     queued = len(result.queued_frame_indexes)
     skipped = len(result.skipped_frame_indexes)
     if result.child_task_id:
+        action = "已复用" if result.status == "reused" else "已创建"
         return (
-            f"{prefix}：分镜画面任务已创建 "
+            f"{prefix}：分镜画面任务{action} "
             f"task_id={result.child_task_id} queued={queued} skipped={skipped}"
         )
     return (

@@ -69,6 +69,7 @@ def build_panel_prompt(panel: Mapping[str, Any]) -> str:
         f"(row {panel.get('row')}, column {panel.get('column')}, "
         f"clip {panel.get('clip_id') or 'unknown'}): "
         f"{panel.get('visual_prompt') or ''}; "
+        f"framing: {panel.get('shot_type') or ''}; "
         f"direction: {panel.get('direction_anchor') or ''}; "
         f"aesthetic: {panel.get('aesthetic_reference') or ''}; "
         f"composition: {panel.get('composition_geometry') or ''}; "

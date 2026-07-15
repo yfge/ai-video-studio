@@ -1,5 +1,6 @@
 from app.services.storyboard.grid_storyboard_prompt_bridge import (
     build_clip_storyboard_panels,
+    build_clip_storyboard_sheet_prompt,
     build_grid_storyboard_panels,
     build_grid_storyboard_sheet_prompt,
     build_grid_storyboard_video_prompt,
@@ -10,10 +11,14 @@ from app.services.storyboard.grid_storyboard_prompt_bridge import (
 def test_grid_layout_clamps_to_supported_panel_counts():
     assert grid_layout(1).panel_count == 2
     assert (grid_layout(1).columns, grid_layout(1).rows) == (2, 1)
+    assert grid_layout(1).aspect_ratio == "2:1"
     assert grid_layout(4).panel_count == 4
+    assert grid_layout(4).aspect_ratio == "1:1"
     assert (grid_layout(6).columns, grid_layout(6).rows) == (3, 2)
+    assert grid_layout(6).aspect_ratio == "3:2"
     assert grid_layout(99).panel_count == 9
     assert (grid_layout(99).columns, grid_layout(99).rows) == (3, 3)
+    assert grid_layout(99).aspect_ratio == "1:1"
 
 
 def test_build_grid_storyboard_panels_prefers_timeline_shot_plan_prompts():
@@ -118,8 +123,76 @@ def test_build_clip_storyboard_panels_diversifies_clip_text_fallback():
     assert "Detail frame" in visual_prompts[2]
     assert "Closing frame" in visual_prompts[3]
     assert panels[0]["motion_timeline"][0]["at_ms"] == 36260
-    assert panels[3]["motion_timeline"][0]["at_ms"] > panels[0]["motion_timeline"][0]["at_ms"]
+    assert (
+        panels[3]["motion_timeline"][0]["at_ms"]
+        > panels[0]["motion_timeline"][0]["at_ms"]
+    )
     assert len({panel["composition_geometry"] for panel in panels}) == 4
+
+
+def test_build_clip_storyboard_panels_keeps_motion_but_diversifies_shot_plan_framing():
+    clip = {
+        "clip_id": "video_scene_91_beat_4001_011",
+        "start_ms": 30000,
+        "end_ms": 36260,
+        "source_refs": {
+            "timeline_shot_plan": {
+                "visual_prompt": "老拐把手机递给阿盖儿",
+                "video_prompt": "两人完成手机交接并共同查看屏幕",
+                "shot_type": "over-the-shoulder",
+                "composition_geometry": "手机居中，两张脸局部可见",
+                "motion_timeline": [
+                    {"at_ms": 0, "action": "老拐递出手机"},
+                    {"at_ms": 2000, "action": "阿盖儿接过手机"},
+                    {"at_ms": 4000, "action": "老拐滑动屏幕"},
+                    {"at_ms": 6000, "action": "两人共同看向手机"},
+                ],
+            }
+        },
+    }
+
+    panels = build_clip_storyboard_panels(clip, panel_count=4)
+
+    assert len({panel["shot_type"] for panel in panels}) == 4
+    assert len({panel["composition_geometry"] for panel in panels}) == 4
+    assert all(len(panel["motion_timeline"]) == 4 for panel in panels)
+    assert all(
+        "preserve the clip's established screen direction"
+        in panel["composition_geometry"]
+        for panel in panels
+    )
+
+    prompt = build_clip_storyboard_sheet_prompt(panels, style="live_action")
+    panel_lines = [line for line in prompt.splitlines() if line.startswith("- Panel")]
+    assert "framing: wide establishing shot" in panel_lines[0]
+    assert "0ms 老拐递出手机" in panel_lines[0]
+    assert "2000ms 阿盖儿接过手机" not in panel_lines[0]
+    assert "framing: insert detail shot" in panel_lines[2]
+    assert "4000ms 老拐滑动屏幕" in panel_lines[2]
+
+
+def test_two_panel_clip_storyboard_samples_first_and_last_motion_anchors():
+    clip = {
+        "clip_id": "video_scene_93_beat_4021_031",
+        "start_ms": 96852,
+        "end_ms": 102961,
+        "source_refs": {
+            "timeline_shot_plan": {
+                "visual_prompt": "老拐坐在工作室里拿着空咖啡杯",
+                "motion_timeline": [
+                    {"at_ms": 0, "action": "坐着不动"},
+                    {"at_ms": 2036, "action": "轻微歪头"},
+                    {"at_ms": 4072, "action": "环顾工作室"},
+                    {"at_ms": 6109, "action": "视线回到咖啡杯"},
+                ],
+            }
+        },
+    }
+
+    panels = build_clip_storyboard_panels(clip, panel_count=2)
+
+    assert "0ms: 坐着不动" in panels[0]["visual_prompt"]
+    assert "6109ms: 视线回到咖啡杯" in panels[1]["visual_prompt"]
 
 
 def test_grid_sheet_and_video_prompts_constrain_text_and_panel_scope():

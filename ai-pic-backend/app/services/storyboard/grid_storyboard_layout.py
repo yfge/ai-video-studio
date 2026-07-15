@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import gcd
 
 SUPPORTED_PANEL_COUNTS = (2, 4, 6, 9)
 
@@ -16,6 +17,11 @@ class GridLayout:
     @property
     def label(self) -> str:
         return f"{self.columns}x{self.rows}"
+
+    @property
+    def aspect_ratio(self) -> str:
+        divisor = gcd(self.columns, self.rows)
+        return f"{self.columns // divisor}:{self.rows // divisor}"
 
 
 def grid_layout(panel_count: int) -> GridLayout:

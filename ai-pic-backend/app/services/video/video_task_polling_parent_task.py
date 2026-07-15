@@ -22,6 +22,16 @@ def refresh_parent_task_status(db, video_task_repo, task_id: Optional[int]) -> N
     if not tasks:
         return
 
+    params = load_parameters(task.parameters)
+    expected_frames = _expected_frame_indexes(params)
+    observed_frames = {
+        item.frame_index for item in tasks if isinstance(item.frame_index, int)
+    }
+    if expected_frames and not expected_frames.issubset(observed_frames):
+        task.status = TaskStatus.PROCESSING
+        db.commit()
+        return
+
     terminal = {
         VideoGenerationTaskStatus.SUCCEEDED,
         VideoGenerationTaskStatus.FAILED,
@@ -82,3 +92,19 @@ def _storyboard_video_result_ref(task, video_tasks) -> str | None:
     ):
         return None
     return f"storyboard_videos:{script_id}:{len(video_tasks)}"
+
+
+def _expected_frame_indexes(params: dict) -> set[int]:
+    raw = params.get("frame_indexes")
+    if raw is None:
+        raw = params.get("frames")
+    if not isinstance(raw, list):
+        mapping = params.get("timeline_rework_by_frame")
+        raw = list(mapping) if isinstance(mapping, dict) else []
+    expected: set[int] = set()
+    for value in raw:
+        try:
+            expected.add(int(value))
+        except (TypeError, ValueError):
+            continue
+    return expected

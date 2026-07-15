@@ -164,3 +164,85 @@ async def test_generate_with_repair_applies_extra_validator() -> None:
     assert result["validation_errors"] is None
     assert len(result.get("repair_attempts") or []) == 1
     assert len(calls) == 2
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_generate_with_repair_does_not_repair_provider_failure() -> None:
+    calls: List[Dict[str, Any]] = []
+
+    class _FailedAIManager:
+        async def generate_text(self, prompt: str, **_: Any) -> Any:
+            calls.append({"prompt": prompt})
+            return SimpleNamespace(
+                success=False,
+                data=None,
+                error="deepseek: 402 Insufficient Balance",
+                provider="deepseek",
+                model="deepseek-v4-flash",
+                usage={},
+            )
+
+    result = await generate_with_repair(
+        ai_manager=_FailedAIManager(),
+        base_prompt="BASE",
+        model="deepseek-v4-flash",
+        prefer_provider=None,
+        temperature=0.7,
+        schema_name="tiny",
+        schema=_TinySchema.model_json_schema(),
+        system_prompt=None,
+        pydantic_model=_TinySchema,
+        extractor=None,
+        max_repairs=2,
+    )
+
+    assert result["normalized"] is None
+    assert result["repair_attempts"] == []
+    assert result["validation_errors"] == [
+        {
+            "loc": [],
+            "msg": "deepseek: 402 Insufficient Balance",
+            "type": "provider_error",
+        }
+    ]
+    assert len(calls) == 1
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_generate_with_repair_stops_when_repair_provider_fails() -> None:
+    class _RepairFailureAIManager:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def generate_text(self, **_: Any) -> Any:
+            self.calls += 1
+            if self.calls == 1:
+                return SimpleNamespace(success=True, data='{"title":"ok"}')
+            return SimpleNamespace(
+                success=False,
+                data=None,
+                error="openai: upstream unavailable",
+                provider="openai",
+                model="gpt-4o",
+            )
+
+    manager = _RepairFailureAIManager()
+    result = await generate_with_repair(
+        ai_manager=manager,
+        base_prompt="BASE",
+        model=None,
+        prefer_provider=None,
+        temperature=0.7,
+        schema_name="tiny",
+        schema=_TinySchema.model_json_schema(),
+        system_prompt=None,
+        pydantic_model=_TinySchema,
+        max_repairs=2,
+    )
+
+    assert manager.calls == 2
+    assert len(result["repair_attempts"]) == 1
+    assert result["validation_errors"][0]["type"] == "provider_error"
+    assert result["validation_errors"][0]["msg"] == "openai: upstream unavailable"

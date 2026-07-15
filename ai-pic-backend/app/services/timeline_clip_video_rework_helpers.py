@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from math import gcd
 from typing import Any
 
 from app.models.timeline import Timeline
@@ -26,6 +27,22 @@ def render_preset(timeline: Timeline) -> dict[str, Any]:
         "fps": spec.get("fps") or 24,
         "resolution": spec.get("resolution") or "1080x1920",
     }
+
+
+def render_ratio(timeline: Timeline) -> str | None:
+    resolution = render_preset(timeline).get("resolution")
+    if not isinstance(resolution, str) or "x" not in resolution.lower():
+        return None
+    width_text, height_text = resolution.lower().split("x", 1)
+    try:
+        width = int(width_text)
+        height = int(height_text)
+    except (TypeError, ValueError):
+        return None
+    if width <= 0 or height <= 0:
+        return None
+    divisor = gcd(width, height)
+    return f"{width // divisor}:{height // divisor}"
 
 
 def story_owner_filter(current_user: User) -> int | None:

@@ -57,15 +57,19 @@ def test_timeline_clip_video_rework_binds_character_and_environment_context(
         "https://selected.example/env.png"
     ]
     assert params["reference_images"] == [
-        "https://selected.example/ip.png",
+        "https://cdn.example/courier.png",
         "https://selected.example/env.png",
         "https://manual.example/ref.png",
-        "https://cdn.example/courier.png",
     ]
+    assert (
+        "noncanonical_character_references_ignored"
+        in params["bound_context"]["warnings"]
+    )
     assert params["bound_context"]["characters"] == [
         {
             "name": "快递员",
             "virtual_ip_id": virtual_ip.id,
+            "appearance_brief": "快递员: 快递员 character profile",
             "anchor_url": "https://cdn.example/courier.png",
         }
     ]

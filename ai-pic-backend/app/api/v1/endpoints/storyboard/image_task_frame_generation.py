@@ -84,6 +84,7 @@ def _prepare_prompt_context(
     frame["storyboard_prompt_v2"] = compiled_prompt
     prompt = render_storyboard_image_prompt(
         compiled_prompt,
+        style=options.get("style"),
         reference_notes=reference_notes,
         labeled_references=options.get("labeled_references"),
         prompt_manager=prompt_manager,

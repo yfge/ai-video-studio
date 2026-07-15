@@ -44,3 +44,19 @@ def test_build_ai_manager_call_maps_reference_images_to_keling_image_param():
     call = build_ai_manager_call(normalized)
     assert call["image"] == "http://localhost:8000/uploads/ref.png"
     assert "reference_images" not in call
+
+
+@pytest.mark.unit
+def test_build_ai_manager_call_keeps_codex_style_for_audit():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.STORYBOARD,
+        mode=ImageGenMode.TEXT_TO_IMAGE,
+        prompt="four-panel storyboard",
+        model="codex:gpt-image-2",
+        style="3d_cartoon",
+    )
+
+    call = build_ai_manager_call(normalize_image_gen_request(req))
+
+    assert call["prefer_provider"] == "codex"
+    assert call["style"] == "3d_cartoon"

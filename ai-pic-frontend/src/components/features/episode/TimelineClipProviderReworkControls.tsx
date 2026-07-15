@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { timelineAPI } from "@/utils/api/endpoints";
@@ -14,18 +13,19 @@ import {
   isTimelineVideoClip,
   parseReferenceImagesInput,
   parseOptionalNumber,
-  type TimelineVideoReferenceChoice,
 } from "./TimelineClipProviderReworkModel";
-import { timelineClipProductionReadiness } from "./TimelineClipProductionReadiness";
+import {
+  timelineClipProductionReadiness,
+  VIDEO_IMAGE_GATE_MESSAGE,
+} from "./TimelineClipProductionReadiness";
 import { useTimelineClipStoryboardReferenceSelection } from "./useTimelineClipStoryboardReferenceSelection";
 import { useTimelineClipStoryboardVirtualIpSelection } from "./useTimelineClipStoryboardVirtualIpSelection";
 import { useTimelineClipProviderGenerationActions } from "./useTimelineClipProviderGenerationActions";
 import { useTimelineClipGenerationTaskTracker } from "./useTimelineClipGenerationTaskTracker";
 import type { TimelineClipProviderReworkControlsProps } from "./TimelineClipProviderReworkControlsTypes";
-
+import { useTimelineClipVideoReferenceChoice } from "./useTimelineClipVideoReferenceChoice";
 const EMPTY_EPISODE_CHARACTERS: EpisodeCharacter[] = [];
 const EMPTY_ENVIRONMENTS: Environment[] = [];
-
 export function TimelineClipProviderReworkControls({
   timelineId,
   timelineVersion,
@@ -55,19 +55,23 @@ export function TimelineClipProviderReworkControls({
   const [resolution, setResolution] = useState("720p");
   const [ratio, setRatio] = useState("");
   const [reason, setReason] = useState("");
-  const [videoReferenceChoice, setVideoReferenceChoice] =
-    useState<TimelineVideoReferenceChoice>("start_end");
   const [referenceImagesInput, setReferenceImagesInput] = useState("");
   const [storyboardModel, setStoryboardModel] = useState("");
   const [storyboardStyle, setStoryboardStyle] =
     useState<TimelineClipStoryboardStyle>("live_action");
-  const [storyboardPanelCount, setStoryboardPanelCount] = useState("4");
+  const [storyboardPanelCount, setStoryboardPanelCount] = useState("auto");
   const [operatorReviewed, setOperatorReviewed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-
   const isVideoClip = isTimelineVideoClip(item);
   useEffect(() => setOperatorReviewed(false), [clipId]);
-  const productionReadiness = timelineClipProductionReadiness(item, operatorReviewed);
+  const productionReadiness = timelineClipProductionReadiness(
+    item,
+    operatorReviewed,
+  );
+  const videoReference = useTimelineClipVideoReferenceChoice(
+    clipId,
+    productionReadiness.storyboardReady,
+  );
   const parsedDuration = parseOptionalNumber(duration);
   const referenceImages = parseReferenceImagesInput(referenceImagesInput);
   const { selectedStoryboardVirtualIpIds, handleStoryboardVirtualIpToggle } =
@@ -113,15 +117,12 @@ export function TimelineClipProviderReworkControls({
       taskTracker.track(kind, taskId, clipId ?? null),
     onNotify,
   });
-  let effectiveReferenceChoice = videoReferenceChoice;
-  if (
-    effectiveReferenceChoice === "clip_storyboard_panel" &&
-    !productionReadiness.storyboardPanelIndex
-  ) {
-    effectiveReferenceChoice = "start_end";
-  }
   const canSubmit = Boolean(
-    timelineId && timelineVersion && clipId && productionReadiness.canGenerateVideo && !submitting,
+    timelineId &&
+      timelineVersion &&
+      clipId &&
+      productionReadiness.canGenerateVideo &&
+      !submitting,
   );
 
   if (!isVideoClip) return null;
@@ -141,8 +142,7 @@ export function TimelineClipProviderReworkControls({
     }
     if (!productionReadiness.canGenerateVideo) {
       const message =
-        productionReadiness.videoGateMessage ||
-        "先完成片段分镜图和首尾帧后才能生视频";
+        productionReadiness.videoGateMessage || VIDEO_IMAGE_GATE_MESSAGE;
       generationActions.setSubmitError(message);
       onNotify?.(message, "warning");
       return;
@@ -159,7 +159,7 @@ export function TimelineClipProviderReworkControls({
       resolution,
       ratio,
       reason,
-      referenceChoice: effectiveReferenceChoice,
+      referenceChoice: videoReference.effectiveChoice,
       referenceImages,
       operatorReviewed,
       characterVirtualIpIds: selectedStoryboardVirtualIpIds,
@@ -199,7 +199,7 @@ export function TimelineClipProviderReworkControls({
       resolution={resolution}
       ratio={ratio}
       reason={reason}
-      videoReferenceChoice={videoReferenceChoice}
+      videoReferenceChoice={videoReference.choice}
       referenceImagesInput={referenceImagesInput}
       operatorReviewed={operatorReviewed}
       productionReadiness={productionReadiness}
@@ -207,7 +207,7 @@ export function TimelineClipProviderReworkControls({
       storyboardModel={storyboardModel}
       storyboardStyle={storyboardStyle}
       storyboardPanelCount={storyboardPanelCount}
-      storyboardPanelIndex={productionReadiness.storyboardPanelIndex}
+      storyboardAvailable={productionReadiness.storyboardReady}
       storyboardSheetUrl={productionReadiness.storyboardSheetUrl}
       episodeCharacters={episodeCharacters}
       episodeCharactersLoading={episodeCharactersLoading}
@@ -235,7 +235,7 @@ export function TimelineClipProviderReworkControls({
       onResolutionChange={setResolution}
       onRatioChange={setRatio}
       onReasonChange={setReason}
-      onVideoReferenceChoiceChange={setVideoReferenceChoice}
+      onVideoReferenceChoiceChange={videoReference.setChoice}
       onReferenceImagesInputChange={setReferenceImagesInput}
       onOperatorReviewedChange={setOperatorReviewed}
       onStoryboardModelChange={setStoryboardModel}

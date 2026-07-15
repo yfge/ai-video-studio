@@ -5,20 +5,22 @@ import type { TimelineVideoReferenceChoice } from "./TimelineClipProviderReworkM
 
 const VIDEO_REFERENCE_HINTS: Record<TimelineVideoReferenceChoice, string> = {
   start_end: "以本片段的首帧/尾帧图驱动视频生成，需先生成首尾帧。",
-  clip_storyboard_panel: "以本片段分镜 Panel 作为参考图驱动视频生成。",
+  clip_storyboard_sheet:
+    "按整张宫格故事板从左到右、从上到下的动作顺序驱动一个连续片段。",
+  clip_storyboard_panel: "旧版：只使用本片段的单个 Panel。",
   storyboard_grid_panel: "以旧版整条 Timeline 宫格分镜 Panel 作为参考图。",
   manual_refs: "仅使用上方「附加参考图 URL」中的图片作为参考。",
 };
 
 export function VideoReferenceSelect({
   value,
-  storyboardPanelIndex,
+  storyboardAvailable,
   startEndAvailable,
   manualRefsAvailable,
   onChange,
 }: {
   value: TimelineVideoReferenceChoice;
-  storyboardPanelIndex?: number | null;
+  storyboardAvailable: boolean;
   startEndAvailable: boolean;
   manualRefsAvailable: boolean;
   onChange: (value: TimelineVideoReferenceChoice) => void;
@@ -37,10 +39,10 @@ export function VideoReferenceSelect({
         <option value="start_end" disabled={!startEndAvailable}>
           {startEndAvailable ? "首尾帧" : "首尾帧（需先生成）"}
         </option>
-        <option value="clip_storyboard_panel" disabled={!storyboardPanelIndex}>
-          {storyboardPanelIndex
-            ? `分镜 Panel ${storyboardPanelIndex}`
-            : "分镜 Panel（需先生成片段分镜）"}
+        <option value="clip_storyboard_sheet" disabled={!storyboardAvailable}>
+          {storyboardAvailable
+            ? "片段宫格故事板（整张）"
+            : "片段宫格故事板（需先生成）"}
         </option>
         <option value="manual_refs" disabled={!manualRefsAvailable}>
           手动/共享参考图

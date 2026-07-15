@@ -38,9 +38,8 @@ def build_storyboard_frames_from_audio_timeline(
 ) -> list[dict[str, Any]]:
     """Build rich storyboard frames from audio timeline beats.
 
-    Unlike the simpler version in ``timeline_processor``, this version
-    includes ``characters``, ``prompt_description``, and ``scene_id``
-    per frame.
+    This is the only implementation of audio-timeline support-view frames and
+    includes ``characters``, ``prompt_description``, and ``scene_id`` per frame.
     """
     from app.services.storyboard.storyboard_audio_prompt_builder import (
         build_visual_prompt_description,
