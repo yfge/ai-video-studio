@@ -34,7 +34,7 @@ summary: Switch the canonical Production Canvas planner to the clip-storyboard v
 ## Changes
 
 - 将规范 Planner 图固定为
-  `brief.compose -> asset.select -> script.generate -> timeline.assemble -> storyboard.candidates -> video.candidates -> timeline.place -> timeline.render -> timeline.export -> report.summarize`。
+  `brief.compose -> content.plan -> asset.select -> script.generate -> timeline.assemble -> storyboard.candidates -> video.candidates -> timeline.place -> timeline.render -> timeline.export -> report.summarize`。
 - 为 `timeline.assemble` 增加 `timeline_clip` 输出，为故事板候选增加
   `approved_storyboard` 选用输出。
 - `video.candidates` 的规范 binding 改为整张故事板输入；规范边中不再出现

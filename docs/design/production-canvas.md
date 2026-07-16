@@ -1,7 +1,7 @@
 # Production Canvas Design
 
-> Status: Implemented through Phase 9; consolidated release validation remains
-> open
+> Status: Implemented through Phase 9 with the canonical clip-storyboard v2
+> flow; consolidated release validation remains open
 >
 > Last updated: 2026-07-16
 
@@ -18,7 +18,8 @@ losing production context:
    IP and Environment assets.
 2. Create or restore a production plan.
 3. Organize work by episode, scene, shot, and shared asset context.
-4. Generate and compare image, video, audio, and report outputs in place.
+4. Generate and compare clip storyboard sheets, video, audio, and report
+   outputs in place.
 5. Approve one candidate as the explicit input to downstream work.
 6. Re-run one node or the affected downstream subgraph when inputs change.
 7. Send approved shot assets to Timeline for sequencing, duration, render, and
@@ -306,12 +307,12 @@ semantics.
 Within the executable projection, the canvas continues to use four visible
 levels.
 
-| Level                 | Purpose                           | Examples                                                                               |
-| --------------------- | --------------------------------- | -------------------------------------------------------------------------------------- |
-| Project context       | Shared constraints and references | Brief, Virtual IP, characters, environments, visual style, delivery spec               |
-| Narrative             | Story organization                | Episode, scene, beat, shot group                                                       |
-| Production            | Executable creative work          | Script, storyboard support, image candidates, video candidates, audio, render          |
-| Decision and evidence | Human and runtime outcomes        | Approved candidate, rejection reason, task execution, cost, report, Timeline placement |
+| Level                 | Purpose                           | Examples                                                                                   |
+| --------------------- | --------------------------------- | ------------------------------------------------------------------------------------------ |
+| Project context       | Shared constraints and references | Brief, Virtual IP, characters, environments, visual style, delivery spec                   |
+| Narrative             | Story organization                | Episode, scene, beat, shot group                                                           |
+| Production            | Executable creative work          | Script, Timeline assembly, clip storyboard candidates, video candidates, placement, render |
+| Decision and evidence | Human and runtime outcomes        | Approved candidate, rejection reason, task execution, cost, report, Timeline placement     |
 
 Episode and scene sections provide collapsible spatial grouping. Shot-level
 production stays visible inside or adjacent to its scene. Shared character,
@@ -347,8 +348,7 @@ Primary node types:
 - Production Brief, Content Plan, and Asset Decision nodes.
 - Script, scene, beat, and shot-plan node.
 - Character, environment, style, and uploaded-media reference node.
-- Storyboard-support and keyframe node.
-- Image-candidate set and video-candidate set node.
+- Clip-scoped storyboard-candidate set and video-candidate set node.
 - Voiceover, music, and sound-effect node.
 - Timeline placement, render, export, and report node.
 - Manual note and review comment node.
@@ -363,9 +363,9 @@ Edges bind a source output port to a target input port:
 
 ```json
 {
-  "edge_id": "edge-image-42-to-video-17",
-  "from": { "node_id": "image-42", "port": "approved_image" },
-  "to": { "node_id": "video-17", "port": "start_frame" },
+  "edge_id": "edge-storyboard-42-to-video-17",
+  "from": { "node_id": "storyboard-42", "port": "approved_storyboard" },
+  "to": { "node_id": "video-17", "port": "approved_storyboard" },
   "binding_type": "selected_output",
   "required": true
 }
@@ -374,8 +374,8 @@ Edges bind a source output port to a target input port:
 Initial port types:
 
 - `text`: brief, script, prompt, shot description, motion description.
-- `image`: character reference, environment reference, storyboard panel,
-  start frame, end frame, approved image.
+- `image`: character reference, environment reference, complete clip storyboard
+  sheet, and approved legacy image inputs.
 - `video`: approved clip, source video, rendered output.
 - `audio`: dialogue, voiceover, music, sound effect.
 - `entity_ref`: Virtual IP, environment, episode, Timeline, stable clip.
@@ -430,8 +430,8 @@ or run the whole affected subgraph.
 
 ## Candidate Review
 
-Image and video generation nodes are candidate sets, not single opaque task
-cards.
+Storyboard and video generation nodes are candidate sets, not single opaque
+task cards.
 
 Each candidate records:
 
@@ -447,7 +447,9 @@ Required interactions:
 - Preview images at useful resolution and play video inline.
 - Compare candidates from the same or different executions.
 - Approve one candidate for downstream use.
-- Reject, regenerate, or branch from a candidate.
+- Reject or regenerate a candidate. Branching remains available only to legacy
+  or generic media flows; the canonical clip-storyboard flow keeps one approved
+  sheet and one approved video per stable clip lineage.
 - Browse prior generations without replacing the current approval silently.
 - Show what will become stale before changing an approved candidate.
 
@@ -456,9 +458,24 @@ Required interactions:
 The first commercial vertical slice is:
 
 ```text
-shot context -> image candidates -> approved image -> video candidates
--> approved video -> stable Timeline clip -> render/export
+brief -> content plan -> assets -> script -> Timeline assembly -> stable Timeline clip
+-> storyboard candidates -> approved storyboard sheet -> video candidates
+-> approved video -> explicit Timeline placement -> render -> export -> report
 ```
+
+The canonical `production_canvas.v2` graph is:
+
+```text
+brief.compose -> content.plan -> asset.select -> script.generate -> timeline.assemble
+-> storyboard.candidates -> video.candidates -> timeline.place
+-> timeline.render -> timeline.export -> report.summarize
+```
+
+`storyboard.candidates` is scoped by `timeline_id + timeline_version + clip_id`.
+It automatically chooses a 2, 4, 6, or 9-panel sheet from the clip duration and
+motion structure. `video.candidates` consumes the approved whole sheet with
+`reference_mode=clip_storyboard_sheet`; the v2 graph has no `start_frame` or
+`end_frame` binding. Those ports remain readable only for saved v1 runs.
 
 The Timeline placement node must:
 
@@ -556,7 +573,8 @@ must already identify who changed definitions and who approved outputs.
 
 ## Current State And Gap
 
-As of 2026-07-15, Phases 1-5 are implemented on the real `/canvas` route:
+As of 2026-07-16, the canonical clip-storyboard v2 flow is implemented on the
+real `/canvas` route:
 
 - The backend validates versioned typed ports and edges, computes readiness
   from graph dependencies, resolves bound inputs into existing skill requests,
@@ -564,12 +582,16 @@ As of 2026-07-15, Phases 1-5 are implemented on the real `/canvas` route:
 - Definition, binding, and selected-output changes increment versions and mark
   affected descendants stale. The UI shows that impact before a candidate
   switch.
-- Image and video nodes show persistent media history and previewable
+- Storyboard and video nodes show persistent media history and previewable
   candidates. Approval, rejection with an optional reason, reviewer identity,
   and review timestamps survive Run ID restoration independently from browser
   autosave.
+- New plans use stable clip-scoped 2/4/6/9-panel storyboard sheets. An approved
+  whole sheet is the selected input to video generation; new-plan bindings do
+  not use first or last frames.
 - Approved video placement targets a stable Timeline clip and expected Timeline
-  version, then returns the updated version and media lineage to the canvas.
+  version through an explicit `timeline.place` node, then returns the updated
+  version and media lineage to the canvas.
 - The planning header loads accessible IP, environment, episode, and script
   options by name. Script choices are scoped to the selected episode, so the
   operator does not copy Episode or Script IDs into the canvas workflow.
@@ -578,23 +600,18 @@ As of 2026-07-15, Phases 1-5 are implemented on the real `/canvas` route:
   node identities; placeholder and Skill nodes are never shown as two parallel
   workflows.
 - When an existing Script is selected, Script and Timeline assembly are reuse
-  checkpoints rather than automatic regeneration. Storyboard preparation may
-  run automatically, while image and video candidates remain explicit operator
-  actions gated by review.
+  checkpoints rather than automatic regeneration. Storyboard and video
+  candidates remain explicit operator actions gated by review.
 - Reusing an existing Timeline rebuilds storyboard support from its stable
   `video` clip identities without invoking the provider planning pipeline. When
   no shot plan exists, support frames map to `video` clips before considering
   dialogue clips, preserving the clip contract required by video generation.
-- The current-environment provider-backed acceptance run
+- The earlier v1 current-environment provider-backed acceptance run
   `9a4bbfdb95f846e4be216beb1b09ad88` approved image candidate `442`, generated
   and approved MiniMax video candidate `443`, and placed it into stable clip
   `video_scene_90_beat_3991_001`, advancing Timeline `69` from v5 to v6. Run ID
-  restoration preserved the review and placement state.
-- Image and video candidate execution defaults to frame `0` when the operator
-  does not select frames, so an exploratory canvas action cannot fan out across
-  the whole storyboard unexpectedly. Storyboard image workers re-check persisted
-  cancellation between expensive stages and frames, and a task cannot report
-  success unless at least one requested frame has a persisted image.
+  restoration preserved the review and placement state. This proves legacy
+  placement behavior, not the new whole-storyboard video binding.
 - Scene and episode sections, minimap navigation, search and filters,
   multi-select layout operations, duplication, undo/redo, diagnostics, retry,
   resume, and cancel are available as production recovery tools.
@@ -642,14 +659,16 @@ Status: Implemented for approval, rejection, regeneration and branching,
 restoration, stale propagation, and stable Timeline placement. Consolidated
 release validation remains open.
 
-- Render real image and video candidates inside nodes.
+- Render real storyboard and video candidates inside nodes.
 - Preserve candidate history across retries.
 - Add explicit approval and rejection transitions.
-- Bind approved image output to video start-frame input.
-- Bind approved video output to a stable Timeline clip.
+- Bind the approved whole-storyboard output to the video storyboard input.
+- Bind approved video output to a stable Timeline clip through
+  `timeline.place`.
 
-Exit criterion: an operator completes the image-to-video-to-Timeline path in the
-canvas without copying URLs or IDs.
+Exit criterion: an operator completes the
+storyboard-sheet-to-video-to-Timeline path in the canvas without copying URLs
+or IDs.
 
 ### Phase 3: Production organization and recovery
 
@@ -831,6 +850,38 @@ created assets and the hierarchy shows only the corresponding real branch.
 Ambiguous prompts remain unbound, and failed explicit-lineage validation leaves
 no newly created asset behind.
 
+### Phase 8: Constrained planner and clip-storyboard v2
+
+Status: Implemented. Deterministic browser contract validation passed;
+provider-backed full-chain validation remains open.
+
+- The constrained planner exposes the canonical eleven-skill v2 graph while saved
+  v1 runs retain their historical Skill and port contracts.
+- `timeline.assemble` emits a stable `timeline_clip`; storyboard and video
+  candidate requests retain `timeline_id`, `timeline_version`, and `clip_id`.
+- `storyboard.candidates` produces an automatically sized 2/4/6/9-panel sheet
+  and requires explicit approval.
+- `video.candidates` consumes the approved whole sheet with
+  `reference_mode=clip_storyboard_sheet`; no v2 edge maps an approved image to
+  `start_frame` or `end_frame`.
+- `timeline.place` is the only canonical operation that writes the approved
+  video into the stable clip. Render, export, and report consume the placed
+  Timeline and delivery evidence.
+- Deterministic browser evidence is stored under
+  `artifacts/runs/canvas-v2-storyboard-20260716T1320Z/`. Chrome DevTools
+  transport timed out, so the recorded engine is Playwright fallback. The run
+  predates Phase 9 and proves the ten clip-storyboard nodes then present,
+  eleven unique typed edges, zero first- or last-frame bindings, automatic
+  2/4/6/9-panel guidance, no candidate branching or direct placement shortcut,
+  an explicit `timeline.place` node, and clean page/API diagnostics. Phase 9
+  adds `content.plan` to the canonical graph. Production Canvas generation
+  endpoints were intercepted to avoid paid provider calls, so this evidence
+  does not replace the open consolidated acceptance run.
+
+Exit criterion: a fresh plan exposes the exact v2 graph, generated video
+requests reference the approved whole storyboard, and Timeline mutation occurs
+only after the explicit placement node runs.
+
 ### Cross-cutting capability: single-video quick path
 
 Status: Implemented for the project list and Production Canvas.
@@ -875,23 +926,24 @@ remains open until one current-environment browser run covers the whole path.
 The repository task board and per-change `agent_chats` entries are the source
 of truth for existing commands, Run IDs, request IDs, and browser artifacts.
 
-- A real image-generation execution creates previewable candidates on its
-  canvas node.
+- A real clip-storyboard execution creates previewable whole-sheet candidates
+  on its canvas node.
 - The operator selects the episode and optional existing script by name; changing
   the episode clears an incompatible script selection.
-- Selecting one image persists an approved asset identity and changes the image
-  node to Approved.
-- A typed `approved_image -> start_frame` edge makes the video node Ready.
-- Running downstream sends the approved image and shot context to the existing
-  video queue without copying a URL manually.
+- Selecting one storyboard persists an approved asset identity and changes the
+  storyboard node to Approved.
+- A typed `approved_storyboard -> approved_storyboard` edge makes the video node
+  Ready; no v2 `start_frame` or `end_frame` binding exists.
+- Running downstream sends the approved whole storyboard and clip context to
+  the existing video queue without copying a URL manually.
 - Task progress, failure, retry, and resulting video are visible on the same
   video node.
-- Selecting one video persists approval and exposes an explicit Add to Timeline
-  command.
+- Selecting one video persists approval and readies the explicit
+  `timeline.place` node; the candidate card does not bypass it.
 - Timeline placement writes against a stable `clip_id` and current Timeline
   version, then returns the new version and asset lineage to the canvas.
-- Changing the approved image marks the video and Timeline placement stale and
-  never silently overwrites the current Timeline asset.
+- Changing the approved storyboard marks the video and Timeline placement stale
+  and never silently overwrites the current Timeline asset.
 - Saving, reloading, and opening a shared Run ID restores graph definition,
   approval state, execution evidence, and Timeline binding consistently.
 - Real-browser evidence covers the complete path with console, network, task,
