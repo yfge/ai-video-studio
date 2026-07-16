@@ -100,7 +100,7 @@ export function TimelineRenderPanel({
   }
 
   return (
-    <div data-timeline-render-panel="expanded" className="px-2.5 py-1.5">
+    <div data-timeline-render-panel="expanded" className="p-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <TimelineRenderStatusHeader
           readiness={readiness}
@@ -139,15 +139,15 @@ export function TimelineRenderPanel({
       ) : null}
 
       {outputUrl && latestJob?.status === "succeeded" ? (
-        <div className="mt-3 grid gap-3 rounded-md border border-green-200 bg-green-50 p-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        <div className="mt-3 grid gap-4 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 lg:grid-cols-[minmax(20rem,32rem)_minmax(14rem,1fr)] lg:items-center">
           <video
             aria-label="播放渲染成片"
-            className="w-full rounded-md border border-green-200 bg-black"
+            className="aspect-video max-h-56 w-full rounded-lg border border-emerald-200 bg-black object-contain"
             controls
             preload="none"
             src={outputUrl}
           />
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 lg:flex-col lg:items-start">
             <span className="text-xs font-medium text-green-800">
               {renderTypeLabel(latestJob.render_type)}已就绪
             </span>

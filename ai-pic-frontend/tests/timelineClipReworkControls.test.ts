@@ -261,7 +261,7 @@ describe("timeline clip rework controls", () => {
     assert.ok(utils.getByText("留空则使用 Timeline 镜头运动规划"));
   });
 
-  it("shows shared references as a visible clip production context", async () => {
+  it("keeps shared references available in a collapsed production context", async () => {
     const utils = render(
       React.createElement(TimelineClipProviderReworkControls, {
         timelineId: 8,
@@ -285,12 +285,18 @@ describe("timeline clip rework controls", () => {
     );
 
     await waitFor(() => assert.ok(utils.getByLabelText("片段共享参考上下文")));
-    const sharedContext = utils.getByLabelText("片段共享参考上下文");
+    const sharedContext = utils.getByLabelText(
+      "片段共享参考上下文",
+    ) as HTMLDetailsElement;
     assert.equal(sharedContext.closest("[data-clip-parameter-details]"), null);
-    assert.ok(within(sharedContext).getByText("会用于分镜、首尾帧和视频任务"));
-    assert.ok(within(sharedContext).getByText("角色 IP：快递员"));
-    assert.ok(within(sharedContext).getByText("IP 图：1 张"));
-    assert.ok(within(sharedContext).getByText("环境图：1 张"));
+    assert.equal(sharedContext.tagName, "DETAILS");
+    assert.equal(sharedContext.open, false);
+    assert.ok(within(sharedContext).getByText("共享参考"));
+    assert.ok(within(sharedContext).getByText("快递员"));
+    assert.ok(within(sharedContext).getByText(/IP 图 1 · 环境图 1/));
+    assert.ok(
+      within(sharedContext).getByText("会用于分镜、首尾帧和视频任务。"),
+    );
   });
 
   it("uses the full storyboard sheet when keyframes are missing", async () => {

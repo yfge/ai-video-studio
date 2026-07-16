@@ -22,7 +22,6 @@ export function StoryboardReferenceCard({
   storyboardModel,
   storyboardStyle,
   storyboardPanelCount,
-  storyboardSheetUrl,
   episodeCharacters,
   episodeCharactersLoading,
   episodeCharactersError,
@@ -44,7 +43,6 @@ export function StoryboardReferenceCard({
   storyboardModel: string;
   storyboardStyle: TimelineClipStoryboardStyle;
   storyboardPanelCount: string;
-  storyboardSheetUrl?: string | null;
   episodeCharacters: EpisodeCharacter[];
   episodeCharactersLoading: boolean;
   episodeCharactersError: string | null;
@@ -67,7 +65,7 @@ export function StoryboardReferenceCard({
     <ClipProductionActionShell kind="storyboard" step="1" title="片段分镜图">
       <div
         data-clip-action-group="storyboard"
-        className="inline-flex w-full min-w-0 items-center gap-0 min-[720px]:w-auto"
+        className="inline-flex w-full min-w-0 items-center gap-0"
       >
         <button
           type="button"
@@ -75,7 +73,7 @@ export function StoryboardReferenceCard({
           disabled={!canGenerateStoryboard}
           className={operatorButtonClass(
             "secondary",
-            "!h-8 min-w-0 flex-1 gap-1.5 whitespace-nowrap rounded-l-md rounded-r-none border border-slate-200 bg-white px-2.5 text-slate-700 shadow-none hover:bg-slate-50 min-[720px]:min-w-[9.5rem]",
+            "!h-8 min-w-0 flex-1 gap-1.5 whitespace-nowrap rounded-l-md rounded-r-none border border-slate-200 bg-white px-2.5 text-slate-700 shadow-none hover:bg-slate-50",
           )}
           onClick={onGenerateStoryboard}
           title="生成片段分镜图"
@@ -134,71 +132,72 @@ export function StoryboardReferenceCard({
           </div>
         </CompactProductionDetails>
       </div>
-      <div
+      <details
         data-clip-reference-controls="storyboard"
-        className="mt-2 grid min-w-0 gap-2 rounded-md border border-slate-200 bg-white p-2"
+        className="group mt-2 min-w-0 overflow-hidden rounded-md border border-slate-200 bg-slate-50/70"
       >
-        <StoryboardCharacterIpSelector
-          characters={episodeCharacters}
-          loading={episodeCharactersLoading}
-          error={episodeCharactersError}
-          onNavigateToCharacters={onNavigateToCharacters}
-          selectedVirtualIpIds={selectedCharacterVirtualIpIds}
-          onToggle={onCharacterVirtualIpToggle}
-        />
-        <StoryboardReferenceImageSelectors
-          episodeCharacters={episodeCharacters}
-          characterImageOptions={
-            storyboardReferenceSelection.characterImageOptions
-          }
-          environmentImageOptions={
-            storyboardReferenceSelection.environmentImageOptions
-          }
-          selectedVirtualIpIds={selectedCharacterVirtualIpIds}
-          selectedCharacterUrls={
-            storyboardReferenceSelection.selectedStoryboardCharacterReferenceImages
-          }
-          selectedEnvironmentUrls={
-            storyboardReferenceSelection.selectedStoryboardEnvironmentReferenceImages
-          }
-          characterImagesLoading={
-            storyboardReferenceSelection.characterImagesLoading
-          }
-          characterImagesError={
-            storyboardReferenceSelection.characterImagesError
-          }
-          onCharacterImagesReplace={
-            storyboardReferenceSelection.handleStoryboardCharacterReferenceImagesReplace
-          }
-          onEnvironmentImagesReplace={
-            storyboardReferenceSelection.handleStoryboardEnvironmentReferenceImagesReplace
-          }
-        />
-      </div>
+        <summary className="flex cursor-pointer list-none items-center gap-2 px-2.5 py-2 text-[11px] marker:hidden [&::-webkit-details-marker]:hidden">
+          <span className="font-semibold text-slate-700">角色与参考图</span>
+          <span className="min-w-0 flex-1 truncate text-slate-500">
+            角色 {selectedCharacterVirtualIpIds.length} · IP 图{" "}
+            {
+              storyboardReferenceSelection
+                .selectedStoryboardCharacterReferenceImages.length
+            }{" "}
+            · 环境图{" "}
+            {
+              storyboardReferenceSelection
+                .selectedStoryboardEnvironmentReferenceImages.length
+            }
+          </span>
+          <span className="text-slate-400 transition group-open:rotate-180">
+            ▾
+          </span>
+        </summary>
+        <div className="grid gap-2 border-t border-slate-200 bg-white p-2">
+          <StoryboardCharacterIpSelector
+            characters={episodeCharacters}
+            loading={episodeCharactersLoading}
+            error={episodeCharactersError}
+            onNavigateToCharacters={onNavigateToCharacters}
+            selectedVirtualIpIds={selectedCharacterVirtualIpIds}
+            onToggle={onCharacterVirtualIpToggle}
+          />
+          <StoryboardReferenceImageSelectors
+            episodeCharacters={episodeCharacters}
+            characterImageOptions={
+              storyboardReferenceSelection.characterImageOptions
+            }
+            environmentImageOptions={
+              storyboardReferenceSelection.environmentImageOptions
+            }
+            selectedVirtualIpIds={selectedCharacterVirtualIpIds}
+            selectedCharacterUrls={
+              storyboardReferenceSelection.selectedStoryboardCharacterReferenceImages
+            }
+            selectedEnvironmentUrls={
+              storyboardReferenceSelection.selectedStoryboardEnvironmentReferenceImages
+            }
+            characterImagesLoading={
+              storyboardReferenceSelection.characterImagesLoading
+            }
+            characterImagesError={
+              storyboardReferenceSelection.characterImagesError
+            }
+            onCharacterImagesReplace={
+              storyboardReferenceSelection.handleStoryboardCharacterReferenceImagesReplace
+            }
+            onEnvironmentImagesReplace={
+              storyboardReferenceSelection.handleStoryboardEnvironmentReferenceImagesReplace
+            }
+          />
+        </div>
+      </details>
       <TimelineClipTaskStatusLine
         kind="storyboard"
         task={storyboardTask}
         currentClipId={currentClipId ?? null}
       />
-      {storyboardSheetUrl ? (
-        <a
-          href={storyboardSheetUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-3 block overflow-hidden rounded-md border border-gray-200 bg-gray-50"
-          title="点击查看大图"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={storyboardSheetUrl}
-            alt="片段分镜图预览"
-            className="max-h-72 w-full object-contain"
-          />
-          <div className="border-t border-gray-200 px-2 py-1 text-center text-[11px] text-gray-500">
-            点击查看大图
-          </div>
-        </a>
-      ) : null}
     </ClipProductionActionShell>
   );
 }

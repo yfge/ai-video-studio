@@ -25,7 +25,7 @@ export function TimelineClipKeyframeCard({
     <ClipProductionActionShell kind="keyframes" step="2" title="首尾帧">
       <div
         data-clip-action-group="keyframes"
-        className="inline-flex w-full min-w-0 items-center min-[720px]:w-auto"
+        className="inline-flex w-full min-w-0 items-center"
       >
         <button
           type="button"
@@ -33,7 +33,7 @@ export function TimelineClipKeyframeCard({
           disabled={!canGenerate}
           className={operatorButtonClass(
             "secondary",
-            "!h-8 w-full min-w-0 gap-1.5 whitespace-nowrap rounded-md border border-slate-200 bg-white px-2.5 text-slate-700 shadow-none hover:bg-slate-50 min-[720px]:min-w-[8.5rem]",
+            "!h-8 w-full min-w-0 gap-1.5 whitespace-nowrap rounded-md border border-slate-200 bg-white px-2.5 text-slate-700 shadow-none hover:bg-slate-50",
           )}
           onClick={onGenerate}
         >

@@ -13,28 +13,60 @@ tags:
   - storyboard
   - browser-validation
 related_paths:
+  - ai-pic-frontend/src/components/features/Timeline/Timeline.tsx
+  - ai-pic-frontend/src/components/features/Timeline/TimelineOverview.tsx
+  - ai-pic-frontend/src/components/features/Timeline/TimelineToolbar.tsx
+  - ai-pic-frontend/src/components/features/episode/ClipProductionActionShell.tsx
+  - ai-pic-frontend/src/components/features/episode/EpisodeTimelineCanvasPanel.tsx
+  - ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipAssetStage.tsx
+  - ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionPanel.tsx
+  - ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipProductionSections.tsx
+  - ai-pic-frontend/src/components/features/episode/EpisodeTimelineClipSupportPanel.tsx
+  - ai-pic-frontend/src/components/features/episode/EpisodeTimelineMainPanel.tsx
+  - ai-pic-frontend/src/components/features/episode/EpisodeTimelineRenderPanel.tsx
   - ai-pic-frontend/src/components/features/episode/EpisodeTimelineWorkspaceModel.ts
+  - ai-pic-frontend/src/components/features/episode/TimelineClipKeyframeCard.tsx
+  - ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkCards.tsx
+  - ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkControls.tsx
   - ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkModel.ts
+  - ai-pic-frontend/src/components/features/episode/TimelineClipSharedReferenceContext.tsx
+  - ai-pic-frontend/src/components/features/episode/TimelineClipStoryboardReferenceCard.tsx
+  - ai-pic-frontend/src/components/features/episode/TimelineClipVideoReworkCard.tsx
   - ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardClipManagementStatus.ts
+  - ai-pic-frontend/tests/timelineClipReworkControls.test.ts
   - ai-pic-frontend/tests/timelineWorkspaceHelpers.test.ts
-summary: Restore the selected Timeline clip storyboard preview from its matching persisted storyboard frame.
+  - ai-pic-frontend/tests/timelineWorkspaceLayout.test.tsx
+summary: Restore the selected storyboard preview and redesign the Timeline workspace around the time axis and media assets.
 ---
 
 ## User Prompt
 
 `http://localhost:8090/episodes/49/workspace?tab=timeline&scriptId=30&clipId=video_scene_90_beat_3991_001 没看到分镜图`
 
+`这个页面太 TMD 丑了，简直不是给人看的`
+
+`整体进行优化，以时间轴和资产为核心 整体重新设计`
+
 ## Goals
 
 - Reproduce the missing storyboard image on the exact episode Timeline route.
 - Verify whether the image is absent from persisted data or only missing from the selected-clip UI.
 - Restore the preview without changing Timeline identity, timing, or generated media.
+- Rebuild the page hierarchy around the full-episode time axis and selected-clip assets.
+- Keep advanced references, bindings, asset audit, and secondary navigation available without letting them dominate the page.
 
 ## Changes
 
 - Enriched native Timeline video items with the persisted storyboard frame that has the same stable `timeline_clip_id`, reusing the existing storyboard-frame matcher.
 - Allowed the selected-clip storyboard preview to use the frame's direct `image_url`, `start_image_url`, or `end_image_url` when a clip storyboard sheet reference is absent.
 - Added a focused regression test proving a v39 Timeline clip can reuse its matching persisted storyboard frame image.
+- Reworked the page into three deliberate layers: full-episode Timeline, selected-clip asset workbench, and compact episode output asset.
+- Added a dark selected-clip asset stage with tabs for storyboard, clip video, start frame, and end frame; the storyboard is the default visible asset when available.
+- Moved storyboard preview out of the generation action card, removed the detached clip-video preview, and made asset history visible as a compact count.
+- Rebuilt storyboard, keyframe, and video generation as equal production cards with visible step labels.
+- Collapsed shared references, character/environment image controls, video bindings, asset audit, and secondary navigation by default.
+- Simplified the Timeline frame and toolbar styling, and reduced the completed episode render player to a bounded output card.
+- Updated layout and behavior tests to encode the new asset-centered information hierarchy.
 
 ## Validation
 
@@ -75,7 +107,29 @@ summary: Restore the selected Timeline clip storyboard preview from its matching
 - Image source: `https://resource.lets-gpt.com/ai-generated/storyboard/image/20260715/054137/89aafbd2.png`.
 - Loaded image size: `941x1672`.
 - Evidence: `ai-pic-frontend/artifacts/runs/episode49-storyboard-missing-20260716T1930Z/after.png` and `after.json`.
-- `npm run build` was omitted because this change does not touch routes, layouts, auth, config, SSR, or hydration-sensitive boundaries; lint, full behavior tests, contracts, and the real browser path cover the changed surface.
+
+5. Asset-centered redesign browser validation:
+
+- Entry URL: `http://localhost:8090/episodes/49/workspace?tab=timeline&scriptId=30&clipId=video_scene_90_beat_3991_001`
+- Preferred Chrome DevTools attempt failed because the local `9222` endpoint did not become available; validation explicitly used Playwright with system Chrome fallback.
+- The page loaded the exact deep link and displayed the full Timeline first, followed by `选中片段资产`, asset tabs, and the three production cards.
+- The storyboard asset loaded from `https://resource.lets-gpt.com/ai-generated/storyboard/image/20260715/054137/89aafbd2.png` with HTTP `200`.
+- Timeline, render jobs, current-version clip assets, resolved videos, models, environments, and character requests returned `200`.
+- Console contained the same unrelated missing local upload `404`; no new application error appeared.
+- Draft evidence: `ai-pic-frontend/artifacts/runs/episode49-timeline-assets-redesign-20260716T2045Z/draft.png`.
+- Final evidence: `ai-pic-frontend/artifacts/runs/episode49-timeline-assets-redesign-20260716T2045Z/final.png`.
+- Interaction evidence: switching from the default storyboard asset to `片段视频` loaded `https://resource.lets-gpt.com/ai-generated/videos/video/20260711/201156/7daef6a9.mp4`, then switching back restored the storyboard preview.
+- Interaction artifacts: `ai-pic-frontend/artifacts/runs/episode49-timeline-assets-redesign-20260716T2045Z/video-tab.png` and `interaction.json`.
+
+6. Redesign-focused checks:
+
+- `cd ai-pic-frontend && npx tsx --test tests/timelineWorkspaceLayout.test.tsx tests/timelineClipReworkControls.test.ts tests/timelineWorkspaceHelpers.test.ts` -> passed (`88` tests).
+- `cd ai-pic-frontend && npm run lint` -> passed with zero errors and three pre-existing warnings.
+- `cd ai-pic-frontend && npm run test` -> passed (`427` tests across `95` suites).
+- `cd ai-pic-frontend && npm run build` -> passed, including TypeScript, static page generation, and the dynamic episode workspace route.
+- `python scripts/check_repo_docs.py` -> passed.
+- `python scripts/check_repo_contracts.py --mode diff <changed frontend files>` -> passed.
+- `git diff --check` -> passed.
 - The final combined commit gate also built the local production frontend and backend Dockerfiles successfully through BuildKit with `--pull=false`; no image was pushed.
 
 ## Next Steps

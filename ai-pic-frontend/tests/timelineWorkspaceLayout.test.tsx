@@ -509,10 +509,9 @@ describe("EpisodeTimelineWorkspace layout", () => {
       "workspace-timeline",
     );
     assert.match(toolbar.className, /grid-cols-\[minmax\(0,1fr\)_auto\]/);
-    assert.match(toolbar.className, /py-1/);
-    assert.match(toolbar.className, /py-2/);
+    assert.match(toolbar.className, /py-2\.5/);
     assert.match(toolbar.className, /border-slate-200/);
-    assert.match(toolbar.className, /bg-slate-50\/80/);
+    assert.match(toolbar.className, /\bbg-white\b/);
     assert.doesNotMatch(toolbar.className, /border-b-2/);
     assert.doesNotMatch(toolbar.className, /bg-blue-50\/70/);
     assert.doesNotMatch(toolbar.className, /flex-wrap/);
@@ -560,13 +559,10 @@ describe("EpisodeTimelineWorkspace layout", () => {
       ),
       null,
     );
-    assert.doesNotMatch(timelineIdentityBadge.className, /bg-slate-950/);
-    assert.match(timelineIdentityBadge.className, /bg-white/);
-    assert.match(timelineIdentityBadge.className, /border-blue-200/);
-    assert.match(timelineIdentityBadge.className, /text-blue-900/);
-    assert.match(timelineIdentityBadge.className, /inset_3px_0_0/);
-    assert.doesNotMatch(timelineIdentityBadge.className, /bg-blue-700/);
-    assert.doesNotMatch(timelineIdentityBadge.className, /text-white/);
+    assert.match(timelineIdentityBadge.className, /text-slate-950/);
+    assert.doesNotMatch(timelineIdentityBadge.className, /\bborder\b/);
+    assert.doesNotMatch(timelineIdentityBadge.className, /\bbg-white\b/);
+    assert.doesNotMatch(timelineIdentityBadge.className, /inset_3px_0_0/);
     assert.equal(
       moduleLabel?.querySelector('[data-timeline-header-title-text="visible"]')
         ?.textContent,
@@ -580,13 +576,9 @@ describe("EpisodeTimelineWorkspace layout", () => {
       moduleLabel?.getAttribute("data-timeline-module-label-style"),
       "editor-axis-title",
     );
-    assert.match(moduleLabel?.className || "", /rounded-md/);
-    assert.match(moduleLabel?.className || "", /border-blue-200/);
-    assert.match(moduleLabel?.className || "", /bg-white/);
-    assert.match(moduleLabel?.className || "", /text-blue-900/);
-    assert.doesNotMatch(moduleLabel?.className || "", /bg-blue-700/);
-    assert.doesNotMatch(moduleLabel?.className || "", /text-white/);
-    assert.doesNotMatch(moduleLabel?.className || "", /bg-slate-900/);
+    assert.match(moduleLabel?.className || "", /text-slate-950/);
+    assert.doesNotMatch(moduleLabel?.className || "", /\bborder\b/);
+    assert.doesNotMatch(moduleLabel?.className || "", /rounded-md/);
     assert.ok(utils.getByRole("heading", { name: "全片时间轴" }));
     assert.equal(
       `${visibleTimelineTitle.textContent}${visibleTimelineKind.textContent}`,
@@ -612,7 +604,8 @@ describe("EpisodeTimelineWorkspace layout", () => {
     assert.ok(timelineWindowSummary);
     assert.match(timelineWindowSummary.textContent || "", /1 段/);
     assert.match(timelineWindowSummary.textContent || "", /00:01/);
-    assert.match(timelineWindowSummary.className, /bg-white/);
+    assert.match(timelineWindowSummary.className, /bg-blue-50/);
+    assert.match(timelineWindowSummary.className, /text-blue-700/);
     assert.match(timelineWindowSummary.className, /font-bold/);
     const toolbarControls = dom.window.document.querySelector(
       '[data-timeline-toolbar-controls="compact"]',
@@ -806,27 +799,17 @@ describe("EpisodeTimelineWorkspace layout", () => {
     assert.ok(renderStrip);
     assert.equal(
       renderStrip.getAttribute("data-episode-render-strip-surface"),
-      "inline-workflow-footer",
+      "episode-output-asset",
     );
     assert.equal(
       renderStrip.getAttribute("data-episode-render-strip-style"),
-      "selected-clip-footer-dock",
+      "asset-footer",
     );
-    assert.match(renderStrip.className, /border-t/);
-    assert.match(renderStrip.className, /bg-slate-50\/70/);
-    assert.doesNotMatch(renderStrip.className, /mx-3/);
-    assert.doesNotMatch(renderStrip.className, /rounded-b-md/);
-    assert.doesNotMatch(renderStrip.className, /rounded-lg/);
+    assert.match(renderStrip.className, /overflow-hidden/);
+    assert.match(renderStrip.className, /rounded-xl/);
     assert.match(renderStrip.className, /border-slate-200/);
-    assert.doesNotMatch(renderStrip.className, /border-t-0/);
-    assert.doesNotMatch(renderStrip.className, /bg-slate-50\/60/);
-    assert.doesNotMatch(renderStrip.className, /bg-transparent/);
-    assert.doesNotMatch(renderStrip.className, /bg-white\/70/);
-    assert.doesNotMatch(renderStrip.className, /\bbg-white\b/);
-    assert.doesNotMatch(renderStrip.className, /border-y/);
-    assert.doesNotMatch(renderStrip.className, /shadow-sm/);
-    assert.match(renderStrip.className, /shadow-none/);
-    assert.doesNotMatch(renderStrip.className, /bg-amber/);
+    assert.match(renderStrip.className, /\bbg-white\b/);
+    assert.match(renderStrip.className, /shadow-\[0_8px_24px/);
     assert.equal(utils.queryByRole("button", { name: "渲染预览" }), null);
     assert.equal(utils.queryByRole("button", { name: "导出成片" }), null);
 
@@ -1388,10 +1371,9 @@ describe("EpisodeTimelineWorkspace layout", () => {
         "anchor",
       );
       assert.match(timelineCanvasPanel.className, /scroll-mt-16/);
-      assert.match(timelineCanvasPanel.className, /rounded-xl/);
-      assert.match(timelineCanvasPanel.className, /bg-blue-50\/35/);
-      assert.match(timelineCanvasPanel.className, /p-1/);
-      assert.match(timelineCanvasPanel.className, /inset_0_0_0_1px/);
+      assert.match(timelineCanvasPanel.className, /space-y-2/);
+      assert.doesNotMatch(timelineCanvasPanel.className, /bg-blue-50/);
+      assert.doesNotMatch(timelineCanvasPanel.className, /inset_0_0_0_1px/);
       const workspaceShell = dom.window.document
         .querySelector("[data-timeline-canvas]")
         ?.closest(".grid");
@@ -1437,27 +1419,16 @@ describe("EpisodeTimelineWorkspace layout", () => {
         timelineCanvas.getAttribute("data-timeline-fit-to-width"),
         "true",
       );
-      assert.match(timelineCanvas.className, /rounded-lg/);
+      assert.match(timelineCanvas.className, /rounded-xl/);
       assert.equal(
         timelineCanvas.getAttribute("aria-label"),
         "时间轴导航：片段时间轴定位区",
       );
       assert.match(timelineCanvas.className, /\bborder\b/);
-      assert.match(timelineCanvas.className, /border-slate-300/);
-      assert.match(timelineCanvas.className, /border-l-8/);
-      assert.match(timelineCanvas.className, /border-l-blue-600/);
-      assert.match(timelineCanvas.className, /shadow-md/);
-      assert.match(timelineCanvas.className, /shadow-blue-100\/80/);
-      assert.match(timelineCanvas.className, /ring-1/);
-      assert.match(timelineCanvas.className, /ring-blue-100\/80/);
-      assert.doesNotMatch(timelineCanvas.className, /border-blue-100/);
-      assert.doesNotMatch(timelineCanvas.className, /border-l-2/);
-      assert.doesNotMatch(timelineCanvas.className, /border-l-4/);
-      assert.doesNotMatch(timelineCanvas.className, /border-l-blue-500\/70/);
-      assert.doesNotMatch(timelineCanvas.className, /shadow-\[0_8px_18px/);
-      assert.doesNotMatch(timelineCanvas.className, /border-2/);
-      assert.doesNotMatch(timelineCanvas.className, /ring-2/);
-      assert.doesNotMatch(timelineCanvas.className, /shadow-none/);
+      assert.match(timelineCanvas.className, /border-slate-200/);
+      assert.match(timelineCanvas.className, /shadow-\[0_10px_28px/);
+      assert.doesNotMatch(timelineCanvas.className, /border-l-8/);
+      assert.doesNotMatch(timelineCanvas.className, /\bring-/);
       assert.equal(
         overview.getAttribute("data-timeline-overview-layout"),
         "visible-overview-axis",
@@ -1475,14 +1446,14 @@ describe("EpisodeTimelineWorkspace layout", () => {
         "full-episode-context-rail",
       );
       assert.match(overview.className, /border-slate-200/);
-      assert.match(overview.className, /bg-slate-50\/80/);
+      assert.match(overview.className, /bg-slate-50\/70/);
       assert.doesNotMatch(overview.className, /border-blue-200/);
       assert.doesNotMatch(overview.className, /bg-blue-50/);
       assert.ok(overviewRail);
       assert.match(overviewRail.className, /h-8/);
-      assert.match(overviewRail.className, /border-slate-300/);
+      assert.match(overviewRail.className, /border-slate-200/);
       assert.match(overviewRail.className, /bg-white/);
-      assert.match(overviewRail.className, /shadow-slate-200\/80/);
+      assert.doesNotMatch(overviewRail.className, /shadow-inner/);
       assert.doesNotMatch(overviewRail.className, /border-blue-300/);
       assert.doesNotMatch(overviewRail.className, /shadow-blue-100/);
       assert.match(
@@ -1733,7 +1704,7 @@ describe("EpisodeTimelineWorkspace layout", () => {
       );
     }
     const mainLayout = dom.window.document.querySelector(
-      '[data-episode-timeline-main-layout="timeline-first-with-production"]',
+      '[data-episode-timeline-main-layout="timeline-and-assets"]',
     );
     assert.ok(mainLayout);
     const mainChildren = Array.from(mainLayout.children) as HTMLElement[];
@@ -1920,17 +1891,15 @@ describe("EpisodeTimelineWorkspace layout", () => {
         ),
       );
       assert.ok(
-        overviewItems.some((item) => item.className.includes("bg-teal-50/80")),
+        overviewItems.some((item) => item.className.includes("bg-slate-100")),
       );
       assert.ok(
         overviewItems.some((item) =>
-          item.className.includes("border-teal-200/80"),
+          item.className.includes("border-slate-200"),
         ),
       );
       assert.equal(
-        overviewItems.some((item) =>
-          item.className.includes("bg-slate-200/80"),
-        ),
+        overviewItems.some((item) => item.className.includes("bg-teal-50/80")),
         false,
       );
       assert.ok(
@@ -2133,27 +2102,21 @@ describe("EpisodeTimelineWorkspace layout", () => {
     );
     assert.equal(
       productionPanel.getAttribute("data-clip-production-surface-style"),
-      "selected-clip-dock",
+      "asset-workbench",
     );
     assert.equal(
       commandRail.getAttribute("data-clip-command-layout"),
-      "compact-video-primary",
+      "balanced-production-grid",
     );
-    assert.match(productionPanel.className, /border-t/);
-    assert.doesNotMatch(productionPanel.className, /border-l-2/);
-    assert.doesNotMatch(productionPanel.className, /border-teal/);
+    assert.match(productionPanel.className, /rounded-xl/);
     assert.match(productionPanel.className, /border-slate-200/);
-    assert.match(productionPanel.className, /bg-slate-50\/70/);
-    assert.match(productionPanel.className, /shadow-none/);
-    assert.doesNotMatch(productionPanel.className, /border-y/);
-    assert.doesNotMatch(productionPanel.className, /bg-slate-50\/80/);
-    assert.doesNotMatch(productionPanel.className, /\bbg-white\b/);
-    assert.doesNotMatch(productionPanel.className, /shadow-\[/);
+    assert.match(productionPanel.className, /\bbg-white\b/);
+    assert.match(productionPanel.className, /shadow-\[0_8px_24px/);
     const productionPanelInner =
       productionPanel.firstElementChild as HTMLElement | null;
     assert.ok(productionPanelInner);
-    assert.match(productionPanelInner.className, /py-1\.5/);
-    assert.doesNotMatch(productionPanelInner.className, /space-y-1/);
+    assert.match(productionPanelInner.className, /overflow-hidden/);
+    assert.match(productionPanelInner.className, /rounded-xl/);
     const currentBar = dom.window.document.querySelector(
       '[data-clip-current-bar="identity"]',
     ) as HTMLElement | null;
@@ -2164,29 +2127,16 @@ describe("EpisodeTimelineWorkspace layout", () => {
     assert.match(productionTopRow.className, /grid/);
     assert.equal(
       productionTopRow.getAttribute("data-clip-production-top-row-layout"),
-      "selected-clip-production-dock",
+      "clip-summary-and-support",
     );
-    assert.match(productionTopRow.className, /px-0/);
-    assert.match(productionTopRow.className, /py-0/);
+    assert.match(productionTopRow.className, /px-3/);
+    assert.match(productionTopRow.className, /py-2\.5/);
     assert.match(productionTopRow.className, /1040px/);
     assert.match(
       productionTopRow.className,
-      /minmax\(14rem,18rem\)_minmax\(30rem,max-content\)_minmax\(10rem,1fr\)/,
+      /minmax\(16rem,20rem\)_minmax\(0,1fr\)/,
     );
-    assert.match(productionTopRow.className, /gap-x-2/);
-    assert.match(productionTopRow.className, /gap-y-1/);
-    assert.doesNotMatch(productionTopRow.className, /minmax\(12rem,16rem\)/);
-    assert.doesNotMatch(productionTopRow.className, /minmax\(18rem,28rem\)/);
-    assert.doesNotMatch(productionTopRow.className, /minmax\(14rem,20rem\)/);
-    assert.doesNotMatch(productionTopRow.className, /0\.72fr/);
-    assert.doesNotMatch(productionTopRow.className, /1\.28fr/);
-    assert.doesNotMatch(productionTopRow.className, /rounded-md/);
-    assert.doesNotMatch(productionTopRow.className, /border-slate-200/);
-    assert.doesNotMatch(productionTopRow.className, /bg-white\/95/);
-    assert.doesNotMatch(productionTopRow.className, /px-1\.5/);
-    assert.doesNotMatch(productionTopRow.className, /py-1/);
-    assert.doesNotMatch(productionTopRow.className, /shadow-\[0_1px_2px/);
-    assert.doesNotMatch(productionTopRow.className, /shadow-\[inset_0_1px_0/);
+    assert.match(productionTopRow.className, /\bgap-3\b/);
     assert.ok(currentBar);
     assert.equal(
       currentBar.getAttribute("data-clip-current-bar-layout"),
@@ -2211,51 +2161,60 @@ describe("EpisodeTimelineWorkspace layout", () => {
     assert.ok(inlineSupportPanel);
     assert.equal(inlineSupportPanel.parentElement, productionTopRow);
     assert.match(inlineSupportPanel.className, /min-w-0/);
-    assert.doesNotMatch(commandRail.className, /border-b/);
+    const productionWorkbench = dom.window.document.querySelector(
+      '[data-clip-production-workbench="generation"]',
+    ) as HTMLElement | null;
+    assert.ok(productionWorkbench);
+    assert.equal(commandRail.parentElement?.parentElement, productionWorkbench);
+    assert.equal(productionWorkbench.previousElementSibling, productionTopRow);
+    assert.match(productionWorkbench.className, /\bgrid\b/);
+    assert.match(productionWorkbench.className, /bg-slate-50\/70/);
+    assert.match(productionWorkbench.className, /\bp-3\b/);
+    assert.match(productionWorkbench.className, /1280px/);
+    assert.match(
+      productionWorkbench.className,
+      /minmax\(18rem,0\.72fr\)_minmax\(0,1\.6fr\)/,
+    );
+    const assetStage = productionWorkbench.querySelector(
+      '[data-clip-asset-stage="selected"]',
+    ) as HTMLElement | null;
+    assert.ok(assetStage);
+    assert.match(assetStage.className, /bg-slate-950/);
+    assert.ok(assetStage.textContent?.includes("选中片段资产"));
+    assert.ok(
+      assetStage.querySelector('[data-clip-asset-preview="storyboard"]'),
+    );
+    assert.equal(
+      utils
+        .getByRole("button", { name: "查看片段资产 首帧" })
+        .hasAttribute("disabled"),
+      true,
+    );
     const commandSurface = commandRail.querySelector(
       '[data-clip-command-surface="action-tray"]',
     );
     assert.ok(commandSurface);
     assert.equal(
       commandSurface.getAttribute("data-clip-command-surface-style"),
-      "flat-action-cluster",
+      "production-cards",
     );
     assert.equal(
       commandSurface.getAttribute("data-clip-command-density"),
       "readable",
     );
-    assert.doesNotMatch(commandSurface.className, /overflow-hidden/);
-    assert.match(commandSurface.className, /min-\[720px\]:rounded-md/);
-    assert.match(commandSurface.className, /min-\[720px\]:border/);
-    assert.match(commandSurface.className, /min-\[720px\]:border-slate-200/);
-    assert.doesNotMatch(commandSurface.className, /bg-slate-50\/80/);
     assert.match(commandSurface.className, /bg-transparent/);
     assert.match(commandSurface.className, /p-0/);
     assert.match(commandSurface.className, /shadow-none/);
-    assert.match(commandSurface.className, /min-\[720px\]:bg-white/);
-    assert.match(commandSurface.className, /min-\[720px\]:p-0\.5/);
-    assert.match(commandSurface.className, /min-\[720px\]:shadow-\[0_1px_2px/);
-    assert.match(commandSurface.className, /720px/);
-    assert.doesNotMatch(commandSurface.className, /rounded-lg/);
-    assert.doesNotMatch(commandSurface.className, /p-px/);
-    assert.doesNotMatch(commandSurface.className, /shadow-sm/);
     const commandGrid = commandSurface.firstElementChild as HTMLElement | null;
     assert.ok(commandGrid);
+    assert.match(commandGrid.className, /grid-cols-1/);
     assert.match(commandGrid.className, /grid-cols-2/);
-    assert.match(commandGrid.className, /max-content_max-content/);
-    assert.match(commandGrid.className, /minmax\(15rem,17rem\)/);
-    assert.match(commandGrid.className, /justify-start/);
-    assert.match(commandGrid.className, /gap-1/);
-    assert.match(commandGrid.className, /min-\[720px\]:gap-0\.5/);
-    assert.doesNotMatch(commandGrid.className, /divide-x/);
-    assert.doesNotMatch(commandGrid.className, /divide-slate-200/);
-    assert.doesNotMatch(commandGrid.className, /justify-end/);
-    assert.doesNotMatch(commandGrid.className, /gap-px/);
-    assert.doesNotMatch(commandGrid.className, /0\.9fr/);
-    assert.doesNotMatch(commandGrid.className, /0\.68fr/);
-    assert.doesNotMatch(commandGrid.className, /1\.62fr/);
-    assert.doesNotMatch(commandGrid.className, /divide-gray-200/);
-    assert.doesNotMatch(commandGrid.className, /1\.75fr/);
+    assert.match(commandGrid.className, /1180px/);
+    assert.match(
+      commandGrid.className,
+      /minmax\(0,1fr\)_minmax\(0,0\.78fr\)_minmax\(0,1\.12fr\)/,
+    );
+    assert.match(commandGrid.className, /\bgap-2\b/);
     const commandCards = Array.from(
       dom.window.document.querySelectorAll("[data-clip-command-card]"),
     ) as HTMLElement[];
@@ -2287,24 +2246,27 @@ describe("EpisodeTimelineWorkspace layout", () => {
     );
     commandCards.forEach((card) => {
       assert.equal(
-        card.firstElementChild?.getAttribute("data-clip-command-card-actions"),
-        "inline",
+        card.firstElementChild?.getAttribute("data-clip-command-card-header"),
+        "step",
       );
+      assert.match(card.className, /min-h-full/);
+      assert.match(card.className, /rounded-xl/);
+      assert.match(card.className, /\bborder\b/);
+      assert.match(card.className, /\bp-3\b/);
     });
     Array.from(
       dom.window.document.querySelectorAll(
         '[data-clip-command-card-header="step"]',
       ),
     ).forEach((header) => {
-      assert.match((header as HTMLElement).className, /hidden/);
+      assert.match((header as HTMLElement).className, /\bflex\b/);
+      assert.doesNotMatch((header as HTMLElement).className, /hidden/);
     });
     Array.from(
       dom.window.document.querySelectorAll("[data-clip-command-step]"),
     ).forEach((step) => {
-      assert.match(
-        (step as HTMLElement).closest(".hidden")?.className || "",
-        /hidden/,
-      );
+      assert.match((step as HTMLElement).className, /rounded-full/);
+      assert.match((step as HTMLElement).className, /font-bold/);
     });
     assert.equal(
       commandCards[0].getAttribute("data-clip-command-card-tone"),
@@ -2317,15 +2279,15 @@ describe("EpisodeTimelineWorkspace layout", () => {
     assert.match(commandCards[0].className, /max-\[719px\]:order-1/);
     assert.match(commandCards[1].className, /max-\[719px\]:order-2/);
     assert.match(commandCards[2].className, /max-\[719px\]:order-3/);
-    assert.match(commandCards[2].className, /max-\[719px\]:col-span-2/);
+    assert.match(commandCards[0].className, /\bbg-white\b/);
+    assert.match(commandCards[0].className, /border-slate-200/);
+    assert.match(commandCards[2].className, /720px/);
+    assert.match(commandCards[2].className, /1179px/);
     assert.doesNotMatch(commandCards[0].className, /col-span-2/);
     assert.doesNotMatch(commandCards[1].className, /col-span-2/);
-    commandCards.forEach((card) => {
-      assert.doesNotMatch(card.className, /rounded-md/);
-      assert.doesNotMatch(card.className, /border-/);
-      assert.doesNotMatch(card.className, /bg-blue-50/);
-      assert.doesNotMatch(card.className, /bg-white/);
-    });
+    assert.match(commandCards[2].className, /col-span-2/);
+    assert.match(commandCards[2].className, /border-blue-200/);
+    assert.match(commandCards[2].className, /bg-blue-50\/40/);
     assert.ok(
       dom.window.document.querySelector(
         '[data-clip-action-group="storyboard"]',
@@ -2335,11 +2297,6 @@ describe("EpisodeTimelineWorkspace layout", () => {
       dom.window.document.querySelector('[data-clip-action-group="storyboard"]')
         ?.className || "",
       /gap-0/,
-    );
-    assert.match(
-      dom.window.document.querySelector('[data-clip-action-group="storyboard"]')
-        ?.className || "",
-      /w-auto/,
     );
     assert.match(
       dom.window.document.querySelector('[data-clip-action-group="storyboard"]')
@@ -2355,7 +2312,7 @@ describe("EpisodeTimelineWorkspace layout", () => {
     assert.match(
       dom.window.document.querySelector('[data-clip-action-group="keyframes"]')
         ?.className || "",
-      /w-auto/,
+      /w-full/,
     );
     assert.doesNotMatch(
       dom.window.document.querySelector('[data-clip-action-group="keyframes"]')
@@ -2370,13 +2327,31 @@ describe("EpisodeTimelineWorkspace layout", () => {
     assert.match(
       dom.window.document.querySelector('[data-clip-action-group="video"]')
         ?.className || "",
-      /w-auto/,
-    );
-    assert.match(
-      dom.window.document.querySelector('[data-clip-action-group="video"]')
-        ?.className || "",
       /w-full/,
     );
+    const sharedReferenceContext = utils.getByLabelText(
+      "片段共享参考上下文",
+    ) as HTMLDetailsElement;
+    assert.equal(sharedReferenceContext.open, false);
+    assert.equal(
+      sharedReferenceContext.getAttribute("data-clip-shared-reference-context"),
+      "collapsed",
+    );
+    const storyboardReferenceControls = dom.window.document.querySelector(
+      '[data-clip-reference-controls="storyboard"]',
+    ) as HTMLDetailsElement | null;
+    assert.ok(storyboardReferenceControls);
+    assert.equal(storyboardReferenceControls.tagName, "DETAILS");
+    assert.equal(storyboardReferenceControls.open, false);
+    assert.ok(
+      storyboardReferenceControls.textContent?.includes("角色与参考图"),
+    );
+    const videoReferenceControls = dom.window.document.querySelector(
+      '[data-clip-reference-controls="video"]',
+    ) as HTMLDetailsElement | null;
+    assert.ok(videoReferenceControls);
+    assert.equal(videoReferenceControls.open, false);
+    assert.ok(videoReferenceControls.textContent?.includes("视频绑定与参考"));
     assert.equal(
       dom.window.document.querySelectorAll(
         '[data-clip-parameter-details="compact"]',
@@ -2472,16 +2447,16 @@ describe("EpisodeTimelineWorkspace layout", () => {
     assert.match(videoButton.className, /!h-8/);
     assert.match(storyboardButton.className, /min-w-0/);
     assert.match(storyboardButton.className, /flex-1/);
-    assert.match(storyboardButton.className, /min-\[720px\]:min-w-\[9\.5rem\]/);
+    assert.doesNotMatch(storyboardButton.className, /min-\[720px\]:min-w/);
     assert.match(keyframeButton.className, /w-full/);
     assert.match(keyframeButton.className, /min-w-0/);
     assert.match(keyframeButton.className, /whitespace-nowrap/);
-    assert.match(keyframeButton.className, /min-\[720px\]:min-w-\[8\.5rem\]/);
+    assert.doesNotMatch(keyframeButton.className, /min-\[720px\]:min-w/);
     assert.match(videoButton.className, /min-w-0/);
     assert.match(videoButton.className, /whitespace-nowrap/);
     assert.match(videoButton.className, /flex-1/);
-    assert.match(videoButton.className, /min-\[720px\]:min-w-\[15rem\]/);
-    assert.match(videoButton.className, /min-\[720px\]:max-w-\[17rem\]/);
+    assert.doesNotMatch(videoButton.className, /min-\[720px\]:min-w/);
+    assert.doesNotMatch(videoButton.className, /min-\[720px\]:max-w/);
     assert.match(storyboardButton.className, /rounded-l-md/);
     assert.match(storyboardButton.className, /rounded-r-none/);
     assert.match(keyframeButton.className, /rounded-md/);
@@ -2493,8 +2468,6 @@ describe("EpisodeTimelineWorkspace layout", () => {
     assert.doesNotMatch(videoButton.className, /shadow-blue/);
     assert.ok(summary);
     assert.ok(Boolean(summary.compareDocumentPosition(storyboardButton) & 4));
-    const text = dom.window.document.body.textContent || "";
-    assert.ok(text.indexOf("首尾帧") < text.indexOf("场景环境"));
   });
 
   it("keeps engineering clip ids out of the default asset audit header", async () => {
@@ -2547,7 +2520,7 @@ describe("EpisodeTimelineWorkspace layout", () => {
     );
   });
 
-  it("promotes asset audit only when the selected clip has asset records", async () => {
+  it("keeps asset audit collapsed even when the selected clip has asset records", async () => {
     mockWorkspaceFetch({
       clipAssets: [
         {
@@ -2573,23 +2546,29 @@ describe("EpisodeTimelineWorkspace layout", () => {
       ],
     });
 
-    const utils = render(workspace(videoTimeline()), {
+    render(workspace(videoTimeline()), {
       container: dom.window.document.body,
     });
 
     await waitFor(() =>
       assert.ok(
-        dom.window.document.querySelector('[data-clip-support-layout="split"]'),
+        dom.window.document.querySelector(
+          '[data-clip-support-overflow="compact"]',
+        ),
       ),
     );
 
-    const assetAuditLabel = utils.getByText("资产审计");
+    const supportOverflow = dom.window.document.querySelector(
+      '[data-clip-support-overflow="compact"]',
+    ) as HTMLDetailsElement;
+    assert.equal(supportOverflow.open, false);
+    const assetAuditLabel = within(supportOverflow).getByText("资产审计");
     const supportLayout = assetAuditLabel.closest("[data-clip-support-layout]");
     assert.equal(
       supportLayout?.getAttribute("data-clip-support-layout"),
-      "split",
+      "compact",
     );
-    assert.ok(dom.window.document.body.textContent?.includes("1 条"));
+    assert.ok(supportOverflow.textContent?.includes("1 条"));
   });
 
   it("keeps secondary clip navigation behind a collapsed support disclosure", async () => {
@@ -2925,8 +2904,8 @@ describe("EpisodeTimelineWorkspace layout", () => {
       "primary-navigation",
     );
     assert.match(rail.className, /h-7/);
-    assert.match(rail.className, /border-slate-300/);
-    assert.match(rail.className, /shadow-slate-200\/80/);
+    assert.match(rail.className, /border-slate-200/);
+    assert.doesNotMatch(rail.className, /shadow-inner/);
     assert.doesNotMatch(rail.className, /border-blue-300/);
     assert.doesNotMatch(rail.className, /shadow-blue-100/);
   });

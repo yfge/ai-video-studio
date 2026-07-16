@@ -67,7 +67,7 @@ export function EpisodeTimelineCanvasPanel({
       data-timeline-canvas-presence-frame="restored-visible-axis"
       data-timeline-selection-visibility="anchor"
       aria-label="Timeline 全片时间轴定位区"
-      className="scroll-mt-16 space-y-2 rounded-xl bg-blue-50/35 p-1 shadow-[inset_0_0_0_1px_rgba(191,219,254,0.9)]"
+      className="scroll-mt-16 space-y-2"
     >
       <div className="space-y-2">
         {showSettings ? (

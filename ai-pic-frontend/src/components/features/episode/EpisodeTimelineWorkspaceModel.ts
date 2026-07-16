@@ -17,7 +17,6 @@ export const formatTimelineMs = (ms: number) => {
 
 export const timelineItemMeta = (item: TimelineItem | null) =>
   asRecord(item?.meta) ?? {};
-
 const hasVideoAsset = (record: Record<string, unknown>) =>
   Boolean(
     getString(record.video_url) ||
@@ -25,7 +24,6 @@ const hasVideoAsset = (record: Record<string, unknown>) =>
       getString(record.result_video_url) ||
       (Array.isArray(record.video_urls) && record.video_urls.length > 0),
   );
-
 export function buildEpisodeTimelineTracks(
   selectedTimelineSpec: TimelineResponse | null,
   selectedAudioTimeline: Record<string, unknown> | null,
@@ -42,7 +40,6 @@ export function buildEpisodeTimelineTracks(
     selectedStoryboard,
   );
 }
-
 function legacyAudioTimelineToTimelineTracks(
   selectedAudioTimeline: Record<string, unknown> | null,
   selectedStoryboard: Record<string, unknown> | null,
@@ -53,7 +50,6 @@ function legacyAudioTimelineToTimelineTracks(
   const frames = Array.isArray(selectedStoryboard?.frames)
     ? (selectedStoryboard?.frames as unknown[])
     : [];
-
   const beatItems = beats
     .map<TimelineItem | null>((raw, idx) => {
       const record = asRecord(raw);
@@ -77,7 +73,6 @@ function legacyAudioTimelineToTimelineTracks(
       };
     })
     .filter((item): item is TimelineItem => Boolean(item));
-
   const frameItems = frames
     .map<TimelineItem | null>((raw, idx) => {
       const record = asRecord(raw);
@@ -98,7 +93,6 @@ function legacyAudioTimelineToTimelineTracks(
       };
     })
     .filter((item): item is TimelineItem => Boolean(item));
-
   const videoItems = frameItems
     .filter((item) => hasVideoAsset(timelineItemMeta(item)))
     .map<TimelineItem>((item, idx) => ({
@@ -109,7 +103,6 @@ function legacyAudioTimelineToTimelineTracks(
       type: "video",
       color: "#0f766e",
     }));
-
   const tracks: Array<TimelineTrack | null> = [
     beatItems.length
       ? { id: "dialogue", label: "对白", color: "#2563eb", items: beatItems }
@@ -125,7 +118,6 @@ function legacyAudioTimelineToTimelineTracks(
     tracks.filter((track): track is TimelineTrack => Boolean(track)),
   );
 }
-
 function timelineSpecToTimelineTracks(
   selectedTimelineSpec: TimelineResponse | null,
   selectedAudioTimeline: Record<string, unknown> | null,
@@ -144,14 +136,12 @@ function timelineSpecToTimelineTracks(
       ),
     )
     .filter((track): track is TimelineTrack => Boolean(track));
-
   const storyboardTrack = storyboardSupportTrack(selectedStoryboard);
   const tracks = storyboardTrack
     ? [...timelineTracks, storyboardTrack]
     : timelineTracks;
   return prioritizeTimelineTracks(tracks);
 }
-
 function timelineSpecTrackToTimelineTrack(
   track: TimelineTrackSpec,
   audioBeatById: Map<string, Record<string, unknown>>,
@@ -191,7 +181,6 @@ function timelineSpecTrackToTimelineTrack(
     items,
   };
 }
-
 function storyboardSupportTrack(
   selectedStoryboard: Record<string, unknown> | null,
 ): TimelineTrack | null {
@@ -225,14 +214,12 @@ function storyboardSupportTrack(
     ? { id: "storyboard", label: "分镜", color: "#7c3aed", items }
     : null;
 }
-
 function timelineTrackLabel(trackType: string) {
   if (trackType === "dialogue") return "对白";
   if (trackType === "video") return "视频";
   if (trackType === "subtitle") return "字幕";
   return trackType || "时间轴";
 }
-
 function timelineItemDisplayLabel(trackType: string, index: number) {
   if (trackType === "dialogue") return `对白 ${index + 1}`;
   if (trackType === "video") return `视频 ${index + 1}`;

@@ -1,5 +1,4 @@
 "use client";
-
 import { operatorButtonClass } from "@/components/shared";
 import type {
   EpisodeCharacter,
@@ -23,7 +22,6 @@ import {
   VideoRatioSelect,
   VideoResolutionSelect,
 } from "./TimelineClipVideoReworkFields";
-
 export function TimelineClipVideoReworkCard({
   action,
   prompt,
@@ -104,7 +102,7 @@ export function TimelineClipVideoReworkCard({
     >
       <div
         data-clip-action-group="video"
-        className="inline-flex w-full min-w-0 items-center gap-0 min-[720px]:w-auto"
+        className="inline-flex w-full min-w-0 items-center gap-0"
       >
         <button
           type="submit"
@@ -113,7 +111,7 @@ export function TimelineClipVideoReworkCard({
           disabled={!canSubmit}
           className={operatorButtonClass(
             "primary",
-            "!h-8 min-w-0 flex-1 gap-1.5 whitespace-nowrap rounded-l-md rounded-r-none border border-blue-600 px-3 shadow-none min-[720px]:min-w-[15rem] min-[720px]:max-w-[17rem]",
+            "!h-8 min-w-0 flex-1 gap-1.5 whitespace-nowrap rounded-l-md rounded-r-none border border-blue-600 px-3 shadow-none",
           )}
         >
           <ClipProductionActionIcon kind="video" />
@@ -181,41 +179,53 @@ export function TimelineClipVideoReworkCard({
           </div>
         </CompactProductionDetails>
       </div>
-      <div
+      <details
         data-clip-reference-controls="video"
-        className="mt-2 grid min-w-0 gap-2 rounded-md border border-blue-100 bg-white p-2"
+        className="group mt-2 min-w-0 overflow-hidden rounded-md border border-blue-100 bg-white"
       >
-        <TimelineClipVideoBindingSummary
-          episodeCharacters={episodeCharacters}
-          selectedCharacterVirtualIpIds={selectedCharacterVirtualIpIds}
-          selectedCharacterReferenceUrls={selectedCharacterReferenceUrls}
-          selectedEnvironmentReferenceUrls={selectedEnvironmentReferenceUrls}
-        />
-        <VideoReferenceSelect
-          value={videoReferenceChoice}
-          storyboardAvailable={storyboardAvailable}
-          startEndAvailable={startEndReferenceAvailable}
-          manualRefsAvailable={manualReferenceAvailable}
-          onChange={onVideoReferenceChoiceChange}
-        />
-        {humanReviewRequired ? (
-          <label className="flex items-start gap-2 rounded-md border border-amber-100 bg-amber-50 px-2 py-1.5 text-xs text-amber-800">
-            <input
-              type="checkbox"
-              aria-label="已完成人工复核"
-              checked={operatorReviewed}
-              onChange={(event) =>
-                onOperatorReviewedChange(event.target.checked)
-              }
-              className="mt-0.5"
-            />
-            <span className="grid gap-0.5">
-              <span className="font-semibold">已完成人工复核</span>
-              <span>确认脚本质量、合规风险和关键帧一致性后再生视频。</span>
-            </span>
-          </label>
-        ) : null}
-      </div>
+        <summary className="flex cursor-pointer list-none items-center gap-2 px-2.5 py-2 text-[11px] marker:hidden [&::-webkit-details-marker]:hidden">
+          <span className="font-semibold text-slate-700">视频绑定与参考</span>
+          <span className="min-w-0 flex-1 truncate text-slate-500">
+            IP 图 {selectedCharacterReferenceUrls.length} · 环境图{" "}
+            {selectedEnvironmentReferenceUrls.length}
+          </span>
+          <span className="text-slate-400 transition group-open:rotate-180">
+            ▾
+          </span>
+        </summary>
+        <div className="grid gap-2 border-t border-blue-100 p-2">
+          <TimelineClipVideoBindingSummary
+            episodeCharacters={episodeCharacters}
+            selectedCharacterVirtualIpIds={selectedCharacterVirtualIpIds}
+            selectedCharacterReferenceUrls={selectedCharacterReferenceUrls}
+            selectedEnvironmentReferenceUrls={selectedEnvironmentReferenceUrls}
+          />
+          <VideoReferenceSelect
+            value={videoReferenceChoice}
+            storyboardAvailable={storyboardAvailable}
+            startEndAvailable={startEndReferenceAvailable}
+            manualRefsAvailable={manualReferenceAvailable}
+            onChange={onVideoReferenceChoiceChange}
+          />
+          {humanReviewRequired ? (
+            <label className="flex items-start gap-2 rounded-md border border-amber-100 bg-amber-50 px-2 py-1.5 text-xs text-amber-800">
+              <input
+                type="checkbox"
+                aria-label="已完成人工复核"
+                checked={operatorReviewed}
+                onChange={(event) =>
+                  onOperatorReviewedChange(event.target.checked)
+                }
+                className="mt-0.5"
+              />
+              <span className="grid gap-0.5">
+                <span className="font-semibold">已完成人工复核</span>
+                <span>确认脚本质量、合规风险和关键帧一致性后再生视频。</span>
+              </span>
+            </label>
+          ) : null}
+        </div>
+      </details>
       <div className="grid gap-2">
         {!canSubmit && disabledReason ? (
           <div

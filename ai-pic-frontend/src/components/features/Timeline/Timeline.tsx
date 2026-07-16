@@ -138,7 +138,7 @@ export function Timeline({
       data-timeline-fit-to-width={fitToWidth ? "true" : "false"}
       data-timeline-scale-mode={fitMode}
       aria-label="时间轴导航：片段时间轴定位区"
-      className="relative w-full overflow-hidden rounded-lg border border-slate-300 border-l-8 border-l-blue-600 bg-white shadow-md shadow-blue-100/80 ring-1 ring-blue-100/80"
+      className="relative w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,0.07)]"
     >
       <TimelineToolbar
         fitToWidth={fitToWidth}

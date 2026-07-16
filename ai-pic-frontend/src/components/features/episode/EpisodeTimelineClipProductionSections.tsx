@@ -108,10 +108,6 @@ export function ClipProductionSummary({
           </span>
         </div>
       </div>
-      <ClipVideoPreview
-        url={videoStatus.url || null}
-        label="播放选中片段视频"
-      />
     </div>
   );
 }
@@ -157,24 +153,5 @@ function ClipVideoStatusLabel({
       />
       {label}
     </span>
-  );
-}
-
-function ClipVideoPreview({
-  url,
-  label,
-}: {
-  url: string | null;
-  label: string;
-}) {
-  if (!url) return null;
-  return (
-    <video
-      aria-label={label}
-      className="h-16 w-36 rounded-md border border-gray-200 bg-black"
-      controls
-      preload="none"
-      src={url}
-    />
   );
 }

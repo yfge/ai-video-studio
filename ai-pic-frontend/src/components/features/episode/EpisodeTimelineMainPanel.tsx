@@ -72,8 +72,8 @@ export function EpisodeTimelineMainPanel({
   return (
     <OperatorMainCanvas>
       <div
-        data-episode-timeline-main-layout="timeline-first-with-production"
-        className="space-y-1"
+        data-episode-timeline-main-layout="timeline-and-assets"
+        className="space-y-3 bg-slate-100/70 p-2 min-[760px]:p-3"
       >
         <EpisodeTimelineCanvasPanel
           tracks={tracks}
@@ -94,9 +94,9 @@ export function EpisodeTimelineMainPanel({
         {clipProductionPanel}
         <section
           data-episode-render-strip="compact"
-          data-episode-render-strip-surface="inline-workflow-footer"
-          data-episode-render-strip-style="selected-clip-footer-dock"
-          className="border-t border-slate-200 bg-slate-50/70 shadow-none"
+          data-episode-render-strip-surface="episode-output-asset"
+          data-episode-render-strip-style="asset-footer"
+          className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)]"
         >
           <TimelineRenderPanel
             readiness={renderReadiness}

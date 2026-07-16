@@ -8,10 +8,7 @@ import type {
   TimelineClipAssetResponse,
 } from "@/utils/api/types";
 import { ClipEnvironmentSection } from "./EpisodeTimelineClipEnvironmentSection";
-import {
-  selectedTimelineClipId,
-  TimelineClipAssetAuditPanel,
-} from "./TimelineClipAssetAuditPanel";
+import { TimelineClipAssetAuditPanel } from "./TimelineClipAssetAuditPanel";
 
 type NotifyVariant = "success" | "error" | "warning" | "info";
 
@@ -27,7 +24,6 @@ export function EpisodeTimelineClipSupportPanel({
   clipAssetsLoading,
   clipAssetsError,
   videoReady,
-  isVideoClip,
   onEnvironmentChange,
   onSaveEnvironment,
   onNavigateToScript,
@@ -47,7 +43,6 @@ export function EpisodeTimelineClipSupportPanel({
   clipAssetsLoading: boolean;
   clipAssetsError: string | null;
   videoReady: boolean;
-  isVideoClip: boolean;
   onEnvironmentChange: (value: number | null) => void;
   onSaveEnvironment: () => void;
   onNavigateToScript: () => void;
@@ -58,16 +53,6 @@ export function EpisodeTimelineClipSupportPanel({
 }) {
   if (!item) return null;
 
-  const clipId = selectedTimelineClipId(item);
-  const hasClipAssetRows = clipId
-    ? clipAssets.some((asset) => asset.clip_id === clipId)
-    : false;
-  const shouldPromoteAssetAudit =
-    Boolean(clipAssetsError) || !clipId || hasClipAssetRows;
-  const gridClass =
-    isVideoClip && shouldPromoteAssetAudit
-      ? "grid gap-2 xl:grid-cols-[minmax(280px,0.9fr)_minmax(0,1.1fr)]"
-      : "grid gap-2";
   const assetAuditPanel = (
     <TimelineClipAssetAuditPanel
       item={item}
@@ -83,7 +68,7 @@ export function EpisodeTimelineClipSupportPanel({
       className="py-0"
     />
   );
-  const supportOverflow = !shouldPromoteAssetAudit ? (
+  const supportOverflow = (
     <ClipSupportOverflow
       videoReady={videoReady}
       onNavigateToStoryboard={onNavigateToStoryboard}
@@ -91,13 +76,10 @@ export function EpisodeTimelineClipSupportPanel({
     >
       {assetAuditPanel}
     </ClipSupportOverflow>
-  ) : null;
+  );
   return (
     <aside data-clip-support-panel="inline" className="min-w-0 px-1 pt-0">
-      <div
-        className={gridClass}
-        data-clip-support-layout={shouldPromoteAssetAudit ? "split" : "compact"}
-      >
+      <div className="grid gap-2" data-clip-support-layout="compact">
         <div className="min-w-0 space-y-1.5">
           <ClipScriptSupportAction onNavigateToScript={onNavigateToScript} />
           <ClipEnvironmentSection
@@ -109,19 +91,7 @@ export function EpisodeTimelineClipSupportPanel({
             onEnvironmentChange={onEnvironmentChange}
             onSaveEnvironment={onSaveEnvironment}
           />
-          {shouldPromoteAssetAudit ? (
-            <ClipSupportLinks
-              videoReady={videoReady}
-              onNavigateToStoryboard={onNavigateToStoryboard}
-              onNavigateToTasks={onNavigateToTasks}
-            />
-          ) : null}
         </div>
-        {shouldPromoteAssetAudit ? (
-          <div className="min-w-0 xl:border-l xl:border-gray-100 xl:pl-3">
-            {assetAuditPanel}
-          </div>
-        ) : null}
       </div>
     </aside>
   );

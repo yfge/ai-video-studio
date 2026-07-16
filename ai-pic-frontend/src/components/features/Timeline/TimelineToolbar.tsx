@@ -5,7 +5,7 @@ import { formatTimelineLabel } from "./timelineScale";
 import { TimelineToolbarIcon } from "./TimelineToolbarIcon";
 
 const MODULE_LABEL_CLASS =
-  "inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-md border border-blue-200 bg-white px-2.5 py-1.5 leading-5 tracking-normal text-blue-900 shadow-[inset_3px_0_0_rgba(37,99,235,0.9),0_1px_2px_rgba(15,23,42,0.06)]";
+  "inline-flex shrink-0 items-center gap-2 whitespace-nowrap leading-5 tracking-normal text-slate-950";
 
 export function TimelineToolbar({
   fitToWidth,
@@ -66,7 +66,7 @@ export function TimelineToolbar({
     <div
       data-timeline-toolbar="compact"
       data-timeline-toolbar-intent="workspace-timeline"
-      className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-slate-200 bg-slate-50/80 px-2 py-1.5 text-xs text-gray-700 min-[640px]:px-3 min-[640px]:py-2"
+      className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-slate-200 bg-white px-3 py-2.5 text-xs text-gray-700"
     >
       <div className="flex min-w-0 items-center gap-x-2 overflow-hidden">
         {headerTitle ? (
@@ -92,7 +92,7 @@ export function TimelineToolbar({
             <span
               data-timeline-header-title-text="visible"
               data-timeline-header-scope-text="visible"
-              className="rounded-sm bg-slate-100 px-1.5 text-[11px] font-semibold text-slate-600"
+              className="rounded-full bg-slate-100 px-2 text-[11px] font-semibold text-slate-600"
             >
               {timelineScopeLabel}
             </span>
@@ -119,7 +119,7 @@ export function TimelineToolbar({
             <span
               data-timeline-header-title-text="visible"
               data-timeline-header-scope-text="visible"
-              className="rounded-sm bg-slate-100 px-1.5 text-[11px] font-semibold text-slate-600"
+              className="rounded-full bg-slate-100 px-2 text-[11px] font-semibold text-slate-600"
             >
               全片
             </span>
@@ -128,7 +128,7 @@ export function TimelineToolbar({
         )}
         <span
           data-timeline-window-summary="visible"
-          className="inline-flex shrink-0 items-center rounded-md border border-blue-200 bg-white px-2 py-1 text-[11px] font-bold leading-4 tabular-nums text-blue-950 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.8)]"
+          className="inline-flex shrink-0 items-center rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold leading-4 tabular-nums text-blue-700"
         >
           <span className="sr-only">
             时间轴窗口 {timelineWindowLabel}，时长 {durationLabel}

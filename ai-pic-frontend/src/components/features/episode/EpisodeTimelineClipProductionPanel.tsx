@@ -22,6 +22,7 @@ import type {
   VideoModelOption,
 } from "./TimelineClipProviderReworkControlsTypes";
 import { ClipProductionSummary } from "./EpisodeTimelineClipProductionSections";
+import { EpisodeTimelineClipAssetStage } from "./EpisodeTimelineClipAssetStage";
 import { EpisodeTimelineClipSupportPanel } from "./EpisodeTimelineClipSupportPanel";
 
 type NotifyVariant = "success" | "error" | "warning" | "info";
@@ -97,21 +98,24 @@ export function EpisodeTimelineClipProductionPanel({
     timelineClipVideoStatus(timelineItemMeta(item), selectedStoryboard);
   const headerAction =
     item && isVideoClip ? <span className="sr-only">片段分镜管理</span> : null;
+  const clipAssetCount = clipId
+    ? clipAssets.filter((asset) => asset.clip_id === clipId).length
+    : 0;
 
   return (
     <section
       data-clip-production-panel="dock"
       data-clip-production-surface="inline-workflow-band"
-      data-clip-production-surface-style="selected-clip-dock"
-      className="border-t border-slate-200 bg-slate-50/70 shadow-none"
+      data-clip-production-surface-style="asset-workbench"
+      className="rounded-xl border border-slate-200 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)]"
     >
-      <div className="px-2 py-1.5 min-[760px]:px-3">
+      <div className="overflow-hidden rounded-xl">
         <div
           data-clip-production-top-row="action-dock"
-          data-clip-production-top-row-layout="selected-clip-production-dock"
-          className={`grid min-w-0 items-center gap-x-2 gap-y-1 px-0 py-0 ${
+          data-clip-production-top-row-layout="clip-summary-and-support"
+          className={`grid min-w-0 items-center gap-3 border-b border-slate-200 px-3 py-2.5 ${
             item && isVideoClip
-              ? "min-[1040px]:grid-cols-[minmax(14rem,18rem)_minmax(30rem,max-content)_minmax(10rem,1fr)]"
+              ? "min-[1040px]:grid-cols-[minmax(16rem,20rem)_minmax(0,1fr)]"
               : ""
           }`}
         >
@@ -131,28 +135,6 @@ export function EpisodeTimelineClipProductionPanel({
               />
             </div>
           </div>
-          {item && isVideoClip ? (
-            <TimelineClipProviderReworkControls
-              episodeId={episodeId}
-              timelineId={timelineId}
-              timelineVersion={timelineVersion}
-              clipId={clipId}
-              item={item}
-              episodeCharacters={episodeCharacters}
-              episodeCharactersLoading={episodeCharactersLoading}
-              episodeCharactersError={episodeCharactersError}
-              environments={environments}
-              selectedEnvironmentId={selectedEnvironmentId}
-              imageModels={imageModels}
-              imageModelsLoading={imageModelsLoading}
-              videoModels={videoModels}
-              videoModelsLoading={videoModelsLoading}
-              onNavigateToCharacters={onNavigateToCharacters}
-              onQueued={onReworkRecorded}
-              onGenerationCompleted={onGenerationCompleted}
-              onNotify={onNotify}
-            />
-          ) : null}
           <EpisodeTimelineClipSupportPanel
             item={item}
             scene={scene}
@@ -165,7 +147,6 @@ export function EpisodeTimelineClipProductionPanel({
             clipAssetsLoading={clipAssetsLoading}
             clipAssetsError={clipAssetsError}
             videoReady={videoStatus.ready}
-            isVideoClip={isVideoClip}
             onEnvironmentChange={onEnvironmentChange}
             onSaveEnvironment={onSaveEnvironment}
             onNavigateToScript={onNavigateToScript}
@@ -175,6 +156,42 @@ export function EpisodeTimelineClipProductionPanel({
             onNotify={onNotify}
           />
         </div>
+        {item && isVideoClip ? (
+          <div
+            data-clip-production-workbench="generation"
+            className="grid min-w-0 gap-3 bg-slate-50/70 p-3 min-[1280px]:grid-cols-[minmax(18rem,0.72fr)_minmax(0,1.6fr)]"
+          >
+            <EpisodeTimelineClipAssetStage
+              item={item}
+              track={track}
+              videoUrl={videoStatus.url || null}
+              clipAssetCount={clipAssetCount}
+              loading={clipAssetsLoading}
+            />
+            <div className="min-w-0">
+              <TimelineClipProviderReworkControls
+                episodeId={episodeId}
+                timelineId={timelineId}
+                timelineVersion={timelineVersion}
+                clipId={clipId}
+                item={item}
+                episodeCharacters={episodeCharacters}
+                episodeCharactersLoading={episodeCharactersLoading}
+                episodeCharactersError={episodeCharactersError}
+                environments={environments}
+                selectedEnvironmentId={selectedEnvironmentId}
+                imageModels={imageModels}
+                imageModelsLoading={imageModelsLoading}
+                videoModels={videoModels}
+                videoModelsLoading={videoModelsLoading}
+                onNavigateToCharacters={onNavigateToCharacters}
+                onQueued={onReworkRecorded}
+                onGenerationCompleted={onGenerationCompleted}
+                onNotify={onNotify}
+              />
+            </div>
+          </div>
+        ) : null}
       </div>
     </section>
   );

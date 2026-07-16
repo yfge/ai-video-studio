@@ -208,7 +208,6 @@ export function TimelineClipProviderReworkControls({
       storyboardStyle={storyboardStyle}
       storyboardPanelCount={storyboardPanelCount}
       storyboardAvailable={productionReadiness.storyboardReady}
-      storyboardSheetUrl={productionReadiness.storyboardSheetUrl}
       episodeCharacters={episodeCharacters}
       episodeCharactersLoading={episodeCharactersLoading}
       episodeCharactersError={episodeCharactersError}

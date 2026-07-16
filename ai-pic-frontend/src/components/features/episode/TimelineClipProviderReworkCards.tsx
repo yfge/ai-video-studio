@@ -19,13 +19,13 @@ import type {
   VideoModelOption,
 } from "./TimelineClipProviderReworkControlsTypes";
 
-const COMMAND_SURFACE_CLASS = [
-  "w-full bg-transparent p-0 shadow-none",
-  "min-[720px]:w-auto min-[720px]:rounded-md min-[720px]:border min-[720px]:border-slate-200 min-[720px]:bg-white min-[720px]:p-0.5 min-[720px]:shadow-[0_1px_2px_rgba(15,23,42,0.05)]",
-].join(" ");
+const COMMAND_SURFACE_CLASS = ["w-full bg-transparent p-0 shadow-none"].join(
+  " ",
+);
 const COMMAND_GRID_CLASS = [
-  "grid grid-cols-2 items-stretch gap-1",
-  "min-[720px]:grid-cols-[max-content_max-content_minmax(15rem,17rem)] min-[720px]:justify-start min-[720px]:gap-0.5",
+  "grid grid-cols-1 items-stretch gap-2",
+  "min-[720px]:grid-cols-2",
+  "min-[1180px]:grid-cols-[minmax(0,1fr)_minmax(0,0.78fr)_minmax(0,1.12fr)]",
 ].join(" ");
 
 export function TimelineClipProviderReworkCards({
@@ -45,7 +45,6 @@ export function TimelineClipProviderReworkCards({
   storyboardStyle,
   storyboardPanelCount,
   storyboardAvailable,
-  storyboardSheetUrl,
   episodeCharacters,
   episodeCharactersLoading,
   episodeCharactersError,
@@ -99,7 +98,6 @@ export function TimelineClipProviderReworkCards({
   storyboardStyle: "2d_cartoon" | "3d_cartoon" | "live_action";
   storyboardPanelCount: string;
   storyboardAvailable: boolean;
-  storyboardSheetUrl?: string | null;
   episodeCharacters: EpisodeCharacter[];
   episodeCharactersLoading: boolean;
   episodeCharactersError: string | null;
@@ -142,8 +140,8 @@ export function TimelineClipProviderReworkCards({
   return (
     <form
       data-clip-command-rail="compact"
-      data-clip-command-layout="compact-video-primary"
-      className="px-0.5 py-0"
+      data-clip-command-layout="balanced-production-grid"
+      className="min-w-0"
       onSubmit={onSubmit}
     >
       <TimelineClipGenerationChain readiness={productionReadiness} />
@@ -161,7 +159,7 @@ export function TimelineClipProviderReworkCards({
       />
       <div
         data-clip-command-surface="action-tray"
-        data-clip-command-surface-style="flat-action-cluster"
+        data-clip-command-surface-style="production-cards"
         data-clip-command-density="readable"
         className={COMMAND_SURFACE_CLASS}
       >
@@ -170,7 +168,6 @@ export function TimelineClipProviderReworkCards({
             storyboardModel={storyboardModel}
             storyboardStyle={storyboardStyle}
             storyboardPanelCount={storyboardPanelCount}
-            storyboardSheetUrl={storyboardSheetUrl}
             episodeCharacters={episodeCharacters}
             episodeCharactersLoading={episodeCharactersLoading}
             episodeCharactersError={episodeCharactersError}
