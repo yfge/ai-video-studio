@@ -9,6 +9,7 @@ import {
   productionCanvasStatusMeta,
   type ProductionCanvasNode,
 } from "./productionCanvasModel";
+import { productionCanvasSavedEdges } from "./productionCanvasPlanGraph";
 import { taskStatusLabelForStatus } from "./productionCanvasTaskSummaryModel";
 import { withProductionCanvasPortContract } from "./productionCanvasPorts";
 import {
@@ -28,6 +29,10 @@ export function productionCanvasPlanNodeToCanvasNode(
   response: ProductionCanvasPlanResponse,
   contextOutputs: Record<string, unknown> = {},
 ): ProductionCanvasNode {
+  const plannedEdges =
+    node.id === response.nodes[0]?.id
+      ? productionCanvasSavedEdges(response.edges)
+      : undefined;
   return withProductionCanvasPortContract({
     id: node.id,
     label: node.label,
@@ -44,6 +49,16 @@ export function productionCanvasPlanNodeToCanvasNode(
     reuseTargets: node.reuse_targets,
     actionHref: node.action_href || undefined,
     actionLabel: node.action_label || undefined,
+    definitionVersion: node.definition_version,
+    inputPorts: node.input_ports?.map((port) => ({
+      ...port,
+      label: port.id,
+    })),
+    outputPorts: node.output_ports?.map((port) => ({
+      ...port,
+      label: port.id,
+    })),
+    ...(plannedEdges === undefined ? {} : { plannedEdges }),
   });
 }
 

@@ -17,13 +17,14 @@ from .run_persistence import (
     save_canvas_client_state,
     save_canvas_state,
 )
-from .skill_planner import build_canvas_skill_plan
+from .skill_planner import build_autonomous_canvas_skill_plan, build_canvas_skill_plan
 from .timeline_placement import place_canvas_video_in_timeline
 
 __all__ = [
     "attach_canvas_run",
     "approve_canvas_media_candidate",
     "branch_canvas_media_candidate",
+    "build_autonomous_canvas_skill_plan",
     "build_canvas_skill_plan",
     "control_canvas_run",
     "execute_canvas_skill",

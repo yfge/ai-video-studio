@@ -29,18 +29,28 @@ import {
   withoutProductionCanvasPlaceholders,
 } from "./productionCanvasPlanGraph";
 
+function withoutPlannedEdges(node: ProductionCanvasNode) {
+  const incoming = { ...node };
+  delete incoming.plannedEdges;
+  return incoming;
+}
+
 export function appendProductionCanvasNodes(
   state: ProductionCanvasState,
   nodes: ProductionCanvasNode[],
   resolvedContext?: ProductionCanvasResolvedContext,
 ): ProductionCanvasState {
   if (!nodes.length) return state;
-  const isPlan = isProductionCanvasPlanBatch(nodes);
-  const incomingIds = new Set(nodes.map((node) => node.id));
+  const plannedEdges = nodes.find((node) => node.plannedEdges !== undefined)
+    ?.plannedEdges;
+  const incomingNodes = nodes.map(withoutPlannedEdges);
+  const isPlan =
+    plannedEdges !== undefined || isProductionCanvasPlanBatch(incomingNodes);
+  const incomingIds = new Set(incomingNodes.map((node) => node.id));
   const retainedNodes = (
     isPlan ? withoutProductionCanvasPlaceholders(state.nodes) : state.nodes
   ).filter((node) => !incomingIds.has(node.id));
-  const mergedNodes = [...retainedNodes, ...nodes];
+  const mergedNodes = [...retainedNodes, ...incomingNodes];
   const mergedNodeIds = new Set(mergedNodes.map((node) => node.id));
   const retainedEdges = state.edges.filter(
     (edge) =>
@@ -49,7 +59,7 @@ export function appendProductionCanvasNodes(
       !incomingIds.has(edge.from) &&
       !incomingIds.has(edge.to),
   );
-  const taskPublication = nodes.some(
+  const taskPublication = incomingNodes.some(
     (node) =>
       node.kind === "note" &&
       typeof node.outputs?.source_node_id === "string" &&
@@ -59,10 +69,10 @@ export function appendProductionCanvasNodes(
   const selectedNodeId =
     taskPublication && mergedNodeIds.has(state.selectedNodeId)
       ? state.selectedNodeId
-      : nodes[0]?.id || state.selectedNodeId;
+      : incomingNodes[0]?.id || state.selectedNodeId;
   const incomingContextRevision = Math.max(
     0,
-    ...nodes.map((node) =>
+    ...incomingNodes.map((node) =>
       typeof node.outputs?.resolved_context_revision === "number"
         ? node.outputs.resolved_context_revision
         : 0,
@@ -72,7 +82,10 @@ export function appendProductionCanvasNodes(
     ...state,
     nodes: applyProductionCanvasContext(mergedNodes, resolvedContext),
     edges: isPlan
-      ? [...retainedEdges, ...productionCanvasPlanEdges(nodes)]
+      ? [
+          ...retainedEdges,
+          ...(plannedEdges || productionCanvasPlanEdges(incomingNodes)),
+        ]
       : state.edges,
     sections: (state.sections || []).map((section) => ({
       ...section,

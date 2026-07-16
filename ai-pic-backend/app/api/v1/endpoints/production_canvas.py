@@ -21,7 +21,7 @@ from app.services.production_canvas import (
     approve_canvas_media_candidate,
     attach_canvas_run,
     branch_canvas_media_candidate,
-    build_canvas_skill_plan,
+    build_autonomous_canvas_skill_plan,
     control_canvas_run,
     execute_canvas_skill,
     list_canvas_media_candidates,
@@ -65,14 +65,14 @@ async def create_production_canvas_plan(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    plan: ProductionCanvasPlanResponse = build_canvas_skill_plan(
+    plan: ProductionCanvasPlanResponse = await build_autonomous_canvas_skill_plan(
         db,
         current_user,
         request,
     )
     task = persist_canvas_skill_run(db, current_user, request, plan)
     plan = attach_canvas_run(plan, task)
-    return {"success": True, "data": plan.model_dump()}
+    return {"success": True, "data": plan.model_dump(by_alias=True)}
 
 
 @router.post("/execute", response_model=dict)

@@ -5,6 +5,8 @@ from app.schemas.production_canvas import (
     ProductionCanvasSkillResult,
 )
 
+from .planner_ports import canvas_skill_node_id, canvas_skill_ports
+
 NODE_LAYOUT = {
     "brief.compose": (80, 360, 210, None, None),
     "asset.select": (340, 360, 240, "/virtual-ip", "检查资产选择"),
@@ -21,27 +23,25 @@ NODE_LAYOUT = {
 }
 
 
-def _node_id(skill_id: str) -> str:
-    return f"skill-{skill_id.replace('.', '-')}"
-
-
 def build_plan_nodes(
     skill_results: list[ProductionCanvasSkillResult],
 ) -> list[ProductionCanvasPlanNode]:
     nodes: list[ProductionCanvasPlanNode] = []
+    compact = len(skill_results) < len(NODE_LAYOUT)
     for index, result in enumerate(skill_results):
         default_x = 80 + index * 280
         x, y, width, action_href, action_label = NODE_LAYOUT.get(
             result.skill,
             (default_x, 360, 240, None, None),
         )
+        input_ports, output_ports = canvas_skill_ports(result.skill)
         nodes.append(
             ProductionCanvasPlanNode(
-                id=_node_id(result.skill),
+                id=canvas_skill_node_id(result.skill),
                 label=result.label,
                 title=result.title,
                 status=result.status,
-                x=x,
+                x=default_x if compact else x,
                 y=y,
                 width=width,
                 skill=result.skill,
@@ -50,6 +50,8 @@ def build_plan_nodes(
                 reuse_targets=result.reuse_targets,
                 action_href=action_href,
                 action_label=action_label,
+                input_ports=input_ports,
+                output_ports=output_ports,
             )
         )
     return nodes

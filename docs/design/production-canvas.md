@@ -126,6 +126,41 @@ Sources:
 - https://help.figma.com/hc/en-us/articles/9771500257687-Organize-your-canvas-with-sections
 - https://help.figma.com/hc/en-us/articles/360039959014-Parent-child-and-sibling-relationships
 
+### Autonomous planning and reliability
+
+The production canvas planner follows a constrained planner/compiler/executor
+split rather than allowing an LLM to call production workers directly.
+
+- The LLM proposes the smallest useful ordered skill set and declared
+  dependencies for the current production goal.
+- A deterministic backend compiler maps those dependencies to allowlisted,
+  typed ports and rejects unknown skills, unsupported dependencies, duplicate
+  bindings, missing prerequisites, and cycles.
+- The existing Graph v2 validator is the feasibility gate. Only a validated DAG
+  can be returned to the browser or persisted as an executable run.
+- Structured output gets at most one repair attempt. Provider failure or a
+  second invalid proposal falls back to the canonical deterministic production
+  plan, with planner mode, provider/model, repair count, validation errors, and
+  fallback reason retained as evidence.
+- The model never owns world state or worker dispatch. Persisted Run, Task,
+  candidate, Timeline, and graph state remain authoritative.
+
+This is consistent with recent planning research: planner/executor separation
+and dynamic plan construction improve adaptability; external constraint
+checking is needed before execution; and programmed state tracking should
+scaffold LLM reasoning rather than trusting the model to remember environment
+state. The initial release intentionally implements bounded proposal repair,
+not unbounded runtime self-replanning.
+
+Sources:
+
+- https://arxiv.org/abs/2602.19633
+- https://arxiv.org/abs/2503.09572
+- https://arxiv.org/abs/2410.14865
+- https://openreview.net/forum?id=oCcbZPlQsY
+- https://openreview.net/forum?id=bVljzwUxnT
+- https://arxiv.org/abs/2509.03581
+
 ## Product Principles
 
 ### Domain concepts over infrastructure concepts

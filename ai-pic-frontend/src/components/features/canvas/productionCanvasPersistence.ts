@@ -185,7 +185,8 @@ export function productionCanvasStateFromRun(
 
   const nodes = run.nodes.map((node) => planNodeToCanvasNode(node, run));
   if (!nodes.length) return createProductionCanvasState();
-  const state = createProductionCanvasState(nodes, undefined, {
+  const runEdges = Array.isArray(run.edges) ? savedEdges(run.edges) : undefined;
+  const state = createProductionCanvasState(nodes, runEdges, {
     ...run.resolved_context,
     task_id: null,
   });

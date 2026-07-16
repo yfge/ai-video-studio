@@ -20,7 +20,11 @@ const skillContracts: Record<string, PortContract> = {
   "brief.compose": { outputs: [port("production_brief", "生产简报", "text")] },
   "asset.select": {
     inputs: [port("production_brief", "生产简报", "text")],
-    outputs: [port("selected_assets", "选中资产", "entity_ref")],
+    outputs: [
+      port("selected_assets", "选中资产", "entity_ref"),
+      port("virtual_ip", "角色资产", "entity_ref"),
+      port("environment", "环境资产", "entity_ref"),
+    ],
   },
   "virtual_ip.image": {
     inputs: [port("virtual_ip", "角色资产", "entity_ref", true)],
@@ -59,7 +63,7 @@ const skillContracts: Record<string, PortContract> = {
     outputs: [port("exported_video", "导出成片", "video")],
   },
   "report.summarize": {
-    inputs: [port("execution", "执行证据", "execution_ref", true)],
+    inputs: [port("execution", "执行证据", "execution_ref")],
     outputs: [port("report", "汇总报告", "execution_ref")],
   },
 };

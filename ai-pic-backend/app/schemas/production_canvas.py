@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any, Literal
 
 from app.schemas.production_canvas_collaboration import CanvasAccessRole
+from app.schemas.production_canvas_planner import ProductionCanvasPlannerEvidence
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 CanvasNodeKind = Literal["pipeline", "note", "skill_result"]
@@ -126,6 +127,9 @@ class ProductionCanvasPlanNode(BaseModel):
     reuse_targets: list[ProductionCanvasSkillReuseTarget] = Field(default_factory=list)
     action_href: str | None = None
     action_label: str | None = None
+    definition_version: int = Field(1, ge=1)
+    input_ports: list[ProductionCanvasSavedPort] = Field(default_factory=list)
+    output_ports: list[ProductionCanvasSavedPort] = Field(default_factory=list)
 
 
 class ProductionCanvasViewport(BaseModel):
@@ -220,6 +224,8 @@ class ProductionCanvasPlanResponse(BaseModel):
     selected_assets: ProductionCanvasSelectedAssets
     skill_results: list[ProductionCanvasSkillResult] = Field(default_factory=list)
     nodes: list[ProductionCanvasPlanNode]
+    edges: list[ProductionCanvasSavedEdge] = Field(default_factory=list)
+    planner: ProductionCanvasPlannerEvidence
 
 
 class ProductionCanvasExecutionAttempt(BaseModel):

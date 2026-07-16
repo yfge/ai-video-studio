@@ -1,0 +1,21 @@
+name: production_canvas_planner
+description: "受约束的生产画布 Skill DAG 规划"
+category: general
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2026-07-16"
+updated_at: "2026-07-16"
+
+variables:
+  prompt:
+    type: string
+    required: true
+  context_json:
+    type: string
+    required: true
+  selected_assets_json:
+    type: string
+    required: true
+  skill_catalog_json:
+    type: string
+    required: true

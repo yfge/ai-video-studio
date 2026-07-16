@@ -65,6 +65,7 @@ export type ProductionCanvasNode = {
   selectedOutputReviewedAt?: string;
   inputPorts?: ProductionCanvasPort[];
   outputPorts?: ProductionCanvasPort[];
+  plannedEdges?: ProductionCanvasEdge[];
 };
 const edge = (
   from: string,

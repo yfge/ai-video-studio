@@ -198,6 +198,19 @@ stable clip / Task` 上下文；旧 `agent_run.result_ref` 与结果路径继续
       最终 Execute 被显式 stub，未产生 provider 费用，Plan、Run、Task 与层级读取
       均为真实请求。
 
+### Production Canvas Phase 8（受约束自主 Planner）
+
+- [x] Planner 根据生产目标和已解析业务上下文自主选择最小 Skill 子集与依赖，不再由
+      前端固定拼装完整执行链。
+- [x] 后端将提案编译为白名单类型化 DAG，并复用 Graph v2 校验未知 Skill、端口类型、
+      重复绑定、缺失前置和环路；模型不得直接调用 worker。
+- [x] 结构化提案最多修复一次；provider 或可行性校验失败时回退确定性完整方案，并
+      持久化 planner mode、provider/model、修复次数、错误和回退原因。
+- [x] Run 恢复必须保留 Planner 选择的节点子集和动态边；前端创建与无 saved state
+      恢复均消费服务端返回的类型化边。
+- [x] 补齐自主方案、修复成功、确定性回退、动态边创建/恢复的后端与前端回归，并完成
+      当前环境真实浏览器验证。
+
 ## P1: Production Stability
 
 :link: `docs/exec-plans/active/main-chain-commercial-readiness.md`

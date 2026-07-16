@@ -10,6 +10,7 @@ from app.schemas.production_canvas import (
 )
 from app.schemas.production_canvas_collaboration import CanvasAccessRole
 
+from .autonomous_planner import deterministic_canvas_planner_decision
 from .nodes import build_plan_nodes
 from .run_context import canvas_run_context, merge_canvas_node_context_outputs
 from .skills import list_canvas_skill_definitions
@@ -17,14 +18,27 @@ from .skills import list_canvas_skill_definitions
 
 def _current_run_payload(payload: dict) -> dict:
     definitions = list_canvas_skill_definitions()
+    definition_by_id = {item.id: item for item in definitions}
     existing = {
         item.get("skill"): ProductionCanvasSkillResult.model_validate(item)
         for item in payload.get("skill_results") or []
         if isinstance(item, dict) and item.get("skill")
     }
+    planner = payload.get("planner")
+    selected_skills = (
+        planner.get("selected_skills")
+        if isinstance(planner, dict)
+        and isinstance(planner.get("selected_skills"), list)
+        else [item.id for item in definitions]
+    )
+    selected_definitions = [
+        definition_by_id[skill]
+        for skill in selected_skills
+        if skill in definition_by_id
+    ]
     context = canvas_run_context(payload)
     results: list[ProductionCanvasSkillResult] = []
-    for skill in definitions:
+    for skill in selected_definitions:
         result = existing.get(skill.id)
         if result is not None:
             results.append(
@@ -64,6 +78,16 @@ def _current_run_payload(payload: dict) -> dict:
     current["skill_manifest"] = manifest
     current["skill_results"] = [item.model_dump() for item in results]
     current["nodes"] = [item.model_dump() for item in build_plan_nodes(results)]
+    if not isinstance(planner, dict):
+        fallback = deterministic_canvas_planner_decision(
+            str(current.get("prompt") or "恢复生产画布"),
+            reason="legacy_run",
+        )
+        current["planner"] = fallback.evidence.model_dump()
+        current.setdefault(
+            "edges",
+            [edge.model_dump() for edge in fallback.edges],
+        )
     current["resolved_context"] = context
     return current
 

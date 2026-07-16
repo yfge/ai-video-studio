@@ -1,3 +1,4 @@
+import type { ProductionCanvasSavedEdge } from "@/utils/api/types";
 import {
   productionCanvasNodes,
   type ProductionCanvasEdge,
@@ -19,6 +20,9 @@ const planSkills = new Set([
 ]);
 
 const skillEdges: SkillEdge[] = [
+  ["brief.compose", "production_brief", "asset.select", "production_brief"],
+  ["asset.select", "virtual_ip", "virtual_ip.image", "virtual_ip"],
+  ["asset.select", "environment", "environment.image", "environment"],
   ["brief.compose", "production_brief", "script.generate", "production_brief"],
   ["script.generate", "script", "timeline.assemble", "script"],
   ["script.generate", "script", "storyboard.plan", "script"],
@@ -61,6 +65,24 @@ export function productionCanvasPlanEdges(nodes: ProductionCanvasNode[]) {
       ];
     },
   );
+}
+
+export function productionCanvasSavedEdges(
+  edges?: ProductionCanvasSavedEdge[],
+): ProductionCanvasEdge[] | undefined {
+  if (!Array.isArray(edges)) return undefined;
+  return edges.map((edge) => ({
+    from: edge.from,
+    to: edge.to,
+    ...(edge.edge_id ? { edgeId: edge.edge_id } : {}),
+    ...(edge.from_port ? { fromPort: edge.from_port } : {}),
+    ...(edge.to_port ? { toPort: edge.to_port } : {}),
+    ...(edge.binding_type ? { bindingType: edge.binding_type } : {}),
+    ...(edge.required === undefined ? {} : { required: edge.required }),
+    ...(edge.binding_order === undefined || edge.binding_order === null
+      ? {}
+      : { bindingOrder: edge.binding_order }),
+  }));
 }
 
 export function withoutProductionCanvasPlaceholders(

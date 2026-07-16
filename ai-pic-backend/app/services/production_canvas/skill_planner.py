@@ -13,6 +13,41 @@ from app.services.production_canvas.runner import build_canvas_skill_results
 from app.services.production_canvas.skills import list_canvas_skill_definitions
 from sqlalchemy.orm import Session
 
+from .autonomous_planner import (
+    CanvasPlannerDecision,
+    deterministic_canvas_planner_decision,
+    plan_canvas_skills,
+)
+
+
+def _manifest() -> ProductionCanvasSkillManifest:
+    return ProductionCanvasSkillManifest(
+        version="production_canvas.v1",
+        entry_skill="production_canvas.create",
+        skills=list_canvas_skill_definitions(),
+        reuse_policy="backend_reuses_existing_services_and_tasks",
+    )
+
+
+def _plan_response(resolved, decision: CanvasPlannerDecision):
+    all_results = build_canvas_skill_results(resolved.request, resolved.assets)
+    by_skill = {result.skill: result for result in all_results}
+    skill_results = [
+        by_skill[skill] for skill in decision.selected_skills if skill in by_skill
+    ]
+    return ProductionCanvasPlanResponse(
+        prompt=resolved.request.prompt,
+        resolved_context=ProductionCanvasResolvedContext.model_validate(
+            resolved.request.model_dump(exclude={"prompt", "planning_mode"})
+        ),
+        skill_manifest=_manifest(),
+        selected_assets=resolved.assets.selected,
+        skill_results=skill_results,
+        nodes=build_plan_nodes(skill_results),
+        edges=decision.edges,
+        planner=decision.evidence,
+    )
+
 
 def build_canvas_skill_plan(
     db: Session,
@@ -20,20 +55,27 @@ def build_canvas_skill_plan(
     request: ProductionCanvasPlanRequest,
 ) -> ProductionCanvasPlanResponse:
     resolved = resolve_canvas_plan(db, user, request)
-    skill_results = build_canvas_skill_results(resolved.request, resolved.assets)
-    manifest = ProductionCanvasSkillManifest(
-        version="production_canvas.v1",
-        entry_skill="production_canvas.create",
-        skills=list_canvas_skill_definitions(),
-        reuse_policy="backend_reuses_existing_services_and_tasks",
-    )
-    return ProductionCanvasPlanResponse(
-        prompt=resolved.request.prompt,
-        resolved_context=ProductionCanvasResolvedContext.model_validate(
-            resolved.request.model_dump(exclude={"prompt"})
+    return _plan_response(
+        resolved,
+        deterministic_canvas_planner_decision(
+            resolved.request.prompt,
+            reason="deterministic_builder",
         ),
-        skill_manifest=manifest,
-        selected_assets=resolved.assets.selected,
-        skill_results=skill_results,
-        nodes=build_plan_nodes(skill_results),
     )
+
+
+async def build_autonomous_canvas_skill_plan(
+    db: Session,
+    user: User,
+    request: ProductionCanvasPlanRequest,
+) -> ProductionCanvasPlanResponse:
+    resolved = resolve_canvas_plan(db, user, request)
+    context = ProductionCanvasResolvedContext.model_validate(
+        resolved.request.model_dump(exclude={"prompt", "planning_mode"})
+    )
+    decision = await plan_canvas_skills(
+        prompt=resolved.request.prompt,
+        resolved_context=context,
+        selected_assets=resolved.assets.selected,
+    )
+    return _plan_response(resolved, decision)

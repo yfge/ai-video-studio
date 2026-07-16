@@ -171,7 +171,6 @@ export interface ProductionCanvasSavedState {
   viewport: ProductionCanvasViewport;
   selected_node_id?: string | null;
 }
-
 export interface ProductionCanvasPlanResponse {
   prompt: string;
   run_id?: string | null;
@@ -181,6 +180,8 @@ export interface ProductionCanvasPlanResponse {
   selected_assets: ProductionCanvasSelectedAssets;
   skill_results?: ProductionCanvasSkillResult[];
   nodes: ProductionCanvasPlanNode[];
+  edges?: ProductionCanvasSavedEdge[];
+  planner?: import("./production-canvas-planner.types").ProductionCanvasPlannerEvidence;
 }
 export interface ProductionCanvasRunResponse
   extends ProductionCanvasPlanResponse {
@@ -188,7 +189,6 @@ export interface ProductionCanvasRunResponse
   saved_state?: ProductionCanvasSavedState | null;
   execution_attempts?: ProductionCanvasExecutionAttempt[];
 }
-
 export interface ProductionCanvasExecutionAttempt {
   attempt_id: number;
   node_id: string;
