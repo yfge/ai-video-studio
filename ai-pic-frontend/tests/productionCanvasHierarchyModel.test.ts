@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   buildHierarchyRoots,
   buildIpHierarchyBranch,
+  buildStoryHierarchyRoot,
   buildStoryHierarchyBranch,
   countLoadedDescendants,
   hierarchyContextPatch,
@@ -188,5 +189,42 @@ describe("production canvas hierarchy model", () => {
       ).length,
       2,
     );
+  });
+
+  it("projects a single-video project truthfully without inventing an IP root", () => {
+    const quickStory = story(30, []);
+    quickStory.title = "三分钟产品视频";
+    quickStory.duration_minutes = 3;
+    quickStory.default_aspect_ratio = "16:9";
+    quickStory.extra_metadata = {
+      creation_mode: "single_video",
+      system_managed_hierarchy: true,
+    };
+    const quickEpisode = episode(300, 30);
+    quickEpisode.title = quickStory.title;
+    quickEpisode.duration_minutes = 3;
+    quickEpisode.aspect_ratio = "16:9";
+    quickEpisode.extra_metadata = quickStory.extra_metadata;
+    const graph = mergeHierarchyGraphs(
+      buildStoryHierarchyRoot(quickStory),
+      buildStoryHierarchyBranch(30, [quickEpisode]),
+    );
+    const projection = projectVisibleHierarchy(graph, ["story:30"]);
+
+    assert.deepEqual(
+      projection.nodes.map((node) => [
+        node.id,
+        node.displayTypeLabel,
+        node.parentIds,
+      ]),
+      [
+        ["story:30", "视频项目", []],
+        ["episode:300", "主视频", ["story:30"]],
+      ],
+    );
+    assert.deepEqual(hierarchyContextPatch(graph, "episode:300"), {
+      story_id: 30,
+      episode_id: 300,
+    });
   });
 });

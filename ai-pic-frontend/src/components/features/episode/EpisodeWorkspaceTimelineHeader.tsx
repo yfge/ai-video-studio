@@ -21,6 +21,7 @@ export function EpisodeWorkspaceTimelineHeader({
   onNavigateBack,
   onSelectScript,
   onPrimaryAction,
+  singleVideoProject = false,
 }: {
   episode: Episode;
   scripts: Script[];
@@ -30,6 +31,7 @@ export function EpisodeWorkspaceTimelineHeader({
   onNavigateBack: () => void;
   onSelectScript: (scriptId: number | null) => void;
   onPrimaryAction: () => void;
+  singleVideoProject?: boolean;
 }) {
   const primaryActionVariant =
     productionState.primaryAction.kind === "open-clip" ? "ghost" : "primary";
@@ -51,7 +53,9 @@ export function EpisodeWorkspaceTimelineHeader({
       >
         <div className="order-1 min-w-0 min-[760px]:order-none">
           <h1 className="truncate text-[13px] font-semibold leading-6 text-gray-950 min-[760px]:text-sm min-[760px]:leading-8">
-            第{episode.episode_number}集: {episode.title}
+            {singleVideoProject
+              ? `单条视频：${episode.title}`
+              : `第${episode.episode_number}集: ${episode.title}`}
           </h1>
         </div>
         <label

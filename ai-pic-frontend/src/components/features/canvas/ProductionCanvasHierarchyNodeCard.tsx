@@ -54,6 +54,7 @@ export function ProductionCanvasHierarchyNodeCard({
   onToggle: (nodeId: string) => void;
 }) {
   const meta = entityMeta[node.entityType];
+  const typeLabel = node.displayTypeLabel || meta.label;
   const actionHref = hierarchyNodeActionHref(node);
   return (
     <article
@@ -73,7 +74,7 @@ export function ProductionCanvasHierarchyNodeCard({
       }}
     >
       <button
-        aria-label={`${meta.label} ${node.title}`}
+        aria-label={`${typeLabel} ${node.title}`}
         aria-pressed={selected}
         className="block h-full w-full rounded-xl p-3 pb-10 text-left"
         type="button"
@@ -83,7 +84,7 @@ export function ProductionCanvasHierarchyNodeCard({
           <span
             className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${meta.tone}`}
           >
-            {meta.label}
+            {typeLabel}
           </span>
           <span className="truncate text-[10px] text-slate-500">
             {node.empty && node.status !== "generating"
@@ -128,7 +129,7 @@ export function ProductionCanvasHierarchyNodeCard({
         )}
         {actionHref && !node.empty ? (
           <Link
-            aria-label={`打开${meta.label} ${node.title}`}
+            aria-label={`打开${typeLabel} ${node.title}`}
             className={operatorButtonClass("secondary", "h-6 px-2 text-[10px]")}
             href={actionHref}
           >

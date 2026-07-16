@@ -1,7 +1,5 @@
 "use client";
-
 import { useCallback, useEffect, useMemo, useState } from "react";
-
 import {
   type Episode,
   type Script,
@@ -14,14 +12,13 @@ import { firstTimelineVideoClipId } from "./timelineClipUtils";
 import { sortScriptsNewestFirst } from "./scriptSort";
 import { useEpisodeWorkspaceScriptActions } from "./useEpisodeWorkspaceScriptActions";
 import { useEpisodeWorkspaceScriptTaskTracking } from "./useEpisodeWorkspaceScriptTaskTracking";
-
+import { isSingleVideoProject } from "@/utils/singleVideoProject";
 export type TabKey =
   | "overview"
   | "script"
   | "timeline"
   | "storyboard"
   | "characters";
-
 type RouterLike = {
   push: (url: string) => void;
   replace: (url: string, options?: { scroll?: boolean }) => void;
@@ -40,6 +37,7 @@ export function useEpisodeWorkspaceController(args: {
   router: RouterLike;
   initialTab: TabKey;
   urlScriptId: number | null;
+  initialScriptTaskId?: number | null;
   episode: Episode | null;
   scripts: Script[];
   selectedTimelineSpec: TimelineResponse | null;
@@ -57,6 +55,7 @@ export function useEpisodeWorkspaceController(args: {
     router,
     initialTab,
     urlScriptId,
+    initialScriptTaskId,
     episode,
     scripts,
     selectedTimelineSpec,
@@ -158,13 +157,17 @@ export function useEpisodeWorkspaceController(args: {
   );
 
   const handleNavigateBack = useCallback(() => {
+    if (isSingleVideoProject(episode)) {
+      router.push("/stories");
+      return;
+    }
     const storyId = episode?.story_id;
     if (storyId) {
       router.push(`/stories/${storyId}`);
     } else {
       router.push("/stories");
     }
-  }, [episode?.story_id, router]);
+  }, [episode, router]);
 
   const { notify } = useToast();
   const knownScriptIds = useMemo(
@@ -174,6 +177,7 @@ export function useEpisodeWorkspaceController(args: {
   const { scriptTask, trackScriptTask } = useEpisodeWorkspaceScriptTaskTracking(
     {
       episodeKey,
+      initialTaskId: initialScriptTaskId,
       knownScriptIds,
       setScripts,
       onSelectScript: handleScriptChange,

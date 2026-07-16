@@ -2,6 +2,8 @@
  * Story and episode type definitions.
  */
 
+import type { ProductionCanvasResolvedContext } from "./production-canvas-context.types";
+
 // Hook/traffic planning types
 interface HookBeat {
   beat_type?: string;
@@ -164,6 +166,27 @@ export interface EpisodeGenerationRequest {
   style_preferences?: string[];
   model?: string;
   temperature?: number;
+}
+
+export interface SingleVideoProjectRequest {
+  title: string;
+  prompt: string;
+  duration_minutes: 3 | 5;
+  aspect_ratio: "9:16" | "16:9";
+  style?: string;
+  virtual_ip_id?: number;
+  environment_id?: number;
+  start_generation?: boolean;
+}
+
+export interface SingleVideoProjectResponse {
+  story_id: number;
+  story_business_id: string;
+  episode_id: number;
+  episode_business_id: string;
+  task_id?: number | null;
+  task_status?: string | null;
+  context: ProductionCanvasResolvedContext;
 }
 
 // Readiness check types

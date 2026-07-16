@@ -16,7 +16,7 @@ export function ProductionCanvasHierarchyControls({
     <>
       <OperatorSectionHeader
         title="业务实体层级"
-        subtitle="IP → 环境资源 / 故事 → 剧集 → Timeline 分镜 → 当前视频"
+        subtitle="系列：IP → 故事 → 剧集；单条视频：视频项目 → 主视频 → Timeline 分镜 → 当前视频"
         action={
           <button
             className={operatorButtonClass("ghost")}

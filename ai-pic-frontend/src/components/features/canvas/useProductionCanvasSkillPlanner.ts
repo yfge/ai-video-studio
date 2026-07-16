@@ -4,19 +4,19 @@ import {
   productionCanvasContextOutputs,
   productionCanvasRequestContext,
 } from "./productionCanvasContext";
-import type { ProductionCanvasNode } from "./productionCanvasModel";
 import { waitForProductionCanvasBusyPaint } from "./productionCanvasBusyPaint";
-import { executeProductionCanvasReadyNodes } from "./productionCanvasAutoExecution";
-import {
-  createProductionCanvasPlan as createCanvasPlan,
-  executeProductionCanvasSkill,
-} from "./productionCanvasSkillExecution";
+import { createProductionCanvasPlan as createCanvasPlan } from "./productionCanvasSkillExecution";
 import { useProductionCanvasExecutionTracker } from "./useProductionCanvasExecutionTracker";
 import { useProductionCanvasContextDraft } from "./useProductionCanvasContextDraft";
+import { useProductionCanvasExecutionActions } from "./useProductionCanvasExecutionActions";
 import { useProductionCanvasOperationRun } from "./useProductionCanvasOperationRun";
 import { productionCanvasPlanNodeToCanvasNode } from "./productionCanvasSkillNodes";
 import { isProductionCanvasAuthoritativeContext } from "./productionCanvasTaskResultContext";
 import type { ProductionCanvasSkillPlannerProps } from "./productionCanvasSkillPlannerTypes";
+import {
+  runSingleVideoCanvasCreation,
+  useProductionCanvasSingleVideoMode,
+} from "./useProductionCanvasSingleVideoPlanner";
 
 export function useProductionCanvasSkillPlanner({
   currentRunId,
@@ -50,15 +50,12 @@ export function useProductionCanvasSkillPlanner({
     message: string;
     nodeId: string;
   } | null>(null);
-  const nodesRef = useRef(nodes);
-  nodesRef.current = nodes;
   const autoContinuationRef = useRef<{
     prompt: string;
     runId?: string | null;
   } | null>(null);
   const autoExecutionActiveRef = useRef(false);
   const autoContinuationPendingRef = useRef(false);
-  const continueAutoExecutionRef = useRef<() => void>(() => undefined);
   const handleDomainContextResolved = (
     resolved: ProductionCanvasResolvedContext,
   ) => {
@@ -82,6 +79,22 @@ export function useProductionCanvasSkillPlanner({
     runId: currentRunId,
     operationEpoch: activeIdentity.epoch,
   });
+  const { continueAutoExecution, executeSkillNode, executeSkillRequest } =
+    useProductionCanvasExecutionActions({
+      autoContinuationPendingRef,
+      autoContinuationRef,
+      autoExecutionActiveRef,
+      contextRef,
+      executingNodeId,
+      nodes,
+      operationBlocked,
+      prompt,
+      publishExecutionNodes,
+      runGuard,
+      setError,
+      setExecutingNodeId,
+      setExecutionError,
+    });
   useEffect(() => {
     setRunning(false);
     setExecutingNodeId(null);
@@ -95,73 +108,25 @@ export function useProductionCanvasSkillPlanner({
       autoExecutionActiveRef.current = false;
     }
   }, [activeIdentity.epoch, activeIdentity.runId]);
-  useEffect(() => {
-    if (!autoContinuationPendingRef.current) return;
-    autoContinuationPendingRef.current = false;
-    continueAutoExecutionRef.current();
-  });
-  const executeSkillRequest = async (
-    node: ProductionCanvasNode,
-    fallbackPrompt?: string,
-    executionScope: "node" | "downstream" = "node",
-    targetRunId?: string | null,
-  ) => {
-    const operationIdentity = runGuard.capture();
-    try {
-      const publications = await executeProductionCanvasSkill({
-        context: contextRef.current,
-        currentRunId: operationIdentity.runId,
-        executionScope,
-        fallbackPrompt,
-        node,
-        nodes: nodesRef.current,
-        prompt,
-        targetRunId,
-      });
-      return runGuard.isCurrent(operationIdentity) ? publications : null;
-    } catch (error) {
-      if (!runGuard.isCurrent(operationIdentity)) return null;
-      throw error;
-    }
-  };
-  const continueAutoExecution = async (initialNodes = nodesRef.current) => {
-    const continuation = autoContinuationRef.current;
-    if (!continuation || autoExecutionActiveRef.current || operationBlocked)
-      return;
-    autoExecutionActiveRef.current = true;
-    try {
-      await executeProductionCanvasReadyNodes({
-        initialNodes,
-        onExecuting: setExecutingNodeId,
-        execute: (node) =>
-          executeSkillRequest(
-            node,
-            continuation.prompt,
-            "node",
-            continuation.runId,
-          ),
-        publish: (publication) => {
-          const identity = runGuard.capture();
-          publishExecutionNodes(
-            publication.sourceNode,
-            publication.resultNodes,
-            continuation.runId,
-            identity.epoch,
-            publication.resolvedContext,
-          );
-        },
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
+  const {
+    creationMode,
+    setCreationMode,
+    singleVideoDraft,
+    updateSingleVideoDraft,
+  } = useProductionCanvasSingleVideoMode({
+    contextRef,
+    onDomainContextResolved,
+    replaceContext,
+    resetAutoExecution: () => {
+      autoContinuationRef.current = null;
       autoExecutionActiveRef.current = false;
-      setExecutingNodeId(null);
-    }
-  };
-  continueAutoExecutionRef.current = () => void continueAutoExecution();
+    },
+    running,
+  });
   const createFromPrompt = async () => {
     const trimmed = prompt.trim();
     if (!trimmed || running || operationBlocked) return;
+    const selectedMode = creationMode;
     setRunning(true);
     setError(null);
     setExecutionError(null);
@@ -169,6 +134,34 @@ export function useProductionCanvasSkillPlanner({
     try {
       await waitForProductionCanvasBusyPaint();
       if (!runGuard.isCurrent(operationIdentity)) return;
+      if (selectedMode === "single_video") {
+        await runSingleVideoCanvasCreation({
+          captureIdentity: runGuard.capture,
+          contextRef,
+          draft: singleVideoDraft,
+          executeScript: (node, executionNodes, runId) =>
+            executeSkillRequest(node, trimmed, "node", runId, executionNodes),
+          isCurrent: runGuard.isCurrent,
+          onDomainContextResolved,
+          onIdentityChange: (identity) => {
+            operationIdentity = identity;
+          },
+          onNodesCreated,
+          onRunCreated,
+          prompt: trimmed,
+          publish: (publication, runId, identity) =>
+            publishExecutionNodes(
+              publication.sourceNode,
+              publication.resultNodes,
+              runId,
+              identity.epoch,
+              publication.resolvedContext,
+            ),
+          replaceContext,
+          setExecutingNodeId,
+        });
+        return;
+      }
       const requestContext = productionCanvasRequestContext(contextRef.current);
       const plan = await createCanvasPlan(trimmed, contextRef.current);
       if (!runGuard.isCurrent(operationIdentity)) return;
@@ -197,42 +190,8 @@ export function useProductionCanvasSkillPlanner({
       }
     }
   };
-  const executeSkillNode = async (
-    node: ProductionCanvasNode,
-    executionScope: "node" | "downstream" = "node",
-  ) => {
-    if (!node.skill || executingNodeId || operationBlocked) return;
-    const operationIdentity = runGuard.capture();
-    setExecutingNodeId(node.id);
-    setExecutionError(null);
-    try {
-      const publications = await executeSkillRequest(
-        node,
-        undefined,
-        executionScope,
-      );
-      if (!publications) return;
-      for (const publication of publications) {
-        publishExecutionNodes(
-          publication.sourceNode,
-          publication.resultNodes,
-          operationIdentity.runId,
-          operationIdentity.epoch,
-          publication.resolvedContext,
-        );
-      }
-    } catch (err) {
-      if (runGuard.isCurrent(operationIdentity)) {
-        setExecutionError({
-          message: err instanceof Error ? err.message : String(err),
-          nodeId: node.id,
-        });
-      }
-    } finally {
-      if (runGuard.isCurrent(operationIdentity)) setExecutingNodeId(null);
-    }
-  };
   return {
+    creationMode,
     context,
     createFromPrompt,
     error,
@@ -244,6 +203,9 @@ export function useProductionCanvasSkillPlanner({
     replaceContext,
     running: running || operationBlocked,
     setContextValue,
+    setCreationMode,
     setPrompt,
+    singleVideoDraft,
+    updateSingleVideoDraft,
   };
 }

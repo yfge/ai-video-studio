@@ -23,10 +23,12 @@ from .meta import router as meta_router
 from .novel import process_story_novel_export_task
 from .novel import router as novel_router
 from .readiness import router as readiness_router
+from .single_video import router as single_video_router
 
 router = APIRouter()
 
 for sub_router in [
+    single_video_router,
     crud_router,
     generation_router,
     async_router,

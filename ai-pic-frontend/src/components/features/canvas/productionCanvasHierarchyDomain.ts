@@ -11,10 +11,14 @@ import type {
   HierarchyGraph,
   HierarchyNode,
 } from "./productionCanvasHierarchyTypes";
-
+import {
+  episodeHierarchyDetail,
+  episodeHierarchyTypeLabel,
+  storyHierarchyDetail,
+  storyHierarchyTypeLabel,
+} from "./productionCanvasSingleVideoHierarchy";
 const nodeId = (type: HierarchyEntityType, id: number | string) =>
   `${type}:${id}`;
-
 const edge = (
   from: string,
   to: string,
@@ -29,7 +33,6 @@ const edge = (
   label,
   contextId,
 });
-
 export function buildHierarchyRoots(ips: VirtualIP[]): HierarchyGraph {
   return {
     nodes: ips.map((ip, laneOrder) => ({
@@ -83,11 +86,12 @@ export function buildIpHierarchyBranch(
       "story",
       story.id,
       story.title,
-      story.premise || story.genre,
+      storyHierarchyDetail(story),
       parent,
       laneOrder,
       true,
       story.business_id,
+      storyHierarchyTypeLabel(story),
     ),
   );
   const envChildren = envNodes.length
@@ -130,11 +134,12 @@ export function buildStoryHierarchyBranch(
       "episode",
       episode.id,
       episode.title,
-      `第 ${episode.episode_number} 集 · ${episode.status}`,
+      episodeHierarchyDetail(episode),
       parent,
       laneOrder,
       true,
       episode.business_id,
+      episodeHierarchyTypeLabel(episode),
     ),
   );
   if (!children.length) return emptyBranch(parent, "episode");
@@ -188,12 +193,14 @@ function domainNode(
   laneOrder: number,
   expandable: boolean,
   businessId?: string,
+  displayTypeLabel?: string,
 ): HierarchyNode {
   return {
     id: nodeId(type, id),
     entityType: type,
     entityId: id,
     businessId,
+    displayTypeLabel,
     title,
     detail,
     status: "ready",

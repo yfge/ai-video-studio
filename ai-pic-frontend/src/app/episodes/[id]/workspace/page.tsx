@@ -11,6 +11,7 @@ import { useEpisodeDetail } from "@/hooks/useEpisodeDetail";
 import { useEpisodeWorkspaceController } from "@/hooks/episode/useEpisodeWorkspaceController";
 import { useEpisodeWorkspaceUrlState } from "@/hooks/episode/useEpisodeWorkspaceUrlState";
 import { useTimelineResolvedVideos } from "@/components/features/episode/useTimelineResolvedVideos";
+import { isSingleVideoProject } from "@/utils/singleVideoProject";
 
 export default function EpisodeWorkspacePage() {
   return (
@@ -55,8 +56,12 @@ function EpisodeWorkspacePageContent() {
     selectedScript,
   } = state;
 
-  const { initialTab, urlScriptId, initialSelectedClipId } =
-    useEpisodeWorkspaceUrlState(searchParams);
+  const {
+    initialTab,
+    urlScriptId,
+    initialSelectedClipId,
+    initialScriptTaskId,
+  } = useEpisodeWorkspaceUrlState(searchParams);
   const {
     resolvedVideos,
     error: resolvedVideosError,
@@ -71,7 +76,6 @@ function EpisodeWorkspacePageContent() {
   const mainScriptSceneCount = Array.isArray(mainScript?.scenes)
     ? mainScript?.scenes.length
     : undefined;
-
   const workflowStatus: WorkflowStatus = {
     script: scripts.length > 0 ? "ready" : "pending",
     timeline:
@@ -97,6 +101,7 @@ function EpisodeWorkspacePageContent() {
     router,
     initialTab,
     urlScriptId,
+    initialScriptTaskId,
     episode,
     scripts,
     selectedTimelineSpec,
@@ -128,7 +133,11 @@ function EpisodeWorkspacePageContent() {
 
   return (
     <OperatorShell
-      breadcrumb={["IP 中心", "故事生产", `第${episode!.episode_number}集`]}
+      breadcrumb={
+        isSingleVideoProject(episode)
+          ? ["视频项目", episode!.title]
+          : ["IP 中心", "故事生产", `第${episode!.episode_number}集`]
+      }
       compactNavigation
       showGlobalSearch={false}
     >
@@ -148,6 +157,7 @@ function EpisodeWorkspacePageContent() {
           onSelectScript={handleScriptChange}
           storyboardActionLabel={storyboardActionLabel}
           onOpenStoryboard={handleOpenStoryboard}
+          singleVideoProject={isSingleVideoProject(episode)}
         />
         <WorkspaceActiveTabContent
           activeTab={activeTab}

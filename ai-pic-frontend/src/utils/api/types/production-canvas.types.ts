@@ -4,6 +4,7 @@ export type { ProductionCanvasResolvedContext } from "./production-canvas-contex
 export interface ProductionCanvasPlanRequest
   extends ProductionCanvasResolvedContext {
   prompt: string;
+  planning_mode?: "series" | "single_video";
 }
 export type ProductionCanvasNodeStatus =
   | "draft"

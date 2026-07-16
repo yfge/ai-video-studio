@@ -139,7 +139,10 @@ def build_canvas_skill_results(
     request: ProductionCanvasPlanRequest,
     selection: CanvasAssetSelection,
 ) -> list[ProductionCanvasSkillResult]:
-    asset_outputs = selection.outputs()
+    asset_outputs = {
+        **selection.outputs(),
+        "planning_mode": request.planning_mode,
+    }
     downstream_outputs = _downstream_outputs(request, selection)
     results: list[ProductionCanvasSkillResult] = []
     for skill in list_canvas_skill_definitions():
@@ -151,7 +154,10 @@ def build_canvas_skill_results(
                     status="ready",
                     title="已从聊天目标生成生产 brief",
                     detail=f"目标：{request.prompt}",
-                    outputs={"prompt": request.prompt},
+                    outputs={
+                        "prompt": request.prompt,
+                        "planning_mode": request.planning_mode,
+                    },
                     reuse_targets=skill.reuse_targets,
                 )
             )

@@ -30,6 +30,7 @@ interface EpisodeWorkspaceHeaderProps {
   onSelectScript: (scriptId: number | null) => void;
   storyboardActionLabel?: string;
   onOpenStoryboard?: () => void;
+  singleVideoProject?: boolean;
 }
 
 export function EpisodeWorkspaceHeader({
@@ -47,6 +48,7 @@ export function EpisodeWorkspaceHeader({
   onSelectScript,
   storyboardActionLabel = "打开分镜辅助",
   onOpenStoryboard,
+  singleVideoProject = false,
 }: EpisodeWorkspaceHeaderProps) {
   const productionState = buildEpisodeProductionState({
     activeTab,
@@ -75,6 +77,7 @@ export function EpisodeWorkspaceHeader({
       onNavigateBack={onNavigateBack}
       onSelectScript={onSelectScript}
       onPrimaryAction={runPrimaryAction}
+      singleVideoProject={singleVideoProject}
     />
   );
 }

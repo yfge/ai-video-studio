@@ -1,11 +1,16 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   OperatorPanel,
   OperatorShell,
   operatorButtonClass,
 } from "@/components/shared";
 import { useStories, type UseStoriesOptions } from "@/hooks/useStories";
+import type { SingleVideoProjectResponse } from "@/utils/api/types";
+import { episodeWorkspaceHref } from "@/utils/routes";
+import { SingleVideoProjectModal } from "./SingleVideoProjectModal";
 import { StoryGenerateForm } from "./StoryGenerateForm";
 import { StoryListSection } from "./StoryListSection";
 
@@ -14,6 +19,8 @@ export function StoryProductionBoard({
 }: {
   showAlert: UseStoriesOptions["showAlert"];
 }) {
+  const router = useRouter();
+  const [showSingleVideoForm, setShowSingleVideoForm] = useState(false);
   const state = useStories({ showAlert });
   const {
     stories,
@@ -39,12 +46,20 @@ export function StoryProductionBoard({
     closeGenerateForm,
     navigateToVirtualIP,
   } = state;
+  const openSingleVideoProject = (project: SingleVideoProjectResponse) => {
+    router.push(
+      episodeWorkspaceHref(project.episode_id, {
+        tab: "script",
+        extraParams: project.task_id ? { taskId: project.task_id } : undefined,
+      }),
+    );
+  };
 
   return (
     <OperatorShell
-      title="IP 故事生产"
-      subtitle="围绕 IP 组织故事、剧集和生成准备"
-      breadcrumb={["IP 中心", "故事生产"]}
+      title="视频项目"
+      subtitle="单条视频可直接创建；系列内容继续按故事和剧集组织"
+      breadcrumb={["IP 中心", "视频生产"]}
     >
       <div className="space-y-5">
         <OperatorPanel className="p-4">
@@ -52,17 +67,23 @@ export function StoryProductionBoard({
             <div>
               <h2 className="text-sm font-semibold text-gray-950">故事入口</h2>
               <p className="mt-1 text-xs text-gray-500">
-                故事用于承接 IP
-                角色、环境资产和剧集生产；详情页内继续处理就绪检查与剧集生成。
+                3–5 分钟视频可跳过故事与剧集配置；系列项目继续使用完整生产结构。
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={openGenerateForm}
+                onClick={() => setShowSingleVideoForm(true)}
                 className={operatorButtonClass("primary")}
               >
-                从 IP 新建
+                创建单条视频
+              </button>
+              <button
+                type="button"
+                onClick={openGenerateForm}
+                className={operatorButtonClass("secondary")}
+              >
+                创建系列故事
               </button>
             </div>
           </div>
@@ -75,6 +96,7 @@ export function StoryProductionBoard({
           onSelectedGenreChange={setSelectedGenre}
           selectedStatus={selectedStatus}
           onSelectedStatusChange={setSelectedStatus}
+          onOpenSingleVideoForm={() => setShowSingleVideoForm(true)}
           onOpenGenerateForm={openGenerateForm}
           onDelete={handleDeleteStory}
         />
@@ -95,6 +117,11 @@ export function StoryProductionBoard({
         onPreviewPrompt={handlePreviewPrompt}
         onSubmit={handleGenerateStory}
         onNavigateToVirtualIP={navigateToVirtualIP}
+      />
+      <SingleVideoProjectModal
+        open={showSingleVideoForm}
+        onClose={() => setShowSingleVideoForm(false)}
+        onCreated={openSingleVideoProject}
       />
     </OperatorShell>
   );

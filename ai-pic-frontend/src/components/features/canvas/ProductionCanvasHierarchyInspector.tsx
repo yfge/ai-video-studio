@@ -20,7 +20,7 @@ export function ProductionCanvasHierarchyInspector({
     <div className="space-y-3 text-xs text-slate-600">
       <div>
         <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-          {node.entityType}
+          {node.displayTypeLabel || node.entityType}
         </div>
         <div className="mt-1 font-semibold text-slate-950">{node.title}</div>
         {node.detail ? <p className="mt-1 leading-5">{node.detail}</p> : null}

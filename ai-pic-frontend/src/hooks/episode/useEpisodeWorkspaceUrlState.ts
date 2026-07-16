@@ -16,10 +16,17 @@ export function useEpisodeWorkspaceUrlState(searchParams: SearchParamsLike) {
     return Number.isFinite(parsed) ? parsed : null;
   }, [searchParams]);
   const initialSelectedClipId = searchParams.get("clipId")?.trim() || null;
+  const initialScriptTaskId = useMemo(() => {
+    const raw = searchParams.get("taskId");
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  }, [searchParams]);
 
   return {
     initialTab,
     urlScriptId,
     initialSelectedClipId,
+    initialScriptTaskId,
   };
 }

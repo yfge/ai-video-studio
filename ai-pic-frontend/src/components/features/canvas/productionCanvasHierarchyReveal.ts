@@ -1,4 +1,5 @@
 import type { Story } from "@/utils/api/types";
+import { isSingleVideoProject } from "@/utils/singleVideoProject";
 import {
   loadHierarchyBranch,
   loadHierarchyContextIpBranch,
@@ -8,6 +9,7 @@ import {
   loadHierarchyStory,
 } from "./productionCanvasHierarchyLoader";
 import {
+  buildStoryHierarchyRoot,
   mergeHierarchyGraphs,
   type HierarchyGraph,
   type HierarchyNode,
@@ -91,6 +93,8 @@ export async function revealProductionCanvasHierarchy(
     const rootResult = await loadHierarchyRoot(virtualIpId);
     graph = rootResult.graph;
     rootWarning = rootResult.warning;
+  } else if (story && isSingleVideoProject(story)) {
+    graph = buildStoryHierarchyRoot(story);
   } else {
     return {
       expandedIds: new Set(),

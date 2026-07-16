@@ -82,6 +82,8 @@ def _select_virtual_ips(
     if request.virtual_ip_id:
         selected = repo.get_owned_by_id(request.virtual_ip_id, user)
         return selected, [selected]
+    if request.planning_mode == "single_video":
+        return None, []
     candidates = [
         asset
         for asset in repo.list_accessible(user=user, limit=200)
@@ -135,6 +137,8 @@ def _select_environment(
     if request.environment_id:
         selected = env_repo.get_owned_by_identifier(request.environment_id, user)
         return selected, [selected]
+    if request.planning_mode == "single_video":
+        return None, []
     linked = []
     if virtual_ip:
         linked = VirtualIPEnvironmentRepository(db).list_for_virtual_ip(

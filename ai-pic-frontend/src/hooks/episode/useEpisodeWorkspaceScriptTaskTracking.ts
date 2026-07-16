@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import { scriptAPI } from "@/utils/api/endpoints";
 import type { Script, Task } from "@/utils/api/types";
@@ -22,6 +22,7 @@ export const resolveScriptIdFromTask = (task: Task | null) => {
  */
 export function useEpisodeWorkspaceScriptTaskTracking(args: {
   episodeKey: string;
+  initialTaskId?: number | null;
   knownScriptIds: number[];
   setScripts: React.Dispatch<React.SetStateAction<Script[]>>;
   onSelectScript: (scriptId: number | null) => void;
@@ -30,6 +31,7 @@ export function useEpisodeWorkspaceScriptTaskTracking(args: {
 }) {
   const {
     episodeKey,
+    initialTaskId,
     knownScriptIds,
     setScripts,
     onSelectScript,
@@ -63,15 +65,26 @@ export function useEpisodeWorkspaceScriptTaskTracking(args: {
     [episodeKey, knownScriptIds, notify, onSelectScript, setScripts],
   );
 
-  const tracker = useGenerationTaskTracker<"script">({
+  const { tasks, track } = useGenerationTaskTracker<"script">({
     labels: { script: "剧本" },
     onCompleted: handleCompleted,
     onNotify: notify,
     pollIntervalMs,
   });
+  const trackScriptTask = useCallback(
+    (taskId: number) => track("script", taskId),
+    [track],
+  );
+  const trackedInitialTaskId = useRef<number | null>(null);
+  useEffect(() => {
+    if (!initialTaskId || trackedInitialTaskId.current === initialTaskId)
+      return;
+    trackedInitialTaskId.current = initialTaskId;
+    trackScriptTask(initialTaskId);
+  }, [initialTaskId, trackScriptTask]);
 
   return {
-    scriptTask: tracker.tasks.script ?? null,
-    trackScriptTask: (taskId: number) => tracker.track("script", taskId),
+    scriptTask: tasks.script ?? null,
+    trackScriptTask,
   };
 }

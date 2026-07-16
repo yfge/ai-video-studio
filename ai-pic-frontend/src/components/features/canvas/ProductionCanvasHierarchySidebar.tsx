@@ -143,9 +143,19 @@ export function ProductionCanvasHierarchySidebar({
   const nodeById = new Map(
     projection.nodes.map((node) => [node.id, node] as const),
   );
+  const incoming = new Set(
+    projection.edges
+      .filter((edge) => edge.relationType !== "reference")
+      .map((edge) => edge.to),
+  );
   const roots = projection.nodes
-    .filter((node) => node.entityType === "ip")
-    .sort((left, right) => left.laneOrder - right.laneOrder);
+    .filter((node) => !incoming.has(node.id))
+    .sort(
+      (left, right) =>
+        (typeOrder.get(left.entityType) || 0) -
+          (typeOrder.get(right.entityType) || 0) ||
+        left.laneOrder - right.laneOrder,
+    );
   return (
     <div className="space-y-4">
       <OperatorPanel className="max-h-[360px] overflow-hidden">
@@ -175,7 +185,9 @@ export function ProductionCanvasHierarchySidebar({
               onSelect={onSelect}
               onToggle={onToggle}
               rootVirtualIpId={
-                typeof root.entityId === "number" ? root.entityId : undefined
+                root.entityType === "ip" && typeof root.entityId === "number"
+                  ? root.entityId
+                  : undefined
               }
             />
           ))}

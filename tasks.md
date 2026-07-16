@@ -224,6 +224,21 @@ stable clip / Task` 上下文；旧 `agent_run.result_ref` 与结果路径继续
 - [x] 补齐自主方案、修复成功、确定性回退、动态边创建/恢复的后端与前端回归，并完成
       当前环境真实浏览器验证。
 
+### 单条视频快捷生产（Story 列表与 Production Canvas 共享）
+
+- [x] 新增共享后端创建能力：只要求标题/描述、3 或 5 分钟、画幅与可选风格；IP 和
+      Environment 均可不选，同时保留显式资产归属与资源池关系校验。
+- [x] 内部创建一个带 `creation_mode=single_video` 的 Story/Episode 兼容结构，
+      前端统一展示为 `视频项目 -> 主视频`，不要求用户先完成系列故事建模。
+- [x] `/stories` 提供“创建单条视频”主入口，创建后直接跟踪现有剧本生成 Task 并进入
+      Script/Timeline 工作区；系列故事入口继续保留。
+- [x] `/canvas` 提供“单条视频 / 系列制作”模式切换；单条视频模式先创建兼容项目，
+      再规划并只自动执行 `script.generate`，不得自动触发图片、视频或渲染费用。
+- [x] 无 IP 的单条视频层级以真实 Story 为根；Run 节点和执行请求保留
+      `planning_mode=single_video`，恢复后也不得重新按 prompt 猜测或创建资产。
+- [x] 补齐后端 API/资产安全、前端入口/工作区、Canvas 编排与无 IP 层级回归，并通过
+      lint、生产构建和真实浏览器验证。
+
 ## P1: Production Stability
 
 :link: `docs/exec-plans/active/main-chain-commercial-readiness.md`

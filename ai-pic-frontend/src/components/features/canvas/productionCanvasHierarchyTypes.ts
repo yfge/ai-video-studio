@@ -21,6 +21,7 @@ export interface HierarchyNode {
   entityType: HierarchyEntityType;
   entityId: number | string;
   businessId?: string;
+  displayTypeLabel?: string;
   title: string;
   detail: string;
   status: HierarchyNodeStatus;

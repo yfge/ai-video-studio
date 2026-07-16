@@ -57,13 +57,14 @@ def resolve_canvas_plan(
     validate_ip_environment(db, resolved)
     resolved = bind_latest_timeline(db, resolved)
     validate_resolved_clip(db, user, resolved)
-    resolved, assets = provision_missing_canvas_assets(
-        db,
-        user,
-        resolved,
-        assets,
-        explicit_environment_id=request.environment_id,
-    )
+    if resolved.planning_mode != "single_video":
+        resolved, assets = provision_missing_canvas_assets(
+            db,
+            user,
+            resolved,
+            assets,
+            explicit_environment_id=request.environment_id,
+        )
     validate_story_ip(db, resolved)
     validate_ip_environment(db, resolved)
     return ResolvedCanvasPlan(request=resolved, assets=assets)

@@ -758,6 +758,43 @@ created assets and the hierarchy shows only the corresponding real branch.
 Ambiguous prompts remain unbound, and failed explicit-lineage validation leaves
 no newly created asset behind.
 
+### Cross-cutting capability: single-video quick path
+
+Status: Implemented for the project list and Production Canvas.
+
+- The operator can create one independent 3- or 5-minute video without first
+  designing a multi-episode Story. The visible inputs are title, production
+  brief, duration, aspect ratio, optional style, and optional IP/Environment.
+- The backend creates one system-managed Story and Episode only as compatibility
+  records for the existing script, Timeline, task, and media pipelines. Both
+  records carry `creation_mode=single_video`; the UI presents them as
+  `视频项目 -> 主视频`, not as a Story/Episode authoring requirement.
+- The project-list entry immediately queues the existing production script
+  worker with automatic Timeline generation and opens the script workspace with
+  its Task ID.
+- The Production Canvas entry creates the same compatibility records without
+  dispatching generation, plans with `planning_mode=single_video`, then
+  automatically executes only `script.generate`. Image, video, approval,
+  placement, render, and export remain explicit operator actions.
+- A single video does not require an IP root. When no IP is selected, the
+  hierarchy truthfully starts at the video-project Story. When IP and
+  Environment are both selected, their existing resource-pool relationship is
+  validated before the project is created.
+- The planning mode is retained in plan-node outputs and execution requests so
+  a restored Run does not re-enable prompt-based asset guessing.
+- Current-environment browser evidence is stored under
+  `artifacts/runs/single-video-quick-path-20260716/`. Chrome DevTools connection
+  timed out, so the recorded engine is Playwright fallback. Generation
+  responses were intercepted to avoid paid provider calls and database
+  pollution; the captured network payloads prove the project-list path starts
+  script generation, while Canvas plans in `single_video` mode and executes
+  only `script.generate`.
+
+Exit criterion: from either `/stories` or `/canvas`, an operator can describe a
+3- or 5-minute video, create it without configuring a series hierarchy, and
+land in an existing script/Timeline production path. No image or video provider
+task is submitted until the operator explicitly runs the corresponding node.
+
 ## First Vertical-Slice Acceptance Criteria
 
 Implementation status: complete across the tracked slices. Release acceptance

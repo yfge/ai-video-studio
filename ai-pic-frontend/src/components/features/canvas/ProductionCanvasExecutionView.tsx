@@ -42,6 +42,7 @@ export function ProductionCanvasExecutionView({
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <OperatorPanel className="overflow-hidden">
           <ProductionCanvasPlanningHeader
+            creationMode={planner.creationMode}
             context={planner.context}
             error={planner.error}
             onCreate={() => {
@@ -49,9 +50,12 @@ export function ProductionCanvasExecutionView({
               commands.focusCanvas();
             }}
             onContextChange={planner.setContextValue}
+            onCreationModeChange={planner.setCreationMode}
             onPromptChange={planner.setPrompt}
+            onSingleVideoDraftChange={planner.updateSingleVideoDraft}
             prompt={planner.prompt}
             running={planner.running}
+            singleVideoDraft={planner.singleVideoDraft}
           />
           <ProductionCanvasToolbar
             actionBusy={Boolean(runActions.busyAction)}

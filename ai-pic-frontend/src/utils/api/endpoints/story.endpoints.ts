@@ -7,6 +7,8 @@ import type {
   Story,
   StoryCharacter,
   StoryGenerationRequest,
+  SingleVideoProjectRequest,
+  SingleVideoProjectResponse,
   ReadinessResult,
   QuickFixRequest,
   QuickFixResponse,
@@ -77,6 +79,18 @@ async function generateStoryAsync(
 ): Promise<ApiResponse<{ task_id: number; status: string }>> {
   return httpClient<{ task_id: number; status: string }>(
     "/api/v1/stories/generate-async",
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    },
+  );
+}
+
+async function createSingleVideoProject(
+  data: SingleVideoProjectRequest,
+): Promise<ApiResponse<SingleVideoProjectResponse>> {
+  return httpClient<SingleVideoProjectResponse>(
+    "/api/v1/stories/single-video",
     {
       method: "POST",
       body: JSON.stringify(data),
@@ -191,6 +205,7 @@ export const storyAPI = {
   getStory,
   generateStory,
   generateStoryAsync,
+  createSingleVideoProject,
   previewStoryPrompt,
   updateStory,
   deleteStory,

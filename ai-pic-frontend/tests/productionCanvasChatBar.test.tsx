@@ -122,4 +122,41 @@ describe("ProductionCanvasChatBar", () => {
       ["environment_id", "22"],
     ]);
   });
+
+  it("shows lightweight single-video inputs without episode lineage fields", () => {
+    const modeChanges: string[] = [];
+    const utils = render(
+      <ProductionCanvasChatBar
+        assetOptions={{
+          environments: [],
+          episodes: [],
+          error: null,
+          loading: false,
+          scripts: [],
+          virtualIPs: [],
+        }}
+        creationMode="single_video"
+        context={emptyProductionCanvasContext}
+        onCreate={() => {}}
+        onContextChange={() => {}}
+        onCreationModeChange={(mode) => modeChanges.push(mode)}
+        onPromptChange={() => {}}
+        prompt="做一个三分钟产品视频"
+        running={false}
+      />,
+      { container: dom.window.document.body },
+    );
+
+    assert.ok(utils.getByLabelText("视频标题"));
+    assert.ok(utils.getByLabelText("视频时长"));
+    assert.ok(utils.getByLabelText("视频画幅"));
+    assert.ok(utils.getByLabelText("视频风格"));
+    assert.equal(utils.queryByLabelText("剧集"), null);
+    assert.equal(utils.queryByLabelText("剧本"), null);
+    assert.equal(utils.queryByLabelText("任务 ID"), null);
+    assert.ok(utils.getByRole("button", { name: "创建并生成" }));
+
+    fireEvent.click(utils.getByRole("button", { name: "系列制作" }));
+    assert.deepEqual(modeChanges, ["series"]);
+  });
 });

@@ -10,9 +10,11 @@ import { productionCanvasSkillExecuteRequest } from "./productionCanvasSkillRequ
 export async function createProductionCanvasPlan(
   prompt: string,
   context: ProductionCanvasContextDraft,
+  planningMode: "series" | "single_video" = "series",
 ) {
   const response = await productionCanvasAPI.createPlan({
     prompt,
+    ...(planningMode === "single_video" ? { planning_mode: planningMode } : {}),
     ...productionCanvasRequestContext(context),
   });
   if (!response.success || !response.data) {

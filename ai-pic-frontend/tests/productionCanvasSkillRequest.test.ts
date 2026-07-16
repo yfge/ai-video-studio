@@ -7,6 +7,33 @@ import { productionCanvasSkillExecuteRequest } from "../src/components/features/
 import { productionCanvasSavedNodeMatchesRun } from "../src/components/features/canvas/useProductionCanvasNodeExecution";
 
 describe("productionCanvasSkillExecuteRequest", () => {
+  it("preserves single-video planning mode from persisted node outputs", () => {
+    const node: ProductionCanvasNode = {
+      id: "single-video-script",
+      label: "Script",
+      title: "Single video script",
+      status: "ready",
+      x: 0,
+      y: 0,
+      width: 220,
+      skill: "script.generate",
+      outputs: {
+        episode_id: 20,
+        planning_mode: "single_video",
+      },
+    };
+
+    const request = productionCanvasSkillExecuteRequest({
+      context: emptyProductionCanvasContext,
+      currentRunId: "run-single-video",
+      executionScope: "node",
+      node,
+      prompt: "generate",
+    });
+
+    assert.equal(request.planning_mode, "single_video");
+  });
+
   it("does not revive a stale Run ID from node outputs", () => {
     const node: ProductionCanvasNode = {
       id: "stale",

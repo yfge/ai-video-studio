@@ -44,6 +44,7 @@ class ProductionCanvasResolvedContext(BaseModel):
 
 class ProductionCanvasPlanRequest(ProductionCanvasResolvedContext):
     prompt: str = Field(..., min_length=1, max_length=2000)
+    planning_mode: Literal["series", "single_video"] = "series"
 
 
 class ProductionCanvasSkillExecuteRequest(ProductionCanvasPlanRequest):

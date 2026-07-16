@@ -98,6 +98,30 @@ describe("ProductionCanvasHierarchy result reveal", () => {
     assert.equal(target?.timelineVersion, 99);
   });
 
+  it("reveals a single-video Story and Episode without an IP request", async () => {
+    const fetchStub = installHierarchyFetch();
+    restoreFetch = fetchStub.restore;
+
+    const result = await revealProductionCanvasHierarchy({
+      story_id: 30,
+      episode_id: 300,
+    });
+
+    assert.equal(result.targetNodeId, "episode:300");
+    assert.deepEqual([...result.expandedIds], ["story:30"]);
+    assert.equal(
+      result.graph.nodes.find((node) => node.id === "story:30")
+        ?.displayTypeLabel,
+      "视频项目",
+    );
+    assert.equal(
+      fetchStub.requests.some((path) =>
+        path.startsWith("/api/v1/virtual-ips/"),
+      ),
+      false,
+    );
+  });
+
   it("selects and focuses a task result without manual expansion", async () => {
     const fetchStub = installHierarchyFetch();
     restoreFetch = fetchStub.restore;

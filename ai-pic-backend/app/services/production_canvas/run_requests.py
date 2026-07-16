@@ -66,10 +66,16 @@ def request_for_canvas_node_context(
 ) -> ProductionCanvasSkillExecuteRequest:
     outputs = node.outputs or {}
     prompt = outputs.get("prompt")
+    planning_mode = outputs.get("planning_mode")
     frame_indexes = outputs.get("frame_indexes")
     fps = _number(outputs, "fps")
     return ProductionCanvasSkillExecuteRequest(
         prompt=prompt if isinstance(prompt, str) and prompt else base.prompt,
+        planning_mode=(
+            planning_mode
+            if planning_mode in {"series", "single_video"}
+            else base.planning_mode
+        ),
         skill=node.skill or "",
         run_id=base.run_id,
         node_id=node.id,

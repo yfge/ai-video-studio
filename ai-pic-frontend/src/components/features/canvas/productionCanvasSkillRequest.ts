@@ -73,6 +73,7 @@ export function productionCanvasSkillExecuteRequest({
       environmentId,
     ),
   );
+  const planningMode = outputString(node.outputs, "planning_mode");
   return {
     prompt:
       fallbackPrompt ||
@@ -80,6 +81,7 @@ export function productionCanvasSkillExecuteRequest({
       outputString(node.outputs, "prompt") ||
       node.title,
     skill: node.skill || "",
+    planning_mode: planningMode === "single_video" ? "single_video" : undefined,
     node_id: node.id,
     execution_scope: executionScope,
     run_id:
