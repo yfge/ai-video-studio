@@ -1,5 +1,7 @@
 from typing import List, Optional
 
+from sqlalchemy.orm import Session, joinedload
+
 from app.models.script import Episode, Story
 from app.models.timeline import (
     MediaAsset,
@@ -9,7 +11,6 @@ from app.models.timeline import (
     TimelineRevision,
 )
 from app.repositories.base import BaseRepository
-from sqlalchemy.orm import Session, joinedload
 
 
 class TimelineRepository(BaseRepository[Timeline]):
@@ -34,27 +35,27 @@ class TimelineRepository(BaseRepository[Timeline]):
         include_deleted: bool = False,
         limit: int = 50,
     ) -> List[Timeline]:
-        query = (
-            self.session.query(Timeline)
+        id_query = (
+            self.session.query(Timeline.id)
             .join(Episode, Timeline.episode_id == Episode.id)
             .join(Story, Episode.story_id == Story.id)
-            .options(joinedload(Timeline.episode), joinedload(Timeline.script))
             .filter(Timeline.episode_id == episode_id)
         )
-
         if not include_deleted:
-            query = query.filter(Timeline.is_deleted.is_(False))
-            query = query.filter(Episode.is_deleted.is_(False))
-            query = query.filter(Story.is_deleted.is_(False))
-
+            id_query = id_query.filter(Timeline.is_deleted.is_(False))
+            id_query = id_query.filter(Episode.is_deleted.is_(False))
+            id_query = id_query.filter(Story.is_deleted.is_(False))
         if user_id is not None:
-            query = query.filter(Story.user_id == user_id)
-
-        return (
-            query.order_by(Timeline.updated_at.desc(), Timeline.id.desc())
-            .limit(limit)
-            .all()
-        )
+            id_query = id_query.filter(Story.user_id == user_id)
+        sort_order = (Timeline.updated_at.desc(), Timeline.id.desc())
+        timeline_ids = [row.id for row in id_query.order_by(*sort_order).limit(limit)]
+        by_id = {
+            timeline.id: timeline
+            for timeline in self.session.query(Timeline).filter(
+                Timeline.id.in_(timeline_ids)
+            )
+        }
+        return [by_id[timeline_id] for timeline_id in timeline_ids]
 
     def get_accessible(
         self,
