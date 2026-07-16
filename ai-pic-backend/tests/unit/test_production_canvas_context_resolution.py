@@ -265,7 +265,7 @@ def test_canvas_plan_rejects_explicit_environment_with_implicit_unlinked_ip(
         )
 
 
-def test_canvas_plan_drops_auto_environment_when_story_resolves_to_other_ip(
+def test_canvas_plan_links_prompt_environment_when_story_resolves_ip(
     db_session,
 ):
     user = _user(db_session, "canvas_context_auto_environment_owner")
@@ -292,6 +292,6 @@ def test_canvas_plan_drops_auto_environment_when_story_resolves_to_other_ip(
     )
 
     assert plan.resolved_context.virtual_ip_id == virtual_ip.id
-    assert plan.resolved_context.environment_id is None
+    assert plan.resolved_context.environment_id == environment.id
     assert plan.resolved_context.story_id == story.id
     assert plan.resolved_context.episode_id == episode.id

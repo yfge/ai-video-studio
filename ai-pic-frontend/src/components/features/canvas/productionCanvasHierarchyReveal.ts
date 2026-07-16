@@ -1,8 +1,11 @@
 import type { Story } from "@/utils/api/types";
 import {
   loadHierarchyBranch,
-  loadHierarchyRoots,
-  loadHierarchyStories,
+  loadHierarchyContextIpBranch,
+  loadHierarchyContextStoryBranch,
+  loadHierarchyEpisode,
+  loadHierarchyRoot,
+  loadHierarchyStory,
 } from "./productionCanvasHierarchyLoader";
 import {
   mergeHierarchyGraphs,
@@ -37,9 +40,13 @@ export interface ProductionCanvasHierarchyRevealResult {
 
 function storyVirtualIpIds(story: Story | undefined) {
   if (!story) return [];
-  return [...(story.story_characters || []), ...(story.characters || [])]
-    .map((character) => character.virtual_ip_id)
-    .filter((id): id is number => typeof id === "number");
+  return [
+    ...new Set(
+      [...(story.story_characters || []), ...(story.characters || [])]
+        .map((character) => character.virtual_ip_id)
+        .filter((id): id is number => typeof id === "number"),
+    ),
+  ];
 }
 
 function nodeById(graph: HierarchyGraph, id: string | undefined) {
@@ -59,35 +66,46 @@ function firstNode(
 export async function revealProductionCanvasHierarchy(
   context: ProductionCanvasHierarchySyncContext,
 ): Promise<ProductionCanvasHierarchyRevealResult> {
-  const rootResult = await loadHierarchyRoots();
-  let graph = rootResult.graph;
-  let stories: Story[] | null = null;
-  let storiesWarning: string | null = null;
-  const loadStories = async () => {
-    if (stories) return stories;
-    const result = await loadHierarchyStories();
-    stories = result.items;
-    storiesWarning = result.warning;
-    return stories;
-  };
+  const hasDomainContext = Object.entries(context).some(
+    ([key, value]) => key !== "task_id" && value !== undefined,
+  );
+  if (!hasDomainContext) {
+    return {
+      expandedIds: new Set(),
+      graph: { edges: [], nodes: [] },
+      loadedIds: new Set(),
+      targetNodeId: null,
+      warning: null,
+    };
+  }
+  const story = context.story_id
+    ? await loadHierarchyStory(context.story_id)
+    : undefined;
+  const storyIpIds = storyVirtualIpIds(story);
+  const virtualIpId =
+    context.virtual_ip_id ||
+    (storyIpIds.length === 1 ? storyIpIds[0] : undefined);
+  let graph: HierarchyGraph;
+  let rootWarning: string | null = null;
+  if (virtualIpId) {
+    const rootResult = await loadHierarchyRoot(virtualIpId);
+    graph = rootResult.graph;
+    rootWarning = rootResult.warning;
+  } else {
+    return {
+      expandedIds: new Set(),
+      graph: { edges: [], nodes: [] },
+      loadedIds: new Set(),
+      targetNodeId: null,
+      warning: "Prompt 尚未解析到唯一 IP，因此未展开资产仓库。",
+    };
+  }
+  const loadStories = async () => (story ? [story] : []);
   const expandedIds = new Set<string>();
   const loadedIds = new Set<string>();
   let targetNodeId: string | null = null;
 
-  let virtualIpId = context.virtual_ip_id;
-  if (!virtualIpId && context.story_id) {
-    const story = (await loadStories()).find(
-      (item) => item.id === context.story_id,
-    );
-    const visibleRootIds = new Set(
-      graph.nodes
-        .filter((node) => node.entityType === "ip")
-        .map((node) => Number(node.entityId)),
-    );
-    virtualIpId = storyVirtualIpIds(story).find((id) => visibleRootIds.has(id));
-  }
-
-  const ipNode = nodeById(graph, virtualIpId ? `ip:${virtualIpId}` : undefined);
+  const ipNode = virtualIpId ? nodeById(graph, `ip:${virtualIpId}`) : undefined;
   if (ipNode) targetNodeId = ipNode.id;
   const needsIpBranch = Boolean(
     context.environment_id ||
@@ -98,8 +116,12 @@ export async function revealProductionCanvasHierarchy(
       context.clip_id,
   );
   if (ipNode && needsIpBranch) {
-    const result = await loadHierarchyBranch(ipNode, loadStories);
-    graph = mergeHierarchyGraphs(graph, result.branch);
+    const branch = await loadHierarchyContextIpBranch(
+      ipNode,
+      story,
+      context.environment_id,
+    );
+    graph = mergeHierarchyGraphs(graph, branch);
     expandedIds.add(ipNode.id);
     loadedIds.add(ipNode.id);
   }
@@ -124,8 +146,15 @@ export async function revealProductionCanvasHierarchy(
       context.timeline_id ||
       context.clip_id
     ) {
-      const result = await loadHierarchyBranch(storyNode, loadStories);
-      graph = mergeHierarchyGraphs(graph, result.branch);
+      const episode = context.episode_id
+        ? await loadHierarchyEpisode(context.episode_id)
+        : null;
+      if (episode) {
+        graph = mergeHierarchyGraphs(
+          graph,
+          loadHierarchyContextStoryBranch(Number(storyNode.entityId), episode),
+        );
+      }
       expandedIds.add(storyNode.id);
       loadedIds.add(storyNode.id);
     }
@@ -188,7 +217,6 @@ export async function revealProductionCanvasHierarchy(
     graph,
     loadedIds,
     targetNodeId,
-    warning:
-      [rootResult.warning, storiesWarning].filter(Boolean).join("；") || null,
+    warning: rootWarning,
   };
 }

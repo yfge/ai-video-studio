@@ -23,6 +23,8 @@ class CanvasAssetSelection:
     selected: ProductionCanvasSelectedAssets
     candidate_virtual_ips: list[ProductionCanvasAssetSummary]
     candidate_environments: list[ProductionCanvasAssetSummary]
+    created_virtual_ip_ids: list[int] | None = None
+    created_environment_ids: list[int] | None = None
 
     def outputs(self) -> dict[str, list[int]]:
         return {
@@ -34,6 +36,8 @@ class CanvasAssetSelection:
             "candidate_environment_ids": [
                 asset.id for asset in self.candidate_environments
             ],
+            "created_virtual_ip_ids": self.created_virtual_ip_ids or [],
+            "created_environment_ids": self.created_environment_ids or [],
         }
 
 

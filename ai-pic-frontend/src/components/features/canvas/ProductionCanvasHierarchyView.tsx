@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { OperatorPanel, operatorButtonClass } from "@/components/shared";
+import { OperatorPanel } from "@/components/shared";
 import type {
   ProductionCanvasContextDraft,
   ProductionCanvasContextKey,
 } from "./productionCanvasContext";
+import { productionCanvasRequestContext } from "./productionCanvasContext";
 import { afterProductionCanvasPaint } from "./productionCanvasBusyPaint";
 import {
   findHierarchyAncestors,
@@ -12,6 +13,8 @@ import {
 import { visibleEnvironmentReferenceEdges } from "./productionCanvasHierarchyReferences";
 import { ProductionCanvasHierarchySidebar } from "./ProductionCanvasHierarchySidebar";
 import { ProductionCanvasHierarchyControls } from "./ProductionCanvasHierarchyControls";
+import { ProductionCanvasHierarchyStatus } from "./ProductionCanvasHierarchyStatus";
+import { productionCanvasHierarchySyncContext } from "./productionCanvasHierarchySync";
 import {
   ProductionCanvasHierarchySurface,
   type ProductionCanvasHierarchySurfaceHandle,
@@ -57,6 +60,12 @@ export function ProductionCanvasHierarchyView({
   );
   const selectedNode = hierarchy.graph.nodes.find(
     (node) => node.id === selectedNodeId,
+  );
+  const currentContext = productionCanvasHierarchySyncContext(
+    productionCanvasRequestContext(context),
+  );
+  const hasDomainContext = Object.entries(currentContext).some(
+    ([key, value]) => key !== "task_id" && value !== undefined,
   );
 
   useEffect(() => {
@@ -180,40 +189,28 @@ export function ProductionCanvasHierarchyView({
     },
     [hierarchy, selectNode, selectedNodeId],
   );
+  const refreshCurrent = useCallback(() => {
+    setSelectedNodeId("");
+    void refreshAndReveal(currentContext).then((targetNodeId) => {
+      if (targetNodeId) setSelectedNodeId(targetNodeId);
+    });
+  }, [currentContext, refreshAndReveal]);
 
-  if (hierarchy.rootLoading && !hierarchy.graph.nodes.length) {
-    return (
-      <OperatorPanel className="flex h-[560px] items-center justify-center text-sm text-slate-500">
-        正在加载 IP 业务层级…
-      </OperatorPanel>
-    );
-  }
-
-  if (hierarchy.rootError && !hierarchy.graph.nodes.length) {
-    return (
-      <OperatorPanel className="flex h-[360px] flex-col items-center justify-center gap-3 p-6 text-center">
-        <div className="text-sm font-semibold text-red-700">
-          业务层级加载失败
-        </div>
-        <p className="text-xs text-slate-500" role="alert">
-          {hierarchy.rootError}
-        </p>
-        <button
-          className={operatorButtonClass("secondary")}
-          type="button"
-          onClick={hierarchy.refresh}
-        >
-          重新加载
-        </button>
-      </OperatorPanel>
-    );
-  }
+  const status = !hierarchy.graph.nodes.length ? (
+    <ProductionCanvasHierarchyStatus
+      error={hierarchy.rootError}
+      hasDomainContext={hasDomainContext}
+      loading={hierarchy.rootLoading}
+      onRetry={refreshCurrent}
+    />
+  ) : null;
+  if (status) return status;
 
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
       <OperatorPanel className="overflow-hidden">
         <ProductionCanvasHierarchyControls
-          onRefresh={hierarchy.refresh}
+          onRefresh={refreshCurrent}
           onShowReferencesChange={setShowReferences}
           showReferences={showReferences}
         />

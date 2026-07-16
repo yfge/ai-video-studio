@@ -1,9 +1,9 @@
 # Production Canvas Design
 
-> Status: Implemented through Phase 6; consolidated release validation remains
+> Status: Implemented through Phase 7; consolidated release validation remains
 > open
 >
-> Last updated: 2026-07-15
+> Last updated: 2026-07-16
 
 ## Product Decision
 
@@ -14,12 +14,14 @@ copy of backend APIs, workers, or provider-specific model graphs.
 The canvas should let an operator move from a brief to approved media without
 losing production context:
 
-1. Create or restore a production plan.
-2. Organize work by episode, scene, shot, and shared asset context.
-3. Generate and compare image, video, audio, and report outputs in place.
-4. Approve one candidate as the explicit input to downstream work.
-5. Re-run one node or the affected downstream subgraph when inputs change.
-6. Send approved shot assets to Timeline for sequencing, duration, render, and
+1. Describe the production goal so the canvas can reuse or create the required
+   IP and Environment assets.
+2. Create or restore a production plan.
+3. Organize work by episode, scene, shot, and shared asset context.
+4. Generate and compare image, video, audio, and report outputs in place.
+5. Approve one candidate as the explicit input to downstream work.
+6. Re-run one node or the affected downstream subgraph when inputs change.
+7. Send approved shot assets to Timeline for sequencing, duration, render, and
    export.
 
 Timeline remains the single source of truth for final clip identity, ordering,
@@ -414,14 +416,17 @@ requires:
 
 ### Domain hierarchy interaction contract
 
-- `/canvas` without a Run ID opens the entity hierarchy first. A deep link with
-  a Run ID opens the executable graph so shared execution and review links keep
-  their existing meaning.
+- `/canvas` without a Run ID opens the executable prompt surface first. A deep
+  link with a Run ID also opens the executable graph so shared execution and
+  review links keep their existing meaning.
 - The view switch changes only the projection. It does not convert entity
   relations into executable bindings or mutate a saved run.
-- Initial load fetches IP roots. Child collections load progressively when the
-  operator expands an IP, Story, Episode, or Timeline clip. A collapsed node
-  retains loaded data and displays its hidden descendant count.
+- Initial load does not enumerate account assets. Planning or execution resolves
+  a contextual branch, then the hierarchy loads only its exact IP, Environment,
+  Story, Episode, Timeline clip, and video identities. Child collections load
+  progressively when the operator expands a resolved IP, Story, Episode, or
+  Timeline clip. A collapsed node retains loaded data and displays its hidden
+  descendant count.
 - Each entity type stays in its fixed column across expand, collapse, refresh,
   and refocus operations. New children receive deterministic vertical positions
   so unrelated branches do not jump.
@@ -640,8 +645,10 @@ the saved run.
 
 Executable acceptance:
 
-- Opening `/canvas` without a Run ID displays all six labelled columns and real
-  IP roots; opening a saved Run deep link displays that run's executable DAG.
+- Phase 5 initially opened `/canvas` on six labelled columns and real IP roots.
+  Phase 7 supersedes that eager account-wide listing with a prompt-first
+  executable surface and contextual hierarchy loading. A saved Run deep link
+  continues to display that run's executable DAG.
 - Expanding an IP loads its reusable Environments and participating Stories.
   The graph draws `IP -> Story` as the primary relation and does not draw or
   imply Environment ownership of a Story.
@@ -699,9 +706,10 @@ timeline_id / timeline_version / clip_id / task_id`.
   planning. A selected Environment is retained while navigating within the same
   IP, but remains a reusable IP resource rather than fabricated Story ownership.
 - When both IP and Environment are present, the Environment must belong to that
-  IP's `VirtualIPEnvironment` pool. An IP with no linked Environment remains
-  unbound instead of silently borrowing an unrelated account Environment;
-  Environment-only planning remains supported before an IP is selected.
+  IP's `VirtualIPEnvironment` pool. A prompt may explicitly select or create an
+  Environment and add that truthful link; explicit incompatible IDs are
+  rejected instead of being repaired silently. Environment-only planning
+  remains supported before an IP is selected.
 - Keep image/video candidate approval and Timeline placement explicit. Context
   closure enables continuation and navigation; it does not silently approve
   media or spend provider budget on downstream generation.
@@ -723,6 +731,32 @@ API failures. Chrome DevTools transport returned HTTP 404 at `/json/version`,
 so the evidence names the Playwright fallback explicitly. Provider execution
 was stubbed to avoid paid generation; Plan, Run, Task, and hierarchy reads were
 real.
+
+### Phase 7: Prompt-first asset resolution
+
+Status: Implemented. Consolidated real-browser evidence is recorded per change
+under `artifacts/runs/<run_id>/`.
+
+- Open a fresh `/canvas` on the executable prompt surface and make no hierarchy
+  asset-list requests before the operator supplies production intent.
+- Resolve accessible IP and Environment assets conservatively from the prompt.
+  Reuse exact matches. When a clearly named required asset is missing, create
+  only the minimal IP or Environment record and persist the real
+  `VirtualIPEnvironment` pool link.
+- Never create Story or Episode records from ambiguous prose. Never repair
+  incompatible explicit IDs by linking them as a side effect.
+- Project only the resolved branch into the six-column hierarchy. Load exact
+  IP, Environment, Story, Episode, Timeline clip, and video identities rather
+  than the first page of account roots or Stories.
+- Report whether each selected asset was reused or created in the executable
+  plan so the operator can review the production context before provider-backed
+  generation.
+
+Exit criterion: opening a fresh canvas reveals no account-wide asset inventory.
+After a clear prompt is planned, the executable graph identifies reused or
+created assets and the hierarchy shows only the corresponding real branch.
+Ambiguous prompts remain unbound, and failed explicit-lineage validation leaves
+no newly created asset behind.
 
 ## First Vertical-Slice Acceptance Criteria
 

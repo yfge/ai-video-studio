@@ -16,18 +16,23 @@ def _asset_names(assets) -> str:
 def _asset_title(selection: CanvasAssetSelection) -> str:
     ip_names = _asset_names(selection.selected.virtual_ips)
     env_names = _asset_names(selection.selected.environments)
+    created = bool(
+        selection.created_virtual_ip_ids or selection.created_environment_ids
+    )
     if ip_names and env_names:
-        return f"已选择 {ip_names} 和 {env_names}"
+        return f"已{'创建' if created else '选择'} {ip_names} 和 {env_names}"
     if ip_names:
-        return f"已选择 IP：{ip_names}；环境待确认"
+        return f"已{'创建' if created else '选择'} IP：{ip_names}；环境待确认"
     if env_names:
-        return f"IP 待确认；已选择环境：{env_names}"
+        return f"IP 待确认；已{'创建' if created else '选择'}环境：{env_names}"
     return "待确认 IP 和环境资产"
 
 
 def _asset_detail(selection: CanvasAssetSelection) -> str:
     ip_names = _asset_names(selection.selected.virtual_ips) or "待选择 IP"
     env_names = _asset_names(selection.selected.environments) or "待选择环境"
+    if selection.created_virtual_ip_ids or selection.created_environment_ids:
+        return f"根据 prompt 选择或创建 IP：{ip_names}；环境：{env_names}"
     return f"复用现有 IP：{ip_names}；环境：{env_names}"
 
 

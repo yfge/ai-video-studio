@@ -8,7 +8,6 @@ import {
 } from "./productionCanvasHierarchyModel";
 import {
   loadHierarchyBranch,
-  loadHierarchyRoots,
   loadHierarchyStories,
 } from "./productionCanvasHierarchyLoader";
 import {
@@ -34,7 +33,7 @@ export function useProductionCanvasHierarchy() {
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [rootError, setRootError] = useState<string | null>(null);
-  const [rootLoading, setRootLoading] = useState(true);
+  const [rootLoading, setRootLoading] = useState(false);
   const [warning, setWarning] = useState<string | null>(null);
 
   useEffect(() => {
@@ -43,41 +42,6 @@ export function useProductionCanvasHierarchy() {
       alive.current = false;
     };
   }, []);
-
-  const loadRoots = useCallback(async () => {
-    const requestEpoch = epoch.current;
-    const requestId = ++rootRequest.current;
-    setRootLoading(true);
-    setRootError(null);
-    try {
-      const result = await loadHierarchyRoots();
-      if (
-        !alive.current ||
-        epoch.current !== requestEpoch ||
-        rootRequest.current !== requestId
-      )
-        return;
-      setGraph(result.graph);
-      setWarning(result.warning);
-    } catch (error) {
-      if (
-        alive.current &&
-        epoch.current === requestEpoch &&
-        rootRequest.current === requestId
-      ) {
-        setRootError(error instanceof Error ? error.message : String(error));
-      }
-    } finally {
-      if (
-        alive.current &&
-        epoch.current === requestEpoch &&
-        rootRequest.current === requestId
-      )
-        setRootLoading(false);
-    }
-  }, []);
-
-  useEffect(() => void loadRoots(), [loadRoots]);
 
   const loadStories = useCallback(async (requestEpoch: number) => {
     if (stories.current?.epoch === requestEpoch) return stories.current.items;
@@ -171,20 +135,6 @@ export function useProductionCanvasHierarchy() {
     [expandedIds, graph.nodes, loadBranch, loadedIds],
   );
 
-  const refresh = useCallback(() => {
-    epoch.current += 1;
-    stories.current = null;
-    storiesRequest.current = null;
-    inFlight.current.clear();
-    setGraph(emptyGraph);
-    setExpandedIds(new Set());
-    setLoadedIds(new Set());
-    setLoadingIds(new Set());
-    setErrors({});
-    setWarning(null);
-    void loadRoots();
-  }, [loadRoots]);
-
   const cancelPendingReveal = useCallback(() => {
     epoch.current += 1;
     rootRequest.current += 1;
@@ -239,7 +189,6 @@ export function useProductionCanvasHierarchy() {
     graph,
     loadingIds,
     projection,
-    refresh,
     refreshAndReveal,
     rootError,
     rootLoading,

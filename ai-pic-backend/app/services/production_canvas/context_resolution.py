@@ -4,6 +4,9 @@ from dataclasses import dataclass
 
 from app.models.user import User
 from app.schemas.production_canvas import ProductionCanvasPlanRequest
+from app.services.production_canvas.asset_provisioning import (
+    provision_missing_canvas_assets,
+)
 from app.services.production_canvas.asset_selection import (
     CanvasAssetSelection,
     select_canvas_assets,
@@ -50,7 +53,17 @@ def resolve_canvas_plan(
         resolved = resolved.model_copy(update=updates)
         assets = select_canvas_assets(db, user, resolved)
         resolved = selected_asset_context(resolved, assets)
+    validate_story_ip(db, resolved)
     validate_ip_environment(db, resolved)
     resolved = bind_latest_timeline(db, resolved)
     validate_resolved_clip(db, user, resolved)
+    resolved, assets = provision_missing_canvas_assets(
+        db,
+        user,
+        resolved,
+        assets,
+        explicit_environment_id=request.environment_id,
+    )
+    validate_story_ip(db, resolved)
+    validate_ip_environment(db, resolved)
     return ResolvedCanvasPlan(request=resolved, assets=assets)

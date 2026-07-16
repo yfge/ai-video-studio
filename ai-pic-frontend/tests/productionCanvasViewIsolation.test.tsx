@@ -363,34 +363,15 @@ describe("ProductionCanvas view isolation", () => {
       );
 
       fireEvent.click(utils.getByRole("button", { name: "业务层级" }));
-      await waitFor(() =>
-        assert.notEqual(
-          utils.container
-            .querySelector('[data-hierarchy-node="ip:2"]')
-            ?.getAttribute("aria-current"),
-          "true",
-        ),
-      );
-
-      const freshIp2 = utils.container.querySelector(
-        '[data-hierarchy-node="ip:2"]',
-      );
-      assert.ok(freshIp2);
-      fireEvent.click(freshIp2.querySelector("button")!);
-      await waitFor(() =>
-        assert.equal(freshIp2.getAttribute("aria-current"), "true"),
+      await waitFor(() => assert.ok(utils.getByText("先输入生产目标")));
+      assert.equal(
+        utils.container.querySelector('[data-hierarchy-node="ip:2"]'),
+        null,
       );
       fireEvent.click(utils.getByRole("button", { name: "执行图" }));
       fireEvent.click(utils.getByRole("button", { name: "重置" }));
       fireEvent.click(utils.getByRole("button", { name: "业务层级" }));
-      await waitFor(() =>
-        assert.notEqual(
-          utils.container
-            .querySelector('[data-hierarchy-node="ip:2"]')
-            ?.getAttribute("aria-current"),
-          "true",
-        ),
-      );
+      await waitFor(() => assert.ok(utils.getByText("先输入生产目标")));
     } finally {
       hierarchyStub.restore();
     }

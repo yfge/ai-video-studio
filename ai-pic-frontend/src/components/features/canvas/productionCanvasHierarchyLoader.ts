@@ -5,7 +5,7 @@ import {
   timelineAPI,
   virtualIPAPI,
 } from "@/utils/api/endpoints";
-import type { Story } from "@/utils/api/types";
+import type { Episode, Story } from "@/utils/api/types";
 import {
   buildHierarchyRoots,
   buildIpHierarchyBranch,
@@ -44,6 +44,14 @@ export async function loadHierarchyRoots() {
   };
 }
 
+export async function loadHierarchyRoot(virtualIpId: number) {
+  const response = await virtualIPAPI.getVirtualIP(virtualIpId);
+  return {
+    graph: buildHierarchyRoots([responseData(response, "IP 加载失败")]),
+    warning: null,
+  };
+}
+
 export async function loadHierarchyStories() {
   const response = await storyAPI.getStories({ limit: 100 });
   const items = responseData(response, "故事列表加载失败");
@@ -54,6 +62,53 @@ export async function loadHierarchyStories() {
         ? "故事按前 100 条匹配 IP；大账号可能存在未展示故事。"
         : null,
   };
+}
+
+export async function loadHierarchyStory(storyId: number) {
+  return responseData(await storyAPI.getStory(storyId), "故事加载失败");
+}
+
+export async function loadHierarchyEpisode(episodeId: number) {
+  return responseData(await episodeAPI.getEpisode(episodeId), "剧集加载失败");
+}
+
+export async function loadHierarchyContextIpBranch(
+  node: HierarchyNode,
+  story?: Story,
+  environmentId?: number,
+) {
+  const environmentResponse = environmentId
+    ? await virtualIPAPI.listVirtualIPEnvironments(Number(node.entityId))
+    : null;
+  const links = environmentResponse
+    ? responseData(environmentResponse, "IP 环境加载失败").filter(
+        (link) => link.environment.id === environmentId,
+      )
+    : [];
+  const branch = buildIpHierarchyBranch(
+    Number(node.entityId),
+    links,
+    story ? [story] : [],
+  );
+  const requestedTypes = new Set([
+    ...(environmentId ? ["environment"] : []),
+    ...(story ? ["story"] : []),
+  ]);
+  const nodes = branch.nodes.filter(
+    (item) => !item.empty || requestedTypes.has(item.entityType),
+  );
+  const nodeIds = new Set(nodes.map((item) => item.id));
+  return {
+    nodes,
+    edges: branch.edges.filter((item) => nodeIds.has(item.to)),
+  };
+}
+
+export function loadHierarchyContextStoryBranch(
+  storyId: number,
+  episode: Episode,
+) {
+  return buildStoryHierarchyBranch(storyId, [episode]);
 }
 
 async function loadIpBranch(

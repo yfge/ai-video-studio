@@ -17,7 +17,7 @@ export function ProductionCanvasShell({
     >
       <ProductionCanvasContent
         initialRunId={initialRunId}
-        initialView={initialRunId ? "execution" : "hierarchy"}
+        initialView="execution"
       />
     </OperatorShell>
   );

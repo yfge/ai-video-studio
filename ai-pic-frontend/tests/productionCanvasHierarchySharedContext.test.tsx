@@ -12,18 +12,23 @@ import { useState } from "react";
 import { ProductionCanvasHierarchyView } from "../src/components/features/canvas/ProductionCanvasHierarchyView";
 import {
   emptyProductionCanvasContext,
+  productionCanvasContextDraftFromResolved,
   type ProductionCanvasContextDraft,
   type ProductionCanvasContextKey,
 } from "../src/components/features/canvas/productionCanvasContext";
-import {
-  hierarchyPaths,
-  installHierarchyFetch,
-} from "./productionCanvasHierarchyFixture";
-import { dom, expand, expectNode } from "./productionCanvasHierarchyTestDom";
+import type { ProductionCanvasHierarchySyncRequest } from "../src/components/features/canvas/productionCanvasHierarchyReveal";
+import { installHierarchyFetch } from "./productionCanvasHierarchyFixture";
+import { dom, expectNode } from "./productionCanvasHierarchyTestDom";
 
-function ContextHarness() {
+function ContextHarness({
+  request,
+}: {
+  request: ProductionCanvasHierarchySyncRequest;
+}) {
   const [context, setContext] = useState<ProductionCanvasContextDraft>(
-    emptyProductionCanvasContext,
+    request.revision
+      ? productionCanvasContextDraftFromResolved(request.context)
+      : emptyProductionCanvasContext,
   );
   const setContextValue = (key: ProductionCanvasContextKey, value: string) => {
     setContext((current) => ({ ...current, [key]: value }));
@@ -32,6 +37,7 @@ function ContextHarness() {
     <>
       <ProductionCanvasHierarchyView
         context={context}
+        syncRequest={request}
         onContextChange={setContextValue}
       />
       <output aria-label="当前 IP 上下文">{context.virtual_ip_id}</output>
@@ -50,21 +56,21 @@ describe("ProductionCanvasHierarchy shared context", () => {
     dom.window.document.body.replaceChildren();
   });
 
-  it("uses the second IP context when its outline selects a shared Story", async () => {
+  it("keeps the prompt-selected IP when a shared Story is selected", async () => {
     const fetchStub = installHierarchyFetch();
     restoreFetch = fetchStub.restore;
-    const utils = render(<ContextHarness />, {
-      container: dom.window.document.body,
-    });
-
-    await expectNode(utils.container, "ip:1");
-    await expectNode(utils.container, "ip:2");
-    expand(utils.container, "ip:1");
-    await expectNode(utils.container, "story:10");
-    expand(utils.container, "ip:2");
-    await waitFor(() =>
-      assert.equal(fetchStub.count(hierarchyPaths.secondEnvironments), 1),
+    const utils = render(
+      <ContextHarness
+        request={{
+          revision: 1,
+          context: { virtual_ip_id: 2, story_id: 10 },
+        }}
+      />,
+      { container: dom.window.document.body },
     );
+
+    await expectNode(utils.container, "ip:2");
+    await expectNode(utils.container, "story:10");
 
     const outline = utils.getByText("层级大纲").parentElement?.parentElement;
     assert.ok(outline);
@@ -84,20 +90,25 @@ describe("ProductionCanvasHierarchy shared context", () => {
   it("writes the full video lineage and preserves a same-IP environment", async () => {
     const fetchStub = installHierarchyFetch();
     restoreFetch = fetchStub.restore;
-    const utils = render(<ContextHarness />, {
-      container: dom.window.document.body,
-    });
+    const utils = render(
+      <ContextHarness
+        request={{
+          revision: 1,
+          context: {
+            virtual_ip_id: 1,
+            environment_id: 8,
+            story_id: 10,
+            episode_id: 100,
+            script_id: 300,
+            timeline_id: 501,
+            timeline_version: 7,
+            clip_id: "clip-ready",
+          },
+        }}
+      />,
+      { container: dom.window.document.body },
+    );
 
-    await expectNode(utils.container, "ip:1");
-    expand(utils.container, "ip:1");
-    await expectNode(utils.container, "environment:8");
-    await expectNode(utils.container, "story:10");
-    fireEvent.click(utils.getByLabelText("环境 雨夜天台"));
-    expand(utils.container, "story:10");
-    await expectNode(utils.container, "episode:100");
-    expand(utils.container, "episode:100");
-    await expectNode(utils.container, "storyboard:100:clip-ready");
-    expand(utils.container, "storyboard:100:clip-ready");
     await expectNode(utils.container, "video:901");
     fireEvent.click(utils.getByLabelText("视频 视频资产 #701"));
 

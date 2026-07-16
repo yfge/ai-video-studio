@@ -114,7 +114,7 @@ def test_canvas_skill_plan_selects_existing_ip_and_environment_pool(db_session):
     assert script_result.outputs["required_inputs"] == ["episode_id"]
 
 
-def test_canvas_skill_plan_does_not_fallback_to_unmatched_assets(db_session):
+def test_canvas_skill_plan_creates_prompt_assets_when_no_match_exists(db_session):
     user = _user(db_session, "canvas_skill_unmatched_owner")
     db_session.add_all(
         [
@@ -141,26 +141,63 @@ def test_canvas_skill_plan_does_not_fallback_to_unmatched_assets(db_session):
         ProductionCanvasPlanRequest(prompt="基于林妹妹做第 4 集，办公室轻喜剧"),
     )
 
-    assert plan.selected_assets.virtual_ips == []
-    assert plan.selected_assets.environments == []
-    assert plan.nodes[1].title == "待确认 IP 和环境资产"
-    assert plan.nodes[1].outputs == {
-        "virtual_ip_ids": [],
-        "environment_ids": [],
-        "candidate_virtual_ip_ids": [],
-        "candidate_environment_ids": [],
-    }
-    assert plan.skill_results[1].status == "blocked"
+    assert plan.selected_assets.virtual_ips[0].name == "林妹妹"
+    assert plan.selected_assets.environments[0].name == "办公室"
+    assert plan.nodes[1].title == "已创建 林妹妹 和 办公室"
+    assert plan.nodes[1].outputs["created_virtual_ip_ids"]
+    assert plan.nodes[1].outputs["created_environment_ids"]
+    assert plan.skill_results[1].status == "review"
     virtual_ip_image_result = next(
         result for result in plan.skill_results if result.skill == "virtual_ip.image"
     )
     environment_image_result = next(
         result for result in plan.skill_results if result.skill == "environment.image"
     )
-    assert virtual_ip_image_result.status == "blocked"
-    assert virtual_ip_image_result.outputs["required_inputs"] == ["virtual_ip_id"]
-    assert environment_image_result.status == "blocked"
-    assert environment_image_result.outputs["required_inputs"] == ["environment_id"]
+    assert virtual_ip_image_result.status == "ready"
+    assert environment_image_result.status == "ready"
+    assert (
+        db_session.query(VirtualIPEnvironment)
+        .filter(
+            VirtualIPEnvironment.virtual_ip_id == plan.resolved_context.virtual_ip_id,
+            VirtualIPEnvironment.environment_id == plan.resolved_context.environment_id,
+            VirtualIPEnvironment.is_deleted.is_(False),
+        )
+        .count()
+        == 1
+    )
+
+
+def test_canvas_skill_plan_links_existing_environment_to_created_ip(db_session):
+    user = _user(db_session, "canvas_skill_created_ip_existing_environment_owner")
+    environment = Environment(
+        user_id=user.id,
+        name="首创办公室",
+        category="indoor",
+    )
+    db_session.add(environment)
+    db_session.commit()
+
+    plan = build_canvas_skill_plan(
+        db_session,
+        user,
+        ProductionCanvasPlanRequest(
+            prompt="创建一个名为首创IP的角色，以首创办公室为场景"
+        ),
+    )
+
+    assert plan.nodes[1].title == "已创建 首创IP 和 首创办公室"
+    assert plan.nodes[1].outputs["created_virtual_ip_ids"]
+    assert plan.nodes[1].outputs["created_environment_ids"] == []
+    assert (
+        db_session.query(VirtualIPEnvironment)
+        .filter(
+            VirtualIPEnvironment.virtual_ip_id == plan.resolved_context.virtual_ip_id,
+            VirtualIPEnvironment.environment_id == environment.id,
+            VirtualIPEnvironment.is_deleted.is_(False),
+        )
+        .count()
+        == 1
+    )
 
 
 def test_canvas_skill_plan_can_select_environment_without_ip(db_session):
@@ -187,7 +224,7 @@ def test_canvas_skill_plan_can_select_environment_without_ip(db_session):
     assert plan.nodes[1].outputs["environment_ids"] == [environment.id]
 
 
-def test_canvas_skill_plan_does_not_select_unlinked_environment_for_ip(db_session):
+def test_canvas_skill_plan_links_explicit_prompt_environment_for_ip(db_session):
     user = _user(db_session, "canvas_skill_unlinked_environment_owner")
     virtual_ip = VirtualIP(
         user_id=user.id,
@@ -210,5 +247,15 @@ def test_canvas_skill_plan_does_not_select_unlinked_environment_for_ip(db_sessio
     )
 
     assert plan.resolved_context.virtual_ip_id == virtual_ip.id
-    assert plan.resolved_context.environment_id is None
-    assert plan.selected_assets.environments == []
+    assert plan.resolved_context.environment_id == environment.id
+    assert plan.selected_assets.environments[0].id == environment.id
+    assert (
+        db_session.query(VirtualIPEnvironment)
+        .filter(
+            VirtualIPEnvironment.virtual_ip_id == virtual_ip.id,
+            VirtualIPEnvironment.environment_id == environment.id,
+            VirtualIPEnvironment.is_deleted.is_(False),
+        )
+        .count()
+        == 1
+    )

@@ -93,6 +93,42 @@ def test_production_canvas_plan_api_reuses_ip_environment_assets(client, db_sess
     assert params["selected_assets"]["virtual_ips"][0]["name"] == "林妹妹"
 
 
+def test_production_canvas_plan_api_creates_ip_with_existing_environment(
+    client,
+    db_session,
+):
+    user = db_session.query(User).filter(User.username == "test_admin").first()
+    environment = Environment(
+        user_id=user.id,
+        name="首创办公室",
+        category="indoor",
+    )
+    db_session.add(environment)
+    db_session.commit()
+
+    response = client.post(
+        "/api/v1/production-canvas/plan",
+        json={"prompt": "创建一个名为首创IP的角色，以首创办公室为场景"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()["data"]
+    assert payload["nodes"][1]["title"] == "已创建 首创IP 和 首创办公室"
+    assert payload["nodes"][1]["outputs"]["created_virtual_ip_ids"]
+    assert payload["nodes"][1]["outputs"]["created_environment_ids"] == []
+    assert (
+        db_session.query(VirtualIPEnvironment)
+        .filter(
+            VirtualIPEnvironment.virtual_ip_id
+            == payload["resolved_context"]["virtual_ip_id"],
+            VirtualIPEnvironment.environment_id == environment.id,
+            VirtualIPEnvironment.is_deleted.is_(False),
+        )
+        .count()
+        == 1
+    )
+
+
 def test_production_canvas_execute_script_skill_dispatches_existing_task(
     client,
     db_session,

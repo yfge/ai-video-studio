@@ -137,7 +137,7 @@ describe("ProductionCanvasHierarchy result reveal", () => {
     restoreFetch = fetchStub.restore;
     const firstRequest: ProductionCanvasHierarchySyncRequest = {
       revision: 1,
-      context: { virtual_ip_id: 1, story_id: 10 },
+      context: { virtual_ip_id: 1, environment_id: 8, story_id: 10 },
     };
     const utils = render(
       <SyncHarness isActive={false} request={firstRequest} />,
@@ -176,7 +176,10 @@ describe("ProductionCanvasHierarchy result reveal", () => {
     const fetchStub = installHierarchyFetch({ deferFirstEnvironments: true });
     restoreFetch = fetchStub.restore;
     const utils = render(
-      <SyncHarness isActive={false} request={{ revision: 0, context: {} }} />,
+      <SyncHarness
+        isActive={false}
+        request={{ revision: 1, context: { virtual_ip_id: 2 } }}
+      />,
       { container: dom.window.document.body },
     );
     await waitFor(() => assert.ok(hierarchyNode(utils.container, "ip:2")));
@@ -185,8 +188,8 @@ describe("ProductionCanvasHierarchy result reveal", () => {
       <SyncHarness
         isActive={false}
         request={{
-          revision: 1,
-          context: { virtual_ip_id: 1, story_id: 10 },
+          revision: 2,
+          context: { virtual_ip_id: 1, environment_id: 8, story_id: 10 },
         }}
       />,
     );
