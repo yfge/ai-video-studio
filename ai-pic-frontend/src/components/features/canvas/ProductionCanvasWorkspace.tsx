@@ -14,20 +14,40 @@ import { ProductionCanvasSurface } from "./ProductionCanvasSurface";
 import { ProductionCanvasSelectionToolbar } from "./ProductionCanvasSelectionToolbar";
 import type { ProductionCanvasSelectionActions } from "./useProductionCanvasSelectionActions";
 
-type WorkspaceProps = ComponentProps<typeof ProductionCanvasSurface> & {
+type WorkspaceProps = Omit<
+  ComponentProps<typeof ProductionCanvasSurface>,
+  "visibleNodeIds"
+> & {
+  revealedNodeIds?: Set<string> | null;
   selectionActions: ProductionCanvasSelectionActions;
   viewportControls?: ReactNode;
 };
 
 export function ProductionCanvasWorkspace(props: WorkspaceProps) {
-  const { canEdit, selectionActions, viewportControls, ...surfaceProps } =
-    props;
+  const {
+    canEdit,
+    revealedNodeIds,
+    selectionActions,
+    viewportControls,
+    ...surfaceProps
+  } = props;
   const [filters, setFilters] = useState(emptyProductionCanvasFilters);
   const nodes = props.canvasState.nodes;
-  const facets = useMemo(() => productionCanvasFilterFacets(nodes), [nodes]);
+  const generatedNodes = useMemo(() => {
+    if (!revealedNodeIds) return nodes;
+    const knownNode = nodes.some((node) => revealedNodeIds.has(node.id));
+    if (!knownNode) return nodes;
+    return nodes.filter(
+      (node) => node.kind === "note" || revealedNodeIds.has(node.id),
+    );
+  }, [nodes, revealedNodeIds]);
+  const facets = useMemo(
+    () => productionCanvasFilterFacets(generatedNodes),
+    [generatedNodes],
+  );
   const visibleNodes = useMemo(
-    () => filterProductionCanvasNodes(nodes, filters),
-    [filters, nodes],
+    () => filterProductionCanvasNodes(generatedNodes, filters),
+    [filters, generatedNodes],
   );
   const visibleNodeIds = useMemo(
     () => new Set(visibleNodes.map((node) => node.id)),
@@ -61,7 +81,11 @@ export function ProductionCanvasWorkspace(props: WorkspaceProps) {
               "list-none bg-white/95 text-[13px] shadow-sm backdrop-blur [&::-webkit-details-marker]:hidden",
             )}
           >
-            筛选 · {visibleNodes.length}/{nodes.length}
+            {active
+              ? `筛选 · ${visibleNodes.length}/${generatedNodes.length}`
+              : revealedNodeIds
+              ? `已生成 · ${generatedNodes.length}`
+              : `筛选 · ${visibleNodes.length}/${nodes.length}`}
           </summary>
           <div className="absolute left-0 top-10 w-[min(720px,calc(100vw-3rem))] rounded-xl border border-slate-200 bg-white p-3 shadow-xl">
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(180px,1fr)_repeat(4,minmax(112px,0.55fr))]">

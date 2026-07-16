@@ -10,6 +10,10 @@ import { useProductionCanvasExecutionTracker } from "./useProductionCanvasExecut
 import { useProductionCanvasContextDraft } from "./useProductionCanvasContextDraft";
 import { useProductionCanvasExecutionActions } from "./useProductionCanvasExecutionActions";
 import { useProductionCanvasOperationRun } from "./useProductionCanvasOperationRun";
+import {
+  productionCanvasPlanEdges,
+  productionCanvasSavedEdges,
+} from "./productionCanvasPlanGraph";
 import { productionCanvasPlanNodeToCanvasNode } from "./productionCanvasSkillNodes";
 import { isProductionCanvasAuthoritativeContext } from "./productionCanvasTaskResultContext";
 import type { ProductionCanvasSkillPlannerProps } from "./productionCanvasSkillPlannerTypes";
@@ -17,6 +21,7 @@ import {
   runSingleVideoCanvasCreation,
   useProductionCanvasSingleVideoMode,
 } from "./useProductionCanvasSingleVideoPlanner";
+import { useProductionCanvasProgressiveReveal } from "./useProductionCanvasProgressiveReveal";
 
 export function useProductionCanvasSkillPlanner({
   currentRunId,
@@ -56,6 +61,7 @@ export function useProductionCanvasSkillPlanner({
   } | null>(null);
   const autoExecutionActiveRef = useRef(false);
   const autoContinuationPendingRef = useRef(false);
+  const progressiveReveal = useProductionCanvasProgressiveReveal(currentRunId);
   const handleDomainContextResolved = (
     resolved: ProductionCanvasResolvedContext,
   ) => {
@@ -65,7 +71,7 @@ export function useProductionCanvasSkillPlanner({
     onDomainContextResolved?.(resolved, replace);
     if (autoContinuationRef.current) autoContinuationPendingRef.current = true;
   };
-  const publishExecutionNodes = useProductionCanvasExecutionTracker({
+  const trackExecutionNodes = useProductionCanvasExecutionTracker({
     captureContextFingerprint: () => {
       const domainContext = productionCanvasRequestContext(contextRef.current);
       delete domainContext.task_id;
@@ -74,11 +80,18 @@ export function useProductionCanvasSkillPlanner({
     captureOperationIdentity: runGuard.capture,
     maxPollMs: taskMaxPollMs,
     onDomainContextResolved: handleDomainContextResolved,
-    onNodesCreated,
+    onNodesCreated: (createdNodes, resolvedContext) => {
+      progressiveReveal.revealExecutionNodes(createdNodes);
+      onNodesCreated(createdNodes, resolvedContext);
+    },
     pollIntervalMs: taskPollIntervalMs,
     runId: currentRunId,
     operationEpoch: activeIdentity.epoch,
   });
+  const publishExecutionNodes: typeof trackExecutionNodes = (...args) => {
+    progressiveReveal.revealExecutionNodes(args[1]);
+    trackExecutionNodes(...args);
+  };
   const { continueAutoExecution, executeSkillNode, executeSkillRequest } =
     useProductionCanvasExecutionActions({
       autoContinuationPendingRef,
@@ -88,6 +101,7 @@ export function useProductionCanvasSkillPlanner({
       executingNodeId,
       nodes,
       operationBlocked,
+      onAutoExecutingNode: progressiveReveal.revealNode,
       prompt,
       publishExecutionNodes,
       runGuard,
@@ -135,6 +149,7 @@ export function useProductionCanvasSkillPlanner({
       await waitForProductionCanvasBusyPaint();
       if (!runGuard.isCurrent(operationIdentity)) return;
       if (selectedMode === "single_video") {
+        progressiveReveal.disable();
         await runSingleVideoCanvasCreation({
           captureIdentity: runGuard.capture,
           contextRef,
@@ -176,6 +191,10 @@ export function useProductionCanvasSkillPlanner({
       const createdNodes = plan.nodes.map((node) =>
         productionCanvasPlanNodeToCanvasNode(node, plan, contextOutputs),
       );
+      const plannedEdges =
+        productionCanvasSavedEdges(plan.edges) ||
+        productionCanvasPlanEdges(createdNodes);
+      progressiveReveal.begin(createdNodes, plannedEdges, plan.run_id);
       onNodesCreated(createdNodes, resolvedContext);
       autoContinuationRef.current = { prompt: trimmed, runId: plan.run_id };
       await continueAutoExecution(createdNodes);
@@ -201,6 +220,7 @@ export function useProductionCanvasSkillPlanner({
     mergeContext: handleDomainContextResolved,
     prompt,
     replaceContext,
+    revealedNodeIds: progressiveReveal.revealedNodeIds,
     running: running || operationBlocked,
     setContextValue,
     setCreationMode,

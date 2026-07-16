@@ -33,6 +33,7 @@ export function useProductionCanvasExecutionActions({
   executingNodeId,
   nodes,
   operationBlocked,
+  onAutoExecutingNode,
   prompt,
   publishExecutionNodes,
   runGuard,
@@ -47,6 +48,7 @@ export function useProductionCanvasExecutionActions({
   executingNodeId: string | null;
   nodes: ProductionCanvasNode[];
   operationBlocked: boolean;
+  onAutoExecutingNode?: (node: ProductionCanvasNode) => void;
   prompt: string;
   publishExecutionNodes: PublishExecutionNodes;
   runGuard: RunGuard;
@@ -94,7 +96,10 @@ export function useProductionCanvasExecutionActions({
     try {
       await executeProductionCanvasReadyNodes({
         initialNodes,
-        onExecuting: setExecutingNodeId,
+        onExecuting: (node) => {
+          setExecutingNodeId(node.id);
+          onAutoExecutingNode?.(node);
+        },
         execute: (node) =>
           executeSkillRequest(
             node,

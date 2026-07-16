@@ -2,6 +2,7 @@ import type { MutableRefObject } from "react";
 import { useGenerationTaskTracker } from "@/hooks/useGenerationTaskTracker";
 import type { ProductionCanvasResolvedContext } from "@/utils/api/types";
 import {
+  productionCanvasExecutionProgress,
   productionCanvasExecutionBelongsToRun,
   productionCanvasExecutionContextIsCurrent,
   productionCanvasExecutionFailure,
@@ -124,6 +125,32 @@ export function useProductionCanvasTaskExecutionTracker({
       finishTerminalTask(nodeId, taskId, "cancelled", "任务已取消"),
     onFailed: (nodeId, taskId, error) =>
       finishTerminalTask(nodeId, taskId, "failed", error),
+    onProgress: (nodeId, taskId, task) => {
+      const execution = currentExecution(nodeId, taskId);
+      if (!execution || detachStaleExecution(nodeId, execution)) return;
+      const previous = execution.taskNode.outputs || {};
+      const visibleDetail =
+        task.progress_detail || task.description || task.prompt || "";
+      if (
+        previous.task_status === task.status &&
+        previous.task_progress_detail === task.progress_detail &&
+        previous.task_description === task.description &&
+        previous.task_prompt === task.prompt
+      ) {
+        return;
+      }
+      if (!visibleDetail && task.status === "pending") return;
+      const [skillNode, taskNode] = productionCanvasExecutionProgress(
+        execution,
+        task,
+      );
+      trackedExecutions.current.set(nodeId, {
+        ...execution,
+        skillNode,
+        taskNode,
+      });
+      onNodesCreatedRef.current([skillNode, taskNode]);
+    },
     onTimeout: (nodeId, taskId) =>
       finishTerminalTask(nodeId, taskId, "timeout", "等待任务完成超时"),
   });

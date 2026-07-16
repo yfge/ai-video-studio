@@ -27,7 +27,7 @@ export async function executeProductionCanvasReadyNodes({
     node: ProductionCanvasNode,
   ) => Promise<ProductionCanvasExecutionPublication[] | null>;
   initialNodes: ProductionCanvasNode[];
-  onExecuting: (nodeId: string) => void;
+  onExecuting: (node: ProductionCanvasNode) => void;
   publish: (publication: ProductionCanvasExecutionPublication) => void;
 }) {
   const attemptedNodeIds = new Set<string>();
@@ -40,7 +40,7 @@ export async function executeProductionCanvasReadyNodes({
     );
     if (!node) return;
     attemptedNodeIds.add(node.id);
-    onExecuting(node.id);
+    onExecuting(node);
     const publications = await execute(node);
     if (!publications) return;
     for (const publication of publications) {

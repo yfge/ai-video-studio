@@ -39,6 +39,7 @@ export function useGenerationTaskTracker<K extends string>({
   onCompleted,
   onCancelled,
   onFailed,
+  onProgress,
   onTimeout,
   onNotify,
   pollIntervalMs = POLL_INTERVAL_MS,
@@ -60,6 +61,7 @@ export function useGenerationTaskTracker<K extends string>({
     taskId: number,
     error: string | null,
   ) => void | Promise<void>;
+  onProgress?: (kind: K, taskId: number, task: Task) => void | Promise<void>;
   onTimeout?: (kind: K, taskId: number) => void | Promise<void>;
   onNotify?: (message: string, variant: NotifyVariant) => void;
   pollIntervalMs?: number;
@@ -74,6 +76,7 @@ export function useGenerationTaskTracker<K extends string>({
   const onCancelledRef = useRef(onCancelled);
   const onFailedRef = useRef(onFailed);
   const onNotifyRef = useRef(onNotify);
+  const onProgressRef = useRef(onProgress);
   const onTimeoutRef = useRef(onTimeout);
   const labelsRef = useRef(labels);
 
@@ -82,9 +85,18 @@ export function useGenerationTaskTracker<K extends string>({
     onCancelledRef.current = onCancelled;
     onFailedRef.current = onFailed;
     onNotifyRef.current = onNotify;
+    onProgressRef.current = onProgress;
     onTimeoutRef.current = onTimeout;
     labelsRef.current = labels;
-  }, [labels, onCancelled, onCompleted, onFailed, onNotify, onTimeout]);
+  }, [
+    labels,
+    onCancelled,
+    onCompleted,
+    onFailed,
+    onNotify,
+    onProgress,
+    onTimeout,
+  ]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -175,13 +187,19 @@ export function useGenerationTaskTracker<K extends string>({
             } else if (status === "cancelled") {
               phase = "cancelled";
               finalTask = res.data;
-            } else if (status === "processing" && mountedRef.current) {
-              setTasks((prev) => {
-                const current = prev[kind];
-                if (!current || current.taskId !== taskId) return prev;
-                if (current.phase === "processing") return prev;
-                return { ...prev, [kind]: { ...current, phase: "processing" } };
-              });
+            } else {
+              void onProgressRef.current?.(kind, taskId, res.data);
+              if (status === "processing" && mountedRef.current) {
+                setTasks((prev) => {
+                  const current = prev[kind];
+                  if (!current || current.taskId !== taskId) return prev;
+                  if (current.phase === "processing") return prev;
+                  return {
+                    ...prev,
+                    [kind]: { ...current, phase: "processing" },
+                  };
+                });
+              }
             }
           }
         } catch {

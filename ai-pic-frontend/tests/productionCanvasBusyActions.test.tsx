@@ -117,6 +117,28 @@ describe("ProductionCanvasBusyActions", () => {
     );
   });
 
+  it("shows live generation content and progress inside the node card", () => {
+    const utils = render(
+      <CanvasNodeCard
+        node={{
+          ...skillNode,
+          status: "running",
+          detail: "后台任务已提交",
+          outputs: {
+            task_progress_detail: "正在生成第 3/8 个镜头（38%）",
+          },
+        }}
+        selected={false}
+        onPointerDown={() => {}}
+        onSelect={() => {}}
+      />,
+      { container: dom.window.document.body },
+    );
+
+    assert.ok(utils.getByText("正在生成第 3/8 个镜头（38%）"));
+    assert.ok(utils.getByLabelText("生成进度 38%"));
+  });
+
   it("shows task status on task evidence cards and inspector", () => {
     const taskNode: ProductionCanvasNode = {
       id: "task-7",

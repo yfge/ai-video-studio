@@ -10,7 +10,10 @@ import {
   productionCanvasSharedContextForNode,
 } from "./productionCanvasScopedContext";
 
-export { productionCanvasExecutionFromTask } from "./productionCanvasTaskExecutionResult";
+export {
+  productionCanvasExecutionFromTask,
+  productionCanvasExecutionProgress,
+} from "./productionCanvasTaskExecutionResult";
 
 export type TrackedProductionCanvasExecution = {
   contextFingerprint?: string;
@@ -148,6 +151,8 @@ const taskEvidenceKeys = [
   "task_status",
   "task_title",
   "task_type",
+  "task_prompt",
+  "task_description",
   "task_progress_detail",
   "task_error_message",
   "task_updated_at",

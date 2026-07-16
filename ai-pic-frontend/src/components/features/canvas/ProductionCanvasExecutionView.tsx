@@ -99,6 +99,7 @@ export function ProductionCanvasExecutionView({
             canvasRef={controller.canvasRef}
             canvasState={controller.canvasState}
             executingNodeId={planner.executingNodeId}
+            revealedNodeIds={planner.revealedNodeIds}
             selectedNodeId={selectedNode?.id}
             selectionActions={controller.selectionActions}
             viewportControls={

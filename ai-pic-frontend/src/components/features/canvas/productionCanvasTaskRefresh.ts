@@ -64,6 +64,8 @@ export function productionCanvasTaskNodePatch(
       task_status: task.status,
       task_title: task.title,
       task_type: task.task_type,
+      task_prompt: task.prompt,
+      task_description: task.description,
       task_progress_detail: task.progress_detail,
       task_error_message: task.error_message,
       task_updated_at: task.updated_at,

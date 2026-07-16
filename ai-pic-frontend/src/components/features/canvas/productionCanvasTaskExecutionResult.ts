@@ -18,6 +18,8 @@ function taskOutputs(task: Task) {
     task_status: task.status,
     task_title: task.title,
     task_type: task.task_type,
+    task_prompt: task.prompt,
+    task_description: task.description,
     task_progress_detail: task.progress_detail,
     task_error_message: task.error_message,
     task_updated_at: task.updated_at,
@@ -59,6 +61,24 @@ function taskDetail(task: Task) {
   if (task.result_file_path) parts.push(`产物：${task.result_file_path}`);
   if (task.error_message) parts.push(`错误：${task.error_message}`);
   return parts.join("；");
+}
+
+export function productionCanvasExecutionProgress(
+  execution: TrackedProductionCanvasExecution,
+  task: Task,
+): ProductionCanvasNode[] {
+  const detail =
+    task.progress_detail || task.description || `任务 #${task.id} 正在后台生成`;
+  return [execution.skillNode, execution.taskNode].map((node) => ({
+    ...node,
+    title: node.kind === "note" ? task.title || node.title : node.title,
+    status: "running",
+    detail,
+    outputs: {
+      ...node.outputs,
+      ...taskOutputs(task),
+    },
+  }));
 }
 
 export function productionCanvasExecutionFromTask(

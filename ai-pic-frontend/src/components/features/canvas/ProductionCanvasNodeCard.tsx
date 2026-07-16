@@ -7,6 +7,7 @@ import {
   displayProductionCanvasNodeTitle,
   getNodeHeight,
 } from "./productionCanvasViewModel";
+import { productionCanvasNodePreview } from "./productionCanvasNodePreview";
 
 export function CanvasNodeCard({
   editable = true,
@@ -48,6 +49,8 @@ export function CanvasNodeCard({
   const canExecute = Boolean(node.skill && node.kind !== "note");
   const executeDisabled = executing || executionDisabled;
   const displayTitle = displayProductionCanvasNodeTitle(node);
+  const preview = productionCanvasNodePreview(node);
+  const liveText = node.status === "running" ? preview.text : undefined;
   const ports = productionCanvasPortContract(node);
 
   return (
@@ -124,9 +127,60 @@ export function CanvasNodeCard({
           </div>
           <StatusPill tone={status.tone}>{status.label}</StatusPill>
         </div>
-        <div className="mt-2 line-clamp-2 text-xs leading-5 text-gray-600">
-          {displayTitle}
+        <div className="mt-2 flex min-w-0 items-start gap-2">
+          {preview.mediaUrl ? (
+            <div className="h-9 w-12 shrink-0 overflow-hidden rounded bg-slate-100">
+              {preview.mediaType === "image" ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  alt=""
+                  className="h-full w-full object-cover"
+                  src={preview.mediaUrl}
+                />
+              ) : (
+                <video
+                  className="h-full w-full object-cover"
+                  muted
+                  playsInline
+                  preload="metadata"
+                  src={preview.mediaUrl}
+                />
+              )}
+            </div>
+          ) : null}
+          <div className="min-w-0">
+            <div className="line-clamp-1 text-xs leading-5 text-gray-600">
+              {displayTitle}
+            </div>
+            {liveText ? (
+              <div
+                className="line-clamp-1 text-[10px] leading-4 text-slate-500"
+                data-canvas-node-content={node.id}
+              >
+                {liveText}
+              </div>
+            ) : null}
+          </div>
         </div>
+        {node.status === "running" || preview.progress !== undefined ? (
+          <div
+            className={`absolute h-1 overflow-hidden rounded-full bg-slate-100 ${
+              canExecute ? "bottom-10" : "bottom-2"
+            } left-3 right-3`}
+            aria-label={
+              preview.progress === undefined
+                ? "生成进度进行中"
+                : `生成进度 ${preview.progress}%`
+            }
+          >
+            <div
+              className={`h-full rounded-full bg-blue-500 ${
+                preview.progress === undefined ? "animate-pulse" : ""
+              }`}
+              style={{ width: `${preview.progress ?? 45}%` }}
+            />
+          </div>
+        ) : null}
       </button>
       {canExecute ? (
         <button

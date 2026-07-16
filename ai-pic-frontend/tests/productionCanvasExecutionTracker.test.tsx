@@ -147,6 +147,61 @@ describe("useProductionCanvasExecutionTracker", () => {
     }
   });
 
+  it("publishes persisted task progress before completion", async () => {
+    const originalFetch = globalThis.fetch;
+    const updates: ProductionCanvasNode[][] = [];
+    let requestCount = 0;
+    globalThis.fetch = async () => {
+      requestCount += 1;
+      return new Response(
+        JSON.stringify({
+          id: 101,
+          business_id: "task-101",
+          title: "环境图生成",
+          description: "正在生成第 2 张候选图（50%）",
+          progress_detail: "正在生成第 2 张候选图（50%）",
+          status: requestCount === 1 ? "processing" : "completed",
+          created_at: "2026-07-10T10:00:00Z",
+          user_id: 1,
+        }),
+        { headers: { "content-type": "application/json" } },
+      );
+    };
+
+    function Harness() {
+      const publish = useProductionCanvasExecutionTracker({
+        onNodesCreated: (nodes) => updates.push(nodes),
+        pollIntervalMs: 5,
+        maxPollMs: 500,
+      });
+      return (
+        <button
+          type="button"
+          onClick={() => publish(sourceNode, [runningSkillNode, taskNode])}
+        >
+          publish progress
+        </button>
+      );
+    }
+
+    try {
+      const utils = render(<Harness />, {
+        container: dom.window.document.body,
+      });
+      utils.getByRole("button", { name: "publish progress" }).click();
+
+      await waitFor(() => assert.equal(updates.length, 3));
+      assert.equal(
+        updates[1][0].outputs?.task_progress_detail,
+        "正在生成第 2 张候选图（50%）",
+      );
+      assert.equal(updates[1][1].status, "running");
+      assert.equal(updates[2][1].outputs?.task_status, "completed");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("polls a RenderJob until the final video link is ready", async () => {
     const originalFetch = globalThis.fetch;
     const updates: ProductionCanvasNode[][] = [];
