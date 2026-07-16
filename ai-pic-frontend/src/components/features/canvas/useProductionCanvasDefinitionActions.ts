@@ -35,6 +35,24 @@ function withoutPlannedEdges(node: ProductionCanvasNode) {
   return incoming;
 }
 
+function uniqueEdges(edges: ProductionCanvasEdge[]) {
+  return [
+    ...new Map(
+      edges.map((edge) => [
+        edge.edgeId ||
+          [
+            edge.from,
+            edge.fromPort || "",
+            edge.to,
+            edge.toPort || "",
+            edge.bindingType || "",
+          ].join(":"),
+        edge,
+      ]),
+    ).values(),
+  ];
+}
+
 export function appendProductionCanvasNodes(
   state: ProductionCanvasState,
   nodes: ProductionCanvasNode[],
@@ -78,14 +96,14 @@ export function appendProductionCanvasNodes(
         : 0,
     ),
   );
+  const incomingPlanEdges = isPlan
+    ? plannedEdges || productionCanvasPlanEdges(incomingNodes)
+    : [];
   return {
     ...state,
     nodes: applyProductionCanvasContext(mergedNodes, resolvedContext),
     edges: isPlan
-      ? [
-          ...retainedEdges,
-          ...(plannedEdges || productionCanvasPlanEdges(incomingNodes)),
-        ]
+      ? uniqueEdges([...retainedEdges, ...incomingPlanEdges])
       : state.edges,
     sections: (state.sections || []).map((section) => ({
       ...section,

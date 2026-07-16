@@ -109,6 +109,25 @@ describe("production canvas plan graph", () => {
     assert.deepEqual(state.edges, plannedEdges);
   });
 
+  it("does not duplicate planned edges when the first skill refreshes", () => {
+    const plannedEdges = productionCanvasPlanEdges(planNodes);
+    const nodes = planNodes.map((node, index) => ({
+      ...node,
+      ...(index === 0 ? { plannedEdges } : {}),
+    }));
+    const planned = appendProductionCanvasNodes(
+      createProductionCanvasState(),
+      nodes,
+    );
+    const refreshed = appendProductionCanvasNodes(planned, [nodes[0]!]);
+
+    assert.equal(refreshed.edges.length, plannedEdges.length);
+    assert.equal(
+      new Set(refreshed.edges.map((edge) => edge.edgeId)).size,
+      plannedEdges.length,
+    );
+  });
+
   it("restores server-planned edges before any client state is saved", () => {
     const nodes = planNodes.filter((node) =>
       ["brief.compose", "script.generate"].includes(node.skill || ""),
