@@ -6,6 +6,7 @@ import {
   audioTimelineBeatContextById,
   enrichTimelineClipMetaFromAudioBeat,
 } from "./EpisodeTimelineAudioBeatEnrichment";
+import { matchingStoryboardFrame } from "./WorkspaceStoryboardClipManagementStatus";
 export { sceneForTimelineMeta } from "./EpisodeTimelineSceneModel";
 export const formatTimelineMs = (ms: number) => {
   const seconds = Math.floor(ms / 1000);
@@ -135,7 +136,13 @@ function timelineSpecToTimelineTracks(
     : [];
   const audioBeatById = audioTimelineBeatContextById(selectedAudioTimeline);
   const timelineTracks = specTracks
-    .map((track) => timelineSpecTrackToTimelineTrack(track, audioBeatById))
+    .map((track) =>
+      timelineSpecTrackToTimelineTrack(
+        track,
+        audioBeatById,
+        selectedStoryboard,
+      ),
+    )
     .filter((track): track is TimelineTrack => Boolean(track));
 
   const storyboardTrack = storyboardSupportTrack(selectedStoryboard);
@@ -148,6 +155,7 @@ function timelineSpecToTimelineTracks(
 function timelineSpecTrackToTimelineTrack(
   track: TimelineTrackSpec,
   audioBeatById: Map<string, Record<string, unknown>>,
+  selectedStoryboard: Record<string, unknown> | null,
 ): TimelineTrack | null {
   const trackType = track.track_type || String(track.type || "");
   const clips = Array.isArray(track.clips) ? track.clips : [];
@@ -156,7 +164,9 @@ function timelineSpecTrackToTimelineTrack(
       const start = parseMs(clip.start_ms);
       const end = parseMs(clip.end_ms);
       if (start == null || end == null || end < start) return null;
-      const meta = enrichTimelineClipMetaFromAudioBeat(clip, audioBeatById);
+      const enriched = enrichTimelineClipMetaFromAudioBeat(clip, audioBeatById);
+      const frame = matchingStoryboardFrame(clip, selectedStoryboard);
+      const meta = frame ? { ...frame, ...enriched } : enriched;
       const label =
         getString(meta.text) ||
         getString(meta.speaker_name) ||

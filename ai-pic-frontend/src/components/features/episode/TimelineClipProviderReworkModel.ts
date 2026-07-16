@@ -145,6 +145,9 @@ export function timelineClipStoryboardSheetUrl(item: TimelineItem | null) {
     getString(sheetRef?.url) ??
     getString(sheetRef?.image_url) ??
     getString(sheetRef?.file_path) ??
+    getString(meta.image_url) ??
+    getString(meta.start_image_url) ??
+    getString(meta.end_image_url) ??
     null
   );
 }

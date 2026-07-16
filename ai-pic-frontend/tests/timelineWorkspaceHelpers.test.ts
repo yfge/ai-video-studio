@@ -20,6 +20,7 @@ import {
   buildTimelineRenderReadiness,
   timelineClipVideoStatus,
 } from "../src/components/features/episode/EpisodeTimelineRenderModel";
+import { timelineClipProductionReadiness } from "../src/components/features/episode/TimelineClipProductionReadiness";
 import {
   buildStoryboardGridSupport,
   buildStoryboardSupportFrames,
@@ -279,6 +280,55 @@ describe("timeline workspace helpers", () => {
     assert.deepEqual(videoItem.meta?.characters_involved, ["老拐", "阿盖儿"]);
     assert.equal(videoItem.meta?.dialogue_action, "打开手机");
     assert.equal(videoItem.meta?.dialogue_emotion, "confident");
+  });
+
+  it("uses the matching storyboard frame image for a timeline video clip", () => {
+    const timeline = {
+      id: 3,
+      business_id: "timeline_3",
+      episode_id: 1,
+      script_id: 2,
+      title: "Timeline",
+      status: "draft",
+      version: 39,
+      created_at: "2026-05-12T00:00:00Z",
+      updated_at: "2026-05-12T00:00:00Z",
+      spec: {
+        spec_version: "timeline.v1",
+        episode_id: 1,
+        script_id: 2,
+        version: 39,
+        tracks: [
+          {
+            track_type: "video",
+            clips: [
+              {
+                clip_id: "video_scene_1_beat_1_001",
+                track_type: "video",
+                start_ms: 0,
+                end_ms: 1200,
+                text: "native video",
+              },
+            ],
+          },
+        ],
+      },
+    } satisfies TimelineResponse;
+    const imageUrl = "https://example.com/storyboard.png";
+
+    const result = buildEpisodeTimelineTracks(timeline, null, {
+      frames: [
+        {
+          timeline_clip_id: "video_scene_1_beat_1_001",
+          image_url: imageUrl,
+        },
+      ],
+    });
+    const readiness = timelineClipProductionReadiness(result[0].items[0]);
+
+    assert.equal(result[0].items[0].meta?.image_url, imageUrl);
+    assert.equal(readiness.storyboardReady, true);
+    assert.equal(readiness.storyboardSheetUrl, imageUrl);
   });
 
   it("falls back to legacy audio timeline tracks when Timeline Spec is absent", () => {

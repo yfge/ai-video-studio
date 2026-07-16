@@ -123,7 +123,7 @@ function hasVirtualIpBinding(clip: TimelineClip) {
   );
 }
 
-function matchingStoryboardFrame(
+export function matchingStoryboardFrame(
   clip: TimelineClip,
   selectedStoryboard: Record<string, unknown> | null,
 ) {
