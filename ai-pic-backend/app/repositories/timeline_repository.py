@@ -97,7 +97,13 @@ class TimelineRepository(BaseRepository[Timeline]):
         )
         if not include_deleted:
             query = query.filter(Timeline.is_deleted.is_(False))
-        return query.order_by(Timeline.version.desc(), Timeline.id.desc()).first()
+        timeline_id = (
+            query.with_entities(Timeline.id)
+            .order_by(Timeline.version.desc(), Timeline.id.desc())
+            .limit(1)
+            .scalar()
+        )
+        return self.get_by_id(timeline_id) if timeline_id is not None else None
 
 
 class TimelineRevisionRepository(BaseRepository[TimelineRevision]):
