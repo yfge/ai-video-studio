@@ -72,30 +72,32 @@ describe("ProductionCanvasGraph", () => {
     );
     assert.ok(canvas);
     fireEvent.click(
-      utils.getByLabelText("Image Candidates 角色、环境和关键帧候选"),
+      utils.getByLabelText("Storyboard Candidates 镜头表、画面描述和分镜候选"),
     );
     assert.ok(
-      utils.container.querySelector("[data-canvas-edge='image-video']"),
+      utils.container.querySelector("[data-canvas-edge='storyboard-video']"),
     );
     fireEvent.click(
       utils.getByRole("button", {
-        name: /移除 选用图片 → Video Candidates.*起始帧/,
+        name: /移除 选用故事板 → Video Candidates.*选用故事板/,
       }),
     );
     assert.equal(
-      utils.container.querySelector("[data-canvas-edge='image-video']"),
+      utils.container.querySelector("[data-canvas-edge='storyboard-video']"),
       null,
     );
     const select = utils.getByLabelText("连线目标") as HTMLSelectElement;
     const binding = [...select.options].find(
       (option) =>
-        option.textContent?.includes("选用图片 → Video Candidates· 起始帧"),
+        option.textContent?.includes(
+          "选用故事板 → Video Candidates· 选用故事板",
+        ),
     );
     assert.ok(binding);
     fireEvent.change(select, { target: { value: binding.value } });
     fireEvent.click(utils.getByRole("button", { name: "添加连线" }));
     assert.ok(
-      utils.container.querySelector("[data-canvas-edge='image-video']"),
+      utils.container.querySelector("[data-canvas-edge='storyboard-video']"),
     );
     assert.equal(dom.window.document.activeElement, canvas);
   });

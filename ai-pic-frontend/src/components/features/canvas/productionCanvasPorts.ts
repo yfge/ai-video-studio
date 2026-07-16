@@ -35,12 +35,18 @@ const skillContracts: Record<string, PortContract> = {
     outputs: [port("environment_image", "环境图片", "image")],
   },
   "script.generate": {
-    inputs: [port("production_brief", "生产简报", "text", true)],
+    inputs: [
+      port("production_brief", "生产简报", "text", true),
+      port("selected_assets", "选中资产", "entity_ref"),
+    ],
     outputs: [port("script", "剧本", "entity_ref")],
   },
   "timeline.assemble": {
     inputs: [port("script", "剧本", "entity_ref", true)],
-    outputs: [port("timeline", "时间线", "entity_ref")],
+    outputs: [
+      port("timeline", "时间线", "entity_ref"),
+      port("timeline_clip", "稳定片段", "entity_ref"),
+    ],
   },
   "storyboard.plan": {
     inputs: [port("script", "剧本", "entity_ref", true)],
@@ -50,9 +56,23 @@ const skillContracts: Record<string, PortContract> = {
     inputs: [port("script", "剧本", "entity_ref", true)],
     outputs: [port("approved_image", "选用图片", "image")],
   },
+  "storyboard.candidates": {
+    inputs: [port("timeline_clip", "稳定片段", "entity_ref", true)],
+    outputs: [port("approved_storyboard", "选用故事板", "image")],
+  },
   "video.candidates": {
-    inputs: [port("start_frame", "起始帧", "image", true)],
+    inputs: [
+      port("start_frame", "起始帧", "image"),
+      port("approved_storyboard", "选用故事板", "image"),
+    ],
     outputs: [port("approved_video", "选用视频", "video")],
+  },
+  "timeline.place": {
+    inputs: [
+      port("timeline_clip", "稳定片段", "entity_ref", true),
+      port("approved_video", "选用视频", "video", true),
+    ],
+    outputs: [port("placed_timeline", "已回填时间线", "entity_ref")],
   },
   "timeline.render": {
     inputs: [port("timeline", "时间线", "entity_ref", true)],
@@ -60,7 +80,10 @@ const skillContracts: Record<string, PortContract> = {
   },
   "timeline.export": {
     inputs: [port("rendered_video", "渲染视频", "video", true)],
-    outputs: [port("exported_video", "导出成片", "video")],
+    outputs: [
+      port("exported_video", "导出成片", "video"),
+      port("delivery", "交付证据", "execution_ref"),
+    ],
   },
   "report.summarize": {
     inputs: [port("execution", "执行证据", "execution_ref")],

@@ -463,7 +463,7 @@ describe("ProductionCanvasKeyboard", () => {
 
     assert.match(
       utils.container
-        .querySelector("[data-canvas-edge='script-storyboard']")
+        .querySelector("[data-canvas-edge='script-timeline']")
         ?.getAttribute("d") || "",
       /^M 190 107 /,
     );

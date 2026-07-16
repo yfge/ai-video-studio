@@ -4,6 +4,7 @@ import type {
   ProductionCanvasStaleImpactNode,
 } from "@/utils/api/types";
 import { ProductionCanvasCandidateItem } from "./ProductionCanvasCandidateItem";
+import { canDirectlyPlaceProductionCanvasVideo } from "./productionCanvasCandidateCapabilities";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
 
 export type ProductionCanvasCandidateBusyId = number | "load" | "place" | null;
@@ -66,6 +67,7 @@ export function ProductionCanvasCandidateReviewPanel({
               busy={busyId !== null}
               canApprove={canApprove}
               canBranch={canBranch}
+              canPlaceInTimeline={canDirectlyPlaceProductionCanvasVideo(node)}
               candidate={candidate}
               eager={index === 0}
               onApprove={onApprove}

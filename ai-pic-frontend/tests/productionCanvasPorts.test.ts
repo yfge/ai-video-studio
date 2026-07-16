@@ -38,32 +38,40 @@ describe("production canvas typed ports", () => {
   });
 
   it("discovers only compatible unbound port pairs", () => {
-    const image = productionCanvasNodes.find((node) => node.id === "image");
+    const storyboard = productionCanvasNodes.find(
+      (node) => node.id === "storyboard",
+    );
     const video = productionCanvasNodes.find((node) => node.id === "video");
     const report = productionCanvasNodes.find((node) => node.id === "report");
-    assert.ok(image && video && report);
+    assert.ok(storyboard && video && report);
     assert.deepEqual(
       productionCanvasPortContract(productionCanvasNodes[0]!).inputPorts,
       [],
     );
 
     assert.deepEqual(
-      compatibleProductionCanvasEdges(image, video, productionCanvasEdges),
+      compatibleProductionCanvasEdges(storyboard, video, productionCanvasEdges),
       [],
     );
-    const withoutImageBinding = productionCanvasEdges.filter(
-      (edge) => edge.edgeId !== "image-approved_image-to-video-start_frame",
+    const withoutStoryboardBinding = productionCanvasEdges.filter(
+      (edge) =>
+        edge.edgeId !==
+        "storyboard-approved_storyboard-to-video-approved_storyboard",
     );
     const [binding] = compatibleProductionCanvasEdges(
-      image,
+      storyboard,
       video,
-      withoutImageBinding,
+      withoutStoryboardBinding,
     );
-    assert.equal(binding?.fromPort, "approved_image");
-    assert.equal(binding?.toPort, "start_frame");
+    assert.equal(binding?.fromPort, "approved_storyboard");
+    assert.equal(binding?.toPort, "approved_storyboard");
     assert.equal(binding?.bindingType, "selected_output");
     assert.deepEqual(
-      compatibleProductionCanvasEdges(image, report, withoutImageBinding),
+      compatibleProductionCanvasEdges(
+        storyboard,
+        report,
+        withoutStoryboardBinding,
+      ),
       [],
     );
   });

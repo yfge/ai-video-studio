@@ -11,11 +11,18 @@ function outputString(
 
 export function isScopedProductionCanvasMediaNode(node: ProductionCanvasNode) {
   const skill = node.skill || outputString(node.outputs, "skill");
+  const clipStoryboardVideo =
+    skill === "video.candidates" &&
+    (outputString(node.outputs, "reference_mode") === "clip_storyboard_sheet" ||
+      node.outputs?.use_clip_storyboard === true ||
+      outputString(node.outputs, "placement_mode") === "explicit_node");
   return (
-    (skill === "image.candidates" || skill === "video.candidates") &&
-    ["frame_indexes", "queued_frame_indexes"].some((key) =>
-      Array.isArray(node.outputs?.[key]),
-    )
+    ((skill === "image.candidates" || skill === "video.candidates") &&
+      ["frame_indexes", "queued_frame_indexes"].some((key) =>
+        Array.isArray(node.outputs?.[key]),
+      )) ||
+    ((skill === "storyboard.candidates" || clipStoryboardVideo) &&
+      Boolean(outputString(node.outputs, "clip_id")))
   );
 }
 
@@ -65,6 +72,7 @@ export function productionCanvasSharedContextForNode<T>(
   const skill = node.skill || outputString(node.outputs, "skill");
   return node.kind === "note" ||
     skill === "image.candidates" ||
+    skill === "storyboard.candidates" ||
     skill === "video.candidates"
     ? undefined
     : context;

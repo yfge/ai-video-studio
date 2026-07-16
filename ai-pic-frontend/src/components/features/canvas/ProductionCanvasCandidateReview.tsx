@@ -13,13 +13,11 @@ import {
   type ProductionCanvasCandidateBusyId,
 } from "./ProductionCanvasCandidateReviewPanel";
 import { loadProductionCanvasCandidates } from "./productionCanvasCandidateLoading";
+import {
+  canBranchProductionCanvasCandidate,
+  isProductionCanvasReviewNode,
+} from "./productionCanvasCandidateCapabilities";
 import { useProductionCanvasCandidateRequestGuard } from "./useProductionCanvasCandidateRequestGuard";
-
-function isReviewNode(node?: ProductionCanvasNode) {
-  return (
-    node?.skill === "image.candidates" || node?.skill === "video.candidates"
-  );
-}
 
 export function ProductionCanvasCandidateReview({
   canApprove = true,
@@ -42,7 +40,7 @@ export function ProductionCanvasCandidateReview({
   runId: string;
 }) {
   const nodeId = node?.id;
-  const reviewable = isReviewNode(node);
+  const reviewable = isProductionCanvasReviewNode(node);
   const [candidates, setCandidates] = useState<
     ProductionCanvasMediaCandidate[]
   >([]);
@@ -109,7 +107,7 @@ export function ProductionCanvasCandidateReview({
     void load();
   }, [invalidateRequests, load]);
 
-  if (!node || !runId || !isReviewNode(node)) return null;
+  if (!node || !runId || !isProductionCanvasReviewNode(node)) return null;
 
   const approve = async (candidate: ProductionCanvasMediaCandidate) => {
     const request = captureRequest();
@@ -230,7 +228,7 @@ export function ProductionCanvasCandidateReview({
     <ProductionCanvasCandidateReviewPanel
       busyId={busyId}
       canApprove={canApprove}
-      canBranch={canBranch}
+      canBranch={canBranchProductionCanvasCandidate(node, canBranch)}
       candidates={candidates}
       error={error}
       node={node}

@@ -15,13 +15,15 @@ import { appendProductionCanvasNodes } from "../src/components/features/canvas/u
 
 const planSkills = [
   "brief.compose",
+  "asset.select",
   "script.generate",
   "timeline.assemble",
-  "storyboard.plan",
-  "image.candidates",
+  "storyboard.candidates",
   "video.candidates",
+  "timeline.place",
   "timeline.render",
   "timeline.export",
+  "report.summarize",
 ];
 
 const planNodes = planSkills.map((skill, index) =>
@@ -47,7 +49,7 @@ describe("production canvas plan graph", () => {
     );
 
     const edges = productionCanvasPlanEdges(planNodes);
-    assert.equal(edges.length, 7);
+    assert.equal(edges.length, 11);
     const byId = new Map(planNodes.map((node) => [node.id, node]));
     for (const edge of edges) {
       const source = byId.get(edge.from);
@@ -62,12 +64,18 @@ describe("production canvas plan graph", () => {
     }
   });
 
-  it("requires an approved image before video execution", () => {
+  it("requires an approved storyboard without a start-frame binding", () => {
     const edge = productionCanvasPlanEdges(planNodes).find(
-      (candidate) => candidate.edgeId?.includes("approved_image"),
+      (candidate) => candidate.edgeId?.includes("approved_storyboard"),
     );
     assert.equal(edge?.bindingType, "selected_output");
-    assert.equal(edge?.toPort, "start_frame");
+    assert.equal(edge?.toPort, "approved_storyboard");
+    assert.equal(
+      productionCanvasPlanEdges(planNodes).some(
+        (candidate) => candidate.toPort === "start_frame",
+      ),
+      false,
+    );
   });
 
   it("uses a server-planned subset and typed edges instead of the fixed graph", () => {

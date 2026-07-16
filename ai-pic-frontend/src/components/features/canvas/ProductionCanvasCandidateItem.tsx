@@ -24,6 +24,7 @@ export function ProductionCanvasCandidateItem({
   busy,
   canApprove = true,
   canBranch = true,
+  canPlaceInTimeline,
   candidate,
   eager,
   onApprove,
@@ -38,6 +39,7 @@ export function ProductionCanvasCandidateItem({
   busy: boolean;
   canApprove?: boolean;
   canBranch?: boolean;
+  canPlaceInTimeline: boolean;
   candidate: ProductionCanvasMediaCandidate;
   eager?: boolean;
   onApprove: (candidate: ProductionCanvasMediaCandidate) => void;
@@ -199,7 +201,10 @@ export function ProductionCanvasCandidateItem({
           ) : null}
         </div>
       </div>
-      {canApprove && candidate.media_type === "video" && candidate.selected ? (
+      {canApprove &&
+      canPlaceInTimeline &&
+      candidate.media_type === "video" &&
+      candidate.selected ? (
         <button
           type="button"
           className={operatorButtonClass(

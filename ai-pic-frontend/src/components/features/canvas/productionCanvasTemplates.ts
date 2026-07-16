@@ -96,24 +96,24 @@ export const productionCanvasTemplates: ProductionCanvasTemplate[] = [
     sectionTitle: "镜头评审子流程",
     nodes: [
       node(
-        "image.candidates",
-        "图片候选",
-        "生成镜头关键帧候选",
-        "比较并选用镜头关键帧。",
+        "storyboard.candidates",
+        "故事板候选",
+        "生成剪辑级故事板候选",
+        "按镜头时长自动生成并选用 2/4/6/9 格故事板。",
       ),
       node(
         "video.candidates",
         "视频候选",
         "生成镜头视频候选",
-        "基于选用关键帧生成并评审视频。",
+        "基于选用的整张故事板生成并评审视频，不使用首尾帧。",
       ),
     ],
     edges: [
       edge(
-        "image.candidates",
-        "approved_image",
+        "storyboard.candidates",
+        "approved_storyboard",
         "video.candidates",
-        "start_frame",
+        "approved_storyboard",
         "selected_output",
       ),
     ],
@@ -130,6 +130,12 @@ export const productionCanvasTemplates: ProductionCanvasTemplate[] = [
         "复用当前镜头顺序、时长和版本。",
       ),
       node(
+        "timeline.place",
+        "回填",
+        "放入已选视频",
+        "同时绑定 stable clip 与外部已选视频，再显式回填 Timeline。",
+      ),
+      node(
         "timeline.render",
         "渲染",
         "渲染当前时间线版本",
@@ -143,7 +149,13 @@ export const productionCanvasTemplates: ProductionCanvasTemplate[] = [
       ),
     ],
     edges: [
-      edge("timeline.assemble", "timeline", "timeline.render", "timeline"),
+      edge(
+        "timeline.assemble",
+        "timeline_clip",
+        "timeline.place",
+        "timeline_clip",
+      ),
+      edge("timeline.place", "placed_timeline", "timeline.render", "timeline"),
       edge(
         "timeline.render",
         "rendered_video",

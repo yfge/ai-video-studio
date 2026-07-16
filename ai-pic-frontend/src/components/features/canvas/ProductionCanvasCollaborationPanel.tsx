@@ -76,7 +76,11 @@ export function ProductionCanvasCollaborationPanel({
     if (
       !runId ||
       !node ||
-      !["image.candidates", "video.candidates"].includes(node.skill || "")
+      ![
+        "image.candidates",
+        "storyboard.candidates",
+        "video.candidates",
+      ].includes(node.skill || "")
     ) {
       return () => {
         active = false;

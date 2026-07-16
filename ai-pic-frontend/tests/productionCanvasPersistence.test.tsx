@@ -361,13 +361,13 @@ describe("ProductionCanvasPersistence", () => {
       assert.equal(savedBrief?.kind, "pipeline");
       assert.equal(savedBrief?.definition_version, 1);
       assert.equal(savedBrief?.output_ports?.[0]?.id, "production_brief");
-      const imageVideoEdge = savedBodies[0]?.edges.find(
+      const storyboardVideoEdge = savedBodies[0]?.edges.find(
         (edge: { from: string; to: string }) =>
-          edge.from === "image" && edge.to === "video",
+          edge.from === "storyboard" && edge.to === "video",
       );
-      assert.equal(imageVideoEdge?.from_port, "approved_image");
-      assert.equal(imageVideoEdge?.to_port, "start_frame");
-      assert.equal(imageVideoEdge?.binding_type, "selected_output");
+      assert.equal(storyboardVideoEdge?.from_port, "approved_storyboard");
+      assert.equal(storyboardVideoEdge?.to_port, "approved_storyboard");
+      assert.equal(storyboardVideoEdge?.binding_type, "selected_output");
       await waitFor(() => assert.ok(utils.getByText("已保存")));
 
       fireEvent.click(utils.getByRole("button", { name: "恢复画布" }));

@@ -89,7 +89,9 @@ export function ProductionCanvasMediaControls({
 }) {
   if (
     !node ||
-    (node.skill !== "image.candidates" && node.skill !== "video.candidates")
+    !["image.candidates", "storyboard.candidates", "video.candidates"].includes(
+      node.skill || "",
+    )
   ) {
     return null;
   }
@@ -98,18 +100,25 @@ export function ProductionCanvasMediaControls({
   const update = (patch: Record<string, MediaOutputValue>) =>
     onUpdateNodeOutputs(node.id, patch);
   const isImage = node.skill === "image.candidates";
+  const isStoryboard = node.skill === "storyboard.candidates";
 
   return (
     <div className="border-t border-gray-100 pt-3">
       <div className="text-xs font-semibold text-gray-700">媒体执行参数</div>
       <div className="mt-2 grid gap-2">
-        <TextField
-          label="媒体帧索引"
-          value={frameIndexesText(outputs)}
-          onChange={(value) =>
-            update({ frame_indexes: parseFrameIndexes(value) })
-          }
-        />
+        {isStoryboard ? (
+          <p className="text-xs leading-5 text-gray-500">
+            故事板格数按片段时长自动选择 2 / 4 / 6 / 9 格。
+          </p>
+        ) : (
+          <TextField
+            label="媒体帧索引"
+            value={frameIndexesText(outputs)}
+            onChange={(value) =>
+              update({ frame_indexes: parseFrameIndexes(value) })
+            }
+          />
+        )}
         <TextField
           label="媒体模型"
           value={stringOutput(outputs, "model")}
@@ -138,7 +147,7 @@ export function ProductionCanvasMediaControls({
               要求参考图
             </label>
           </>
-        ) : (
+        ) : isStoryboard ? null : (
           <>
             <TextField
               label="视频时长"

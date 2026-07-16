@@ -29,8 +29,8 @@ describe("production canvas domain templates", () => {
     assert.equal(first.nodes.length, 2);
     assert.equal(first.edges.length, 1);
     assert.equal(first.edges[0].bindingType, "selected_output");
-    assert.equal(first.edges[0].fromPort, "approved_image");
-    assert.equal(first.edges[0].toPort, "start_frame");
+    assert.equal(first.edges[0].fromPort, "approved_storyboard");
+    assert.equal(first.edges[0].toPort, "approved_storyboard");
     assert.equal(first.sections?.[0].title, "镜头评审子流程");
     assert.equal(second.nodes.length, 4);
     assert.equal(new Set(second.nodes.map((item) => item.id)).size, 4);
@@ -66,12 +66,31 @@ describe("production canvas domain templates", () => {
       [],
     );
     const inserted = insertProductionCanvasTemplate(initial, "shot-review");
-    const imageNode = inserted.nodes.find(
-      (item) => item.skill === "image.candidates",
+    const storyboardNode = inserted.nodes.find(
+      (item) => item.skill === "storyboard.candidates",
     );
 
-    assert.equal(imageNode?.outputs?.script_id, 42);
-    assert.equal(imageNode?.outputs?.canvas_run_id, "run-42");
-    assert.equal(imageNode?.outputs?.task_id, 420);
+    assert.equal(storyboardNode?.outputs?.script_id, 42);
+    assert.equal(storyboardNode?.outputs?.canvas_run_id, "run-42");
+    assert.equal(storyboardNode?.outputs?.task_id, 420);
+  });
+
+  it("keeps Timeline placement explicit in the delivery template", () => {
+    const inserted = insertProductionCanvasTemplate(
+      createProductionCanvasState([], []),
+      "delivery",
+    );
+
+    assert.ok(inserted.nodes.some((item) => item.skill === "timeline.place"));
+    assert.ok(
+      inserted.edges.some(
+        (item) =>
+          item.fromPort === "placed_timeline" && item.toPort === "timeline",
+      ),
+    );
+    assert.equal(
+      inserted.edges.some((item) => item.toPort === "approved_video"),
+      false,
+    );
   });
 });
