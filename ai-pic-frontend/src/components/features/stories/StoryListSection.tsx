@@ -2,8 +2,10 @@
 
 import {
   OperatorPanel,
+  OperatorPagination,
   OperatorSectionHeader,
   OperatorState,
+  type OperatorPaginationModel,
   operatorButtonClass,
   operatorSelectClass,
 } from "@/components/shared";
@@ -21,6 +23,7 @@ interface StoryListSectionProps {
   onOpenSingleVideoForm: () => void;
   onOpenGenerateForm: () => void;
   onDelete: (businessId: string) => void;
+  pagination?: OperatorPaginationModel;
 }
 
 export function StoryListSection({
@@ -33,12 +36,13 @@ export function StoryListSection({
   onOpenSingleVideoForm,
   onOpenGenerateForm,
   onDelete,
+  pagination,
 }: StoryListSectionProps) {
   return (
     <OperatorPanel>
       <OperatorSectionHeader
         title="项目列表"
-        subtitle={`${stories.length} 个项目`}
+        subtitle={`${pagination?.total ?? stories.length} 个项目`}
         action={
           <StoryFilters
             selectedGenre={selectedGenre}
@@ -59,15 +63,20 @@ export function StoryListSection({
           onOpenGenerateForm={onOpenGenerateForm}
         />
       ) : (
-        <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
-          {stories.map((story) => (
-            <StoryProjectCard
-              key={story.business_id || story.id}
-              story={story}
-              onDelete={onDelete}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
+            {stories.map((story) => (
+              <StoryProjectCard
+                key={story.business_id || story.id}
+                story={story}
+                onDelete={onDelete}
+              />
+            ))}
+          </div>
+          {pagination ? (
+            <OperatorPagination {...pagination} itemLabel="项目" />
+          ) : null}
+        </>
       )}
     </OperatorPanel>
   );

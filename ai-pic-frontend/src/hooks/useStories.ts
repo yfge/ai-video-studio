@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { storyAPI, virtualIPAPI } from "@/utils/api/endpoints";
 import {
@@ -10,6 +10,7 @@ import {
   type StoryGenerationForm,
 } from "@/utils/storyOptions";
 import type { Story, VirtualIP } from "@/utils/api/types";
+import { fetchAllPages } from "@/utils/api/pagination";
 
 export interface UseStoriesOptions {
   showAlert: (options: {
@@ -29,18 +30,24 @@ const INITIAL_GENERATE_FORM: StoryGenerationForm = STORY_GENERATE_DEFAULTS;
 export function useStories({ showAlert }: UseStoriesOptions) {
   const router = useRouter();
 
-  // Core state
-  const [stories, setStories] = useState<Story[]>([]);
+  const [allStories, setAllStories] = useState<Story[]>([]);
   const [virtualIPs, setVirtualIPs] = useState<VirtualIP[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [showGenerateForm, setShowGenerateForm] = useState(false);
 
-  // Filter state
   const [selectedGenre, setSelectedGenre] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<string>("");
+  const stories = useMemo(
+    () =>
+      allStories.filter(
+        (story) =>
+          (!selectedGenre || story.genre === selectedGenre) &&
+          (!selectedStatus || story.status === selectedStatus),
+      ),
+    [allStories, selectedGenre, selectedStatus],
+  );
 
-  // Generate form state
   const [generateForm, setGenerateForm] = useState<StoryGenerationForm>(
     INITIAL_GENERATE_FORM,
   );
@@ -48,38 +55,29 @@ export function useStories({ showAlert }: UseStoriesOptions) {
   const [showPromptPreview, setShowPromptPreview] = useState<boolean>(false);
   const [useAsync, setUseAsync] = useState<boolean>(true);
 
-  // Data loading
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [storiesResponse, virtualIPsResponse] = await Promise.all([
-        storyAPI.getStories({
-          genre: selectedGenre || undefined,
-          status: selectedStatus || undefined,
-          limit: 50,
-        }),
-        virtualIPAPI.getVirtualIPs(),
+      const [storyItems, virtualIPItems] = await Promise.all([
+        fetchAllPages((skip, limit) => storyAPI.getStories({ skip, limit })),
+        fetchAllPages((skip, limit) =>
+          virtualIPAPI.getVirtualIPs({ skip, limit }),
+        ),
       ]);
-
-      if (storiesResponse.success && storiesResponse.data) {
-        setStories(storiesResponse.data);
-      }
-      if (virtualIPsResponse.success && virtualIPsResponse.data) {
-        setVirtualIPs(virtualIPsResponse.data);
-      }
+      setAllStories(storyItems);
+      setVirtualIPs(virtualIPItems);
     } catch (error) {
       console.error("加载数据失败:", error);
       showAlert({ message: "加载数据失败", variant: "error" });
     } finally {
       setLoading(false);
     }
-  }, [selectedGenre, selectedStatus, showAlert]);
+  }, [showAlert]);
 
   useEffect(() => {
     void loadData();
   }, [loadData]);
 
-  // Event handlers
   const handleGenerateStory = async () => {
     if (!generateForm.title || generateForm.character_ids.length === 0) {
       showAlert({
@@ -115,7 +113,7 @@ export function useStories({ showAlert }: UseStoriesOptions) {
       } else {
         const response = await storyAPI.generateStory(generateForm);
         if (response.success && response.data) {
-          setStories((prev) => [response.data as Story, ...prev]);
+          setAllStories((prev) => [response.data as Story, ...prev]);
           showAlert({ message: "故事生成成功！", variant: "success" });
         } else {
           showAlert({
@@ -139,7 +137,7 @@ export function useStories({ showAlert }: UseStoriesOptions) {
     try {
       const response = await storyAPI.deleteStory(storyBusinessId);
       if (response.success) {
-        setStories((prev) =>
+        setAllStories((prev) =>
           prev.filter((story) => story.business_id !== storyBusinessId),
         );
         showAlert({ message: "故事删除成功", variant: "success" });

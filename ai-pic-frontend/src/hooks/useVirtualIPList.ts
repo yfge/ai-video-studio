@@ -4,13 +4,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { virtualIPAPI } from "@/utils/api/endpoints";
 import type { VirtualIP } from "@/utils/api/types";
 import type { AlertOptions } from "@/components/shared/modals/AlertModalProvider";
+import { fetchAllPages } from "@/utils/api/pagination";
+import { resolveCreatorLabel } from "@/utils/creator";
 
 interface UseVirtualIPListOptions {
   showAlert: (options: AlertOptions) => void;
 }
 
 export function useVirtualIPList({ showAlert }: UseVirtualIPListOptions) {
-  const [virtualIPs, setVirtualIPs] = useState<VirtualIP[]>([]);
+  const [allVirtualIPs, setAllVirtualIPs] = useState<VirtualIP[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -18,30 +20,40 @@ export function useVirtualIPList({ showAlert }: UseVirtualIPListOptions) {
   const fetchVirtualIPs = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await virtualIPAPI.getVirtualIPs({
-        search: searchTerm || undefined,
-        tags: selectedTags.length > 0 ? selectedTags : undefined,
-      });
-
-      if (response.success && response.data) {
-        setVirtualIPs(response.data);
-      } else {
-        console.error("获取虚拟IP列表失败:", response.error);
-      }
+      const items = await fetchAllPages((skip, limit) =>
+        virtualIPAPI.getVirtualIPs({ skip, limit }),
+      );
+      setAllVirtualIPs(items);
     } catch (error) {
       console.error("获取虚拟IP列表出错:", error);
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, selectedTags]);
+  }, []);
 
   useEffect(() => {
     void fetchVirtualIPs();
   }, [fetchVirtualIPs]);
 
+  const virtualIPs = useMemo(() => {
+    const search = searchTerm.trim().toLocaleLowerCase("zh-CN");
+    return allVirtualIPs.filter((ip) => {
+      const matchesSearch =
+        !search ||
+        [ip.name, resolveCreatorLabel(ip.creator), ...(ip.tags ?? [])]
+          .join(" ")
+          .toLocaleLowerCase("zh-CN")
+          .includes(search);
+      const matchesTags = selectedTags.every((tag) =>
+        (ip.tags ?? []).includes(tag),
+      );
+      return matchesSearch && matchesTags;
+    });
+  }, [allVirtualIPs, searchTerm, selectedTags]);
+
   const allTags = useMemo(
-    () => Array.from(new Set(virtualIPs.flatMap((ip) => ip.tags ?? []))),
-    [virtualIPs],
+    () => Array.from(new Set(allVirtualIPs.flatMap((ip) => ip.tags ?? []))),
+    [allVirtualIPs],
   );
 
   const toggleTag = useCallback((tag: string) => {
@@ -55,7 +67,7 @@ export function useVirtualIPList({ showAlert }: UseVirtualIPListOptions) {
       try {
         const response = await virtualIPAPI.deleteVirtualIP(bizId);
         if (response.success) {
-          setVirtualIPs((prev) =>
+          setAllVirtualIPs((prev) =>
             prev.filter((ip) => ip.business_id !== bizId),
           );
         } else {
@@ -88,7 +100,7 @@ export function useVirtualIPList({ showAlert }: UseVirtualIPListOptions) {
   );
 
   const prependVirtualIP = useCallback((virtualIP: VirtualIP) => {
-    setVirtualIPs((prev) => [virtualIP, ...prev]);
+    setAllVirtualIPs((prev) => [virtualIP, ...prev]);
   }, []);
 
   return {

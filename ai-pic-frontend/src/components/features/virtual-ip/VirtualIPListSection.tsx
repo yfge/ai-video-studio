@@ -4,8 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   OperatorPanel,
+  OperatorPagination,
   OperatorSectionHeader,
   OperatorState,
+  type OperatorPaginationModel,
   operatorButtonClass,
   operatorInputClass,
 } from "@/components/shared";
@@ -22,6 +24,7 @@ interface VirtualIPListSectionProps {
   onToggleTag: (tag: string) => void;
   onOpenCreate: () => void;
   onDelete: (bizId: string) => void;
+  pagination?: OperatorPaginationModel;
 }
 
 export function VirtualIPListSection({
@@ -34,13 +37,14 @@ export function VirtualIPListSection({
   onToggleTag,
   onOpenCreate,
   onDelete,
+  pagination,
 }: VirtualIPListSectionProps) {
   return (
     <div className="space-y-5">
       <OperatorPanel>
         <OperatorSectionHeader
           title="IP 资产筛选"
-          subtitle={`${virtualIPs.length} 个可用 IP 项目`}
+          subtitle={`${pagination?.total ?? virtualIPs.length} 个可用 IP 项目`}
           action={
             <button
               type="button"
@@ -97,11 +101,16 @@ export function VirtualIPListSection({
           }
         />
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {virtualIPs.map((ip) => (
-            <IPProjectCard key={ip.business_id} ip={ip} onDelete={onDelete} />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {virtualIPs.map((ip) => (
+              <IPProjectCard key={ip.business_id} ip={ip} onDelete={onDelete} />
+            ))}
+          </div>
+          {pagination ? (
+            <OperatorPagination {...pagination} itemLabel="IP 项目" />
+          ) : null}
+        </>
       )}
     </div>
   );

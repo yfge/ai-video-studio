@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import { AuthGuard, OperatorPanel, OperatorShell } from "@/components/shared";
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 import {
@@ -8,6 +9,8 @@ import {
 } from "@/components/features";
 import { useVirtualIPCreateForm } from "@/hooks/useVirtualIPCreateForm";
 import { useVirtualIPList } from "@/hooks/useVirtualIPList";
+import { useListPagination } from "@/hooks/useListPagination";
+import type { VirtualIP } from "@/utils/api/types";
 
 function VirtualIPListContent() {
   const { showAlert } = useAlertModal();
@@ -22,6 +25,14 @@ function VirtualIPListContent() {
     handleDeleteIP,
     prependVirtualIP,
   } = useVirtualIPList({ showAlert });
+  const pagination = useListPagination(virtualIPs);
+  const handleCreated = useCallback(
+    (virtualIP: VirtualIP) => {
+      prependVirtualIP(virtualIP);
+      pagination.resetPage();
+    },
+    [pagination, prependVirtualIP],
+  );
 
   const {
     showCreateForm,
@@ -36,7 +47,7 @@ function VirtualIPListContent() {
     removeTag,
     runGenerateAllAI,
     handleCloseCreateForm,
-  } = useVirtualIPCreateForm({ showAlert, onCreated: prependVirtualIP });
+  } = useVirtualIPCreateForm({ showAlert, onCreated: handleCreated });
 
   return (
     <OperatorShell
@@ -53,14 +64,21 @@ function VirtualIPListContent() {
 
       <VirtualIPListSection
         loading={loading}
-        virtualIPs={virtualIPs}
+        virtualIPs={pagination.items}
         searchTerm={searchTerm}
-        onSearchTermChange={setSearchTerm}
+        onSearchTermChange={(value) => {
+          setSearchTerm(value);
+          pagination.resetPage();
+        }}
         allTags={allTags}
         selectedTags={selectedTags}
-        onToggleTag={toggleTag}
+        onToggleTag={(tag) => {
+          toggleTag(tag);
+          pagination.resetPage();
+        }}
         onOpenCreate={() => setShowCreateForm(true)}
         onDelete={handleDeleteIP}
+        pagination={pagination}
       />
 
       <VirtualIPCreateModal

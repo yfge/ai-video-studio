@@ -43,6 +43,7 @@ function virtualIPPath(
 async function getVirtualIPs(params?: {
   search?: string;
   tags?: string[];
+  skip?: number;
   page?: number;
   limit?: number;
 }): Promise<ApiResponse<VirtualIP[]>> {
@@ -50,7 +51,12 @@ async function getVirtualIPs(params?: {
   if (params?.search) searchParams.append("search", params.search);
   if (params?.tags)
     params.tags.forEach((tag) => searchParams.append("tags", tag));
-  if (params?.page) searchParams.append("page", params.page.toString());
+  const skip =
+    params?.skip ??
+    (params?.page && params.page > 1
+      ? (params.page - 1) * (params.limit ?? 20)
+      : undefined);
+  if (skip) searchParams.append("skip", skip.toString());
   if (params?.limit) searchParams.append("limit", params.limit.toString());
 
   const queryString = searchParams.toString();

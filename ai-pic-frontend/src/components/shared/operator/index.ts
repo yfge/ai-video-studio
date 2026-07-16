@@ -26,3 +26,7 @@ export {
   OperatorWorkspace,
 } from "./OperatorLayout";
 export { OperatorModalFrame } from "./OperatorOverlay";
+export {
+  OperatorPagination,
+  type OperatorPaginationModel,
+} from "./OperatorPagination";

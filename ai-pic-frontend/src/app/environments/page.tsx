@@ -16,6 +16,7 @@ import {
 import { storyStructureAPI } from "@/utils/api/endpoints";
 import type { Environment } from "@/utils/api/types";
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
+import { useListPagination } from "@/hooks/useListPagination";
 
 function EnvironmentsPageContent() {
   const router = useRouter();
@@ -23,6 +24,7 @@ function EnvironmentsPageContent() {
   const [list, setList] = useState<Environment[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const pagination = useListPagination(list);
 
   const load = useCallback(async () => {
     try {
@@ -99,18 +101,22 @@ function EnvironmentsPageContent() {
 
       <EnvironmentList
         loading={loading}
-        list={list}
+        list={pagination.items}
         onRefresh={() => void load()}
         onManage={(env) =>
           router.push(`/environments/${env.business_id || env.id}`)
         }
         onDelete={handleDelete}
+        pagination={pagination}
       />
 
       <EnvironmentCreateOverlay
         open={showCreateForm}
         onClose={() => setShowCreateForm(false)}
-        onCreated={(env) => setList((prev) => [env, ...prev])}
+        onCreated={(env) => {
+          setList((prev) => [env, ...prev]);
+          pagination.resetPage();
+        }}
       />
     </OperatorShell>
   );

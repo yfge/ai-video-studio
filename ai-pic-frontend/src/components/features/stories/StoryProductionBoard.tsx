@@ -8,6 +8,7 @@ import {
   operatorButtonClass,
 } from "@/components/shared";
 import { useStories, type UseStoriesOptions } from "@/hooks/useStories";
+import { useListPagination } from "@/hooks/useListPagination";
 import type { SingleVideoProjectResponse } from "@/utils/api/types";
 import { episodeWorkspaceHref } from "@/utils/routes";
 import { SingleVideoProjectModal } from "./SingleVideoProjectModal";
@@ -46,6 +47,7 @@ export function StoryProductionBoard({
     closeGenerateForm,
     navigateToVirtualIP,
   } = state;
+  const pagination = useListPagination(stories);
   const openSingleVideoProject = (project: SingleVideoProjectResponse) => {
     router.push(
       episodeWorkspaceHref(project.episode_id, {
@@ -90,15 +92,22 @@ export function StoryProductionBoard({
         </OperatorPanel>
 
         <StoryListSection
-          stories={stories}
+          stories={pagination.items}
           loading={loading}
           selectedGenre={selectedGenre}
-          onSelectedGenreChange={setSelectedGenre}
+          onSelectedGenreChange={(value) => {
+            setSelectedGenre(value);
+            pagination.resetPage();
+          }}
           selectedStatus={selectedStatus}
-          onSelectedStatusChange={setSelectedStatus}
+          onSelectedStatusChange={(value) => {
+            setSelectedStatus(value);
+            pagination.resetPage();
+          }}
           onOpenSingleVideoForm={() => setShowSingleVideoForm(true)}
           onOpenGenerateForm={openGenerateForm}
           onDelete={handleDeleteStory}
+          pagination={pagination}
         />
       </div>
 
