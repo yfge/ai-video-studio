@@ -191,6 +191,7 @@ CANONICAL_DEPENDENCIES = {
 }
 
 CANONICAL_SKILLS = tuple(CANONICAL_DEPENDENCIES)
+CANONICAL_MANIFEST_VERSION = "production_canvas.v2"
 
 
 def canvas_skill_node_id(skill_id: str) -> str:
@@ -199,8 +200,15 @@ def canvas_skill_node_id(skill_id: str) -> str:
 
 def canvas_skill_ports(
     skill_id: str,
+    *,
+    manifest_version: str | None = None,
 ) -> tuple[list[ProductionCanvasSavedPort], list[ProductionCanvasSavedPort]]:
     inputs, outputs = SKILL_PORTS[skill_id]
+    if (
+        manifest_version == CANONICAL_MANIFEST_VERSION
+        and skill_id == "video.candidates"
+    ):
+        inputs = [_port("approved_storyboard", "image", required=True)]
     return (
         [port.model_copy(deep=True) for port in inputs],
         [port.model_copy(deep=True) for port in outputs],

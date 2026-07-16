@@ -14,6 +14,7 @@ from app.schemas.production_canvas_planner import (
 from .planner_ports import (
     ALLOWED_BINDINGS,
     CANONICAL_DEPENDENCIES,
+    CANONICAL_MANIFEST_VERSION,
     REQUIRED_DEPENDENCIES,
     SKILL_PORTS,
     canvas_skill_node_id,
@@ -98,7 +99,10 @@ def _validate_compiled_graph(
 ) -> None:
     nodes = []
     for index, step in enumerate(proposal.steps):
-        inputs, outputs = canvas_skill_ports(step.skill)
+        inputs, outputs = canvas_skill_ports(
+            step.skill,
+            manifest_version=CANONICAL_MANIFEST_VERSION,
+        )
         nodes.append(
             ProductionCanvasSavedNode(
                 id=canvas_skill_node_id(step.skill),

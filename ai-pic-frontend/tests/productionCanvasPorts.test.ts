@@ -37,6 +37,42 @@ describe("production canvas typed ports", () => {
     assert.equal(toProductionCanvasSavedState(state).graph_version, 1);
   });
 
+  it("defaults video to a storyboard while preserving explicit legacy ports", () => {
+    const base = {
+      id: "video-contract",
+      label: "Video",
+      title: "Video",
+      status: "ready" as const,
+      x: 0,
+      y: 0,
+      width: 220,
+      kind: "skill_result" as const,
+      skill: "video.candidates",
+    };
+
+    assert.deepEqual(
+      productionCanvasPortContract(base).inputPorts?.map((port) => [
+        port.id,
+        port.required,
+      ]),
+      [["approved_storyboard", true]],
+    );
+    assert.deepEqual(
+      productionCanvasPortContract({
+        ...base,
+        inputPorts: [
+          {
+            id: "start_frame",
+            label: "起始帧",
+            type: "image" as const,
+            required: false,
+          },
+        ],
+      }).inputPorts?.map((port) => port.id),
+      ["start_frame"],
+    );
+  });
+
   it("discovers only compatible unbound port pairs", () => {
     const storyboard = productionCanvasNodes.find(
       (node) => node.id === "storyboard",

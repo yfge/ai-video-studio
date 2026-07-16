@@ -61,10 +61,7 @@ const skillContracts: Record<string, PortContract> = {
     outputs: [port("approved_storyboard", "选用故事板", "image")],
   },
   "video.candidates": {
-    inputs: [
-      port("start_frame", "起始帧", "image"),
-      port("approved_storyboard", "选用故事板", "image"),
-    ],
+    inputs: [port("approved_storyboard", "选用故事板", "image", true)],
     outputs: [port("approved_video", "选用视频", "video")],
   },
   "timeline.place": {

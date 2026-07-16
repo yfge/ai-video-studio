@@ -24,11 +24,12 @@ from .autonomous_planner import (
     deterministic_canvas_planner_decision,
     plan_canvas_skills,
 )
+from .planner_ports import CANONICAL_MANIFEST_VERSION
 
 
 def _manifest() -> ProductionCanvasSkillManifest:
     return ProductionCanvasSkillManifest(
-        version="production_canvas.v2",
+        version=CANONICAL_MANIFEST_VERSION,
         entry_skill="production_canvas.create",
         skills=list_canvas_skill_definitions(),
         reuse_policy="backend_reuses_existing_services_and_tasks",
@@ -36,6 +37,7 @@ def _manifest() -> ProductionCanvasSkillManifest:
 
 
 def _plan_response(resolved, decision: CanvasPlannerDecision):
+    manifest = _manifest()
     all_results = build_canvas_skill_results(
         resolved.request,
         resolved.assets,
@@ -50,11 +52,14 @@ def _plan_response(resolved, decision: CanvasPlannerDecision):
         resolved_context=ProductionCanvasResolvedContext.model_validate(
             resolved.request.model_dump(exclude={"prompt", "planning_mode"})
         ),
-        skill_manifest=_manifest(),
+        skill_manifest=manifest,
         selected_assets=resolved.assets.selected,
         production_context=resolved.context,
         skill_results=skill_results,
-        nodes=build_plan_nodes(skill_results),
+        nodes=build_plan_nodes(
+            skill_results,
+            manifest_version=manifest.version,
+        ),
         edges=decision.edges,
         planner=decision.evidence,
     )

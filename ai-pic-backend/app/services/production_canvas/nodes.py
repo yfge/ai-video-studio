@@ -28,6 +28,8 @@ NODE_LAYOUT = {
 
 def build_plan_nodes(
     skill_results: list[ProductionCanvasSkillResult],
+    *,
+    manifest_version: str | None = None,
 ) -> list[ProductionCanvasPlanNode]:
     nodes: list[ProductionCanvasPlanNode] = []
     compact = len(skill_results) < len(NODE_LAYOUT)
@@ -37,7 +39,10 @@ def build_plan_nodes(
             result.skill,
             (default_x, 360, 240, None, None),
         )
-        input_ports, output_ports = canvas_skill_ports(result.skill)
+        input_ports, output_ports = canvas_skill_ports(
+            result.skill,
+            manifest_version=manifest_version,
+        )
         nodes.append(
             ProductionCanvasPlanNode(
                 id=canvas_skill_node_id(result.skill),

@@ -77,7 +77,13 @@ def _current_run_payload(payload: dict) -> dict:
     manifest["skills"] = [item.model_dump() for item in definitions]
     current["skill_manifest"] = manifest
     current["skill_results"] = [item.model_dump() for item in results]
-    current["nodes"] = [item.model_dump() for item in build_plan_nodes(results)]
+    current["nodes"] = [
+        item.model_dump()
+        for item in build_plan_nodes(
+            results,
+            manifest_version=manifest.get("version"),
+        )
+    ]
     if not isinstance(planner, dict):
         fallback = deterministic_canvas_planner_decision(
             str(current.get("prompt") or "恢复生产画布"),

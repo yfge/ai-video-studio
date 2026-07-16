@@ -199,7 +199,11 @@ def test_run_restore_preserves_the_planner_selected_subset_and_edges():
                 "outputs": {},
                 "reuse_targets": [],
             }
-            for skill in ("brief.compose", "script.generate")
+            for skill in (
+                "brief.compose",
+                "script.generate",
+                "video.candidates",
+            )
         ],
         "nodes": [],
         "edges": [edge],
@@ -207,7 +211,11 @@ def test_run_restore_preserves_the_planner_selected_subset_and_edges():
             "mode": "autonomous",
             "version": "production_canvas.planner.v1",
             "objective": "只生成剧本",
-            "selected_skills": ["brief.compose", "script.generate"],
+            "selected_skills": [
+                "brief.compose",
+                "script.generate",
+                "video.candidates",
+            ],
         },
     }
 
@@ -217,9 +225,16 @@ def test_run_restore_preserves_the_planner_selected_subset_and_edges():
     assert [result.skill for result in plan.skill_results] == [
         "brief.compose",
         "script.generate",
+        "video.candidates",
     ]
     assert [node.skill for node in plan.nodes] == [
         "brief.compose",
         "script.generate",
+        "video.candidates",
     ]
     assert plan.edges[0].edge_id == "brief-to-script"
+    video_node = next(node for node in plan.nodes if node.skill == "video.candidates")
+    assert [port.id for port in video_node.input_ports] == [
+        "start_frame",
+        "approved_storyboard",
+    ]
