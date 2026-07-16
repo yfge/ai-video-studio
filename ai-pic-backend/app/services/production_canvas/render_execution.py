@@ -83,6 +83,8 @@ def _job_response(
             "成片资产已生成。" if succeeded else "后台正在按当前 Timeline 版本渲染。"
         )
     outputs = _job_outputs(job)
+    if skill_id == "timeline.export":
+        outputs["delivery"] = job.id
     if request.run_id:
         outputs["canvas_run_id"] = request.run_id
     return ProductionCanvasSkillExecuteResponse(

@@ -80,24 +80,21 @@ def test_canvas_skill_plan_selects_existing_ip_and_environment_pool(db_session):
         "timeline.assemble",
         "storyboard.plan",
     ]
-    assert [result.skill for result in plan.skill_results[:8]] == [
+    assert [result.skill for result in plan.skill_results] == [
         "brief.compose",
         "content.plan",
         "asset.select",
-        "virtual_ip.image",
-        "environment.image",
         "script.generate",
         "timeline.assemble",
-        "storyboard.plan",
+        "storyboard.candidates",
+        "video.candidates",
+        "timeline.place",
+        "timeline.render",
+        "timeline.export",
+        "report.summarize",
     ]
     script_result = next(
         result for result in plan.skill_results if result.skill == "script.generate"
-    )
-    virtual_ip_image_result = next(
-        result for result in plan.skill_results if result.skill == "virtual_ip.image"
-    )
-    environment_image_result = next(
-        result for result in plan.skill_results if result.skill == "environment.image"
     )
     assert script_result.reuse_targets[0].target == (
         "app.api.v1.endpoints.scripts_generation_queue.generate_script_async"
@@ -112,12 +109,17 @@ def test_canvas_skill_plan_selects_existing_ip_and_environment_pool(db_session):
     assert asset_node.outputs["environment_ids"] == [environment.id]
     assert asset_node.reuse_targets[0].target.endswith("VirtualIPRepository")
     assert asset_node.outputs["candidate_environment_ids"] == [environment.id]
-    assert virtual_ip_image_result.status == "ready"
-    assert virtual_ip_image_result.outputs["virtual_ip_ids"] == [virtual_ip.id]
-    assert environment_image_result.status == "ready"
-    assert environment_image_result.outputs["environment_ids"] == [environment.id]
     assert script_result.status == "ready"
     assert script_result.outputs["episode_id"] == plan.resolved_context.episode_id
+    storyboard_edge = next(
+        edge
+        for edge in plan.edges
+        if edge.from_node == "skill-storyboard-candidates"
+        and edge.to_node == "skill-video-candidates"
+    )
+    assert storyboard_edge.from_port == "approved_storyboard"
+    assert storyboard_edge.to_port == "approved_storyboard"
+    assert storyboard_edge.binding_type == "selected_output"
 
 
 def test_canvas_skill_plan_creates_prompt_assets_when_no_match_exists(db_session):
@@ -167,14 +169,6 @@ def test_canvas_skill_plan_creates_prompt_assets_when_no_match_exists(db_session
         ).status
         == "review"
     )
-    virtual_ip_image_result = next(
-        result for result in plan.skill_results if result.skill == "virtual_ip.image"
-    )
-    environment_image_result = next(
-        result for result in plan.skill_results if result.skill == "environment.image"
-    )
-    assert virtual_ip_image_result.status == "ready"
-    assert environment_image_result.status == "ready"
     assert (
         db_session.query(VirtualIPEnvironment)
         .filter(

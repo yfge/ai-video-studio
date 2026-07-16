@@ -90,6 +90,12 @@ def test_production_canvas_plan_api_reuses_ip_environment_assets(client, db_sess
         if result["skill"] == "asset.select"
     )
     assert asset_result["status"] == "review"
+    assert [item["skill"] for item in payload["skill_results"]] == [
+        "brief.compose",
+        "content.plan",
+        "asset.select",
+        "script.generate",
+    ]
     script_result = next(
         result
         for result in payload["skill_results"]

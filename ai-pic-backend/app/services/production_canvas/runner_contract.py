@@ -109,6 +109,7 @@ def downstream_outputs(
         "virtual_ip.image",
         "environment.image",
         "image.candidates",
+        "storyboard.candidates",
     }:
         model = context.brief.models.image.selected
     elif skill_id == "video.candidates":
@@ -138,8 +139,10 @@ def required_inputs(
         skill_id
         in {
             "storyboard.plan",
+            "storyboard.candidates",
             "image.candidates",
             "video.candidates",
+            "timeline.place",
             "timeline.assemble",
             "timeline.render",
             "timeline.export",
@@ -171,8 +174,12 @@ def downstream_detail(
         return "优先复用当前剧本的 Timeline；缺失时由操作员显式创建。"
     if skill_id == "image.candidates" and request.script_id:
         return "等待操作员从当前剧本分镜显式生成图片候选。"
+    if skill_id == "storyboard.candidates" and request.script_id:
+        return "等待 Timeline 产出 stable clip 后生成 2/4/6/9 格故事板候选。"
     if skill_id == "video.candidates" and request.script_id:
-        return "等待图片候选通过人工选用后生成视频候选。"
+        return "等待整张 clip storyboard sheet 通过人工选用；不使用首帧或尾帧。"
+    if skill_id == "timeline.place" and request.script_id:
+        return "等待视频候选通过人工选用后显式回填 stable clip_id。"
     missing = required_inputs(request, selection, skill_id, context)
     if skill_id in {"timeline.render", "timeline.export"} and not missing:
         return "人工触发后复用当前 Timeline 版本，保留 RenderJob 和成片资产证据。"

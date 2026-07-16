@@ -96,11 +96,13 @@ def test_canvas_skill_plan_carries_script_context_for_downstream_execution(
     )
     results = {result.skill: result for result in plan.skill_results}
 
-    assert results["storyboard.plan"].status == "ready"
-    assert results["storyboard.plan"].outputs["script_id"] == script.id
-    assert results["storyboard.plan"].outputs["episode_id"] == episode.id
+    assert "storyboard.plan" not in results
+    assert "image.candidates" not in results
+    assert results["storyboard.candidates"].status == "blocked"
+    assert results["storyboard.candidates"].outputs["script_id"] == script.id
+    assert results["storyboard.candidates"].outputs["episode_id"] == episode.id
     assert results["script.generate"].status == "review"
     assert results["timeline.assemble"].status == "review"
     assert results["timeline.assemble"].outputs["script_id"] == script.id
-    assert results["image.candidates"].status == "review"
     assert results["video.candidates"].status == "blocked"
+    assert results["timeline.place"].status == "blocked"

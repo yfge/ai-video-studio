@@ -153,6 +153,7 @@ def test_canvas_render_and_export_reuse_current_timeline_job(
     assert export_result["outputs"]["render_job_id"] == render_job_id
     assert export_result["outputs"]["output_asset_id"] == asset.id
     assert export_result["outputs"]["output_url"] == asset.file_url
+    assert export_result["outputs"]["delivery"] == render_job_id
 
 
 def test_canvas_run_restore_adds_render_and_export_nodes(
@@ -194,8 +195,9 @@ def test_canvas_run_restore_adds_render_and_export_nodes(
     ]
     skills = [item["skill"] for item in restored["nodes"]]
 
-    assert skills.index("timeline.assemble") < skills.index("storyboard.plan")
-    assert skills.index("video.candidates") < skills.index("timeline.render")
+    assert skills.index("timeline.assemble") < skills.index("storyboard.candidates")
+    assert skills.index("video.candidates") < skills.index("timeline.place")
+    assert skills.index("timeline.place") < skills.index("timeline.render")
     assert skills.index("timeline.render") < skills.index("timeline.export")
     render_node = next(
         item for item in restored["nodes"] if item["skill"] == "timeline.render"

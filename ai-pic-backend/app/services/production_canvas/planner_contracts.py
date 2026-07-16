@@ -53,13 +53,6 @@ def _validate_dependencies(proposal: ProductionCanvasPlannerProposal) -> None:
         if not required.issubset(dependencies):
             missing = ", ".join(sorted(required - dependencies))
             raise ValueError(f"{step.skill} missing dependencies: {missing}")
-        if step.skill == "video.candidates":
-            media_sources = dependencies & {
-                "image.candidates",
-                "storyboard.plan",
-            }
-            if len(media_sources) != 1:
-                raise ValueError("video.candidates requires exactly one image source")
         for dependency in dependencies:
             if dependency not in positions:
                 raise ValueError(f"Unknown planner dependency: {dependency}")

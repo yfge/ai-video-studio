@@ -56,14 +56,19 @@ def _valid_proposal() -> dict:
                 "depends_on": ["asset.select"],
             },
             {
-                "skill": "image.candidates",
-                "reason": "提供可人工选用的起始帧。",
+                "skill": "timeline.assemble",
+                "reason": "生成稳定 Timeline clip。",
                 "depends_on": ["script.generate"],
             },
             {
+                "skill": "storyboard.candidates",
+                "reason": "提供可人工选用的 clip 故事板。",
+                "depends_on": ["timeline.assemble"],
+            },
+            {
                 "skill": "video.candidates",
-                "reason": "基于选中图片生成视频候选。",
-                "depends_on": ["image.candidates"],
+                "reason": "基于选中故事板生成视频候选。",
+                "depends_on": ["storyboard.candidates"],
             },
         ],
         "assumptions": ["媒体候选继续保留人工选用门槛。"],
@@ -92,13 +97,14 @@ async def test_autonomous_planner_compiles_a_typed_skill_subset():
         "content.plan",
         "asset.select",
         "script.generate",
-        "image.candidates",
+        "timeline.assemble",
+        "storyboard.candidates",
         "video.candidates",
     ]
-    assert len(decision.edges) == 5
+    assert len(decision.edges) == 6
     video_edge = decision.edges[-1]
-    assert video_edge.from_port == "approved_image"
-    assert video_edge.to_port == "start_frame"
+    assert video_edge.from_port == "approved_storyboard"
+    assert video_edge.to_port == "approved_storyboard"
     assert video_edge.binding_type == "selected_output"
     assert '"skill": "brief.compose"' in manager.calls[0]["prompt"]
     assert "每个步骤必须使用字段 skill" in manager.calls[0]["prompt"]
@@ -160,7 +166,7 @@ async def test_autonomous_planner_falls_back_when_ai_is_unavailable():
 
     assert decision.evidence.mode == "deterministic_fallback"
     assert decision.evidence.fallback_reason == "ai_manager_unavailable"
-    assert len(decision.selected_skills) == 13
+    assert len(decision.selected_skills) == 11
 
 
 def test_run_restore_preserves_the_planner_selected_subset_and_edges():

@@ -60,7 +60,10 @@ SKILL_PORTS: dict[
     ),
     "timeline.assemble": (
         [_port("script", "entity_ref", required=True)],
-        [_port("timeline", "entity_ref")],
+        [
+            _port("timeline", "entity_ref"),
+            _port("timeline_clip", "entity_ref"),
+        ],
     ),
     "storyboard.plan": (
         [_port("script", "entity_ref", required=True)],
@@ -70,9 +73,23 @@ SKILL_PORTS: dict[
         [_port("script", "entity_ref", required=True)],
         [_port("approved_image", "image")],
     ),
+    "storyboard.candidates": (
+        [_port("timeline_clip", "entity_ref", required=True)],
+        [_port("approved_storyboard", "image")],
+    ),
     "video.candidates": (
-        [_port("start_frame", "image", required=True)],
+        [
+            _port("start_frame", "image"),
+            _port("approved_storyboard", "image"),
+        ],
         [_port("approved_video", "video")],
+    ),
+    "timeline.place": (
+        [
+            _port("timeline_clip", "entity_ref", required=True),
+            _port("approved_video", "video", required=True),
+        ],
+        [_port("placed_timeline", "entity_ref")],
     ),
     "timeline.render": (
         [_port("timeline", "entity_ref", required=True)],
@@ -80,7 +97,10 @@ SKILL_PORTS: dict[
     ),
     "timeline.export": (
         [_port("rendered_video", "video", required=True)],
-        [_port("exported_video", "video")],
+        [
+            _port("exported_video", "video"),
+            _port("delivery", "execution_ref"),
+        ],
     ),
     "report.summarize": (
         [_port("execution", "execution_ref")],
@@ -107,17 +127,35 @@ ALLOWED_BINDINGS = {
     ("script.generate", "timeline.assemble"): CanvasPlannerBinding("script", "script"),
     ("script.generate", "storyboard.plan"): CanvasPlannerBinding("script", "script"),
     ("script.generate", "image.candidates"): CanvasPlannerBinding("script", "script"),
+    ("timeline.assemble", "storyboard.candidates"): CanvasPlannerBinding(
+        "timeline_clip", "timeline_clip"
+    ),
     ("storyboard.plan", "video.candidates"): CanvasPlannerBinding(
         "storyboard_frame", "start_frame"
     ),
     ("image.candidates", "video.candidates"): CanvasPlannerBinding(
         "approved_image", "start_frame", "selected_output"
     ),
+    ("storyboard.candidates", "video.candidates"): CanvasPlannerBinding(
+        "approved_storyboard", "approved_storyboard", "selected_output"
+    ),
+    ("timeline.assemble", "timeline.place"): CanvasPlannerBinding(
+        "timeline_clip", "timeline_clip"
+    ),
+    ("video.candidates", "timeline.place"): CanvasPlannerBinding(
+        "approved_video", "approved_video", "selected_output"
+    ),
     ("timeline.assemble", "timeline.render"): CanvasPlannerBinding(
         "timeline", "timeline"
     ),
+    ("timeline.place", "timeline.render"): CanvasPlannerBinding(
+        "placed_timeline", "timeline"
+    ),
     ("timeline.render", "timeline.export"): CanvasPlannerBinding(
         "rendered_video", "rendered_video"
+    ),
+    ("timeline.export", "report.summarize"): CanvasPlannerBinding(
+        "delivery", "execution"
     ),
 }
 
@@ -130,25 +168,29 @@ REQUIRED_DEPENDENCIES = {
     "timeline.assemble": {"script.generate"},
     "storyboard.plan": {"script.generate"},
     "image.candidates": {"script.generate"},
-    "timeline.render": {"timeline.assemble"},
+    "storyboard.candidates": {"timeline.assemble"},
+    "video.candidates": {"storyboard.candidates"},
+    "timeline.place": {"timeline.assemble", "video.candidates"},
+    "timeline.render": {"timeline.place"},
     "timeline.export": {"timeline.render"},
+    "report.summarize": {"timeline.export"},
 }
 
 CANONICAL_DEPENDENCIES = {
     "brief.compose": [],
     "content.plan": ["brief.compose"],
     "asset.select": ["content.plan"],
-    "virtual_ip.image": ["asset.select"],
-    "environment.image": ["asset.select"],
     "script.generate": ["asset.select"],
     "timeline.assemble": ["script.generate"],
-    "storyboard.plan": ["script.generate"],
-    "image.candidates": ["script.generate"],
-    "video.candidates": ["image.candidates"],
-    "timeline.render": ["timeline.assemble"],
+    "storyboard.candidates": ["timeline.assemble"],
+    "video.candidates": ["storyboard.candidates"],
+    "timeline.place": ["timeline.assemble", "video.candidates"],
+    "timeline.render": ["timeline.place"],
     "timeline.export": ["timeline.render"],
-    "report.summarize": [],
+    "report.summarize": ["timeline.export"],
 }
+
+CANONICAL_SKILLS = tuple(CANONICAL_DEPENDENCIES)
 
 
 def canvas_skill_node_id(skill_id: str) -> str:
@@ -174,5 +216,5 @@ def planner_skill_catalog() -> list[dict]:
             ),
             "required_dependencies": sorted(REQUIRED_DEPENDENCIES.get(skill_id, set())),
         }
-        for skill_id in SKILL_PORTS
+        for skill_id in CANONICAL_SKILLS
     ]
