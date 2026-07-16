@@ -5,6 +5,8 @@ from app.schemas.production_canvas import (
     ProductionCanvasSkillReuseTarget,
 )
 
+from .clip_skills import CLIP_SKILL_DEFINITIONS
+
 
 def _target(
     kind: str,
@@ -163,6 +165,7 @@ SKILL_DEFINITIONS = [
             ),
         ],
     ),
+    *CLIP_SKILL_DEFINITIONS[:1],
     ProductionCanvasSkillDefinition(
         id="video.candidates",
         label="Video Candidates",
@@ -180,6 +183,7 @@ SKILL_DEFINITIONS = [
             ),
         ],
     ),
+    *CLIP_SKILL_DEFINITIONS[1:],
     ProductionCanvasSkillDefinition(
         id="timeline.render",
         label="Render Skill",

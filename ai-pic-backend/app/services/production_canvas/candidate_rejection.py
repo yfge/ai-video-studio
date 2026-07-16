@@ -17,6 +17,7 @@ from .run_persistence import (
 
 _OUTPUT_PORTS = {
     "image.candidates": "approved_image",
+    "storyboard.candidates": "approved_storyboard",
     "video.candidates": "approved_video",
 }
 _SELECTED_OUTPUT_KEYS = {

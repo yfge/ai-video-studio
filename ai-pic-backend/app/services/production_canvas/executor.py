@@ -12,6 +12,10 @@ from app.services.production_canvas.asset_generation import (
     execute_environment_image_generation,
     execute_virtual_ip_image_generation,
 )
+from app.services.production_canvas.clip_media_execution import (
+    execute_clip_storyboard_candidates,
+    execute_clip_storyboard_video_candidates,
+)
 from app.services.production_canvas.context_lineage import (
     bind_latest_timeline,
     resolve_explicit_lineage,
@@ -36,6 +40,9 @@ from app.services.production_canvas.pipeline_execution import (
     execute_storyboard_generation,
     execute_timeline_pipeline,
 )
+from app.services.production_canvas.placement_execution import (
+    execute_timeline_placement,
+)
 from app.services.production_canvas.render_execution import (
     execute_timeline_export,
     execute_timeline_render,
@@ -53,6 +60,8 @@ def _validate_canvas_skill_request(
     user: User,
     request: ProductionCanvasSkillExecuteRequest,
 ) -> ProductionCanvasSkillExecuteRequest:
+    if request.skill in {"storyboard.candidates", "video.candidates"}:
+        request = request.model_copy(update={"timeline_version": None})
     resolved = resolve_explicit_lineage(db, user, request)
     resolved = bind_latest_timeline(db, resolved)
     validate_resolved_clip(db, user, resolved)
@@ -82,9 +91,13 @@ def _dispatch_canvas_skill(
         return execute_script_generation(db, user, request)
     if request.skill == "storyboard.plan":
         return execute_storyboard_generation(db, user, request)
+    if request.skill == "storyboard.candidates":
+        return execute_clip_storyboard_candidates(db, user, request)
     if request.skill == "image.candidates":
         return execute_storyboard_images(db, user, request)
     if request.skill == "video.candidates":
+        if request.clip_id is not None and request.start_frame_url is None:
+            return execute_clip_storyboard_video_candidates(db, user, request)
         return execute_storyboard_video_candidates(db, user, request)
     if request.skill == "timeline.assemble":
         return execute_timeline_pipeline(db, user, request)
@@ -117,12 +130,21 @@ def execute_canvas_resolution(
             detail="必填端口尚未从已连接的上游输出解析完成。",
             required_inputs=resolution.missing_inputs,
         )
+    elif request.skill == "timeline.place":
+        response = execute_timeline_placement(
+            db, user, request, state, resolution.node_id
+        )
     else:
         response = _dispatch_canvas_skill(db, user, request)
+    resolved_context = (
+        response.resolved_context
+        if response.resolved_context.model_fields_set
+        else _resolved_context(request)
+    )
     return response.model_copy(
         update={
             "node_id": resolution.node_id,
-            "resolved_context": _resolved_context(request),
+            "resolved_context": resolved_context,
             "resolved_inputs": resolution.resolved_inputs,
             "execution_order": resolution.execution_order,
             "input_fingerprint": canvas_node_input_fingerprint(

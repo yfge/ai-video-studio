@@ -27,6 +27,8 @@ def branch_canvas_media_candidate(
         raise ValueError("canvas_node_not_found")
     if node.skill not in {"image.candidates", "video.candidates"}:
         raise ValueError("canvas_node_not_reviewable")
+    if node.outputs.get("candidate_branching") == "disabled":
+        raise ValueError("canvas_candidate_branch_not_supported")
 
     request = request_for_canvas_node(run, node).model_copy(
         update={

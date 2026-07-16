@@ -176,7 +176,7 @@ class TimelineClipVideoReworkQueueService:
             "ratio": payload.ratio or render_ratio(timeline),
             "return_last_frame": payload.return_last_frame,
             "operator_reviewed": payload.operator_reviewed,
-            "auto_render": True,
+            "auto_render": payload.auto_render,
             "render_type": "final",
             "render_preset": render_preset(timeline),
             **prompt_metadata,

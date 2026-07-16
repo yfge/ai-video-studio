@@ -84,7 +84,10 @@ async def execute_production_canvas_skill(
     if request.run_id:
         try:
             require_canvas_access_if_run_exists(
-                db, current_user, request.run_id, "execute"
+                db,
+                current_user,
+                request.run_id,
+                "approve" if request.skill == "timeline.place" else "execute",
             )
         except ValueError as exc:
             raise _run_action_http_error(exc) from exc

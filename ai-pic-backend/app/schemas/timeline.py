@@ -201,6 +201,7 @@ class TimelineClipVideoReworkTaskRequest(TimelineVersionRequest):
     reference_mode: Optional[TimelineClipVideoReferenceMode] = "start_end"
     use_clip_storyboard: bool = False
     use_storyboard_grid: bool = False
+    auto_render: bool = True
     operator_reviewed: bool = False
     reference_images: Optional[List[str]] = None
     character_virtual_ip_ids: Optional[List[int]] = None

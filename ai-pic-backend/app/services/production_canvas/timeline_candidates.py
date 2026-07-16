@@ -37,6 +37,10 @@ def list_timeline_video_candidates(
         if (requested_indexes is None or index in requested_indexes)
         and (clip_id := _frame_clip_id(frame))
     }
+    direct_clip_id = _string(node.outputs.get("clip_id"))
+    if direct_clip_id and direct_clip_id not in frame_by_clip:
+        index = min(requested_indexes) if requested_indexes else 0
+        frame_by_clip[direct_clip_id] = (index, {})
     if not frame_by_clip:
         return []
 

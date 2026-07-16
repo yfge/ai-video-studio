@@ -36,6 +36,8 @@ def _node_value(node: ProductionCanvasSavedNode, port_id: str, selected: bool):
         "production_brief": ("prompt",),
         "script": ("script_id",),
         "timeline": ("timeline_id",),
+        "timeline_clip": ("clip_id",),
+        "placed_timeline": ("timeline_id",),
         "execution": ("task_id", "dispatched_task_id"),
         "virtual_ip": ("virtual_ip_id", "virtual_ip_ids"),
         "environment": ("environment_id", "environment_ids"),
@@ -112,6 +114,9 @@ def _request_updates(values: dict[str, Any]) -> dict[str, Any]:
         "shot_context": "prompt",
         "script": "script_id",
         "episode": "episode_id",
+        "timeline": "timeline_id",
+        "placed_timeline": "timeline_id",
+        "timeline_clip": "clip_id",
         "virtual_ip": "virtual_ip_id",
         "environment": "environment_id",
         "execution": "task_id",
@@ -128,7 +133,7 @@ def _request_updates(values: dict[str, Any]) -> dict[str, Any]:
     if isinstance(start_frame, str) and start_frame:
         updates["start_frame_url"] = start_frame
     references: list[str] = []
-    for port_id in ("start_frame", "storyboard_frame"):
+    for port_id in ("start_frame", "storyboard_frame", "approved_storyboard"):
         value = values.get(port_id)
         items = value if isinstance(value, list) else [value]
         references.extend(item for item in items if isinstance(item, str) and item)

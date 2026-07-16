@@ -26,10 +26,12 @@ from .candidate_history import (
 )
 from .candidate_review_state import set_canvas_candidate_review
 from .run_persistence import load_canvas_saved_state, save_canvas_state
+from .storyboard_candidates import list_clip_storyboard_candidates
 from .timeline_candidates import list_timeline_video_candidates
 
 _MEDIA_SKILLS = {
     "image.candidates": ("image", "approved_image"),
+    "storyboard.candidates": ("image", "approved_storyboard"),
     "video.candidates": ("video", "approved_video"),
 }
 
@@ -118,6 +120,8 @@ def list_canvas_media_candidates(
     if state is None:
         raise ValueError("canvas_run_state_not_found")
     node = _review_node(state, node_id)
+    if node.skill == "storyboard.candidates":
+        return list_clip_storyboard_candidates(db, owner, run_id, node, state)
     script_id = node.outputs.get("script_id")
     script = load_script(db, owner, script_id if isinstance(script_id, int) else None)
     if script is None:
