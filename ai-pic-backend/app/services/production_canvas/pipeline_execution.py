@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from sqlalchemy.orm import Session
+
 from app.models.user import User
 from app.repositories.timeline_repository import TimelineRepository
-from app.schemas.generation_requests import ScriptGenerationRequest
 from app.schemas.production_canvas import (
     ProductionCanvasSkillExecuteRequest,
     ProductionCanvasSkillExecuteResponse,
@@ -19,10 +20,12 @@ from app.services.production_canvas.execution_common import (
 from app.services.production_canvas.reference_artifacts import (
     resolve_canvas_reference_artifacts,
 )
+from app.services.production_canvas.script_request import (
+    build_canvas_script_generation_request,
+)
 from app.services.script.generation_queue import queue_script_generation_task
 from app.services.script.timeline_pipeline_queue import queue_timeline_pipeline_task
 from app.services.storyboard.generation_queue import queue_storyboard_generation_task
-from sqlalchemy.orm import Session
 
 
 def _running_response(
@@ -69,12 +72,7 @@ def execute_script_generation(
             detail="需要先绑定 episode_id，之后才会提交现有 SCRIPT_GENERATION 任务。",
             required_inputs=["episode_id"],
         )
-    script_request = ScriptGenerationRequest(
-        episode_id=request.episode_id,
-        generation_mode="production",
-        auto_timeline_pipeline=True,
-        additional_requirements=request.prompt,
-    )
+    script_request = build_canvas_script_generation_request(db, user, request)
     task = queue_script_generation_task(
         db,
         user,

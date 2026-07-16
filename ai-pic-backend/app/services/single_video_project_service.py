@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from sqlalchemy.orm import Session
+
 from app.core.exceptions import ValidationError
 from app.models.script import Episode, Story, StoryCharacter
 from app.models.user import User
@@ -8,14 +10,13 @@ from app.repositories.virtual_ip_environment_repository import (
     VirtualIPEnvironmentRepository,
 )
 from app.repositories.virtual_ip_repository import VirtualIPRepository
-from app.schemas.generation_requests import ScriptGenerationRequest
 from app.schemas.production_canvas import ProductionCanvasResolvedContext
 from app.schemas.single_video_project import (
     SingleVideoProjectRequest,
     SingleVideoProjectResponse,
 )
 from app.services.script.generation_queue import queue_script_generation_task
-from sqlalchemy.orm import Session
+from app.services.single_video_generation import build_single_video_script_request
 
 
 def _project_metadata(
@@ -41,17 +42,6 @@ def _project_metadata(
             {"environment_id": request.environment_id} if request.environment_id else {}
         ),
     }
-
-
-def _generation_requirements(request: SingleVideoProjectRequest) -> str:
-    lines = [
-        request.prompt,
-        f"这是一个独立的 {request.duration_minutes} 分钟单条视频，不要扩展为多集。",
-        f"目标画幅：{request.aspect_ratio}。",
-    ]
-    if request.style:
-        lines.append(f"视觉与叙事风格：{request.style}。")
-    return "\n".join(lines)
 
 
 def create_single_video_project(
@@ -156,15 +146,12 @@ def create_single_video_project(
             task = queue_script_generation_task(
                 db,
                 user,
-                ScriptGenerationRequest(
+                build_single_video_script_request(
                     episode_id=int(episode.id),
-                    generation_mode="production",
-                    auto_timeline_pipeline=True,
-                    target_chars_per_episode=(
-                        900 if request.duration_minutes == 3 else 1500
-                    ),
-                    additional_requirements=_generation_requirements(request),
-                    style_preferences=[request.style] if request.style else None,
+                    prompt=request.prompt,
+                    duration_minutes=request.duration_minutes,
+                    aspect_ratio=request.aspect_ratio,
+                    style=request.style,
                 ),
                 title=f"生成单条视频剧本 - {request.title}",
                 description="单条视频项目的剧本与 Timeline 生成",

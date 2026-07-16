@@ -14,6 +14,9 @@ tags:
 related_paths:
   - ai-pic-backend/app/api/v1/endpoints/stories/single_video.py
   - ai-pic-backend/app/services/single_video_project_service.py
+  - ai-pic-backend/app/services/single_video_generation.py
+  - ai-pic-backend/app/services/production_canvas/script_request.py
+  - ai-pic-backend/app/services/production_canvas/pipeline_execution.py
   - ai-pic-frontend/src/components/features/stories/SingleVideoProjectModal.tsx
   - ai-pic-frontend/src/components/features/canvas/ProductionCanvasChatBar.tsx
   - ai-pic-frontend/src/components/features/canvas/useProductionCanvasSkillPlanner.ts
@@ -47,6 +50,10 @@ summary: Add a shared 3- or 5-minute single-video quick path to the project list
   `视频项目 -> 主视频`；没有伪造 IP 或 Environment 父节点。
 - `planning_mode=single_video` 写入计划节点并贯穿浏览器和服务端执行请求，防止 Run
   恢复或手动执行时重新按 prompt 猜测资产。
+- 将 3/5 分钟、单条视频和画幅约束集中到共享
+  `build_single_video_script_request`，并放在用户创意描述之前。
+- 普通单视频创建与 Canvas `script.generate` 执行现在复用同一请求构造逻辑；
+  用户提示词中的其他时长不会覆盖系统选择的成片时长。
 
 ## Validation
 
@@ -80,6 +87,16 @@ tests/episodeScriptTaskTracking.test.ts`
   single-video reveal assertion.
 - `python scripts/check_repo_docs.py`, repository contract diff checks for
   staged, unstaged, and untracked files, and `git diff --check` all passed.
+- Follow-up focused backend:
+  `pytest -q --no-cov tests/integration/test_single_video_project_api.py
+tests/integration/test_production_canvas_api.py
+tests/unit/test_production_canvas_single_video_run_request.py`
+  -> `11 passed`.
+- The follow-up assertions prove the persisted and dispatched generation request
+  starts with the system production constraints, uses the selected 3/5-minute
+  duration, and places the conflicting user duration after those constraints.
+- Local production backend and frontend Dockerfiles both built successfully
+  through Docker BuildKit with `--pull=false`; no image was pushed.
 - Browser validation used Playwright fallback because Chrome DevTools could not
   open `http://127.0.0.1:9222`. Standard `/canvas` smoke passed. The interaction
   run at `artifacts/runs/single-video-quick-path-20260716/` used intercepted
@@ -106,3 +123,5 @@ tests/episodeScriptTaskTracking.test.ts`
 
 - `fc30ae44` — prompt-first Canvas asset resolution required by this flow.
 - This ledger is committed with the implementation.
+- The shared single-video duration-constraint follow-up is included in this
+  commit.

@@ -106,6 +106,8 @@ def test_single_video_project_reuses_assets_and_queues_existing_script_pipeline(
     assert params["generation_mode"] == "production"
     assert params["auto_timeline_pipeline"] is True
     assert params["target_chars_per_episode"] == 1500
+    assert "成片总时长：5 分钟" in params["additional_requirements"]
+    assert "其他成片时长不生效" in params["additional_requirements"]
     assert dispatched["task_id"] == task.id
     assert dispatched["params"]["episode_id"] == payload["episode_id"]
     assert payload["context"]["virtual_ip_id"] == virtual_ip.id
@@ -150,6 +152,7 @@ def test_single_video_project_rejects_unlinked_ip_environment_pair(
 def test_single_video_canvas_plan_does_not_guess_prompt_assets(
     client,
     db_session,
+    monkeypatch,
 ):
     user = db_session.query(User).filter(User.username == "test_admin").first()
     db_session.add(VirtualIP(user_id=user.id, name="林妹妹", is_active=True))
@@ -158,7 +161,7 @@ def test_single_video_canvas_plan_does_not_guess_prompt_assets(
         "/api/v1/stories/single-video",
         json={
             "title": "无 IP 的单条视频",
-            "prompt": "基于林妹妹做一个三分钟介绍",
+            "prompt": "基于林妹妹做一分钟办公短剧",
             "start_generation": False,
         },
     )
@@ -167,7 +170,7 @@ def test_single_video_canvas_plan_does_not_guess_prompt_assets(
     response = client.post(
         "/api/v1/production-canvas/plan",
         json={
-            "prompt": "基于林妹妹做一个三分钟介绍",
+            "prompt": "基于林妹妹做一分钟办公短剧",
             "planning_mode": "single_video",
             "story_id": project["story_id"],
             "episode_id": project["episode_id"],
@@ -182,3 +185,36 @@ def test_single_video_canvas_plan_does_not_guess_prompt_assets(
         node for node in plan["nodes"] if node["skill"] == "script.generate"
     )
     assert script_node["status"] == "ready"
+
+    dispatched = {}
+    monkeypatch.setattr(
+        "app.services.script.generation_queue.script_generate_task.delay",
+        lambda task_id, params, user_id: dispatched.update(
+            task_id=task_id,
+            params=params,
+            user_id=user_id,
+        ),
+    )
+    execution_response = client.post(
+        "/api/v1/production-canvas/execute",
+        json={
+            "prompt": "基于林妹妹做一分钟办公短剧",
+            "skill": "script.generate",
+            "story_id": project["story_id"],
+            "episode_id": project["episode_id"],
+            "run_id": plan["run_id"],
+        },
+    )
+
+    assert execution_response.status_code == 200, execution_response.text
+    task = db_session.get(Task, execution_response.json()["data"]["task_id"])
+    params = json.loads(task.parameters)
+    requirements = params["additional_requirements"]
+    assert params["target_chars_per_episode"] == 900
+    assert requirements.startswith("## 系统生产约束（优先级最高）")
+    assert "成片总时长：3 分钟" in requirements
+    assert "其他成片时长不生效" in requirements
+    assert requirements.index("成片总时长：3 分钟") < requirements.index(
+        "基于林妹妹做一分钟办公短剧"
+    )
+    assert dispatched["params"]["target_chars_per_episode"] == 900
