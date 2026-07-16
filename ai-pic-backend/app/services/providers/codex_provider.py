@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 import httpx
+
 from app.core.config import settings
 from app.core.logging import get_logger
 
@@ -97,11 +98,10 @@ class CodexProvider(BaseProvider):
                     }
                 )
             messages.append({"role": "user", "content": prompt})
+            # The ChatGPT Codex endpoint rejects temperature and output-token fields.
             payload = build_codex_payload(
                 messages=messages,
                 model=model_id,
-                max_tokens=max_tokens,
-                temperature=temperature,
             )
             try:
                 text, usage = await self._post(client, payload)

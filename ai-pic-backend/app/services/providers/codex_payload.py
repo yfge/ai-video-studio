@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 
 def build_codex_payload(
     *,
     messages: list[dict[str, Any]],
     model: str,
-    max_tokens: Optional[int],
-    temperature: float,
 ) -> dict[str, Any]:
     instructions_parts: list[str] = []
     input_items: list[dict[str, Any]] = []
@@ -37,10 +35,6 @@ def build_codex_payload(
         "stream": True,
         "store": False,
     }
-    if max_tokens is not None:
-        payload["max_output_tokens"] = max_tokens
-    if temperature is not None:
-        payload["temperature"] = temperature
     return payload
 
 

@@ -36,16 +36,14 @@ def test_codex_payload_uses_responses_shape():
             {"role": "assistant", "content": "Hello"},
         ],
         model="gpt-5.4",
-        max_tokens=128,
-        temperature=0.2,
     )
 
     assert payload["model"] == "gpt-5.4"
     assert payload["instructions"] == "You are helpful."
     assert payload["stream"] is True
     assert payload["store"] is False
-    assert payload["max_output_tokens"] == 128
-    assert payload["temperature"] == 0.2
+    assert "max_output_tokens" not in payload
+    assert "temperature" not in payload
     assert payload["input"][0]["content"][0] == {
         "type": "input_text",
         "text": "Hi",
@@ -105,6 +103,8 @@ async def test_codex_generate_text_reloads_rotated_token_after_401(
     async def fake_post(_client, payload):
         calls["count"] += 1
         assert payload["model"] == "gpt-5.4"
+        assert "max_output_tokens" not in payload
+        assert "temperature" not in payload
         if calls["count"] == 1:
             _write_auth(auth_path, token="sk-new")
             raise _CodexUnauthorized("401")
@@ -113,7 +113,12 @@ async def test_codex_generate_text_reloads_rotated_token_after_401(
     monkeypatch.setattr(provider, "get_client", fake_get_client)
     monkeypatch.setattr(provider, "_post", fake_post)
 
-    result = await provider.generate_text("hello", model="gpt-5.4")
+    result = await provider.generate_text(
+        "hello",
+        model="gpt-5.4",
+        max_tokens=128,
+        temperature=0.2,
+    )
 
     assert result.success is True
     assert result.data == "recovered"
