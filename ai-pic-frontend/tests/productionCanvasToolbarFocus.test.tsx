@@ -81,17 +81,11 @@ describe("ProductionCanvas toolbar focus", () => {
         />
         <ProductionCanvasToolbar
           busy={false}
-          canRedo={false}
-          canUndo={false}
-          hasSelectedNode
           runId="canvas-run-1"
           status={null}
-          zoomLabel="100%"
           onAddNote={() => {}}
-          onFit={() => {}}
-          onFocusSelected={() => {}}
+          onInsertTemplate={() => {}}
           onReset={() => {}}
-          onRedo={() => {}}
           onRestore={(runId) => {
             restoredRunIds.push(runId);
             returnFocus();
@@ -101,8 +95,6 @@ describe("ProductionCanvas toolbar focus", () => {
             saveCount++;
             returnFocus();
           }}
-          onUndo={() => {}}
-          onZoom={() => {}}
         />
       </>,
       { container: dom.window.document.body },

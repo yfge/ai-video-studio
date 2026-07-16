@@ -133,16 +133,6 @@ export function CanvasInspector({
       {node.detail ? (
         <p className="mt-2 text-xs leading-5 text-gray-500">{node.detail}</p>
       ) : null}
-      <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-gray-500">
-        <div>
-          <div className="font-medium text-gray-700">X</div>
-          <div>{node.x}</div>
-        </div>
-        <div>
-          <div className="font-medium text-gray-700">Y</div>
-          <div>{node.y}</div>
-        </div>
-      </div>
       <ProductionCanvasDiagnostics node={node} />
       {node.actionHref ? (
         <Link

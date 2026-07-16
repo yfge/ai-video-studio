@@ -1,156 +1,133 @@
+import Link from "next/link";
 import { operatorButtonClass } from "@/components/shared";
 import { ProductionCanvasRunControls } from "./ProductionCanvasRunControls";
 import { ProductionCanvasTemplatePicker } from "./ProductionCanvasTemplatePicker";
 
 export function ProductionCanvasToolbar({
-  busy,
   actionBusy,
   actionStatus,
   activeRunId,
-  canRedo,
-  canUndo,
+  busy,
   canEdit = true,
   canExecute = true,
-  hasSelectedNode,
   onAddNote,
-  onFit,
-  onFocusSelected,
+  onCancelRun,
   onInsertTemplate,
   onReset,
-  onCancelRun,
-  onRedo,
   onRestore,
   onResumeRun,
   onRunIdChange,
   onRunReady,
   onSave,
-  onUndo,
-  onZoom,
   runId,
   status,
-  zoomLabel,
 }: {
-  busy: boolean;
   actionBusy?: boolean;
   actionStatus?: string | null;
   activeRunId?: string;
-  canRedo: boolean;
-  canUndo: boolean;
+  busy: boolean;
   canEdit?: boolean;
   canExecute?: boolean;
-  hasSelectedNode: boolean;
   onAddNote: () => void;
-  onFit: () => void;
-  onFocusSelected: () => void;
+  onCancelRun?: () => void;
   onInsertTemplate: (templateId: string) => void;
   onReset: () => void;
-  onCancelRun?: () => void;
-  onRedo: () => void;
   onRestore: (runId?: string) => void;
   onResumeRun?: () => void;
   onRunIdChange: (value: string) => void;
   onRunReady?: () => void;
   onSave: () => void;
-  onUndo: () => void;
-  onZoom: (steps: number) => void;
   runId: string;
   status?: string | null;
-  zoomLabel: string;
 }) {
+  const hasError = /失败|错误|阻塞/.test(actionStatus || status || "");
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 px-4 py-2">
-      <button
-        type="button"
-        className={operatorButtonClass("primary")}
-        disabled={!canEdit}
-        onClick={onAddNote}
+    <details
+      className="group relative z-40"
+      name="production-canvas-popover"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") event.currentTarget.removeAttribute("open");
+      }}
+    >
+      <summary
+        aria-label="运行详情"
+        className={operatorButtonClass(
+          "secondary",
+          "list-none px-3 text-[13px] [&::-webkit-details-marker]:hidden",
+        )}
       >
-        添加便签
-      </button>
-      <ProductionCanvasTemplatePicker
-        disabled={!canEdit}
-        onInsert={onInsertTemplate}
-      />
-      <ProductionCanvasRunControls
-        actionBusy={actionBusy}
-        actionStatus={actionStatus}
-        activeRunId={activeRunId}
-        busy={busy}
-        canEdit={canEdit}
-        canExecute={canExecute}
-        onCancel={onCancelRun}
-        onResume={onResumeRun}
-        runId={runId}
-        status={status}
-        onRestore={onRestore}
-        onRunIdChange={onRunIdChange}
-        onRunReady={onRunReady}
-        onSave={onSave}
-      />
-      <button
-        type="button"
-        aria-label="撤销图定义变更"
-        title="撤销图定义变更"
-        disabled={!canEdit || !canUndo}
-        className={operatorButtonClass("secondary", "w-8 px-0 text-base")}
-        onClick={onUndo}
-      >
-        ↶
-      </button>
-      <button
-        type="button"
-        aria-label="重做图定义变更"
-        title="重做图定义变更"
-        disabled={!canEdit || !canRedo}
-        className={operatorButtonClass("secondary", "w-8 px-0 text-base")}
-        onClick={onRedo}
-      >
-        ↷
-      </button>
-      <button
-        type="button"
-        aria-label="缩小"
-        title="缩小"
-        className={operatorButtonClass("secondary", "w-8 px-0")}
-        onClick={() => onZoom(-1)}
-      >
-        -
-      </button>
-      <div className="flex h-8 min-w-14 items-center justify-center rounded-md border border-gray-200 bg-white px-2 text-xs font-medium text-gray-700">
-        {zoomLabel}
+        <span
+          className={`mr-2 h-1.5 w-1.5 rounded-full ${
+            hasError
+              ? "bg-red-500"
+              : actionBusy || busy
+              ? "animate-pulse bg-blue-500"
+              : "bg-emerald-500"
+          }`}
+          aria-hidden="true"
+        />
+        运行详情
+        {actionStatus || status ? (
+          <span
+            aria-live="polite"
+            className="ml-2 max-w-32 truncate font-normal text-slate-500"
+          >
+            状态：{actionStatus || status}
+          </span>
+        ) : null}
+      </summary>
+      <div className="absolute right-0 top-10 w-[min(760px,calc(100vw-2rem))] rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+        <div className="mb-3 flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <div className="text-sm font-semibold text-slate-950">运行详情</div>
+            <p className="mt-1 text-[13px] text-slate-500">
+              保存、恢复与后台运行控制
+            </p>
+          </div>
+          <Link href="/tasks" className={operatorButtonClass("ghost")}>
+            查看任务
+          </Link>
+        </div>
+        <ProductionCanvasRunControls
+          actionBusy={actionBusy}
+          actionStatus={actionStatus}
+          activeRunId={activeRunId}
+          busy={busy}
+          canEdit={canEdit}
+          canExecute={canExecute}
+          onCancel={onCancelRun}
+          onResume={onResumeRun}
+          runId={runId}
+          status={status}
+          onRestore={onRestore}
+          onRunIdChange={onRunIdChange}
+          onRunReady={onRunReady}
+          onSave={onSave}
+        />
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+          <button
+            type="button"
+            className={operatorButtonClass("secondary")}
+            disabled={!canEdit}
+            onClick={onAddNote}
+          >
+            添加便签
+          </button>
+          <ProductionCanvasTemplatePicker
+            disabled={!canEdit}
+            onInsert={onInsertTemplate}
+          />
+          <button
+            type="button"
+            aria-label="重置"
+            className={operatorButtonClass("ghost", "ml-auto")}
+            disabled={!canEdit}
+            onClick={onReset}
+          >
+            重置画布
+          </button>
+        </div>
       </div>
-      <button
-        type="button"
-        aria-label="放大"
-        title="放大"
-        className={operatorButtonClass("secondary", "w-8 px-0")}
-        onClick={() => onZoom(1)}
-      >
-        +
-      </button>
-      <button
-        type="button"
-        className={operatorButtonClass("secondary")}
-        onClick={onFit}
-      >
-        适配
-      </button>
-      <button
-        type="button"
-        disabled={!hasSelectedNode}
-        className={operatorButtonClass("secondary")}
-        onClick={onFocusSelected}
-      >
-        定位选中
-      </button>
-      <button
-        type="button"
-        className={operatorButtonClass("ghost")}
-        disabled={!canEdit}
-        onClick={onReset}
-      >
-        重置
-      </button>
-    </div>
+    </details>
   );
 }

@@ -52,7 +52,7 @@ export function CanvasNodeCard({
 
   return (
     <div
-      className={`absolute rounded-lg border shadow-sm transition ${
+      className={`group absolute rounded-xl border shadow-sm transition ${
         selected ? "ring-2 ring-blue-500 ring-offset-2" : "hover:shadow-md"
       } ${noteClass}`}
       style={{
@@ -73,7 +73,11 @@ export function CanvasNodeCard({
           key={port.id}
           type="button"
           aria-label={`输入端口 ${port.label} ${port.type}`}
-          className="absolute -left-1.5 z-10 h-3 w-3 rounded-full border-2 border-white bg-blue-500 shadow-sm"
+          className={`absolute -left-2 z-10 h-4 w-4 rounded-full border-2 border-white bg-blue-500 shadow-sm transition-opacity ${
+            selected
+              ? "opacity-100"
+              : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+          }`}
           data-canvas-input-port={`${node.id}:${port.id}`}
           style={{ top: 28 + index * 18 }}
           title={`${port.label} · ${port.type}`}
@@ -84,7 +88,11 @@ export function CanvasNodeCard({
           key={port.id}
           type="button"
           aria-label={`输出端口 ${port.label} ${port.type}`}
-          className="absolute -right-1.5 z-10 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 shadow-sm"
+          className={`absolute -right-2 z-10 h-4 w-4 rounded-full border-2 border-white bg-emerald-500 shadow-sm transition-opacity ${
+            selected
+              ? "opacity-100"
+              : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+          }`}
           data-canvas-output-port={`${node.id}:${port.id}`}
           style={{ top: 28 + index * 18 }}
           title={`${port.label} · ${port.type}`}

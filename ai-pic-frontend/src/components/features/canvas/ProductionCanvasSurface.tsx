@@ -124,7 +124,7 @@ export function ProductionCanvasSurface({
     <div
       ref={canvasRef}
       aria-label="短剧生产链路无限画布"
-      className="relative h-[560px] overflow-hidden touch-none bg-[#f8fafc]"
+      className="relative h-[clamp(560px,calc(100vh-330px),760px)] overflow-hidden touch-none bg-[#f8fafc]"
       data-production-canvas="infinite-canvas"
       data-rendered-node-count={visibleNodes.length}
       role="region"

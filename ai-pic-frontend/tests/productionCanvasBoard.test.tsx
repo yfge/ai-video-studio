@@ -85,6 +85,12 @@ describe("ProductionCanvasBoard", () => {
     );
     assert.ok(utils.getByRole("button", { name: "添加便签" }));
     assert.ok(utils.getByRole("button", { name: "适配" }));
+    for (const label of ["运行详情", "更多生产参数", "节点筛选"]) {
+      assert.equal(
+        utils.getByLabelText(label).closest("details")?.hasAttribute("open"),
+        false,
+      );
+    }
     for (const label of ["运行就绪节点", "继续运行", "取消运行"]) {
       assert.equal(
         utils.getByRole("button", { name: label }).hasAttribute("disabled"),
@@ -277,7 +283,7 @@ describe("ProductionCanvasBoard", () => {
       utils.getByRole("button", { name: "定位选中" }).hasAttribute("disabled"),
       true,
     );
-    assert.ok(utils.getByText("选择画布节点后查看当前阶段、入口和备注。"));
+    assert.equal(utils.queryByText("节点详情"), null);
   });
 
   it("searches and filters nodes without changing the graph definition", async () => {
