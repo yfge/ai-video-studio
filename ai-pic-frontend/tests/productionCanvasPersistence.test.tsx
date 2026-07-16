@@ -6,7 +6,7 @@ import { JSDOM } from "jsdom";
 import { ProductionCanvasContent } from "../src/components/features/canvas/ProductionCanvasBoard";
 import { productionCanvasStateFromRun } from "../src/components/features/canvas/productionCanvasPersistence";
 import { readStoredCanvasState } from "../src/components/features/canvas/productionCanvasViewModel";
-import { productionCanvasRunIdFromInput } from "../src/components/features/canvas/useProductionCanvasRunPersistence";
+import { productionCanvasRunIdFromInput } from "../src/components/features/canvas/productionCanvasRunId";
 
 const dom = new JSDOM("<!doctype html><html><body></body></html>", {
   url: "http://localhost",

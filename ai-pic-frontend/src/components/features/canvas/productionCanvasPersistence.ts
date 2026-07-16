@@ -117,6 +117,7 @@ export function toProductionCanvasSavedState(
 ): ProductionCanvasSavedState {
   return {
     graph_version: state.edges.every(isTypedProductionCanvasEdge) ? 2 : 1,
+    resolved_context_revision: state.resolvedContextRevision || 0,
     edges: canvasEdgesToSavedEdges(state.edges),
     sections: (state.sections || []).map((section) => ({
       id: section.id,
@@ -154,6 +155,7 @@ export function productionCanvasStateFromRun(
     const restored = createProductionCanvasState(
       reconcileProductionCanvasExecutionTasks(nodes),
       savedEdges(saved.edges),
+      { ...run.resolved_context, task_id: null },
     );
     return {
       ...restored,
@@ -166,6 +168,7 @@ export function productionCanvasStateFromRun(
         ),
       },
       selectedNodeId: selectedNodeId(restored.nodes, saved.selected_node_id),
+      resolvedContextRevision: saved.resolved_context_revision || 0,
       sections: (saved.sections || []).map((section) => ({
         id: section.id,
         title: section.title,
@@ -182,7 +185,10 @@ export function productionCanvasStateFromRun(
 
   const nodes = run.nodes.map((node) => planNodeToCanvasNode(node, run));
   if (!nodes.length) return createProductionCanvasState();
-  const state = createProductionCanvasState(nodes);
+  const state = createProductionCanvasState(nodes, undefined, {
+    ...run.resolved_context,
+    task_id: null,
+  });
   return {
     ...state,
     selectedNodeId: selectedNodeId(state.nodes),

@@ -179,7 +179,11 @@ def execute_timeline_pipeline(
             )
         )
     references = resolve_canvas_reference_artifacts(
-        db, user, request.reference_artifacts
+        db,
+        user,
+        request.reference_artifacts,
+        virtual_ip_id=request.virtual_ip_id,
+        environment_id=request.environment_id,
     )
     task = queue_timeline_pipeline_task(
         db,

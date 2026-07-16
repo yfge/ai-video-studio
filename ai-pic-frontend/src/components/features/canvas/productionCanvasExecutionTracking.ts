@@ -1,13 +1,67 @@
-import type { Task, TimelineRenderJobResponse } from "@/utils/api/types";
+import type {
+  ProductionCanvasResolvedContext,
+  TimelineRenderJobResponse,
+} from "@/utils/api/types";
+import { productionCanvasContextOutputPatch } from "./productionCanvasContextMerge";
+import { productionCanvasResolvedContextFromOutputs } from "./productionCanvasContextMerge";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
+import {
+  isScopedProductionCanvasMediaNode,
+  productionCanvasSharedContextForNode,
+} from "./productionCanvasScopedContext";
+
+export { productionCanvasExecutionFromTask } from "./productionCanvasTaskExecutionResult";
 
 export type TrackedProductionCanvasExecution = {
+  contextFingerprint?: string;
+  operationEpoch?: number;
+  runId?: string | null;
   skillNode: ProductionCanvasNode;
   taskNode: ProductionCanvasNode;
 };
 
+export function productionCanvasExecutionContextIsCurrent(
+  execution: TrackedProductionCanvasExecution,
+  contextFingerprint?: string,
+) {
+  return (
+    isScopedProductionCanvasMediaNode(execution.skillNode) ||
+    !execution.contextFingerprint ||
+    execution.contextFingerprint === contextFingerprint
+  );
+}
+
+export function normalizedProductionCanvasRunId(runId?: string | null) {
+  return runId?.trim() || null;
+}
+
+export function productionCanvasExecutionBelongsToRun(
+  execution: TrackedProductionCanvasExecution,
+  runId: string | null,
+  operationEpoch?: number,
+) {
+  return (
+    (execution.runId || null) === runId &&
+    (operationEpoch === undefined ||
+      execution.operationEpoch === undefined ||
+      execution.operationEpoch === operationEpoch)
+  );
+}
+
+export function productionCanvasExecutionSharedContext(
+  sourceNode: ProductionCanvasNode,
+  resultNodes: ProductionCanvasNode[],
+  resolvedContext?: ProductionCanvasResolvedContext,
+) {
+  const resultNode = resultNodes.find((node) => node.id === sourceNode.id);
+  const context =
+    resolvedContext ||
+    productionCanvasResolvedContextFromOutputs(resultNode?.outputs);
+  return productionCanvasSharedContextForNode(sourceNode, context);
+}
+
 function renderOutputUrl(job: TimelineRenderJobResponse) {
-  return job.output_asset?.file_url || job.output_asset?.file_path || undefined;
+  return job.output_asset?.file_url || job.output_asset?.file_path;
 }
 
 function renderJobOutputs(job: TimelineRenderJobResponse) {
@@ -53,93 +107,20 @@ export function productionCanvasExecutionFromRenderJob(
     title,
     status,
     detail,
-    outputs: { ...node.outputs, ...outputs },
+    outputs: {
+      ...node.outputs,
+      ...productionCanvasContextOutputPatch(node.outputs, outputs),
+      ...outputs,
+    },
     ...action,
   }));
 }
 
-function canvasStatusFromTask(
-  status: Task["status"],
-): ProductionCanvasNode["status"] {
-  if (status === "completed") return "review";
-  if (status === "failed" || status === "cancelled") return "blocked";
-  return "running";
-}
-
-function taskOutputs(task: Task) {
-  return {
-    task_id: task.id,
-    task_status: task.status,
-    task_title: task.title,
-    task_type: task.task_type,
-    task_progress_detail: task.progress_detail,
-    task_error_message: task.error_message,
-    task_updated_at: task.updated_at,
-    ...(task.result_file_path
-      ? { result_file_path: task.result_file_path }
-      : {}),
-  };
-}
-
-function taskDetail(task: Task) {
-  const parts = [
-    `任务 #${task.id} ${task.status === "completed" ? "已完成" : "失败"}`,
-  ];
-  if (task.result_file_path) parts.push(`产物：${task.result_file_path}`);
-  if (task.error_message) parts.push(`错误：${task.error_message}`);
-  return parts.join("；");
-}
-
-export function productionCanvasExecutionFromTask(
-  execution: TrackedProductionCanvasExecution,
-  task: Task,
-): ProductionCanvasNode[] {
-  const status = canvasStatusFromTask(task.status);
-  const outputs = taskOutputs(task);
-  const detail = taskDetail(task);
-  return [
-    {
-      ...execution.skillNode,
-      status,
-      detail,
-      outputs: { ...execution.skillNode.outputs, ...outputs },
-    },
-    {
-      ...execution.taskNode,
-      title: task.title || execution.taskNode.title,
-      status,
-      detail,
-      outputs: { ...execution.taskNode.outputs, ...outputs },
-    },
-  ];
-}
-
-export function productionCanvasExecutionFailure(
-  execution: TrackedProductionCanvasExecution,
-  taskId: number,
-  error: string | null,
-): ProductionCanvasNode[] {
-  const message = error || "未知错误";
-  const outputs = {
-    task_id: taskId,
-    task_status: "failed",
-    task_error_message: message,
-  };
-  return [
-    {
-      ...execution.skillNode,
-      status: "blocked",
-      detail: `任务 #${taskId} 失败；错误：${message}`,
-      outputs: { ...execution.skillNode.outputs, ...outputs },
-    },
-    {
-      ...execution.taskNode,
-      status: "blocked",
-      detail: `任务 #${taskId} 失败；错误：${message}`,
-      outputs: { ...execution.taskNode.outputs, ...outputs },
-    },
-  ];
-}
+export {
+  productionCanvasExecutionFailure,
+  productionCanvasExecutionStale,
+  productionCanvasRenderTimeout,
+} from "./productionCanvasExecutionTermination";
 
 function terminalTaskEvidence(node: ProductionCanvasNode) {
   const taskId = node.outputs?.task_id;

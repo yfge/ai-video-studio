@@ -27,6 +27,20 @@ class TaskUpdate(BaseModel):
     error_message: Optional[str] = None
 
 
+class TaskResultContext(BaseModel):
+    """Stable domain identifiers produced or confirmed by a task."""
+
+    virtual_ip_id: Optional[int] = None
+    environment_id: Optional[int] = None
+    story_id: Optional[int] = None
+    episode_id: Optional[int] = None
+    script_id: Optional[int] = None
+    timeline_id: Optional[int] = None
+    timeline_version: Optional[int] = None
+    clip_id: Optional[str] = None
+    task_id: Optional[int] = None
+
+
 class TaskResponse(TaskBase):
     id: int
     business_id: str
@@ -38,6 +52,7 @@ class TaskResponse(TaskBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     progress_detail: Optional[str] = None
+    result_context: Optional[TaskResultContext] = None
 
     class Config:
         from_attributes = True

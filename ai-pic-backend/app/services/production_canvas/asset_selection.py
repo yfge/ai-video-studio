@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sqlalchemy.orm import Session
-
 from app.models.story_structure import Environment
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP
@@ -17,6 +15,7 @@ from app.schemas.production_canvas import (
     ProductionCanvasPlanRequest,
     ProductionCanvasSelectedAssets,
 )
+from sqlalchemy.orm import Session
 
 
 @dataclass(frozen=True)
@@ -140,6 +139,8 @@ def _select_environment(
     selected, candidates = _select_linked_environment(request, linked)
     if candidates:
         return selected, candidates
+    if virtual_ip:
+        return None, []
     candidates = [
         asset
         for asset in env_repo.list_accessible(user=user, limit=200)

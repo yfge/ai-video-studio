@@ -118,12 +118,10 @@ def test_production_canvas_execute_image_skill_dispatches_existing_task(
 ):
     user = db_session.query(User).filter(User.username == "test_admin").first()
     script = _create_storyboard_script(db_session, user)
-    dispatched = {}
+    dispatched = []
 
     def fake_delay(task_id, params, user_id):
-        dispatched["task_id"] = task_id
-        dispatched["params"] = params
-        dispatched["user_id"] = user_id
+        dispatched.append({"task_id": task_id, "params": params, "user_id": user_id})
 
     monkeypatch.setattr(
         "app.services.storyboard.storyboard_image_autogen."
@@ -131,22 +129,24 @@ def test_production_canvas_execute_image_skill_dispatches_existing_task(
         fake_delay,
     )
 
-    response = client.post(
-        "/api/v1/production-canvas/execute",
-        json={
-            "prompt": "生成现有分镜的图片候选",
-            "skill": "image.candidates",
-            "script_id": script.id,
-            "frame_indexes": [1],
-            "model": "codex:gpt-image-2",
-            "aspect_ratio": "16:9",
-            "require_reference_images": False,
-            "run_id": "abcdabcdabcdabcdabcdabcdabcdabcd",
-        },
-    )
+    request_payload = {
+        "prompt": "生成现有分镜的图片候选",
+        "skill": "image.candidates",
+        "script_id": script.id,
+        "frame_indexes": [1],
+        "model": "codex:gpt-image-2",
+        "aspect_ratio": "16:9",
+        "require_reference_images": False,
+        "run_id": "abcdabcdabcdabcdabcdabcdabcdabcd",
+    }
+    endpoint = "/api/v1/production-canvas/execute"
+    response = client.post(endpoint, json=request_payload)
+    repeated_response = client.post(endpoint, json=request_payload)
 
     assert response.status_code == 200
+    assert repeated_response.status_code == 200
     payload = response.json()["data"]
+    assert repeated_response.json()["data"]["task_id"] == payload["task_id"]
     assert payload["task_status"] == "pending"
     assert payload["skill_result"]["skill"] == "image.candidates"
     assert payload["skill_result"]["outputs"]["queued_frame_count"] == 1
@@ -163,8 +163,10 @@ def test_production_canvas_execute_image_skill_dispatches_existing_task(
     assert params["model"] == "codex:gpt-image-2"
     assert params["aspect_ratio"] == "16:9"
     assert params["require_reference_images"] is False
-    assert dispatched["task_id"] == task.id
-    assert dispatched["params"]["script_id"] == script.id
+    assert params["idempotency_scope"] == "abcdabcdabcdabcdabcdabcdabcdabcd"
+    assert len(dispatched) == 1
+    assert dispatched[0]["task_id"] == task.id
+    assert dispatched[0]["params"]["script_id"] == script.id
 
 
 def test_production_canvas_execute_video_skill_dispatches_existing_task(
@@ -212,6 +214,7 @@ def test_production_canvas_execute_video_skill_dispatches_existing_task(
     assert payload["skill_result"]["outputs"]["frame_count"] == 2
     assert payload["skill_result"]["outputs"]["selected_candidate_count"] == 1
     assert payload["skill_result"]["outputs"]["mapped_clip_count"] == 1
+    assert payload["skill_result"]["outputs"]["reused"] is False
     assert (
         payload["skill_result"]["outputs"]["dispatched_task_id"] == payload["task_id"]
     )

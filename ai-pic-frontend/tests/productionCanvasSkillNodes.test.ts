@@ -144,4 +144,31 @@ describe("productionCanvasSkillNodes", () => {
     assert.equal(node.outputs?.task_error_message, undefined);
     assert.equal(node.outputs?.required_inputs, undefined);
   });
+
+  it("clears a stale clip when an execute result changes Timeline", () => {
+    const node = productionCanvasSkillResultToNode(
+      {
+        id: "video",
+        label: "Video Candidates",
+        title: "Old Timeline",
+        status: "review",
+        x: 0,
+        y: 0,
+        width: 220,
+        outputs: { timeline_id: 41, timeline_version: 2, clip_id: "old" },
+      },
+      {
+        skill: "video.candidates",
+        label: "Video Candidates",
+        title: "New Timeline",
+        status: "ready",
+        detail: "ready",
+        outputs: { timeline_id: 71, timeline_version: 6 },
+      },
+    );
+
+    assert.equal(node.outputs?.timeline_id, 71);
+    assert.equal(node.outputs?.timeline_version, 6);
+    assert.equal(node.outputs?.clip_id, undefined);
+  });
 });

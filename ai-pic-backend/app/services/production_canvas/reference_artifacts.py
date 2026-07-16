@@ -31,6 +31,9 @@ def resolve_canvas_reference_artifacts(
     db: Session,
     user: User,
     artifact_refs: list[str],
+    *,
+    virtual_ip_id: int | None = None,
+    environment_id: int | None = None,
 ) -> CanvasReferenceArtifacts:
     resolved_artifacts: list[str] = []
     image_urls: list[str] = []
@@ -44,13 +47,16 @@ def resolve_canvas_reference_artifacts(
         urls: list[str] = []
         if len(parts) == 3 and parts[0] == "virtual_ip_image":
             try:
-                virtual_ip_id, image_id = int(parts[1]), int(parts[2])
+                artifact_ip_id, image_id = int(parts[1]), int(parts[2])
             except ValueError:
+                unresolved.append(ref)
+                continue
+            if virtual_ip_id is None or artifact_ip_id != virtual_ip_id:
                 unresolved.append(ref)
                 continue
             image = image_repo.find_accessible_by_result_ref(
                 image_id=image_id,
-                virtual_ip_id=virtual_ip_id,
+                virtual_ip_id=artifact_ip_id,
                 user=user,
             )
             if image:
@@ -58,11 +64,17 @@ def resolve_canvas_reference_artifacts(
                 urls = [url] if isinstance(url, str) and url.strip() else []
         elif len(parts) == 3 and parts[0] == "environment_images":
             try:
-                environment_id, count = int(parts[1]), int(parts[2])
+                artifact_environment_id, count = int(parts[1]), int(parts[2])
             except ValueError:
                 unresolved.append(ref)
                 continue
-            environment = environment_repo.find_accessible_by_id(environment_id, user)
+            if environment_id is None or artifact_environment_id != environment_id:
+                unresolved.append(ref)
+                continue
+            environment = environment_repo.find_accessible_by_id(
+                artifact_environment_id,
+                user,
+            )
             if environment and count > 0:
                 urls = _clean_urls(environment.reference_images)[-count:]
 

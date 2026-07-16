@@ -6,6 +6,7 @@ export function ProductionCanvasToolbar({
   busy,
   actionBusy,
   actionStatus,
+  activeRunId,
   canRedo,
   canUndo,
   canEdit = true,
@@ -32,6 +33,7 @@ export function ProductionCanvasToolbar({
   busy: boolean;
   actionBusy?: boolean;
   actionStatus?: string | null;
+  activeRunId?: string;
   canRedo: boolean;
   canUndo: boolean;
   canEdit?: boolean;
@@ -72,6 +74,7 @@ export function ProductionCanvasToolbar({
       <ProductionCanvasRunControls
         actionBusy={actionBusy}
         actionStatus={actionStatus}
+        activeRunId={activeRunId}
         busy={busy}
         canEdit={canEdit}
         canExecute={canExecute}

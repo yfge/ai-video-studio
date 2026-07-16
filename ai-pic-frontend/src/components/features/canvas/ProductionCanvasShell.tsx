@@ -15,7 +15,10 @@ export function ProductionCanvasShell({
       showGlobalSearch={false}
       rightSlot={<ProductionCanvasBackLink />}
     >
-      <ProductionCanvasContent initialRunId={initialRunId} />
+      <ProductionCanvasContent
+        initialRunId={initialRunId}
+        initialView={initialRunId ? "execution" : "hierarchy"}
+      />
     </OperatorShell>
   );
 }

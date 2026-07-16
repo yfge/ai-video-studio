@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import json
 
-from app.models.script import Episode, Script, Story
+from app.models.script import Episode, Script, Story, StoryCharacter
 from app.models.story_structure import Environment
 from app.models.task import Task
 from app.models.user import User
-from app.models.virtual_ip import VirtualIP, VirtualIPImage
+from app.models.virtual_ip import VirtualIP, VirtualIPEnvironment, VirtualIPImage
+from app.services.production_canvas.reference_artifacts import (
+    resolve_canvas_reference_artifacts,
+)
 
 
 def _create_script_without_references(db_session, user: User) -> Script:
@@ -35,6 +38,103 @@ def _create_script_without_references(db_session, user: User) -> Script:
     return script
 
 
+def test_reference_artifacts_reject_other_selected_ip_and_environment(
+    db_session,
+):
+    user = User(
+        username="canvas_reference_scope_owner",
+        email="canvas_reference_scope_owner@example.com",
+        hashed_password="x",
+        is_active=True,
+        is_approved=True,
+        email_verified=True,
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    selected_ip = VirtualIP(user_id=user.id, name="当前 IP", is_active=True)
+    other_ip = VirtualIP(user_id=user.id, name="旧 IP", is_active=True)
+    selected_environment = Environment(user_id=user.id, name="当前环境")
+    other_environment = Environment(
+        user_id=user.id,
+        name="旧环境",
+        reference_images=["https://example.com/old-environment.png"],
+    )
+    db_session.add_all([selected_ip, other_ip, selected_environment, other_environment])
+    db_session.commit()
+    image = VirtualIPImage(
+        virtual_ip_id=other_ip.id,
+        filename="old-role.png",
+        original_filename="old-role.png",
+        file_path="ai-generated/virtual-ip/old-role.png",
+        oss_url="https://example.com/old-role.png",
+        file_size=128,
+        mime_type="image/png",
+        category="avatar",
+    )
+    db_session.add(image)
+    db_session.commit()
+    refs = [
+        f"virtual_ip_image:{other_ip.id}:{image.id}",
+        f"environment_images:{other_environment.id}:1",
+    ]
+
+    resolved = resolve_canvas_reference_artifacts(
+        db_session,
+        user,
+        refs,
+        virtual_ip_id=selected_ip.id,
+        environment_id=selected_environment.id,
+    )
+
+    assert resolved.artifacts == []
+    assert resolved.image_urls == []
+    assert resolved.unresolved == refs
+
+
+def test_reference_artifacts_require_an_explicit_matching_scope(db_session):
+    user = User(
+        username="canvas_reference_unbound_owner",
+        email="canvas_reference_unbound_owner@example.com",
+        hashed_password="x",
+        is_active=True,
+        is_approved=True,
+        email_verified=True,
+    )
+    db_session.add(user)
+    db_session.commit()
+    virtual_ip = VirtualIP(user_id=user.id, name="历史 IP", is_active=True)
+    environment = Environment(
+        user_id=user.id,
+        name="历史环境",
+        reference_images=["https://example.com/old-environment.png"],
+    )
+    db_session.add_all([virtual_ip, environment])
+    db_session.commit()
+    image = VirtualIPImage(
+        virtual_ip_id=virtual_ip.id,
+        filename="old-role.png",
+        original_filename="old-role.png",
+        file_path="ai-generated/virtual-ip/old-role.png",
+        oss_url="https://example.com/old-role.png",
+        file_size=128,
+        mime_type="image/png",
+        category="avatar",
+    )
+    db_session.add(image)
+    db_session.commit()
+    refs = [
+        f"virtual_ip_image:{virtual_ip.id}:{image.id}",
+        f"environment_images:{environment.id}:1",
+    ]
+
+    resolved = resolve_canvas_reference_artifacts(db_session, user, refs)
+
+    assert resolved.artifacts == []
+    assert resolved.image_urls == []
+    assert resolved.unresolved == refs
+
+
 def test_production_canvas_image_skill_resolves_generated_asset_artifacts(
     client,
     db_session,
@@ -52,6 +152,18 @@ def test_production_canvas_image_skill_resolves_generated_asset_artifacts(
         ],
     )
     db_session.add_all([virtual_ip, environment])
+    db_session.commit()
+    episode = db_session.get(Episode, script.episode_id)
+    db_session.add(
+        StoryCharacter(story_id=episode.story_id, virtual_ip_id=virtual_ip.id)
+    )
+    db_session.add(
+        VirtualIPEnvironment(
+            user_id=user.id,
+            virtual_ip_id=virtual_ip.id,
+            environment_id=environment.id,
+        )
+    )
     db_session.commit()
     image = VirtualIPImage(
         virtual_ip_id=virtual_ip.id,
@@ -90,6 +202,8 @@ def test_production_canvas_image_skill_resolves_generated_asset_artifacts(
             "prompt": "使用画布生成资产制作分镜候选",
             "skill": "image.candidates",
             "script_id": script.id,
+            "virtual_ip_id": virtual_ip.id,
+            "environment_id": environment.id,
             "frame_indexes": [0, 1],
             "reference_artifacts": artifacts,
             "require_reference_images": True,
@@ -149,6 +263,7 @@ def test_production_canvas_timeline_skill_forwards_resolved_reference_artifacts(
             "prompt": "用画布资产组装 Timeline",
             "skill": "timeline.assemble",
             "script_id": script.id,
+            "environment_id": environment.id,
             "reference_artifacts": [artifact],
         },
     )

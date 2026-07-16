@@ -14,6 +14,14 @@ from app.services.production_canvas.run_persistence import _canvas_run_task
 from sqlalchemy.orm import Session
 
 from .collaboration import append_canvas_activity
+from .run_context import (
+    CONTEXT_KEYS,
+    canvas_run_context,
+    is_authoritative_canvas_context,
+    merge_canvas_context_outputs,
+    merge_canvas_node_context_outputs,
+    replace_canvas_context_outputs,
+)
 
 
 def save_canvas_skill_result(
@@ -34,6 +42,7 @@ def _response_executions(
     return [
         ProductionCanvasNodeExecution(
             skill_result=response.skill_result,
+            resolved_context=response.resolved_context,
             task_id=response.task_id,
             task_status=response.task_status,
             node_id=response.node_id,
@@ -41,6 +50,26 @@ def _response_executions(
             input_fingerprint=response.input_fingerprint,
         )
     ]
+
+
+def _execution_incoming(execution: ProductionCanvasNodeExecution) -> dict:
+    incoming = dict(execution.skill_result.outputs)
+    if execution.task_id:
+        incoming["task_id"] = execution.task_id
+    return incoming
+
+
+def _merge_execution_outputs(
+    outputs: dict,
+    execution: ProductionCanvasNodeExecution,
+) -> dict:
+    resolved = execution.resolved_context.model_dump(exclude_none=True)
+    merged = (
+        replace_canvas_context_outputs(outputs, resolved)
+        if is_authoritative_canvas_context(execution.resolved_context)
+        else merge_canvas_context_outputs(outputs, resolved)
+    )
+    return merge_canvas_context_outputs(merged, _execution_incoming(execution))
 
 
 def _definition_snapshot(
@@ -59,6 +88,16 @@ def _definition_snapshot(
         node.model_dump(by_alias=True, mode="json") if node else {},
         incoming,
     )
+
+
+def _is_scoped_execution(
+    _state: ProductionCanvasSavedState | None,
+    execution: ProductionCanvasNodeExecution,
+) -> bool:
+    return execution.skill_result.skill in {
+        "image.candidates",
+        "video.candidates",
+    }
 
 
 def _append_execution_attempts(
@@ -129,6 +168,18 @@ def save_canvas_execution_response(
     raw_state = payload.get("saved_state")
     if definition_state is None and isinstance(raw_state, dict):
         definition_state = ProductionCanvasSavedState.model_validate(raw_state)
+    shared_context = canvas_run_context(payload)
+    for execution in executions:
+        if _is_scoped_execution(definition_state, execution):
+            continue
+        resolved = execution.resolved_context.model_dump(exclude_none=True)
+        base = (
+            resolved
+            if is_authoritative_canvas_context(execution.resolved_context)
+            else merge_canvas_context_outputs(shared_context, resolved)
+        )
+        patched = merge_canvas_context_outputs(base, _execution_incoming(execution))
+        shared_context = {key: patched[key] for key in CONTEXT_KEYS if key in patched}
     _append_execution_attempts(payload, executions, definition_state, definition_mode)
     results_by_skill = {
         execution.skill_result.skill: execution.skill_result.model_dump()
@@ -139,7 +190,6 @@ def save_canvas_execution_response(
         for item in payload.get("skill_results") or []
         if not isinstance(item, dict) or item.get("skill") not in results_by_skill
     ] + list(results_by_skill.values())
-
     state = payload.get("saved_state")
     if isinstance(state, dict):
         execution_by_node = {
@@ -152,11 +202,18 @@ def save_canvas_execution_response(
             if execution is None:
                 continue
             node["status"] = execution.skill_result.status
-            node["outputs"] = {
-                **(node.get("outputs") or {}),
-                **execution.skill_result.outputs,
-            }
+            node["outputs"] = _merge_execution_outputs(
+                node.get("outputs") or {}, execution
+            )
             node["execution_input_fingerprint"] = execution.input_fingerprint
+        for node in state.get("nodes") or []:
+            if node.get("kind") == "note":
+                continue
+            node["outputs"] = merge_canvas_node_context_outputs(
+                node,
+                shared_context,
+                authoritative=True,
+            )
 
     for execution in executions:
         append_canvas_activity(
@@ -168,6 +225,14 @@ def save_canvas_execution_response(
             detail=execution.skill_result.skill,
         )
 
+    payload["resolved_context"] = shared_context
+    revision = int(payload.get("resolved_context_revision") or 0) + 1
+    payload["resolved_context_revision"] = revision
+    if isinstance(state, dict):
+        state["resolved_context_revision"] = revision
+    response.resolved_context_revision = revision
+    for execution in response.executions:
+        execution.resolved_context_revision = revision
     task.parameters = json.dumps(payload, ensure_ascii=False)
     db.commit()
     return True

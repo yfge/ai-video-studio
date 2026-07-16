@@ -26,6 +26,7 @@ describe("productionCanvasStateFromRun", () => {
             skill: "virtual_ip.image",
             outputs: {
               canvas_run_id: "canvas-run-current",
+              virtual_ip_ids: [84],
               dispatched_task_id: 99,
               task_status: "pending",
             },

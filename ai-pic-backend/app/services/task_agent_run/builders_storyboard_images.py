@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict
 
 from app.repositories.script_repository import ScriptRepository
+from app.services.task_agent_run.timeline_refs import domain_ref_for_script
 from app.services.task_agent_run.utils import (
     loads_task_parameters,
     maybe_int,
@@ -53,6 +54,7 @@ def build_storyboard_image_agent_run(db, task, *, user_id: int) -> Dict[str, Any
             "episode_id": getattr(script, "episode_id", None),
             "episode_business_id": getattr(script, "episode_business_id", None),
             "frame_indexes": frames,
+            **domain_ref_for_script(db, script),
         },
     }
     keyframe_mode = params.get("keyframe_mode")

@@ -98,6 +98,8 @@ def test_production_canvas_execute_script_skill_dispatches_existing_task(
     db_session,
     monkeypatch,
 ):
+    user = db_session.query(User).filter(User.username == "test_admin").first()
+    script = _create_script_context(db_session, user)
     dispatched = {}
 
     def fake_delay(task_id, params, user_id):
@@ -115,7 +117,7 @@ def test_production_canvas_execute_script_skill_dispatches_existing_task(
         json={
             "prompt": "基于林妹妹做第 4 集，办公室轻喜剧",
             "skill": "script.generate",
-            "episode_id": 123,
+            "episode_id": script.episode_id,
             "run_id": "abcdabcdabcdabcdabcdabcdabcdabcd",
         },
     )
@@ -138,12 +140,41 @@ def test_production_canvas_execute_script_skill_dispatches_existing_task(
     assert task.task_type == TaskType.SCRIPT_GENERATION
     assert task.target_business_id == "abcdabcdabcdabcdabcdabcdabcdabcd"
     params = json.loads(task.parameters)
-    assert params["episode_id"] == 123
+    assert params["episode_id"] == script.episode_id
     assert params["generation_mode"] == "production"
     assert params["auto_timeline_pipeline"] is True
     assert params["additional_requirements"] == "基于林妹妹做第 4 集，办公室轻喜剧"
     assert dispatched["task_id"] == task.id
-    assert dispatched["params"]["episode_id"] == 123
+    assert dispatched["params"]["episode_id"] == script.episode_id
+
+
+def test_production_canvas_execute_rejects_mixed_story_episode_lineage(
+    client,
+    db_session,
+    monkeypatch,
+):
+    user = db_session.query(User).filter(User.username == "test_admin").first()
+    first_script = _create_script_context(db_session, user)
+    second_script = _create_script_context(db_session, user)
+    dispatched = []
+    monkeypatch.setattr(
+        "app.services.script.generation_queue.script_generate_task.delay",
+        lambda *args, **kwargs: dispatched.append((args, kwargs)),
+    )
+
+    response = client.post(
+        "/api/v1/production-canvas/execute",
+        json={
+            "prompt": "不要混用两个故事的上下文",
+            "skill": "script.generate",
+            "story_id": first_script.episode.story_id,
+            "episode_id": second_script.episode_id,
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["message"] == "story_id 与上游业务上下文不一致"
+    assert dispatched == []
 
 
 def test_production_canvas_execute_script_skill_blocks_without_episode(
@@ -225,56 +256,3 @@ def test_production_canvas_execute_storyboard_skill_dispatches_existing_task(
     assert params["use_plan"] is True
     assert dispatched["task_id"] == task.id
     assert dispatched["params"]["script_id"] == script.id
-
-
-def test_production_canvas_execute_timeline_skill_dispatches_existing_task(
-    client,
-    db_session,
-    monkeypatch,
-):
-    user = db_session.query(User).filter(User.username == "test_admin").first()
-    script = _create_script_context(db_session, user)
-    dispatched = {}
-
-    def fake_delay(task_id, params, user_id):
-        dispatched["task_id"] = task_id
-        dispatched["params"] = params
-        dispatched["user_id"] = user_id
-
-    monkeypatch.setattr(
-        "app.services.script.timeline_pipeline_queue.timeline_pipeline_generate_task.delay",
-        fake_delay,
-    )
-
-    response = client.post(
-        "/api/v1/production-canvas/execute",
-        json={
-            "prompt": "组装现有剧本时间线",
-            "skill": "timeline.assemble",
-            "script_id": script.id,
-            "run_id": "abcdabcdabcdabcdabcdabcdabcdabcd",
-        },
-    )
-
-    assert response.status_code == 200
-    payload = response.json()["data"]
-    assert payload["task_id"]
-    assert payload["task_status"] == "pending"
-    assert payload["skill_result"]["skill"] == "timeline.assemble"
-    assert payload["skill_result"]["status"] == "running"
-    assert payload["skill_result"]["outputs"]["script_id"] == script.id
-    assert (
-        payload["skill_result"]["outputs"]["dispatched_task_id"] == payload["task_id"]
-    )
-
-    task = db_session.get(Task, payload["task_id"])
-    assert task.task_type == TaskType.TIMELINE_PIPELINE
-    assert task.target_business_id == "abcdabcdabcdabcdabcdabcdabcdabcd"
-    params = json.loads(task.parameters)
-    assert params["script_id"] == script.id
-    assert params["overwrite_audio"] is False
-    assert params["overwrite_timeline"] is False
-    assert params["overwrite_storyboard"] is True
-    assert dispatched["task_id"] == task.id
-    assert dispatched["params"]["script_id"] == script.id
-    assert dispatched["params"]["overwrite_storyboard"] is True

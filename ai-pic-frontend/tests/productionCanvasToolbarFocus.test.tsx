@@ -119,14 +119,14 @@ describe("ProductionCanvas toolbar focus", () => {
     fireEvent.keyDown(canvas, { key: "ArrowRight" });
 
     fireEvent.click(utils.getByRole("button", { name: "恢复画布" }));
-    assert.deepEqual(restoredRunIds, [undefined]);
+    assert.deepEqual(restoredRunIds, ["canvas-run-1"]);
     assert.equal(dom.window.document.activeElement, canvas);
     fireEvent.keyDown(canvas, { key: "ArrowRight" });
 
     const runIdInput = utils.getByLabelText("Run ID");
     runIdInput.focus();
     fireEvent.keyUp(runIdInput, { key: "Enter" });
-    assert.deepEqual(restoredRunIds, [undefined, "canvas-run-1"]);
+    assert.deepEqual(restoredRunIds, ["canvas-run-1", "canvas-run-1"]);
     assert.equal(dom.window.document.activeElement, canvas);
     fireEvent.keyDown(canvas, { key: "ArrowRight" });
     assert.equal(nudgeCount, 3);

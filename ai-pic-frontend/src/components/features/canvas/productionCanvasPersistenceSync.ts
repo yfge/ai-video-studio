@@ -22,6 +22,7 @@ export function mergeConfirmedCanvasState(
   const serverNodes = new Map(serverState.nodes.map((node) => [node.id, node]));
   return {
     ...localState,
+    resolvedContextRevision: serverState.resolvedContextRevision || 0,
     nodes: localState.nodes.map((node) => {
       const serverNode = serverNodes.get(node.id);
       if (!serverNode) return node;

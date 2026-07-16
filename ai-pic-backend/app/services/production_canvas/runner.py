@@ -75,12 +75,7 @@ def _downstream_outputs(
     selection: CanvasAssetSelection,
 ) -> dict:
     outputs = dict(selection.outputs())
-    if request.episode_id:
-        outputs["episode_id"] = request.episode_id
-    if request.script_id:
-        outputs["script_id"] = request.script_id
-    if request.task_id:
-        outputs["task_id"] = request.task_id
+    outputs.update(request.model_dump(exclude={"prompt"}, exclude_none=True))
     return outputs
 
 

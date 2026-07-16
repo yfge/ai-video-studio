@@ -9,7 +9,7 @@ from app.services.task_agent_run.builders_assets import (
 )
 from app.services.task_agent_run.builders_narrative import (
     build_episode_agent_run,
-    build_script_agent_run,
+    build_script_run,
     build_story_agent_run,
     parse_episode_task_ids,
 )
@@ -66,7 +66,7 @@ def build_agent_run(
         script_id = maybe_int(script_id_token)
         if script_id is None:
             return {}
-        return build_script_agent_run(db, task, user_id=user_id, script_id=script_id)
+        return build_script_run(db, task, user_id=user_id, script_id=script_id)
 
     if kind == "dialogue_audio":
         return build_dialogue_audio_agent_run(db, task, user_id=user_id)

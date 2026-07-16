@@ -27,13 +27,22 @@ ReuseTargetKind = Literal["api", "repository", "service", "worker", "artifact"]
 CanvasSectionScope = Literal["episode", "scene"]
 
 
-class ProductionCanvasPlanRequest(BaseModel):
+class ProductionCanvasResolvedContext(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    virtual_ip_id: int | None = Field(None, ge=1)
+    environment_id: int | None = Field(None, ge=1)
+    story_id: int | None = Field(None, ge=1)
+    episode_id: int | None = Field(None, ge=1)
+    script_id: int | None = Field(None, ge=1)
+    timeline_id: int | None = Field(None, ge=1)
+    timeline_version: int | None = Field(None, ge=1)
+    clip_id: str | None = Field(None, min_length=1, max_length=128)
+    task_id: int | None = Field(None, ge=1)
+
+
+class ProductionCanvasPlanRequest(ProductionCanvasResolvedContext):
     prompt: str = Field(..., min_length=1, max_length=2000)
-    virtual_ip_id: int | None = None
-    environment_id: int | None = None
-    episode_id: int | None = None
-    script_id: int | None = None
-    task_id: int | None = None
 
 
 class ProductionCanvasSkillExecuteRequest(ProductionCanvasPlanRequest):
@@ -185,6 +194,7 @@ class ProductionCanvasSavedSection(BaseModel):
 
 class ProductionCanvasSavedState(BaseModel):
     graph_version: Literal[1, 2] = 1
+    resolved_context_revision: int = Field(0, ge=0)
     nodes: list[ProductionCanvasSavedNode] = Field(default_factory=list)
     edges: list[ProductionCanvasSavedEdge] = Field(default_factory=list)
     sections: list[ProductionCanvasSavedSection] = Field(default_factory=list)
@@ -203,6 +213,9 @@ class ProductionCanvasPlanResponse(BaseModel):
     prompt: str
     run_id: str | None = None
     task_id: int | None = None
+    resolved_context: ProductionCanvasResolvedContext = Field(
+        default_factory=ProductionCanvasResolvedContext
+    )
     skill_manifest: ProductionCanvasSkillManifest
     selected_assets: ProductionCanvasSelectedAssets
     skill_results: list[ProductionCanvasSkillResult] = Field(default_factory=list)
@@ -231,11 +244,15 @@ class ProductionCanvasRunResponse(ProductionCanvasPlanResponse):
 
 class ProductionCanvasNodeExecution(BaseModel):
     skill_result: ProductionCanvasSkillResult
+    resolved_context: ProductionCanvasResolvedContext = Field(
+        default_factory=ProductionCanvasResolvedContext
+    )
     task_id: int | None = None
     task_status: str | None = None
     node_id: str | None = None
     resolved_inputs: dict[str, Any] = Field(default_factory=dict)
     input_fingerprint: str | None = None
+    resolved_context_revision: int = Field(0, ge=0)
 
 
 class ProductionCanvasSkillExecuteResponse(ProductionCanvasNodeExecution):

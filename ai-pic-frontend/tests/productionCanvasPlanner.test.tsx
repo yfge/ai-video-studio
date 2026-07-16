@@ -96,6 +96,9 @@ describe("ProductionCanvasPlanner", () => {
         assert.equal(fetchStub.executeRequests.length >= 1, true),
       );
       assert.equal(fetchStub.executeRequests[0]?.skill, "script.generate");
+      assert.equal(fetchStub.executeRequests[0]?.virtual_ip_id, 1);
+      assert.equal(fetchStub.executeRequests[0]?.environment_id, 2);
+      assert.equal(fetchStub.executeRequests[0]?.story_id, 10);
       assert.equal(fetchStub.executeRequests[0]?.episode_id, 123);
       assert.equal(fetchStub.executeRequests[0]?.task_id, 44);
       assert.equal(fetchStub.executeRequests[0]?.run_id, "canvas-run-123");
@@ -139,7 +142,7 @@ describe("ProductionCanvasPlanner", () => {
       await waitFor(() =>
         assert.equal(
           utils
-            .getByLabelText("Task #44 已汇总现有任务证据")
+            .getByLabelText("Task #77 剧本生成已完成")
             .getAttribute("aria-pressed"),
           "true",
         ),

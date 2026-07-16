@@ -3,8 +3,12 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
+from app.core.exceptions import NotFoundError, ValidationError
 from app.models.user import User
-from app.schemas.production_canvas import ProductionCanvasRunResponse
+from app.schemas.production_canvas import (
+    ProductionCanvasPlanRequest,
+    ProductionCanvasRunResponse,
+)
 from app.schemas.production_canvas_review import (
     ProductionCanvasTimelinePlacementRequest,
 )
@@ -14,7 +18,13 @@ from sqlalchemy.orm import Session
 
 from .access_control import canvas_run_owner, require_canvas_access
 from .collaboration import record_canvas_activity
-from .run_persistence import load_canvas_saved_state, save_canvas_state
+from .context_lineage import resolve_explicit_lineage
+from .run_context import merge_canvas_node_context_outputs
+from .run_persistence import (
+    load_canvas_saved_state,
+    load_canvas_skill_run,
+    save_canvas_state,
+)
 
 
 def _video_node(state, node_id: str):
@@ -58,6 +68,41 @@ def _replace_clip_asset(
     raise ValueError("canvas_timeline_clip_not_found")
 
 
+def _placement_context(db, owner, run, placed, clip_id: str) -> dict:
+    base = ProductionCanvasPlanRequest(
+        prompt="Timeline placement",
+        timeline_id=int(placed.id),
+        timeline_version=int(placed.version),
+        clip_id=clip_id,
+    )
+    current = run.resolved_context
+    attempts = []
+    if current.virtual_ip_id is not None:
+        attempts.append(
+            base.model_copy(
+                update={
+                    "virtual_ip_id": current.virtual_ip_id,
+                    "environment_id": current.environment_id,
+                }
+            )
+        )
+        attempts.append(
+            base.model_copy(update={"virtual_ip_id": current.virtual_ip_id})
+        )
+    elif current.environment_id is not None:
+        attempts.append(
+            base.model_copy(update={"environment_id": current.environment_id})
+        )
+    attempts.append(base)
+    for request in attempts:
+        try:
+            resolved = resolve_explicit_lineage(db, owner, request)
+            return resolved.model_dump(exclude_none=True)
+        except (NotFoundError, ValidationError):
+            continue
+    raise ValueError("canvas_timeline_lineage_not_found")
+
+
 def place_canvas_video_in_timeline(
     db: Session,
     user: User,
@@ -67,6 +112,9 @@ def place_canvas_video_in_timeline(
 ) -> ProductionCanvasRunResponse:
     require_canvas_access(db, user, run_id, "approve")
     owner = canvas_run_owner(db, user, run_id)
+    current_run = load_canvas_skill_run(db, user, run_id)
+    if current_run is None:
+        raise ValueError("canvas_run_state_not_found")
     state = load_canvas_saved_state(db, user, run_id)
     if state is None:
         raise ValueError("canvas_run_state_not_found")
@@ -101,19 +149,39 @@ def place_canvas_video_in_timeline(
                 **node.outputs,
                 "timeline_id": placed.id,
                 "timeline_version": placed.version,
+                "clip_id": clip_id,
                 "placed_timeline_clip_id": clip_id,
                 "placed_media_asset_id": node.selected_output_id,
             },
         }
     )
-    next_state = state.model_copy(
-        update={
-            "nodes": [
-                updated_node if item.id == node_id else item for item in state.nodes
-            ]
-        }
+    placement_context = _placement_context(db, owner, current_run, placed, clip_id)
+    synchronized_nodes = []
+    for item in state.nodes:
+        if item.kind == "note":
+            synchronized_nodes.append(item)
+            continue
+        current = updated_node if item.id == node_id else item
+        synchronized_nodes.append(
+            current.model_copy(
+                update={
+                    "outputs": merge_canvas_node_context_outputs(
+                        {"skill": current.skill, "outputs": current.outputs},
+                        placement_context,
+                        authoritative=True,
+                    )
+                }
+            )
+        )
+    next_state = state.model_copy(update={"nodes": synchronized_nodes})
+    run = save_canvas_state(
+        db,
+        user,
+        run_id,
+        next_state,
+        capability="approve",
+        authoritative_context=placement_context,
     )
-    run = save_canvas_state(db, user, run_id, next_state, capability="approve")
     if run is None:
         raise ValueError("canvas_run_state_not_found")
     record_canvas_activity(

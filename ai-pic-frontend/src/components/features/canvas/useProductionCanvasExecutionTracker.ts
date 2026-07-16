@@ -1,11 +1,8 @@
-import { useCallback, useEffect, useRef } from "react";
-import { useGenerationTaskTracker } from "@/hooks/useGenerationTaskTracker";
-import { productionCanvasAPI, timelineAPI } from "@/utils/api/endpoints";
-import { activeRenderExecutionsFromRun } from "./productionCanvasActiveRenderExecutions";
+import { useEffect, useLayoutEffect, useRef } from "react";
+import type { ProductionCanvasResolvedContext } from "@/utils/api/types";
 import {
-  productionCanvasExecutionFailure,
-  productionCanvasExecutionFromRenderJob,
-  productionCanvasExecutionFromTask,
+  productionCanvasExecutionSharedContext,
+  normalizedProductionCanvasRunId as normalizeRunId,
   type TrackedProductionCanvasExecution,
 } from "./productionCanvasExecutionTracking";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
@@ -14,148 +11,116 @@ import {
   outputString,
   taskOutputNumber,
 } from "./productionCanvasSkillNodes";
-
+import type { ProductionCanvasStateIdentity } from "./productionCanvasStateIdentity";
+import { hasProductionCanvasDomainContext } from "./productionCanvasTaskResultContext";
+import { useProductionCanvasRenderExecutionTracker } from "./useProductionCanvasRenderExecutionTracker";
+import { useProductionCanvasTaskExecutionTracker } from "./useProductionCanvasTaskExecutionTracker";
 const DEFAULT_POLL_INTERVAL_MS = 4000;
 const DEFAULT_MAX_POLL_MS = 15 * 60 * 1000;
-
 export function useProductionCanvasExecutionTracker({
+  captureContextFingerprint,
+  captureOperationIdentity,
   maxPollMs = DEFAULT_MAX_POLL_MS,
+  onDomainContextResolved,
   onNodesCreated,
   pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,
   runId,
+  operationEpoch = 0,
 }: {
+  captureContextFingerprint?: () => string;
+  captureOperationIdentity?: () => ProductionCanvasStateIdentity;
   maxPollMs?: number;
-  onNodesCreated: (nodes: ProductionCanvasNode[]) => void;
+  onDomainContextResolved?: (context: ProductionCanvasResolvedContext) => void;
+  onNodesCreated: (
+    nodes: ProductionCanvasNode[],
+    resolvedContext?: ProductionCanvasResolvedContext,
+  ) => void;
   pollIntervalMs?: number;
   runId?: string | null;
+  operationEpoch?: number;
 }) {
   const trackedExecutions = useRef(
     new Map<string, TrackedProductionCanvasExecution>(),
   );
-  const renderTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const mounted = useRef(true);
   const onNodesCreatedRef = useRef(onNodesCreated);
-
+  const onDomainContextResolvedRef = useRef(onDomainContextResolved);
+  const activeRunIdRef = useRef(normalizeRunId(runId));
+  const activeOperationEpochRef = useRef(operationEpoch);
+  const captureContextFingerprintRef = useRef(captureContextFingerprint);
+  useLayoutEffect(() => {
+    activeRunIdRef.current = normalizeRunId(runId);
+    activeOperationEpochRef.current = operationEpoch;
+    captureContextFingerprintRef.current = captureContextFingerprint;
+  }, [captureContextFingerprint, operationEpoch, runId]);
   useEffect(() => {
     onNodesCreatedRef.current = onNodesCreated;
-  }, [onNodesCreated]);
-
+    onDomainContextResolvedRef.current = onDomainContextResolved;
+  }, [onDomainContextResolved, onNodesCreated]);
   useEffect(() => {
-    const timers = renderTimers.current;
     mounted.current = true;
     return () => {
       mounted.current = false;
-      for (const timer of timers.values()) clearTimeout(timer);
-      timers.clear();
     };
   }, []);
-
-  const trackRenderJob = useCallback(
-    (nodeId: string, timelineId: number, renderJobId: number) => {
-      const existing = renderTimers.current.get(nodeId);
-      if (existing) clearTimeout(existing);
-      const startedAt = Date.now();
-
-      const poll = async () => {
-        renderTimers.current.delete(nodeId);
-        const execution = trackedExecutions.current.get(nodeId);
-        if (
-          !mounted.current ||
-          !execution ||
-          outputNumber(execution.taskNode.outputs, "render_job_id") !==
-            renderJobId
-        ) {
-          return;
-        }
-        try {
-          const response = await timelineAPI.listTimelineRenderJobs(timelineId);
-          if (!mounted.current) return;
-          const job = response.data?.items.find(
-            (item) => item.id === renderJobId,
-          );
-          if (response.success && job) {
-            onNodesCreatedRef.current(
-              productionCanvasExecutionFromRenderJob(execution, job),
-            );
-            if (!["queued", "running"].includes(job.status)) {
-              trackedExecutions.current.delete(nodeId);
-              return;
-            }
-          }
-        } catch {
-          // Transient polling errors retry until the existing task timeout.
-        }
-        if (Date.now() - startedAt < maxPollMs) {
-          renderTimers.current.set(nodeId, setTimeout(poll, pollIntervalMs));
-        } else {
-          trackedExecutions.current.delete(nodeId);
-        }
-      };
-
-      renderTimers.current.set(nodeId, setTimeout(poll, pollIntervalMs));
-    },
-    [maxPollMs, pollIntervalMs],
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-    for (const timer of renderTimers.current.values()) clearTimeout(timer);
-    renderTimers.current.clear();
-    for (const [nodeId, execution] of trackedExecutions.current) {
-      if (outputNumber(execution.taskNode.outputs, "render_job_id")) {
-        trackedExecutions.current.delete(nodeId);
-      }
-    }
-
-    const normalizedRunId = runId?.trim();
-    if (!normalizedRunId) return;
-    void productionCanvasAPI.getRun(normalizedRunId).then((response) => {
-      if (
-        cancelled ||
-        !mounted.current ||
-        !response.success ||
-        !response.data
-      ) {
-        return;
-      }
-      const executions = activeRenderExecutionsFromRun(response.data);
-      for (const [nodeId, execution] of executions) {
-        if (trackedExecutions.current.has(nodeId)) continue;
-        trackedExecutions.current.set(nodeId, execution);
-        trackRenderJob(nodeId, execution.timelineId, execution.renderJobId);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [runId, trackRenderJob]);
-
-  const taskTracker = useGenerationTaskTracker<string>({
-    labels: (nodeId) =>
-      trackedExecutions.current.get(nodeId)?.skillNode.label || "画布任务",
+  const trackRenderJob = useProductionCanvasRenderExecutionTracker({
+    activeOperationEpochRef,
+    activeRunIdRef,
+    captureContextFingerprintRef,
     maxPollMs,
+    mountedRef: mounted,
+    onDomainContextResolvedRef,
+    onNodesCreatedRef,
+    operationEpoch,
     pollIntervalMs,
-    onCompleted: (nodeId, _taskId, task) => {
-      const execution = trackedExecutions.current.get(nodeId);
-      if (!execution || !task) return;
-      trackedExecutions.current.delete(nodeId);
-      onNodesCreated(productionCanvasExecutionFromTask(execution, task));
-    },
-    onFailed: (nodeId, taskId, error) => {
-      const execution = trackedExecutions.current.get(nodeId);
-      if (!execution) return;
-      trackedExecutions.current.delete(nodeId);
-      onNodesCreated(
-        productionCanvasExecutionFailure(execution, taskId, error),
-      );
-    },
+    runId,
+    trackedExecutions,
   });
-
+  const taskTracker = useProductionCanvasTaskExecutionTracker({
+    activeRunIdRef,
+    activeOperationEpochRef,
+    captureContextFingerprintRef,
+    maxPollMs,
+    mountedRef: mounted,
+    onDomainContextResolvedRef,
+    onNodesCreatedRef,
+    pollIntervalMs,
+    trackedExecutions,
+  });
   return (
     sourceNode: ProductionCanvasNode,
     resultNodes: ProductionCanvasNode[],
+    executionRunId?: string | null,
+    executionEpoch = operationEpoch,
+    resolvedContext?: ProductionCanvasResolvedContext,
   ) => {
-    onNodesCreated(resultNodes);
+    const liveIdentity = captureOperationIdentity?.();
+    const activeRunId = liveIdentity
+      ? normalizeRunId(liveIdentity.runId)
+      : activeRunIdRef.current;
+    const activeEpoch = liveIdentity?.epoch ?? activeOperationEpochRef.current;
+    const publishedRunId = normalizeRunId(executionRunId) || activeRunId;
+    if (publishedRunId !== activeRunId || executionEpoch !== activeEpoch) {
+      return;
+    }
+    const sharedContext = productionCanvasExecutionSharedContext(
+      sourceNode,
+      resultNodes,
+      resolvedContext,
+    );
+    onNodesCreated(resultNodes, sharedContext);
+    const awaitingTask = resultNodes.some((node) =>
+      ["pending", "queued", "running"].includes(
+        String(node.outputs?.task_status || ""),
+      ),
+    );
+    if (
+      !awaitingTask &&
+      sharedContext &&
+      hasProductionCanvasDomainContext(sharedContext)
+    ) {
+      onDomainContextResolvedRef.current?.(sharedContext);
+    }
     const skillNode = resultNodes.find((node) => node.id === sourceNode.id);
     const taskNode = resultNodes.find(
       (node) =>
@@ -165,7 +130,17 @@ export function useProductionCanvasExecutionTracker({
     );
     const taskId = taskOutputNumber(taskNode?.outputs);
     if (!skillNode || !taskNode) return;
-    trackedExecutions.current.set(sourceNode.id, { skillNode, taskNode });
+    trackedExecutions.current.set(sourceNode.id, {
+      contextFingerprint: captureContextFingerprintRef.current?.(),
+      operationEpoch: executionEpoch,
+      runId:
+        publishedRunId ||
+        normalizeRunId(outputString(skillNode.outputs, "canvas_run_id")) ||
+        normalizeRunId(outputString(taskNode.outputs, "canvas_run_id")) ||
+        activeRunIdRef.current,
+      skillNode,
+      taskNode,
+    });
     if (taskId) {
       taskTracker.track(sourceNode.id, taskId);
       return;

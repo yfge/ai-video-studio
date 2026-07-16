@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+from app.repositories.script_repository import ScriptRepository
+from app.repositories.video_generation_task_repository import (
+    VideoGenerationTaskRepository,
+)
+from app.services.task_agent_run.timeline_refs import domain_ref_for_script
 from app.services.task_agent_run.utils import (
     loads_task_parameters,
     maybe_int,
@@ -10,19 +15,16 @@ from app.services.task_agent_run.utils import (
 
 
 def build_video_generation_agent_run(db, task, *, user_id: int) -> Dict[str, Any]:
-    from app.models.video_generation_task import VideoGenerationTask
-
     params = loads_task_parameters(getattr(task, "parameters", None))
     script_id = maybe_int(params.get("script_id"))
 
-    subtasks = (
-        db.query(VideoGenerationTask)
-        .filter(
-            VideoGenerationTask.task_id == task.id,
-            VideoGenerationTask.user_id == user_id,
-        )
-        .order_by(VideoGenerationTask.frame_index.asc(), VideoGenerationTask.id.asc())
-        .all()
+    subtasks = sorted(
+        (
+            item
+            for item in VideoGenerationTaskRepository(db).list_by_task_id(task.id)
+            if item.user_id == user_id
+        ),
+        key=lambda item: (item.frame_index or 0, item.id),
     )
     if not subtasks:
         return {}
@@ -44,6 +46,33 @@ def build_video_generation_agent_run(db, task, *, user_id: int) -> Dict[str, Any
         if item.frame_index is not None:
             frame_indexes.append(int(item.frame_index))
 
+    domain_ref: Dict[str, Any] = {}
+    if script_id is not None:
+        script = ScriptRepository(db).get_with_relations(
+            script_id=script_id,
+            user_id=user_id,
+        )
+        if script:
+            domain_ref = domain_ref_for_script(db, script)
+    timeline_rework = params.get("timeline_rework_by_frame")
+    clip_ids = sorted(
+        {
+            str(context.get("clip_id")).strip()
+            for context in (
+                timeline_rework.values() if isinstance(timeline_rework, dict) else []
+            )
+            if isinstance(context, dict) and context.get("clip_id")
+        }
+    )
+    explicit_timeline = {
+        key: params.get(key)
+        for key in ("timeline_id", "timeline_version")
+        if params.get(key) is not None
+    }
+    clip_ref: Dict[str, Any] = {"clip_ids": clip_ids} if clip_ids else {}
+    if len(clip_ids) == 1:
+        clip_ref["clip_id"] = clip_ids[0]
+
     return {
         "generation_method": "video_generation",
         "provider_used": provider_used,
@@ -60,6 +89,9 @@ def build_video_generation_agent_run(db, task, *, user_id: int) -> Dict[str, Any
             "frame_indexes": sorted({i for i in frame_indexes}),
             "video_task_count": len(subtasks),
             "status_counts": status_counts,
+            **domain_ref,
+            **explicit_timeline,
+            **clip_ref,
         },
         "providers": providers,
         "models": models,

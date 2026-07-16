@@ -5,6 +5,7 @@ export function ProductionCanvasRunControls({
   busy,
   actionBusy,
   actionStatus,
+  activeRunId,
   canEdit = true,
   canExecute = true,
   onCancel,
@@ -19,6 +20,7 @@ export function ProductionCanvasRunControls({
   busy: boolean;
   actionBusy?: boolean;
   actionStatus?: string | null;
+  activeRunId?: string;
   canEdit?: boolean;
   canExecute?: boolean;
   onCancel?: () => void;
@@ -32,6 +34,7 @@ export function ProductionCanvasRunControls({
 }) {
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const trimmedRunId = runId.trim();
+  const runIsConfirmed = (activeRunId ?? runId).trim() === trimmedRunId;
   useEffect(() => setCopyStatus(null), [runId]);
   const writeClipboardText = async (text: string) => {
     if (navigator.clipboard?.writeText) {
@@ -124,7 +127,7 @@ export function ProductionCanvasRunControls({
         aria-busy={controlsBusy || undefined}
         className={operatorButtonClass("ghost")}
         disabled={controlsBusy}
-        onClick={() => onRestore()}
+        onClick={() => onRestore(runId)}
       >
         恢复画布
       </button>
@@ -149,7 +152,7 @@ export function ProductionCanvasRunControls({
           type="button"
           aria-busy={actionBusy || undefined}
           className={operatorButtonClass("primary")}
-          disabled={controlsBusy || !trimmedRunId}
+          disabled={controlsBusy || !trimmedRunId || !runIsConfirmed}
           onClick={onRunReady}
         >
           运行就绪节点
@@ -160,7 +163,7 @@ export function ProductionCanvasRunControls({
           type="button"
           aria-busy={actionBusy || undefined}
           className={operatorButtonClass("secondary")}
-          disabled={controlsBusy || !trimmedRunId}
+          disabled={controlsBusy || !trimmedRunId || !runIsConfirmed}
           onClick={onResume}
         >
           继续运行
@@ -171,7 +174,7 @@ export function ProductionCanvasRunControls({
           type="button"
           aria-busy={actionBusy || undefined}
           className={operatorButtonClass("ghost", "text-red-600")}
-          disabled={controlsBusy || !trimmedRunId}
+          disabled={controlsBusy || !trimmedRunId || !runIsConfirmed}
           onClick={onCancel}
         >
           取消运行

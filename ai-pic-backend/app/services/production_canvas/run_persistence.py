@@ -6,111 +6,18 @@ from datetime import UTC, datetime
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
 from app.schemas.production_canvas import (
-    ProductionCanvasExecutionAttempt,
     ProductionCanvasPlanRequest,
     ProductionCanvasPlanResponse,
     ProductionCanvasRunResponse,
     ProductionCanvasSavedState,
-    ProductionCanvasSkillResult,
 )
-from app.schemas.production_canvas_collaboration import CanvasAccessRole
-from app.services.production_canvas.nodes import build_plan_nodes
-from app.services.production_canvas.skills import list_canvas_skill_definitions
 from app.services.production_canvas.stale_runtime import apply_canvas_stale_state
 from sqlalchemy.orm import Session
 
 from .access_control import CanvasCapability, canvas_access_role, canvas_run_access
 from .definition_activity import record_definition_change
-
-
-def _run_context(payload: dict) -> dict:
-    keys = {"episode_id", "script_id", "timeline_id", "timeline_version"}
-    context = {
-        key: value
-        for key, value in (payload.get("requested_asset_ids") or {}).items()
-        if key in keys and value is not None
-    }
-    sources = list(payload.get("skill_results") or [])
-    saved_state = payload.get("saved_state") or {}
-    sources.extend(saved_state.get("nodes") or [])
-    for source in sources:
-        outputs = source.get("outputs") if isinstance(source, dict) else None
-        if not isinstance(outputs, dict):
-            continue
-        context.update(
-            {key: outputs[key] for key in keys if outputs.get(key) is not None}
-        )
-    return context
-
-
-def _current_run_payload(payload: dict) -> dict:
-    definitions = list_canvas_skill_definitions()
-    existing = {
-        item.get("skill"): ProductionCanvasSkillResult.model_validate(item)
-        for item in payload.get("skill_results") or []
-        if isinstance(item, dict) and item.get("skill")
-    }
-    context = _run_context(payload)
-    results: list[ProductionCanvasSkillResult] = []
-    for skill in definitions:
-        result = existing.get(skill.id)
-        if result is not None:
-            results.append(result)
-            continue
-        required_inputs = [] if context.get("script_id") else ["script_id"]
-        outputs = dict(context)
-        if required_inputs:
-            outputs["required_inputs"] = required_inputs
-        results.append(
-            ProductionCanvasSkillResult(
-                skill=skill.id,
-                label=skill.label,
-                status="review" if not required_inputs else "blocked",
-                title=skill.description,
-                detail=(
-                    "人工触发后复用当前 Timeline 版本。"
-                    if not required_inputs
-                    else "需要先绑定 script_id。"
-                ),
-                outputs=outputs,
-                reuse_targets=skill.reuse_targets,
-            )
-        )
-    current = dict(payload)
-    manifest = dict(current.get("skill_manifest") or {})
-    manifest["skills"] = [item.model_dump() for item in definitions]
-    current["skill_manifest"] = manifest
-    current["skill_results"] = [item.model_dump() for item in results]
-    current["nodes"] = [item.model_dump() for item in build_plan_nodes(results)]
-    return current
-
-
-def _run_response_from_task(
-    task: Task,
-    payload: dict,
-    access_role: CanvasAccessRole = "owner",
-) -> ProductionCanvasRunResponse | None:
-    saved_state = None
-    raw_saved_state = payload.get("saved_state")
-    if isinstance(raw_saved_state, dict):
-        saved_state = ProductionCanvasSavedState.model_validate(raw_saved_state)
-
-    plan = ProductionCanvasPlanResponse.model_validate(_current_run_payload(payload))
-    data = plan.model_dump()
-    data.update(
-        {
-            "run_id": task.business_id,
-            "task_id": task.id,
-            "access_role": access_role,
-            "saved_state": saved_state,
-            "execution_attempts": [
-                ProductionCanvasExecutionAttempt.model_validate(item)
-                for item in payload.get("execution_attempts") or []
-                if isinstance(item, dict)
-            ],
-        }
-    )
-    return ProductionCanvasRunResponse(**data)
+from .run_context import canvas_run_context
+from .run_response import run_response_from_task
 
 
 def _canvas_run_task(
@@ -136,13 +43,7 @@ def persist_canvas_skill_run(
         {
             "kind": "production_canvas_run",
             "prompt": request.prompt,
-            "requested_asset_ids": {
-                "virtual_ip_id": request.virtual_ip_id,
-                "environment_id": request.environment_id,
-                "episode_id": request.episode_id,
-                "script_id": request.script_id,
-                "task_id": request.task_id,
-            },
+            "requested_asset_ids": plan.resolved_context.model_dump(),
         }
     )
     task = Task(
@@ -180,7 +81,7 @@ def load_canvas_skill_run(
         return None
     task, payload = task_and_payload
     role = canvas_access_role(task, payload, user)
-    return _run_response_from_task(task, payload, role or "owner")
+    return run_response_from_task(task, payload, role or "owner")
 
 
 def load_canvas_saved_state(
@@ -198,13 +99,15 @@ def load_canvas_saved_state(
     return ProductionCanvasSavedState.model_validate(raw_state)
 
 
-def save_canvas_state(
+def _save_canvas_state(
     db: Session,
     user: User,
     run_id: str,
     state: ProductionCanvasSavedState,
     *,
     capability: CanvasCapability = "edit",
+    merge_client_state: bool = False,
+    authoritative_context: dict | None = None,
 ) -> ProductionCanvasRunResponse | None:
     task_and_payload = _canvas_run_task(
         db, user, run_id, capability=capability, for_update=True
@@ -215,16 +118,88 @@ def save_canvas_state(
     previous = None
     if isinstance(payload.get("saved_state"), dict):
         previous = ProductionCanvasSavedState.model_validate(payload["saved_state"])
+    client_context_revision = state.resolved_context_revision
+    server_context_revision = int(payload.get("resolved_context_revision") or 0)
+    terminal_task_context = None
+    if merge_client_state:
+        from .run_task_context import reconcile_canvas_terminal_task_context
+
+        terminal_task_context = reconcile_canvas_terminal_task_context(
+            db, user, payload, previous or state
+        )
+        if terminal_task_context is not None:
+            payload["resolved_context"] = terminal_task_context
+    protect_execution_context = bool(
+        merge_client_state
+        and (
+            client_context_revision < server_context_revision
+            or terminal_task_context is not None
+        )
+    )
+    stale_client_state = protect_execution_context
+    if merge_client_state:
+        from .client_state_merge import (
+            canvas_client_state_has_stale_runtime,
+            merge_canvas_client_state,
+        )
+
+        stale_client_state = protect_execution_context or (
+            canvas_client_state_has_stale_runtime(previous, state)
+        )
+        state = merge_canvas_client_state(
+            previous,
+            state,
+            (payload.get("resolved_context") if stale_client_state else None),
+        )
     state = apply_canvas_stale_state(previous, state)
     if record_definition_change(payload, user, run_id, previous, state):
         payload["saved_state_updated_by"] = user.id
         payload["saved_state_updated_at"] = datetime.now(UTC).isoformat()
     payload["saved_state"] = state.model_dump(by_alias=True, mode="json")
+    if authoritative_context is not None:
+        payload["resolved_context"] = canvas_run_context(
+            {"resolved_context": authoritative_context}
+        )
+    elif stale_client_state and isinstance(payload.get("resolved_context"), dict):
+        payload["resolved_context"] = canvas_run_context(
+            {"resolved_context": payload["resolved_context"]}
+        )
+    else:
+        context_payload = dict(payload)
+        context_payload.pop("resolved_context", None)
+        payload["resolved_context"] = canvas_run_context(context_payload)
+    state = state.model_copy(
+        update={
+            "resolved_context_revision": int(
+                payload.get("resolved_context_revision") or 0
+            )
+        }
+    )
+    payload["saved_state"] = state.model_dump(by_alias=True, mode="json")
     task.parameters = json.dumps(payload, ensure_ascii=False)
     db.commit()
     db.refresh(task)
     role = canvas_access_role(task, payload, user)
-    return _run_response_from_task(task, payload, role or "owner")
+    return run_response_from_task(task, payload, role or "owner")
+
+
+def save_canvas_state(
+    db: Session,
+    user: User,
+    run_id: str,
+    state: ProductionCanvasSavedState,
+    *,
+    capability: CanvasCapability = "edit",
+    authoritative_context: dict | None = None,
+) -> ProductionCanvasRunResponse | None:
+    return _save_canvas_state(
+        db,
+        user,
+        run_id,
+        state,
+        capability=capability,
+        authoritative_context=authoritative_context,
+    )
 
 
 def save_canvas_client_state(
@@ -233,9 +208,4 @@ def save_canvas_client_state(
     run_id: str,
     state: ProductionCanvasSavedState,
 ) -> ProductionCanvasRunResponse | None:
-    from .client_state_merge import merge_canvas_client_state
-
-    previous = load_canvas_saved_state(db, user, run_id)
-    return save_canvas_state(
-        db, user, run_id, merge_canvas_client_state(previous, state)
-    )
+    return _save_canvas_state(db, user, run_id, state, merge_client_state=True)

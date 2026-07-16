@@ -40,12 +40,13 @@ def execute_storyboard_images(
             detail="需要先绑定 script_id，之后才会提交现有 STORYBOARD_IMAGE_GENERATION 任务。",
             required_inputs=["script_id"],
         )
-
     branch = resolve_canvas_candidate_branch(db, user, request, media_type="image")
     references = resolve_canvas_reference_artifacts(
         db,
         user,
         request.reference_artifacts,
+        virtual_ip_id=request.virtual_ip_id,
+        environment_id=request.environment_id,
     )
     reference_images = list(references.image_urls)
     if branch and branch.candidate.url not in reference_images:
@@ -69,6 +70,7 @@ def execute_storyboard_images(
         ),
         prompt=branch.prompt if branch else None,
         canvas_branch=branch.metadata if branch else None,
+        idempotency_scope=request.run_id,
     )
     if queue_result.child_task_id is None:
         return blocked_result(
@@ -145,17 +147,18 @@ def execute_storyboard_video_candidates(
         )
 
     branch = resolve_canvas_candidate_branch(db, user, request, media_type="video")
+    frame_indexes = (
+        [branch.candidate.frame_index]
+        if branch
+        else request.frame_indexes if request.frame_indexes is not None else [0]
+    )
     try:
         queue_result = queue_storyboard_video_generation_task(
             db,
             user,
             script,
             prompt=branch.prompt if branch else None,
-            frame_indexes=(
-                [branch.candidate.frame_index]
-                if branch
-                else request.frame_indexes if request.frame_indexes is not None else [0]
-            ),
+            frame_indexes=frame_indexes,
             model=request.model,
             duration=request.duration,
             fps=request.fps,
@@ -193,7 +196,6 @@ def execute_storyboard_video_candidates(
                 required_inputs=["frame_indexes"],
             )
         raise
-
     task = queue_result.task
     return ProductionCanvasSkillExecuteResponse(
         task_id=task.id,
@@ -202,8 +204,16 @@ def execute_storyboard_video_candidates(
             skill="video.candidates",
             label=skill.label if skill else "Video Candidates",
             status="running",
-            title="已提交现有分镜视频候选任务",
-            detail="后台已通过现有 VIDEO_GENERATION storyboard worker 执行。",
+            title=(
+                "已复用现有分镜视频候选任务"
+                if queue_result.reused
+                else "已提交现有分镜视频候选任务"
+            ),
+            detail=(
+                "相同输入已有活动任务，未重复提交 provider。"
+                if queue_result.reused
+                else "后台已通过现有 VIDEO_GENERATION storyboard worker 执行。"
+            ),
             outputs={
                 "script_id": script.id,
                 "episode_id": script.episode_id,
@@ -214,9 +224,8 @@ def execute_storyboard_video_candidates(
                 "timeline_id": queue_result.timeline_id,
                 "timeline_version": queue_result.timeline_version,
                 "mapped_clip_count": queue_result.mapped_clip_count,
-                "frame_indexes": (
-                    [branch.candidate.frame_index] if branch else request.frame_indexes
-                ),
+                "reused": queue_result.reused,
+                "frame_indexes": frame_indexes,
                 "model": request.model,
                 "duration": request.duration,
                 "fps": request.fps,

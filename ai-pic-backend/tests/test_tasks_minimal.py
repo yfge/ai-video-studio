@@ -78,3 +78,44 @@ def test_task_list_filters_by_task_type(client):
     data = rlist.json()
     assert data["total"] >= 1
     assert all(t["task_type"] == "story_generation" for t in data["tasks"])
+
+
+@pytest.mark.unit
+def test_task_response_exposes_stable_result_context(client):
+    created = client.post(
+        "/api/v1/tasks/",
+        json={
+            "title": "Canvas script task",
+            "task_type": "script_generation",
+            "parameters": {
+                "episode_id": 23,
+                "agent_run": {
+                    "result_ref": {
+                        "story_id": 11,
+                        "script_id": 41,
+                        "timeline_id": 51,
+                        "timeline_version": 2,
+                    }
+                },
+            },
+        },
+    )
+    assert created.status_code == 200, created.text
+    task_id = created.json()["id"]
+
+    updated = client.put(
+        f"/api/v1/tasks/{task_id}",
+        json={"result_file_path": "script:41"},
+    )
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["result_context"] == {
+        "virtual_ip_id": None,
+        "environment_id": None,
+        "story_id": 11,
+        "episode_id": 23,
+        "script_id": 41,
+        "timeline_id": 51,
+        "timeline_version": 2,
+        "clip_id": None,
+        "task_id": task_id,
+    }

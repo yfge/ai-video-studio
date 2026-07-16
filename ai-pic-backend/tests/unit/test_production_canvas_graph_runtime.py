@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from app.schemas.production_canvas import (
+    ProductionCanvasNodeExecution,
     ProductionCanvasSavedState,
     ProductionCanvasSkillExecuteRequest,
+    ProductionCanvasSkillResult,
 )
 from app.services.production_canvas.graph_runtime import (
+    apply_canvas_node_execution,
     evaluate_canvas_graph,
     resolve_canvas_graph_request,
 )
@@ -136,3 +139,83 @@ def test_selected_image_resolves_as_explicit_video_start_frame():
         "start_frame": "https://example.com/approved.png"
     }
     assert resolution.request.start_frame_url == "https://example.com/approved.png"
+
+
+def test_downstream_resolution_uses_full_context_from_upstream_execution():
+    state = ProductionCanvasSavedState.model_validate(
+        {
+            "graph_version": 2,
+            "nodes": [
+                {
+                    "id": "script",
+                    "label": "Script",
+                    "title": "Script",
+                    "status": "ready",
+                    "x": 0,
+                    "y": 0,
+                    "width": 200,
+                    "kind": "pipeline",
+                    "skill": "script.generate",
+                    "outputs": {"script_id": 140, "clip_id": "old-clip"},
+                    "output_ports": [{"id": "script", "type": "entity_ref"}],
+                },
+                {
+                    "id": "storyboard",
+                    "label": "Storyboard",
+                    "title": "Storyboard",
+                    "status": "ready",
+                    "x": 240,
+                    "y": 0,
+                    "width": 200,
+                    "kind": "pipeline",
+                    "skill": "storyboard.plan",
+                    "input_ports": [
+                        {"id": "script", "type": "entity_ref", "required": True}
+                    ],
+                },
+            ],
+            "edges": [
+                {
+                    "edge_id": "script-to-storyboard",
+                    "from": "script",
+                    "from_port": "script",
+                    "to": "storyboard",
+                    "to_port": "script",
+                    "binding_type": "value",
+                }
+            ],
+            "viewport": {"x": 0, "y": 0, "zoom": 1},
+        }
+    )
+    updated = apply_canvas_node_execution(
+        state,
+        ProductionCanvasNodeExecution(
+            node_id="script",
+            resolved_context={
+                "story_id": 61,
+                "episode_id": 175,
+                "script_id": 301,
+            },
+            skill_result=ProductionCanvasSkillResult(
+                skill="script.generate",
+                label="Script",
+                status="review",
+                title="Script",
+                detail="generated",
+                outputs={},
+            ),
+        ),
+    )
+    resolution = resolve_canvas_graph_request(
+        updated,
+        ProductionCanvasSkillExecuteRequest(
+            prompt="生成分镜",
+            skill="storyboard.plan",
+            node_id="storyboard",
+        ),
+    )
+
+    assert resolution is not None
+    assert resolution.resolved_inputs["script"] == 301
+    assert resolution.request.script_id == 301
+    assert "clip_id" not in updated.nodes[0].outputs

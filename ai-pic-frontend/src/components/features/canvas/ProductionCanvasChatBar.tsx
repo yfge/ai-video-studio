@@ -107,8 +107,8 @@ export function ProductionCanvasChatBar({
             onFocus={() => void assetOptions.load?.()}
             onChange={(event) => {
               const episodeId = event.target.value;
+              onContextChange("story_id", "");
               onContextChange("episode_id", episodeId);
-              onContextChange("script_id", "");
               void assetOptions.loadScripts?.(episodeId);
             }}
             className="mt-1 h-8 w-full rounded-md border border-gray-200 bg-white px-2 text-xs text-gray-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 disabled:text-gray-400"

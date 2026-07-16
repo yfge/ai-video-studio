@@ -12,6 +12,7 @@ import {
   finiteCanvasNumber,
 } from "./productionCanvasGeometry";
 import { applyProductionCanvasContext } from "./productionCanvasSharedContext";
+import type { ProductionCanvasResolvedContext } from "@/utils/api/types";
 
 export { applyProductionCanvasContext } from "./productionCanvasSharedContext";
 
@@ -28,6 +29,7 @@ export type ProductionCanvasState = {
   selectedNodeId: string;
   selectedNodeIds?: string[];
   sections?: ProductionCanvasSection[];
+  resolvedContextRevision?: number;
 };
 
 export const productionCanvasDefaultViewport: ProductionCanvasViewport = {
@@ -39,14 +41,16 @@ export const productionCanvasDefaultViewport: ProductionCanvasViewport = {
 export function createProductionCanvasState(
   nodes: ProductionCanvasNode[] = productionCanvasNodes,
   edges: ProductionCanvasEdge[] = productionCanvasEdges,
+  resolvedContext?: ProductionCanvasResolvedContext | null,
 ): ProductionCanvasState {
   const clonedNodes = cloneProductionCanvasNodes(nodes);
   return {
     edges: cloneProductionCanvasEdges(clonedNodes, edges),
-    nodes: applyProductionCanvasContext(clonedNodes),
+    nodes: applyProductionCanvasContext(clonedNodes, resolvedContext),
     viewport: { ...productionCanvasDefaultViewport },
     selectedNodeId: clonedNodes[0]?.id || "",
     sections: [],
+    resolvedContextRevision: 0,
   };
 }
 

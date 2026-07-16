@@ -3,6 +3,7 @@ from __future__ import annotations
 from app.models.user import User
 from app.schemas.production_canvas import (
     ProductionCanvasNodeExecution,
+    ProductionCanvasResolvedContext,
     ProductionCanvasSavedState,
     ProductionCanvasSkillExecuteRequest,
     ProductionCanvasSkillExecuteResponse,
@@ -10,6 +11,11 @@ from app.schemas.production_canvas import (
 from app.services.production_canvas.asset_generation import (
     execute_environment_image_generation,
     execute_virtual_ip_image_generation,
+)
+from app.services.production_canvas.context_lineage import (
+    bind_latest_timeline,
+    resolve_explicit_lineage,
+    validate_resolved_clip,
 )
 from app.services.production_canvas.execution_common import blocked_result
 from app.services.production_canvas.graph_runtime import (
@@ -35,9 +41,28 @@ from app.services.production_canvas.render_execution import (
     execute_timeline_render,
 )
 from app.services.production_canvas.report_execution import execute_report_summary
+from app.services.production_canvas.run_context import canvas_run_context
 from app.services.production_canvas.run_persistence import load_canvas_saved_state
+from app.services.production_canvas.run_requests import request_for_canvas_node_context
 from app.services.production_canvas.stale_runtime import canvas_node_input_fingerprint
 from sqlalchemy.orm import Session
+
+
+def _validate_canvas_skill_request(
+    db: Session,
+    user: User,
+    request: ProductionCanvasSkillExecuteRequest,
+) -> ProductionCanvasSkillExecuteRequest:
+    resolved = resolve_explicit_lineage(db, user, request)
+    resolved = bind_latest_timeline(db, resolved)
+    validate_resolved_clip(db, user, resolved)
+    return ProductionCanvasSkillExecuteRequest.model_validate(resolved.model_dump())
+
+
+def _resolved_context(
+    request: ProductionCanvasSkillExecuteRequest,
+) -> ProductionCanvasResolvedContext:
+    return ProductionCanvasResolvedContext.model_validate(request.model_dump())
 
 
 def _dispatch_canvas_skill(
@@ -84,21 +109,20 @@ def execute_canvas_resolution(
     resolution: CanvasGraphResolution,
     state: ProductionCanvasSavedState,
 ) -> ProductionCanvasSkillExecuteResponse:
-    if (
-        resolution.missing_inputs
-        and resolution.request.branch_parent_candidate_id is None
-    ):
+    request = _validate_canvas_skill_request(db, user, resolution.request)
+    if resolution.missing_inputs and request.branch_parent_candidate_id is None:
         response = blocked_result(
-            resolution.request,
+            request,
             title="画布节点等待类型化输入",
             detail="必填端口尚未从已连接的上游输出解析完成。",
             required_inputs=resolution.missing_inputs,
         )
     else:
-        response = _dispatch_canvas_skill(db, user, resolution.request)
+        response = _dispatch_canvas_skill(db, user, request)
     return response.model_copy(
         update={
             "node_id": resolution.node_id,
+            "resolved_context": _resolved_context(request),
             "resolved_inputs": resolution.resolved_inputs,
             "execution_order": resolution.execution_order,
             "input_fingerprint": canvas_node_input_fingerprint(
@@ -113,6 +137,7 @@ def _node_execution(
 ) -> ProductionCanvasNodeExecution:
     return ProductionCanvasNodeExecution(
         skill_result=response.skill_result,
+        resolved_context=response.resolved_context,
         task_id=response.task_id,
         task_status=response.task_status,
         node_id=response.node_id,
@@ -133,12 +158,16 @@ def _execute_downstream(
     node_by_id = {node.id: node for node in state.nodes}
     for node_id in first_resolution.execution_order:
         node = node_by_id[node_id]
-        node_request = request.model_copy(
-            update={
-                "node_id": node_id,
-                "skill": node.skill or "",
-                "execution_scope": "node",
+        global_context = canvas_run_context(
+            {
+                "requested_asset_ids": request.model_dump(),
+                "saved_state": working_state.model_dump(mode="json"),
             }
+        )
+        node_request = request_for_canvas_node_context(
+            request,
+            node,
+            global_context,
         )
         resolution = resolve_canvas_graph_request(working_state, node_request)
         if resolution is None:
@@ -175,7 +204,10 @@ def execute_canvas_skill(
             required_inputs=["graph_node"],
         )
     if resolution is None:
-        return _dispatch_canvas_skill(db, user, request)
+        validated = _validate_canvas_skill_request(db, user, request)
+        return _dispatch_canvas_skill(db, user, validated).model_copy(
+            update={"resolved_context": _resolved_context(validated)}
+        )
     if request.execution_scope == "downstream":
         return _execute_downstream(db, user, request, state, resolution)
     return execute_canvas_resolution(db, user, resolution, state)

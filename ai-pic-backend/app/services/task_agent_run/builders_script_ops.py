@@ -6,7 +6,7 @@ from app.repositories.script_repository import ScriptRepository
 from app.services.task_agent_run.builders_storyboard_images import (
     build_storyboard_image_agent_run,
 )
-from app.services.task_agent_run.timeline_refs import timeline_ref_for_script
+from app.services.task_agent_run.timeline_refs import domain_ref_for_script
 from app.services.task_agent_run.utils import (
     loads_task_parameters,
     maybe_int,
@@ -72,6 +72,7 @@ def build_dialogue_audio_agent_run(db, task, *, user_id: int) -> Dict[str, Any]:
             "episode_id": getattr(script, "episode_id", None),
             "episode_business_id": getattr(script, "episode_business_id", None),
             "scene_numbers": scene_numbers,
+            **domain_ref_for_script(db, script),
         },
     }
 
@@ -97,7 +98,7 @@ def build_timeline_generation_agent_run(db, task, *, user_id: int) -> Dict[str, 
 
     audio_payload = safe_dict(timeline_meta.get("episode_audio"))
     version = audio_payload.get("version")
-    timeline_ref = timeline_ref_for_script(db, script)
+    domain_ref = domain_ref_for_script(db, script)
 
     return {
         "generation_method": "audio_timeline",
@@ -109,7 +110,7 @@ def build_timeline_generation_agent_run(db, task, *, user_id: int) -> Dict[str, 
             "episode_id": getattr(script, "episode_id", None),
             "episode_business_id": getattr(script, "episode_business_id", None),
             "audio_timeline_version": version,
-            **timeline_ref,
+            **domain_ref,
         },
     }
 
@@ -145,7 +146,7 @@ def build_storyboard_generation_agent_run(db, task, *, user_id: int) -> Dict[str
             "episode_business_id": getattr(script, "episode_business_id", None),
             "storyboard_version": getattr(script, "storyboard_version", None),
             "source_role": meta.get("source_role"),
-            **timeline_ref_for_script(db, script),
+            **domain_ref_for_script(db, script),
         },
     }
     if isinstance(frames, list):
@@ -189,7 +190,7 @@ def build_storyboard_from_audio_timeline_agent_run(
             "audio_timeline_version": meta.get("audio_timeline_version"),
             "storyboard_version": getattr(script, "storyboard_version", None),
             "source_role": meta.get("source_role"),
-            **timeline_ref_for_script(db, script),
+            **domain_ref_for_script(db, script),
         },
     }
 
@@ -213,7 +214,7 @@ def build_timeline_pipeline_agent_run(db, task, *, user_id: int) -> Dict[str, An
         timeline_meta = safe_dict(episode.extra_metadata.get("audio_timeline"))
         audio_payload = safe_dict(timeline_meta.get("episode_audio"))
         audio_version = audio_payload.get("version")
-    timeline_ref = timeline_ref_for_script(db, script)
+    domain_ref = domain_ref_for_script(db, script)
 
     payload: Dict[str, Any] = {
         "generation_method": "timeline_pipeline",
@@ -229,7 +230,7 @@ def build_timeline_pipeline_agent_run(db, task, *, user_id: int) -> Dict[str, An
             "episode_business_id": getattr(script, "episode_business_id", None),
             "audio_timeline_version": audio_version,
             "storyboard_version": getattr(script, "storyboard_version", None),
-            **timeline_ref,
+            **domain_ref,
         },
     }
     pipeline_error = safe_dict(params.get("pipeline_error"))

@@ -9,8 +9,6 @@ const CONFIG_OUTPUT_KEYS = new Set([
   "aspect_ratio",
   "camera_fixed",
   "duration",
-  "environment_id",
-  "episode_id",
   "fps",
   "frame_indexes",
   "media_model",
@@ -19,12 +17,10 @@ const CONFIG_OUTPUT_KEYS = new Set([
   "ratio",
   "require_reference_images",
   "resolution",
-  "script_id",
   "video_aspect_ratio",
   "video_duration",
   "video_fps",
   "video_resolution",
-  "virtual_ip_id",
 ]);
 
 export type ProductionCanvasDefinitionSnapshot = {

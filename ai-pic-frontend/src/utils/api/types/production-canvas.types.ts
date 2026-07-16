@@ -1,12 +1,10 @@
-export interface ProductionCanvasPlanRequest {
+import type { ProductionCanvasResolvedContext } from "./production-canvas-context.types";
+import type { ProductionCanvasAccessRole } from "./production-canvas-collaboration.types";
+export type { ProductionCanvasResolvedContext } from "./production-canvas-context.types";
+export interface ProductionCanvasPlanRequest
+  extends ProductionCanvasResolvedContext {
   prompt: string;
-  virtual_ip_id?: number | null;
-  environment_id?: number | null;
-  episode_id?: number | null;
-  script_id?: number | null;
-  task_id?: number | null;
 }
-
 export type ProductionCanvasNodeStatus =
   | "draft"
   | "ready"
@@ -18,14 +16,12 @@ export type ProductionCanvasNodeStatus =
   | "failed"
   | "cancelled"
   | "blocked";
-
 export interface ProductionCanvasSavedPort {
   id: string;
   type: "text" | "image" | "video" | "audio" | "entity_ref" | "execution_ref";
   required?: boolean;
   multiple?: boolean;
 }
-
 export interface ProductionCanvasSkillExecuteRequest
   extends ProductionCanvasPlanRequest {
   skill: string;
@@ -168,6 +164,7 @@ export interface ProductionCanvasSavedSection {
 
 export interface ProductionCanvasSavedState {
   graph_version?: 1 | 2;
+  resolved_context_revision?: number;
   nodes: ProductionCanvasSavedNode[];
   edges?: ProductionCanvasSavedEdge[];
   sections?: ProductionCanvasSavedSection[];
@@ -179,6 +176,7 @@ export interface ProductionCanvasPlanResponse {
   prompt: string;
   run_id?: string | null;
   task_id?: number | null;
+  resolved_context?: ProductionCanvasResolvedContext;
   skill_manifest: ProductionCanvasSkillManifest;
   selected_assets: ProductionCanvasSelectedAssets;
   skill_results?: ProductionCanvasSkillResult[];
@@ -236,6 +234,9 @@ export interface ProductionCanvasMediaCandidateList {
 }
 export interface ProductionCanvasNodeExecutionResponse {
   skill_result: ProductionCanvasSkillResult;
+  resolved_context?: ProductionCanvasResolvedContext;
+  input_fingerprint?: string | null;
+  resolved_context_revision?: number;
   task_id?: number | null;
   task_status?: string | null;
   node_id?: string | null;
@@ -246,4 +247,3 @@ export interface ProductionCanvasSkillExecuteResponse
   execution_order?: string[];
   executions?: ProductionCanvasNodeExecutionResponse[];
 }
-import type { ProductionCanvasAccessRole } from "./production-canvas-collaboration.types";

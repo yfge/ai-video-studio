@@ -20,6 +20,7 @@ export function ProductionCanvasNodeTools({
   canApprove = true,
   canEdit = true,
   canExecute = true,
+  captureCanvasStateIdentity,
   edges,
   node,
   nodes,
@@ -34,6 +35,7 @@ export function ProductionCanvasNodeTools({
   onUpdateNode,
   onUpdateNodeOutputs,
   onCanvasStateUpdated,
+  onDomainContextResolved,
   refreshError,
   refreshingTasks,
   retryingNode,
@@ -42,6 +44,9 @@ export function ProductionCanvasNodeTools({
   canApprove?: boolean;
   canEdit?: boolean;
   canExecute?: boolean;
+  captureCanvasStateIdentity: Parameters<
+    typeof ProductionCanvasCandidateReview
+  >[0]["captureCanvasStateIdentity"];
   edges: ProductionCanvasEdge[];
   node?: ProductionCanvasNode;
   nodes: ProductionCanvasNode[];
@@ -58,6 +63,9 @@ export function ProductionCanvasNodeTools({
   onCanvasStateUpdated: Parameters<
     typeof ProductionCanvasCandidateReview
   >[0]["onCanvasStateUpdated"];
+  onDomainContextResolved?: Parameters<
+    typeof ProductionCanvasCandidateReview
+  >[0]["onDomainContextResolved"];
   refreshError?: string | null;
   refreshingTasks?: boolean;
   retryingNode?: boolean;
@@ -98,8 +106,10 @@ export function ProductionCanvasNodeTools({
       <ProductionCanvasCandidateReview
         canApprove={canApprove}
         canBranch={canExecute}
+        captureCanvasStateIdentity={captureCanvasStateIdentity}
         node={node}
         onCanvasStateUpdated={onCanvasStateUpdated}
+        onDomainContextResolved={onDomainContextResolved}
         runId={runId}
       />
       {canEdit ? (

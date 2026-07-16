@@ -4,10 +4,8 @@ import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { JSDOM } from "jsdom";
 import { createElement, useState } from "react";
 
-import {
-  productionCanvasRunIdFromInput,
-  useProductionCanvasRunPersistence,
-} from "../src/components/features/canvas/useProductionCanvasRunPersistence";
+import { productionCanvasRunIdFromInput } from "../src/components/features/canvas/productionCanvasRunId";
+import { useProductionCanvasRunPersistence } from "../src/components/features/canvas/useProductionCanvasRunPersistence";
 import type { ProductionCanvasState } from "../src/components/features/canvas/productionCanvasState";
 
 const dom = new JSDOM("<!doctype html><html><body></body></html>", {
@@ -257,6 +255,60 @@ describe("productionCanvasRunIdFromInput", () => {
     }
   });
 
+  it("does not infer an active run from stale node outputs", async () => {
+    const originalFetch = globalThis.fetch;
+    let requestCount = 0;
+    globalThis.fetch = async () => {
+      requestCount += 1;
+      throw new Error("stale Run must not be requested");
+    };
+    const staleCanvasState: ProductionCanvasState = {
+      ...emptyCanvasState,
+      nodes: [
+        {
+          id: "stale-node",
+          label: "Stale",
+          title: "Old local node",
+          status: "ready",
+          x: 0,
+          y: 0,
+          width: 220,
+          outputs: { canvas_run_id: "stale-run" },
+        },
+      ],
+      selectedNodeId: "stale-node",
+    };
+
+    function Harness() {
+      const persistence = useProductionCanvasRunPersistence({
+        autosaveDelayMs: null,
+        canvasState: staleCanvasState,
+        replaceCanvasState: () => {},
+      });
+      return createElement(
+        "div",
+        {},
+        createElement(
+          "button",
+          { onClick: () => void persistence.saveCanvas(), type: "button" },
+          "save stale",
+        ),
+        createElement("output", {}, persistence.status || ""),
+      );
+    }
+
+    try {
+      const utils = render(createElement(Harness), {
+        container: dom.window.document.body,
+      });
+      fireEvent.click(utils.getByRole("button", { name: "save stale" }));
+      await waitFor(() => assert.ok(utils.getByText("缺少 Run ID")));
+      assert.equal(requestCount, 0);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("adopts stale runtime state returned by save without replacing local layout", async () => {
     const originalFetch = globalThis.fetch;
     let savedRequest: Record<string, any> | null = null;
@@ -327,7 +379,10 @@ describe("productionCanvasRunIdFromInput", () => {
         {},
         createElement(
           "button",
-          { onClick: () => void persistence.saveCanvas(), type: "button" },
+          {
+            onClick: () => void persistence.saveCanvas("canvas-run-stale"),
+            type: "button",
+          },
           "save",
         ),
         createElement(

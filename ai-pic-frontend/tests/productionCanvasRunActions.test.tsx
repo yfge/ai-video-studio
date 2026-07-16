@@ -56,6 +56,10 @@ describe("production canvas run actions", () => {
     let adoptedNodeCount = 0;
     function Harness() {
       const actions = useProductionCanvasRunActions({
+        captureStateIdentity: () => ({
+          epoch: 0,
+          runId: "canvas-run-1",
+        }),
         runId: "canvas-run-1",
         saveCanvas: async () => {
           calls.push("save");
@@ -63,6 +67,7 @@ describe("production canvas run actions", () => {
         },
         onStateUpdated: (next) => {
           adoptedNodeCount = next.nodes.length;
+          return true;
         },
       });
       return (
@@ -97,5 +102,88 @@ describe("production canvas run actions", () => {
     await waitFor(() => assert.equal(requests.at(-1)?.action, "retry"));
     assert.deepEqual(calls, ["save", "control"]);
     assert.equal(requests.at(-1)?.definition_mode, "original");
+  });
+
+  it("ignores a Run response after the active Run identity changes", async () => {
+    type ControlRunResult = Awaited<
+      ReturnType<typeof productionCanvasAPI.controlRun>
+    >;
+    let resolveControl!: (result: ControlRunResult) => void;
+    productionCanvasAPI.controlRun = () =>
+      new Promise((resolve) => {
+        resolveControl = resolve;
+      });
+    let currentIdentity = { epoch: 1, runId: "run-a" };
+    let adoptAttempts = 0;
+
+    function Harness({ runId }: { runId: string }) {
+      const actions = useProductionCanvasRunActions({
+        captureStateIdentity: () => ({ ...currentIdentity }),
+        onStateUpdated: (_state, identity) => {
+          adoptAttempts += 1;
+          return (
+            identity.runId === currentIdentity.runId &&
+            identity.epoch === currentIdentity.epoch
+          );
+        },
+        runId,
+        saveCanvas: async () => true,
+      });
+      return (
+        <>
+          <button
+            disabled={Boolean(actions.busyAction)}
+            onClick={() => void actions.cancel()}
+          >
+            cancel
+          </button>
+          <span data-testid="status">{actions.status}</span>
+        </>
+      );
+    }
+
+    const utils = render(<Harness runId="run-a" />, {
+      container: dom.window.document.body,
+    });
+    fireEvent.click(utils.getByRole("button", { name: "cancel" }));
+    await waitFor(() => assert.ok(resolveControl));
+    currentIdentity = { epoch: 2, runId: "run-b" };
+    utils.rerender(<Harness runId="run-b" />);
+    await waitFor(() =>
+      assert.equal(
+        utils.getByRole("button", { name: "cancel" }).hasAttribute("disabled"),
+        false,
+      ),
+    );
+    resolveControl({
+      success: true,
+      data: {
+        action: "cancel",
+        definition_mode: "current",
+        run: {
+          prompt: "stale Run",
+          run_id: "run-a",
+          skill_manifest: { version: "1" },
+          selected_assets: { virtual_ips: [], environments: [] },
+          nodes: [],
+          saved_state: toProductionCanvasSavedState(
+            createProductionCanvasState(),
+          ),
+        },
+        executions: [],
+        execution_order: [],
+        skipped_node_ids: [],
+        cancelled_task_ids: [],
+      },
+    });
+
+    await waitFor(() =>
+      assert.equal(
+        utils.getByRole("button", { name: "cancel" }).hasAttribute("disabled"),
+        false,
+      ),
+    );
+    assert.equal(adoptAttempts, 1);
+    assert.equal(utils.getByTestId("status").textContent, "");
   });
 });

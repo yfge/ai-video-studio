@@ -82,6 +82,10 @@ describe("ProductionCanvasCandidateReview", () => {
     let rejectionReason: string | null = null;
     let branchCandidateId: number | null = null;
     let branchInstruction: string | null = null;
+    const captureCanvasStateIdentity = () => ({
+      epoch: 0,
+      runId: "canvas-review-run",
+    });
     globalThis.fetch = async (input, init) => {
       const url = String(input);
       requests.push({
@@ -182,10 +186,12 @@ describe("ProductionCanvasCandidateReview", () => {
     try {
       const utils = render(
         createElement(ProductionCanvasCandidateReview, {
+          captureCanvasStateIdentity,
           node: imageNode,
           runId: "canvas-review-run",
           onCanvasStateUpdated: (state) => {
             updatedState = state;
+            return true;
           },
         }),
         { container: dom.window.document.body },
@@ -215,10 +221,12 @@ describe("ProductionCanvasCandidateReview", () => {
       ).length;
       utils.rerender(
         createElement(ProductionCanvasCandidateReview, {
+          captureCanvasStateIdentity,
           node: { ...imageNode, status: "running" },
           runId: "canvas-review-run",
           onCanvasStateUpdated: (state) => {
             updatedState = state;
+            return true;
           },
         }),
       );
@@ -319,8 +327,12 @@ describe("ProductionCanvasCandidateReview", () => {
         createElement(ProductionCanvasCandidateReview, {
           canApprove: false,
           canBranch: false,
+          captureCanvasStateIdentity: () => ({
+            epoch: 0,
+            runId: "canvas-review-readonly",
+          }),
           node: imageNode,
-          onCanvasStateUpdated: () => undefined,
+          onCanvasStateUpdated: () => true,
           runId: "canvas-review-readonly",
         }),
         { container: dom.window.document.body },
@@ -330,6 +342,89 @@ describe("ProductionCanvasCandidateReview", () => {
       assert.equal(utils.queryByRole("button", { name: "拒绝" }), null);
       assert.equal(utils.queryByText("分支生成"), null);
       assert.ok(utils.getByText("查看原始资产"));
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("publishes the authoritative Timeline context after placement", async () => {
+    const originalFetch = globalThis.fetch;
+    const contexts: unknown[] = [];
+    const videoNode: ProductionCanvasNode = {
+      ...imageNode,
+      id: "video-review",
+      skill: "video.candidates",
+      outputs: { timeline_id: 70, timeline_version: 7 },
+    };
+    const resolvedContext = {
+      virtual_ip_id: 84,
+      environment_id: 13,
+      story_id: 61,
+      episode_id: 174,
+      script_id: 144,
+      timeline_id: 70,
+      timeline_version: 8,
+      clip_id: "clip-8",
+      task_id: 77,
+    };
+    globalThis.fetch = async (input) => {
+      const url = String(input);
+      if (url.endsWith("/candidates")) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: {
+              candidates: [
+                {
+                  asset_business_id: "video-11",
+                  asset_id: 11,
+                  frame_index: 0,
+                  media_type: "video",
+                  review_state: "approved",
+                  selected: true,
+                  url: "https://example.com/video.mp4",
+                },
+              ],
+              node_id: videoNode.id,
+              selected_output_id: 11,
+              stale_impact: [],
+            },
+          }),
+          { headers: { "content-type": "application/json" } },
+        );
+      }
+      assert.ok(url.endsWith("/timeline-placement"));
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: {
+            ...runResponse(null),
+            run_id: "canvas-place-run",
+            resolved_context: resolvedContext,
+          },
+        }),
+        { headers: { "content-type": "application/json" } },
+      );
+    };
+    try {
+      const utils = render(
+        createElement(ProductionCanvasCandidateReview, {
+          captureCanvasStateIdentity: () => ({
+            epoch: 0,
+            runId: "canvas-place-run",
+          }),
+          node: videoNode,
+          onCanvasStateUpdated: () => true,
+          onDomainContextResolved: (context) => contexts.push(context),
+          runId: "canvas-place-run",
+        }),
+        { container: dom.window.document.body },
+      );
+      await waitFor(() =>
+        assert.ok(utils.getByRole("button", { name: "放入 Timeline" })),
+      );
+      fireEvent.click(utils.getByRole("button", { name: "放入 Timeline" }));
+      await waitFor(() => assert.deepEqual(contexts, [resolvedContext]));
     } finally {
       globalThis.fetch = originalFetch;
     }

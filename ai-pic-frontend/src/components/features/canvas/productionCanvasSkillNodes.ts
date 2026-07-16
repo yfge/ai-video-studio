@@ -11,6 +11,10 @@ import {
 } from "./productionCanvasModel";
 import { taskStatusLabelForStatus } from "./productionCanvasTaskSummaryModel";
 import { withProductionCanvasPortContract } from "./productionCanvasPorts";
+import {
+  productionCanvasContextOutputPatch,
+  productionCanvasResolvedContextFromOutputs,
+} from "./productionCanvasContextMerge";
 
 function runOutputs(response: ProductionCanvasPlanResponse) {
   return {
@@ -103,8 +107,8 @@ export function firstOutputNumber(
 
 export function taskOutputNumber(outputs: Record<string, unknown> | undefined) {
   return (
-    outputNumber(outputs, "task_id") ??
     outputNumber(outputs, "dispatched_task_id") ??
+    outputNumber(outputs, "task_id") ??
     outputNumber(outputs, "canvas_task_id")
   );
 }
@@ -159,13 +163,17 @@ export function productionCanvasSkillResultToNode(
     delete previousOutputs.task_updated_at;
     delete previousOutputs.required_inputs;
   }
+  const contextPatch = productionCanvasContextOutputPatch(
+    previousOutputs,
+    productionCanvasResolvedContextFromOutputs(result.outputs),
+  );
   return {
     ...node,
     label: result.label,
     title: result.title,
     status: result.status,
     detail: result.detail,
-    outputs: { ...previousOutputs, ...result.outputs },
+    outputs: { ...previousOutputs, ...contextPatch, ...result.outputs },
     reuseTargets: result.reuse_targets,
     actionHref: outputUrl || (isRenderResult ? undefined : node.actionHref),
     actionLabel: outputUrl

@@ -1,6 +1,5 @@
 import {
   useCallback,
-  useEffect,
   useRef,
   useState,
   type Dispatch,
@@ -9,7 +8,6 @@ import {
 import { productionCanvasAPI } from "@/utils/api/endpoints";
 import type { ProductionCanvasAccessRole } from "@/utils/api/types";
 import {
-  canvasRunIdFromNodes,
   productionCanvasStateFromRun,
   toProductionCanvasSavedState,
 } from "./productionCanvasPersistence";
@@ -18,58 +16,64 @@ import {
   productionCanvasStateSignature,
 } from "./productionCanvasPersistenceSync";
 import type { ProductionCanvasState } from "./productionCanvasState";
+import type { ProductionCanvasStateIdentity } from "./productionCanvasStateIdentity";
+import { productionCanvasRunIdFromInput } from "./productionCanvasRunId";
+import { useProductionCanvasAutosave } from "./useProductionCanvasAutosave";
+import { useProductionCanvasInitialRun } from "./useProductionCanvasInitialRun";
+import { useProductionCanvasRunRestore } from "./useProductionCanvasRunRestore";
 import { useProductionCanvasRunUrl } from "./useProductionCanvasRunUrl";
-
-export function productionCanvasRunIdFromInput(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  try {
-    const parsed = new URL(trimmed, "http://canvas.local");
-    const runId = parsed.searchParams.get("run_id");
-    if (parsed.pathname === "/canvas" && runId === null) return "";
-    return runId === null ? trimmed : runId.trim();
-  } catch {
-    return trimmed;
-  }
-}
-
+import { useProductionCanvasStateIdentity } from "./useProductionCanvasStateIdentity";
 export function useProductionCanvasRunPersistence({
   autosaveDelayMs = 1200,
   canvasState,
   initialRunId,
+  onRunCleared,
   onStateRestored,
   replaceCanvasState,
 }: {
   autosaveDelayMs?: number | null;
   canvasState: ProductionCanvasState;
   initialRunId?: string | null;
+  onRunCleared?: () => void;
   onStateRestored?: () => void;
   replaceCanvasState: Dispatch<SetStateAction<ProductionCanvasState>>;
 }) {
   const initialRunIdValue = productionCanvasRunIdFromInput(initialRunId || "");
   const [runId, setRunIdValue] = useState(initialRunIdValue);
+  const [runIdDraft, setRunIdDraftValue] = useState(initialRunIdValue);
   const [accessRole, setAccessRole] =
     useState<ProductionCanvasAccessRole | null>(
       initialRunIdValue ? null : "owner",
     );
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const runIdentity = useRef(initialRunIdValue);
   const restoredInitialRunId = useRef("");
   const lastSavedSignature = useRef("");
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestEpoch = useRef(0);
+  const sessionEpoch = useRef(0);
   const setRunId = useCallback(
     (value: string, role: ProductionCanvasAccessRole | null = null) => {
-      setRunIdValue(productionCanvasRunIdFromInput(value));
+      const nextRunId = productionCanvasRunIdFromInput(value);
+      requestEpoch.current += 1;
+      sessionEpoch.current += 1;
+      runIdentity.current = nextRunId;
+      restoredInitialRunId.current = nextRunId;
+      setRunIdValue(nextRunId);
+      setRunIdDraftValue(nextRunId);
       setAccessRole(role);
+      setBusy(false);
     },
     [],
   );
+  const setRunIdDraft = useCallback((value: string) => {
+    setRunIdDraftValue(productionCanvasRunIdFromInput(value));
+  }, []);
   const canEdit = accessRole === "owner" || accessRole === "editor";
   const resolvedRunId = useCallback(
-    (state: ProductionCanvasState = canvasState) =>
-      productionCanvasRunIdFromInput(runId) ||
-      canvasRunIdFromNodes(state.nodes),
-    [canvasState, runId],
+    () => productionCanvasRunIdFromInput(runId),
+    [runId],
   );
   const saveCanvasState = useCallback(
     async (
@@ -88,6 +92,7 @@ export function useProductionCanvasRunPersistence({
       const signature = productionCanvasStateSignature(targetRunId, state);
       if (mode === "auto" && signature === lastSavedSignature.current)
         return true;
+      const requestEpochValue = ++requestEpoch.current;
       setBusy(true);
       setStatus(mode === "auto" ? "自动保存中" : "保存中");
       try {
@@ -96,6 +101,7 @@ export function useProductionCanvasRunPersistence({
           targetRunId,
           savedState,
         );
+        if (requestEpochValue !== requestEpoch.current) return false;
         if (!response.success || !response.data) {
           setStatus(response.error || "保存失败");
           return false;
@@ -116,55 +122,62 @@ export function useProductionCanvasRunPersistence({
           nextRunId,
           acknowledgedState,
         );
+        runIdentity.current = nextRunId;
+        restoredInitialRunId.current = nextRunId;
         setRunIdValue(nextRunId);
+        setRunIdDraftValue((current) =>
+          productionCanvasRunIdFromInput(current) === targetRunId
+            ? nextRunId
+            : current,
+        );
         setAccessRole(response.data.access_role || accessRole || "owner");
         setStatus(mode === "auto" ? "已自动保存" : "已保存");
         return true;
       } catch (err) {
-        setStatus(err instanceof Error ? err.message : String(err));
+        if (requestEpochValue === requestEpoch.current) {
+          setStatus(err instanceof Error ? err.message : String(err));
+        }
         return false;
       } finally {
-        setBusy(false);
+        if (requestEpochValue === requestEpoch.current) setBusy(false);
       }
     },
     [accessRole, busy, canEdit, replaceCanvasState],
   );
-  const saveCanvas = async () => {
-    const targetRunId = resolvedRunId();
+  const saveCanvas = async (requestedRunId?: string) => {
+    const targetRunId =
+      productionCanvasRunIdFromInput(requestedRunId || "") || resolvedRunId();
     if (!targetRunId) {
       setStatus("缺少 Run ID");
       return false;
     }
     return saveCanvasState(targetRunId, canvasState, "manual");
   };
-  useEffect(() => {
-    if (!canEdit || autosaveDelayMs === null || autosaveDelayMs < 0 || busy)
-      return;
-    if (initialRunIdValue && !lastSavedSignature.current) return;
-    const targetRunId = resolvedRunId();
-    if (!targetRunId) return;
-    const signature = productionCanvasStateSignature(targetRunId, canvasState);
-    if (signature === lastSavedSignature.current) return;
-    autosaveTimer.current = setTimeout(() => {
-      void saveCanvasState(targetRunId, canvasState, "auto");
-    }, autosaveDelayMs);
-    return () => {
-      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
-    };
-  }, [
+  useProductionCanvasAutosave({
     autosaveDelayMs,
+    autosaveTimerRef: autosaveTimer,
     busy,
     canEdit,
     canvasState,
-    initialRunIdValue,
+    initialRunId: initialRunIdValue,
+    lastSavedSignature,
     resolvedRunId,
     saveCanvasState,
-  ]);
-
+  });
+  const captureStateIdentity = useProductionCanvasStateIdentity(
+    runIdentity,
+    sessionEpoch,
+  );
   const adoptServerState = useCallback(
-    (state: ProductionCanvasState) => {
+    (state: ProductionCanvasState, identity: ProductionCanvasStateIdentity) => {
+      if (
+        identity.runId !== runIdentity.current ||
+        identity.epoch !== sessionEpoch.current
+      ) {
+        return false;
+      }
       if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
-      const targetRunId = resolvedRunId(state);
+      const targetRunId = identity.runId || resolvedRunId();
       replaceCanvasState(state);
       if (targetRunId) {
         lastSavedSignature.current = productionCanvasStateSignature(
@@ -173,78 +186,61 @@ export function useProductionCanvasRunPersistence({
         );
       }
       setStatus("已同步");
+      return true;
     },
     [replaceCanvasState, resolvedRunId],
   );
-
   const resetRun = useCallback(() => {
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    requestEpoch.current += 1;
+    sessionEpoch.current += 1;
+    runIdentity.current = "";
+    restoredInitialRunId.current = "";
     lastSavedSignature.current = "";
     setRunIdValue("");
+    setRunIdDraftValue("");
     setAccessRole("owner");
+    setBusy(false);
     setStatus(null);
   }, []);
-
   useProductionCanvasRunUrl(runId);
-
-  const restoreCanvas = useCallback(
-    async (requestedRunId?: string) => {
-      const targetRunId = productionCanvasRunIdFromInput(
-        requestedRunId || resolvedRunId(),
-      );
-      if (!targetRunId || busy) {
-        setStatus("缺少 Run ID");
-        return;
-      }
-      setBusy(true);
-      setStatus("恢复中");
-      try {
-        const response = await productionCanvasAPI.getRun(targetRunId);
-        if (!response.success || !response.data) {
-          setStatus(response.error || "恢复失败");
-          return;
-        }
-        const restoredState = productionCanvasStateFromRun(response.data);
-        const nextRunId = response.data.run_id || targetRunId;
-        replaceCanvasState(restoredState);
-        onStateRestored?.();
-        lastSavedSignature.current = productionCanvasStateSignature(
-          nextRunId,
-          restoredState,
-        );
-        setRunIdValue(nextRunId);
-        setAccessRole(response.data.access_role || "owner");
-        setStatus("已恢复");
-      } catch (err) {
-        setStatus(err instanceof Error ? err.message : String(err));
-      } finally {
-        setBusy(false);
-      }
+  const restoreCanvas = useProductionCanvasRunRestore({
+    lastSavedSignatureRef: lastSavedSignature,
+    onStateRestored,
+    operationEpochRef: requestEpoch,
+    replaceCanvasState,
+    resolvedRunId,
+    restoredInitialRunIdRef: restoredInitialRunId,
+    runIdentityRef: runIdentity,
+    sessionEpochRef: sessionEpoch,
+    setAccessRole,
+    setBusy,
+    setRunId: setRunIdValue,
+    setRunIdDraft: setRunIdDraftValue,
+    setStatus,
+  });
+  useProductionCanvasInitialRun({
+    initialRunId: initialRunIdValue,
+    restoredRunIdRef: restoredInitialRunId,
+    onClear: () => {
+      resetRun();
+      onRunCleared?.();
     },
-    [busy, onStateRestored, replaceCanvasState, resolvedRunId],
-  );
-
-  useEffect(() => {
-    if (
-      !initialRunIdValue ||
-      restoredInitialRunId.current === initialRunIdValue
-    ) {
-      return;
-    }
-    restoredInitialRunId.current = initialRunIdValue;
-    setRunIdValue(initialRunIdValue);
-    void restoreCanvas(initialRunIdValue);
-  }, [initialRunIdValue, restoreCanvas]);
-
+    onRestore: (runId) => void restoreCanvas(runId),
+    onStage: setRunIdDraftValue,
+  });
   return {
     accessRole,
     adoptServerState,
     busy,
+    captureStateIdentity,
     resetRun,
     restoreCanvas,
     runId,
+    runIdDraft,
     saveCanvas,
     setRunId,
+    setRunIdDraft,
     status,
   };
 }

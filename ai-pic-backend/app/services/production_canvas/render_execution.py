@@ -19,11 +19,27 @@ from app.services.timeline_service import TimelineService
 from sqlalchemy.orm import Session
 
 
-def _latest_timeline(
+def _current_timeline(
     db: Session,
     user: User,
     request: ProductionCanvasSkillExecuteRequest,
 ) -> Timeline | None:
+    if request.timeline_id is not None:
+        owner_id = None if user.is_admin or user.is_superuser else int(user.id)
+        timeline = TimelineRepository(db).get_accessible(
+            request.timeline_id,
+            owner_id,
+        )
+        if timeline is None:
+            return None
+        if request.script_id is not None and timeline.script_id != request.script_id:
+            return None
+        if (
+            request.timeline_version is not None
+            and timeline.version != request.timeline_version
+        ):
+            return None
+        return timeline
     script = load_script(db, user, request.script_id)
     if script is None:
         return None
@@ -87,7 +103,7 @@ def execute_timeline_render(
     user: User,
     request: ProductionCanvasSkillExecuteRequest,
 ) -> ProductionCanvasSkillExecuteResponse:
-    timeline = _latest_timeline(db, user, request)
+    timeline = _current_timeline(db, user, request)
     if timeline is None:
         return blocked_result(
             request,
@@ -135,7 +151,7 @@ def execute_timeline_export(
     user: User,
     request: ProductionCanvasSkillExecuteRequest,
 ) -> ProductionCanvasSkillExecuteResponse:
-    timeline = _latest_timeline(db, user, request)
+    timeline = _current_timeline(db, user, request)
     if timeline is None:
         return blocked_result(
             request,

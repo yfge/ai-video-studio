@@ -1,6 +1,7 @@
 /**
  * Task-related type definitions.
  */
+import type { ProductionCanvasResolvedContext } from "./production-canvas.types";
 
 // Task status enum
 type TaskStatus =
@@ -18,6 +19,7 @@ export interface Task {
   task_type?: string;
   prompt?: string;
   parameters?: Record<string, unknown> | null;
+  result_context?: ProductionCanvasResolvedContext | null;
   status: TaskStatus;
   progress_detail?: string;
   created_at: string;

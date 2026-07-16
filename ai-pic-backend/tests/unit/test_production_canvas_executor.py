@@ -2,23 +2,26 @@ from __future__ import annotations
 
 import json
 
-from app.models.task import Task, TaskStatus, TaskType
 from app.models.story_structure import Environment
+from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
 from app.models.video_generation_task import (
     VideoGenerationTask,
     VideoGenerationTaskStatus,
 )
-from app.models.virtual_ip import VirtualIP
+from app.models.virtual_ip import VirtualIP, VirtualIPEnvironment
 from app.schemas.production_canvas import (
+    ProductionCanvasNodeExecution,
     ProductionCanvasPlanRequest,
     ProductionCanvasSavedEdge,
     ProductionCanvasSavedNode,
     ProductionCanvasSavedState,
     ProductionCanvasSkillExecuteRequest,
+    ProductionCanvasSkillResult,
     ProductionCanvasViewport,
 )
 from app.services.production_canvas.executor import execute_canvas_skill
+from app.services.production_canvas.graph_runtime import apply_canvas_node_execution
 from app.services.production_canvas.run_persistence import (
     attach_canvas_run,
     persist_canvas_skill_run,
@@ -60,6 +63,18 @@ def test_canvas_brief_and_asset_skills_execute_without_dispatcher_gap(db_session
     db_session.commit()
     db_session.refresh(virtual_ip)
     db_session.refresh(environment)
+    db_session.add(
+        VirtualIPEnvironment(
+            user_id=user.id,
+            virtual_ip_id=virtual_ip.id,
+            virtual_ip_business_id=virtual_ip.business_id,
+            environment_id=environment.id,
+            environment_business_id=environment.business_id,
+            usage_type="main_scene",
+            is_default=True,
+        )
+    )
+    db_session.commit()
 
     brief = execute_canvas_skill(
         db_session,
@@ -89,6 +104,64 @@ def test_canvas_brief_and_asset_skills_execute_without_dispatcher_gap(db_session
     assert assets.skill_result.outputs["virtual_ip_ids"] == [virtual_ip.id]
     assert assets.skill_result.outputs["environment_ids"] == [environment.id]
     assert "dispatcher" not in assets.skill_result.outputs.get("required_inputs", [])
+
+
+def test_graph_execution_drops_stale_clip_before_downstream_resolution():
+    state = ProductionCanvasSavedState(
+        nodes=[
+            ProductionCanvasSavedNode(
+                id="timeline",
+                label="Timeline",
+                title="Timeline",
+                status="review",
+                x=0,
+                y=0,
+                width=200,
+                kind="pipeline",
+                skill="timeline.build",
+                outputs={
+                    "story_id": 60,
+                    "episode_id": 170,
+                    "script_id": 140,
+                    "timeline_id": 501,
+                    "timeline_version": 7,
+                    "clip_id": "old-clip",
+                    "provider_evidence": "keep-me",
+                },
+            )
+        ],
+        viewport=ProductionCanvasViewport(x=0, y=0, zoom=1),
+    )
+    updated = apply_canvas_node_execution(
+        state,
+        ProductionCanvasNodeExecution(
+            node_id="timeline",
+            resolved_context={
+                "story_id": 61,
+                "episode_id": 175,
+                "script_id": 301,
+                "timeline_id": 502,
+                "timeline_version": 1,
+            },
+            skill_result=ProductionCanvasSkillResult(
+                skill="timeline.build",
+                label="Timeline",
+                status="review",
+                title="Timeline",
+                detail="新版本",
+                outputs={"timeline_id": 502, "timeline_version": 1},
+            ),
+        ),
+    )
+
+    assert updated.nodes[0].outputs == {
+        "provider_evidence": "keep-me",
+        "story_id": 61,
+        "episode_id": 175,
+        "script_id": 301,
+        "timeline_id": 502,
+        "timeline_version": 1,
+    }
 
 
 def test_canvas_report_summarizes_run_state_without_task_context(db_session):
@@ -170,7 +243,9 @@ def test_canvas_report_summarizes_run_state_without_task_context(db_session):
             ],
             viewport=ProductionCanvasViewport(x=0, y=0, zoom=1),
             selected_node_id="note-1",
-            edges=[ProductionCanvasSavedEdge(from_node="skill-script", to_node="note-1")],
+            edges=[
+                ProductionCanvasSavedEdge(from_node="skill-script", to_node="note-1")
+            ],
         ),
     )
 

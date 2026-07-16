@@ -2,12 +2,16 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from app.repositories.script_repository import (
+    EpisodeRepository,
+    ScriptRepository,
+    StoryRepository,
+)
+from app.services.task_agent_run.timeline_refs import domain_ref_for_script
 from app.services.task_agent_run.utils import parse_result_id, safe_dict
 
 
 def build_story_agent_run(db, task, *, user_id: int) -> Dict[str, Any]:
-    from app.models.script import Story
-
     story_id_str = parse_result_id(task.result_file_path, prefix="story")
     if not story_id_str:
         return {}
@@ -16,9 +20,7 @@ def build_story_agent_run(db, task, *, user_id: int) -> Dict[str, Any]:
     except (TypeError, ValueError):
         return {}
 
-    story: Story | None = (
-        db.query(Story).filter(Story.id == story_id, Story.user_id == user_id).first()
-    )
+    story = StoryRepository(db).get_by_user(story_id, user_id=user_id)
     if not story:
         return {}
 
@@ -42,16 +44,10 @@ def build_episode_agent_run(
     story_id: int | None,
     created_episode_ids: list[int],
 ) -> Dict[str, Any]:
-    from app.models.script import Episode, Story
-
     outline_payload: Dict[str, Any] | None = None
-    story: Story | None = None
+    story = None
     if story_id is not None:
-        story = (
-            db.query(Story)
-            .filter(Story.id == story_id, Story.user_id == user_id)
-            .first()
-        )
+        story = StoryRepository(db).get_by_user(story_id, user_id=user_id)
     if story:
         story_meta = safe_dict(getattr(story, "extra_metadata", None))
         outlines = safe_dict(story_meta.get("episode_step_outlines"))
@@ -64,12 +60,17 @@ def build_episode_agent_run(
 
     episode_runs: List[Dict[str, Any]] = []
     if created_episode_ids:
-        episodes = (
-            db.query(Episode)
-            .join(Story, Episode.story_id == Story.id)
-            .filter(Episode.id.in_(created_episode_ids), Story.user_id == user_id)
-            .all()
-        )
+        repository = EpisodeRepository(db)
+        episodes = [
+            episode
+            for episode_id in created_episode_ids
+            if (
+                episode := repository.get_with_story(
+                    episode_id=episode_id,
+                    user_id=user_id,
+                )
+            )
+        ]
         for ep in sorted(
             episodes, key=lambda e: (getattr(e, "episode_number", 0) or 0, e.id)
         ):
@@ -100,15 +101,10 @@ def build_episode_agent_run(
     return payload
 
 
-def build_script_agent_run(db, task, *, user_id: int, script_id: int) -> Dict[str, Any]:
-    from app.models.script import Episode, Script, Story
-
-    script: Script | None = (
-        db.query(Script)
-        .join(Episode, Script.episode_id == Episode.id)
-        .join(Story, Episode.story_id == Story.id)
-        .filter(Script.id == script_id, Story.user_id == user_id)
-        .first()
+def build_script_run(db, task, *, user_id: int, script_id: int) -> Dict[str, Any]:
+    script = ScriptRepository(db).get_with_relations(
+        script_id=script_id,
+        user_id=user_id,
     )
     if not script:
         return {}
@@ -123,6 +119,7 @@ def build_script_agent_run(db, task, *, user_id: int, script_id: int) -> Dict[st
         "script_business_id": getattr(script, "business_id", None),
         "episode_id": getattr(script, "episode_id", None),
         "episode_business_id": getattr(script, "episode_business_id", None),
+        **domain_ref_for_script(db, script),
     }
     return agent_run
 

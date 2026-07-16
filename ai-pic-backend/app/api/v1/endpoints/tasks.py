@@ -7,6 +7,7 @@ from app.models.task import TASK_STATUS_TRANSITIONS, Task, TaskStatus, TaskType
 from app.models.user import User
 from app.repositories.task_repository import TaskRepository
 from app.schemas.task import TaskCreate, TaskList, TaskResponse, TaskUpdate
+from app.services.task_result_context import build_task_result_context
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -44,6 +45,11 @@ def _serialize_task(task: Task) -> TaskResponse:
         progress_detail=progress_detail,
         created_at=task.created_at,
         updated_at=task.updated_at,
+        result_context=build_task_result_context(
+            task_id=task.id,
+            parameters=params,
+            result_file_path=task.result_file_path,
+        ),
     )
 
 

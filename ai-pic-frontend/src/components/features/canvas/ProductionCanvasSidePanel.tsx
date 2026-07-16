@@ -16,6 +16,7 @@ type NodeToolsProps = ComponentProps<typeof ProductionCanvasNodeTools>;
 export function ProductionCanvasSidePanel({
   accessRole,
   capabilities,
+  captureCanvasStateIdentity,
   edges,
   executionError,
   executingNodeId,
@@ -36,6 +37,7 @@ export function ProductionCanvasSidePanel({
   onUpdateNode,
   onUpdateNodeOutputs,
   onCanvasStateUpdated,
+  onDomainContextResolved,
   refreshError,
   refreshingTasks,
   retryingNodeId,
@@ -45,6 +47,7 @@ export function ProductionCanvasSidePanel({
 }: {
   accessRole: ProductionCanvasAccessRole | null;
   capabilities: ProductionCanvasCapabilities;
+  captureCanvasStateIdentity: NodeToolsProps["captureCanvasStateIdentity"];
   edges: ProductionCanvasEdge[];
   executionError?: string | null;
   executingNodeId?: string | null;
@@ -65,6 +68,7 @@ export function ProductionCanvasSidePanel({
   onUpdateNode: (nodeId: string, patch: Partial<ProductionCanvasNode>) => void;
   onUpdateNodeOutputs: NodeToolsProps["onUpdateNodeOutputs"];
   onCanvasStateUpdated: NodeToolsProps["onCanvasStateUpdated"];
+  onDomainContextResolved?: NodeToolsProps["onDomainContextResolved"];
   refreshError?: string | null;
   refreshingTasks?: boolean;
   retryingNodeId?: string | null;
@@ -89,6 +93,7 @@ export function ProductionCanvasSidePanel({
         canApprove={capabilities.approve}
         canEdit={capabilities.edit}
         canExecute={capabilities.execute}
+        captureCanvasStateIdentity={captureCanvasStateIdentity}
         edges={edges}
         node={node}
         nodes={nodes}
@@ -103,6 +108,7 @@ export function ProductionCanvasSidePanel({
         onUpdateNode={onUpdateNode}
         onUpdateNodeOutputs={onUpdateNodeOutputs}
         onCanvasStateUpdated={onCanvasStateUpdated}
+        onDomainContextResolved={onDomainContextResolved}
         refreshError={refreshError}
         refreshingTasks={refreshingTasks}
         retryingNode={retryingNodeId === node?.id}

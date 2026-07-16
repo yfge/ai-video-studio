@@ -1,4 +1,5 @@
 import type { RefObject } from "react";
+import type { ProductionCanvasResolvedContext } from "@/utils/api/types";
 import type {
   ProductionCanvasEdge,
   ProductionCanvasNode,
@@ -19,6 +20,7 @@ import {
   toggleProductionCanvasSection,
 } from "./productionCanvasSections";
 import type { ProductionCanvasDefinitionSetter } from "./useProductionCanvasHistory";
+import type { ProductionCanvasState } from "./productionCanvasState";
 import { useProductionCanvasSelectionActions } from "./useProductionCanvasSelectionActions";
 import { insertProductionCanvasTemplate } from "./productionCanvasTemplates";
 import {
@@ -26,6 +28,64 @@ import {
   productionCanvasPlanEdges,
   withoutProductionCanvasPlaceholders,
 } from "./productionCanvasPlanGraph";
+
+export function appendProductionCanvasNodes(
+  state: ProductionCanvasState,
+  nodes: ProductionCanvasNode[],
+  resolvedContext?: ProductionCanvasResolvedContext,
+): ProductionCanvasState {
+  if (!nodes.length) return state;
+  const isPlan = isProductionCanvasPlanBatch(nodes);
+  const incomingIds = new Set(nodes.map((node) => node.id));
+  const retainedNodes = (
+    isPlan ? withoutProductionCanvasPlaceholders(state.nodes) : state.nodes
+  ).filter((node) => !incomingIds.has(node.id));
+  const mergedNodes = [...retainedNodes, ...nodes];
+  const mergedNodeIds = new Set(mergedNodes.map((node) => node.id));
+  const retainedEdges = state.edges.filter(
+    (edge) =>
+      mergedNodeIds.has(edge.from) &&
+      mergedNodeIds.has(edge.to) &&
+      !incomingIds.has(edge.from) &&
+      !incomingIds.has(edge.to),
+  );
+  const taskPublication = nodes.some(
+    (node) =>
+      node.kind === "note" &&
+      typeof node.outputs?.source_node_id === "string" &&
+      (typeof node.outputs?.task_id === "number" ||
+        typeof node.outputs?.render_job_id === "number"),
+  );
+  const selectedNodeId =
+    taskPublication && mergedNodeIds.has(state.selectedNodeId)
+      ? state.selectedNodeId
+      : nodes[0]?.id || state.selectedNodeId;
+  const incomingContextRevision = Math.max(
+    0,
+    ...nodes.map((node) =>
+      typeof node.outputs?.resolved_context_revision === "number"
+        ? node.outputs.resolved_context_revision
+        : 0,
+    ),
+  );
+  return {
+    ...state,
+    nodes: applyProductionCanvasContext(mergedNodes, resolvedContext),
+    edges: isPlan
+      ? [...retainedEdges, ...productionCanvasPlanEdges(nodes)]
+      : state.edges,
+    sections: (state.sections || []).map((section) => ({
+      ...section,
+      nodeIds: section.nodeIds.filter((nodeId) => mergedNodeIds.has(nodeId)),
+    })),
+    selectedNodeId,
+    selectedNodeIds: [selectedNodeId],
+    resolvedContextRevision: Math.max(
+      state.resolvedContextRevision || 0,
+      incomingContextRevision,
+    ),
+  };
+}
 
 export function useProductionCanvasDefinitionActions({
   canvasRef,
@@ -96,40 +156,14 @@ export function useProductionCanvasDefinitionActions({
     });
     canvasRef.current?.focus({ preventScroll: true });
   };
-  const appendNodes = (nodes: ProductionCanvasNode[]) => {
+  const appendNodes = (
+    nodes: ProductionCanvasNode[],
+    resolvedContext?: ProductionCanvasResolvedContext,
+  ) => {
     if (!nodes.length) return;
-    setCanvasDefinition((state) => {
-      const isPlan = isProductionCanvasPlanBatch(nodes);
-      const incomingIds = new Set(nodes.map((node) => node.id));
-      const retainedNodes = (
-        isPlan ? withoutProductionCanvasPlaceholders(state.nodes) : state.nodes
-      ).filter((node) => !incomingIds.has(node.id));
-      const mergedNodes = [...retainedNodes, ...nodes];
-      const mergedNodeIds = new Set(mergedNodes.map((node) => node.id));
-      const retainedEdges = state.edges.filter(
-        (edge) =>
-          mergedNodeIds.has(edge.from) &&
-          mergedNodeIds.has(edge.to) &&
-          !incomingIds.has(edge.from) &&
-          !incomingIds.has(edge.to),
-      );
-      const selectedNodeId = nodes[0]?.id || state.selectedNodeId;
-      return {
-        ...state,
-        nodes: applyProductionCanvasContext(mergedNodes),
-        edges: isPlan
-          ? [...retainedEdges, ...productionCanvasPlanEdges(nodes)]
-          : state.edges,
-        sections: (state.sections || []).map((section) => ({
-          ...section,
-          nodeIds: section.nodeIds.filter((nodeId) =>
-            mergedNodeIds.has(nodeId),
-          ),
-        })),
-        selectedNodeId,
-        selectedNodeIds: [selectedNodeId],
-      };
-    });
+    setCanvasDefinition((state) =>
+      appendProductionCanvasNodes(state, nodes, resolvedContext),
+    );
   };
   const handleInsertTemplate = (templateId: string) => {
     setCanvasDefinition((state) =>

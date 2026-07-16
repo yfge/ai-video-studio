@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ProductionCanvasResolvedContext } from "@/utils/api/types";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
 import { updateProductionCanvasNode } from "./productionCanvasGraphState";
 import { selectProductionCanvasNode } from "./productionCanvasSelection";
-import { createProductionCanvasState } from "./productionCanvasState";
+import {
+  applyProductionCanvasContext,
+  createProductionCanvasState,
+} from "./productionCanvasState";
 import {
   CANVAS_BASE_HEIGHT,
   CANVAS_BASE_WIDTH,
@@ -71,6 +75,11 @@ export function useProductionCanvasController(
       ...state,
       nodes: updateProductionCanvasNode(state.nodes, nodeId, patch),
     }));
+  const applyResolvedContext = (context: ProductionCanvasResolvedContext) =>
+    setCanvasState((state) => ({
+      ...state,
+      nodes: applyProductionCanvasContext(state.nodes, context),
+    }));
   const handleReset = () => {
     replaceCanvasState(createProductionCanvasState());
     if (storageKey && typeof window !== "undefined") {
@@ -136,6 +145,7 @@ export function useProductionCanvasController(
     canRedo: history.canRedo,
     canUndo: history.canUndo,
     clearHistory: history.clearHistory,
+    applyResolvedContext,
     handleCanvasKeyDown,
     handleFocusSelectedNode,
     handleNavigate,

@@ -1,9 +1,9 @@
 # Production Canvas Design
 
-> Status: Implemented through Phase 4; consolidated release validation remains
+> Status: Implemented through Phase 6; consolidated release validation remains
 > open
 >
-> Last updated: 2026-07-12
+> Last updated: 2026-07-15
 
 ## Product Decision
 
@@ -45,7 +45,7 @@ supporting interactions, not the product outcome.
 
 ## Research Basis
 
-The design combines patterns from three product categories.
+The design combines patterns from four product categories.
 
 ### Spatial collaboration
 
@@ -100,6 +100,32 @@ Sources:
 - https://www.magnific.com/ru/ai/docs/getting-started-with-spaces
 - https://ltx.io/studio/platform/ai-movie-maker
 
+### Hierarchical navigation on an infinite canvas
+
+- React Flow distinguishes layouted sub-flows from graph edges and shows
+  expand/collapse as a projection of a complete graph, so a UI parent or hidden
+  descendant is not treated as a new business relationship.
+- Miro combines diagram connectors with mind-map expand/collapse and child
+  counts, supporting progressive disclosure without removing source data.
+- Figma keeps parent/child structure visible in a synchronized Layers panel and
+  uses sections to organize large canvas regions without redefining the
+  underlying content.
+
+Use these patterns for stable column placement, progressive disclosure, and
+outline-to-canvas focus. Do not copy example code or overload layout ownership
+with domain ownership.
+
+Sources:
+
+- https://reactflow.dev/learn/layouting/sub-flows
+- https://reactflow.dev/examples/layout/expand-collapse
+- https://reactflow.dev/learn/layouting/layouting
+- https://help.miro.com/hc/en-us/articles/25275263961874-Miro-Diagrams
+- https://help.miro.com/hc/en-us/articles/360017730753-Mind-map
+- https://help.figma.com/hc/en-us/articles/360039831974-View-layers-and-assets-in-the-Layers-Panel
+- https://help.figma.com/hc/en-us/articles/9771500257687-Organize-your-canvas-with-sections
+- https://help.figma.com/hc/en-us/articles/360039959014-Parent-child-and-sibling-relationships
+
 ## Product Principles
 
 ### Domain concepts over infrastructure concepts
@@ -137,7 +163,38 @@ an explicit operation against a stable `clip_id` and Timeline version.
 ## Information Architecture
 
 Large productions should not be represented as one flat graph. The canvas uses
-four visible levels.
+two complementary projections. The entity hierarchy answers where production
+content belongs and lets an operator navigate it. The executable DAG answers
+what depends on what and what can run. They share stable domain identifiers but
+remain independent views, and the operator can switch between them without
+rewriting either graph.
+
+The entity hierarchy uses six stable left-to-right columns:
+
+| Column      | Displayed entity                  | Truthful relation                                                           |
+| ----------- | --------------------------------- | --------------------------------------------------------------------------- |
+| IP          | Virtual IP                        | Root production context                                                     |
+| Environment | Reusable environment resource     | Available to the IP; it is not owned by a Story                             |
+| Story       | Story                             | References a participating IP                                               |
+| Episode     | Episode                           | Belongs to a Story                                                          |
+| Storyboard  | Timeline `video` clip             | Stable shot/storyboard identity from the Episode Timeline                   |
+| Video       | Current-version video media asset | Bound to a stable Timeline version and `clip_id` through clip-asset lineage |
+
+The truthful primary chain is:
+
+```text
+IP -> Story -> Episode -> Timeline video clip -> video asset
+```
+
+Environment nodes form the IP's reusable resource pool. A dashed reference edge
+may show that a Story can use an Environment, but the canvas must not fabricate
+`Environment -> Story` ownership because the current model has no such relation.
+The Environment column remains visible between IP and Story so operators can
+inspect available production context while the edge style preserves the real
+semantics.
+
+Within the executable projection, the canvas continues to use four visible
+levels.
 
 | Level                 | Purpose                           | Examples                                                                               |
 | --------------------- | --------------------------------- | -------------------------------------------------------------------------------------- |
@@ -150,6 +207,13 @@ Episode and scene sections provide collapsible spatial grouping. Shot-level
 production stays visible inside or adjacent to its scene. Shared character,
 environment, and style references remain available as explicit graph inputs
 rather than being copied invisibly into every node.
+
+Entity nodes stay in their assigned column and use deterministic vertical
+ordering. Expansion never reinterprets a layout parent as a domain parent.
+Collapsing a node hides its visible descendants but retains them in hierarchy
+state, shows the number hidden, and leaves the executable DAG unchanged. The
+hierarchy outline and canvas selection stay synchronized: selecting either one
+focuses the same stable entity identity in the other.
 
 ## Node Model
 
@@ -313,6 +377,32 @@ requires:
 - Contextual node actions instead of a permanently dense global toolbar.
 - Raw backend and provider diagnostics behind an explicit advanced view.
 
+### Domain hierarchy interaction contract
+
+- `/canvas` without a Run ID opens the entity hierarchy first. A deep link with
+  a Run ID opens the executable graph so shared execution and review links keep
+  their existing meaning.
+- The view switch changes only the projection. It does not convert entity
+  relations into executable bindings or mutate a saved run.
+- Initial load fetches IP roots. Child collections load progressively when the
+  operator expands an IP, Story, Episode, or Timeline clip. A collapsed node
+  retains loaded data and displays its hidden descendant count.
+- Each entity type stays in its fixed column across expand, collapse, refresh,
+  and refocus operations. New children receive deterministic vertical positions
+  so unrelated branches do not jump.
+- The outline mirrors the visible hierarchy. Selecting an outline row selects
+  and focuses the matching canvas node; selecting a canvas node highlights the
+  same outline row.
+- Solid labelled edges represent ownership or stable containment, arrowed
+  production edges represent Timeline clip-to-asset lineage, and dashed labelled
+  edges represent reusable references such as an IP Environment available to a
+  Story. Meaning is never conveyed by color alone.
+- Storyboard entities come from Timeline `video` clips, not from a second
+  independent storyboard identity. Video children come from the matching
+  Timeline version and stable `clip_id` asset bindings.
+- Empty, loading, and failed branches remain local to the expanded node. One
+  failed branch does not replace the complete hierarchy with a global error.
+
 ## Persistence And API Contract
 
 The saved canvas run must separate definition, review, and execution history:
@@ -353,7 +443,7 @@ must already identify who changed definitions and who approved outputs.
 
 ## Current State And Gap
 
-As of 2026-07-12, Phases 1-3 are implemented on the real `/canvas` route:
+As of 2026-07-15, Phases 1-5 are implemented on the real `/canvas` route:
 
 - The backend validates versioned typed ports and edges, computes readiness
   from graph dependencies, resolves bound inputs into existing skill requests,
@@ -406,6 +496,12 @@ As of 2026-07-12, Phases 1-3 are implemented on the real `/canvas` route:
   and production context without exposing service or worker implementation.
 - Task attempts and media assets remain execution evidence; the saved graph and
   review state remain the current orchestration definition.
+- The independent six-column entity hierarchy progressively resolves IP,
+  Environment resources, Stories, Episodes, Timeline clips, and exact-version
+  video assets while keeping saved executable Runs unchanged. It shares a typed
+  domain context with one-sentence planning, so either view can identify the
+  same Story, Episode, Script, Timeline version, and stable clip without merging
+  the hierarchy projection into the executable graph.
 
 The remaining release gap is deliberately outside the completed feature phases:
 
@@ -482,6 +578,116 @@ Large-production performance contract:
 
 Exit criterion: a production team can review, approve, and reuse workflows
 without sharing operator credentials or rebuilding graph structure manually.
+
+### Phase 5: Domain entity hierarchy and navigation
+
+Status: Implemented. Automated acceptance and a real-browser traversal are
+recorded under `artifacts/runs/canvas-domain-hierarchy-20260715/`. Chrome DevTools
+transport returned HTTP 404 at `/json/version`, so the browser result is
+explicitly recorded as a degraded Playwright fallback, not Chrome verification.
+
+- Add a read-only entity projection with fixed `IP / Environment / Story /
+Episode / Storyboard / Video` columns.
+- Load the real primary chain `IP -> Story -> Episode -> Timeline video clip ->
+video asset` from existing APIs and Timeline clip-asset lineage.
+- Display IP Environments as reusable resources and optional dashed references,
+  never as fabricated Story ownership.
+- Keep the entity hierarchy and executable DAG as independent, switchable views.
+- Add progressive expansion and collapse, hidden counts, deterministic layout,
+  and synchronized hierarchy outline navigation.
+- Preserve Timeline as the single source of truth for Storyboard clip identity,
+  video binding, ordering, and version.
+
+Exit criterion: an operator starts from an IP, navigates to a bound video asset
+through real Story, Episode, and Timeline identities, and returns to the
+executable DAG without copying an ID, losing the selected entity, or mutating
+the saved run.
+
+Executable acceptance:
+
+- Opening `/canvas` without a Run ID displays all six labelled columns and real
+  IP roots; opening a saved Run deep link displays that run's executable DAG.
+- Expanding an IP loads its reusable Environments and participating Stories.
+  The graph draws `IP -> Story` as the primary relation and does not draw or
+  imply Environment ownership of a Story.
+- Expanding a Story loads only its Episodes. Expanding an Episode loads stable
+  `video` clips from the authoritative Timeline. Expanding a clip loads only
+  video assets bound to the same Timeline version and `clip_id`.
+- Collapsing any expanded branch hides its descendants, reports the hidden
+  count, and restores the same stable positions and identities when reopened.
+- Clicking an outline item focuses the matching canvas node, and clicking a
+  canvas node highlights the matching outline item. Shared entities selected
+  through an outline branch keep that branch's IP context.
+- Solid ownership, dashed reference, and arrowed production edges carry visible
+  text labels and remain distinguishable without relying on color.
+- Switching between hierarchy and execution views leaves the executable graph,
+  approvals, Timeline bindings, and hierarchy expansion state unchanged.
+- Editing a Run ID remains a local draft. The URL changes only after a Run is
+  restored, saved, or created successfully, without remounting the canvas session.
+  If routing selects a newer Run while an older request is busy, only the newest
+  request may update canvas state and URL identity. Run actions, candidate review
+  mutations, and candidate loads capture the current Run identity and operation
+  epoch; a response captured before a route or persistence change is discarded.
+  Route-attempt deduplication is separate from the confirmed Run identity, which
+  changes only after a successful restore.
+- Frontend tests cover relation truth, fixed-column layout, progressive loading,
+  collapse counts, outline focus, view switching, and Run deep-link routing.
+- Real-browser evidence records the six-column traversal, semantic edges,
+  collapse/restore, synchronized outline, view switching, console state, and
+  successful API responses under `artifacts/runs/<run_id>/`.
+
+### Phase 6: One-sentence generation and hierarchy closure
+
+Status: Implemented.
+
+- Use one typed context across plan, execute, persisted Run nodes, Task results,
+  manual hierarchy selection, and automatic hierarchy reveal:
+  `virtual_ip_id / environment_id / story_id / episode_id / script_id /
+timeline_id / timeline_version / clip_id / task_id`.
+- Resolve explicit IDs first and validate their ownership and lineage. Without
+  explicit IDs, match an accessible Story by title/tags and only parse an
+  unambiguous `第 N 集`; never guess between ambiguous Stories or silently create
+  a Story/Episode as a side effect of planning.
+- Return `resolved_context` from planning and persist it as the Run request
+  context. Return normalized `result_context` from Task responses while keeping
+  historical `agent_run.result_ref` and `result_file_path` readable.
+- Feed generated Script/Timeline/clip identities back into execution nodes and
+  the Board context. A monotonic revision then reloads and expands the entity
+  projection to the deepest known Story, Episode, Timeline storyboard, or video
+  node; an older request cannot overwrite a newer reveal.
+- Merge partial Run, Task, and browser contexts by lineage. When an upstream
+  Story/Episode/Script/Timeline/version changes, descendants omitted by the new
+  source are cleared instead of combining a new Timeline with an old clip.
+  Late plan, execute, task, and render responses are scoped to their captured
+  Run and operation identity before they may publish nodes or context.
+- Selecting a hierarchy node writes the full domain lineage back to one-sentence
+  planning. A selected Environment is retained while navigating within the same
+  IP, but remains a reusable IP resource rather than fabricated Story ownership.
+- When both IP and Environment are present, the Environment must belong to that
+  IP's `VirtualIPEnvironment` pool. An IP with no linked Environment remains
+  unbound instead of silently borrowing an unrelated account Environment;
+  Environment-only planning remains supported before an IP is selected.
+- Keep image/video candidate approval and Timeline placement explicit. Context
+  closure enables continuation and navigation; it does not silently approve
+  media or spend provider budget on downstream generation.
+
+Exit criterion: an operator can start with a one-sentence instruction tied to a
+real Story/Episode, receive the generated Script/Timeline identifiers, and see
+the corresponding hierarchy branch refresh, expand, and focus without copying
+an ID. Selecting that branch must supply the same identifiers to the next plan
+or execution request.
+
+Current-environment acceptance is recorded under
+`artifacts/runs/canvas-one-sentence-hierarchy-closure-20260715/`. The real plan
+resolved Story `61` / Episode `174`; selecting its stable Timeline clip fed
+Script `144`, Timeline `70` v6, and
+`video_scene_584_beat_4176_001` into the next plan and execution requests, after
+which the hierarchy focused video asset `#353`. Task `6357` returned the same
+nine-field `result_context`, and a clean Run deep-link reload had no console or
+API failures. Chrome DevTools transport returned HTTP 404 at `/json/version`,
+so the evidence names the Playwright fallback explicitly. Provider execution
+was stubbed to avoid paid generation; Plan, Run, Task, and hierarchy reads were
+real.
 
 ## First Vertical-Slice Acceptance Criteria
 

@@ -2,6 +2,7 @@ import json
 
 from app.models.script import Episode, Script, Story
 from app.models.task import Task, TaskStatus, TaskType
+from app.models.timeline import Timeline
 from app.models.user import User
 from app.services.task_agent_run import persist_task_agent_run
 
@@ -197,6 +198,19 @@ def test_persist_task_agent_run_script(db_session):
     db_session.commit()
     db_session.refresh(script)
 
+    timeline = Timeline(
+        episode_id=episode.id,
+        script_id=script.id,
+        title="Timeline 1",
+        status="ready",
+        spec={"tracks": []},
+        version=3,
+        created_by=user.id,
+    )
+    db_session.add(timeline)
+    db_session.commit()
+    db_session.refresh(timeline)
+
     task = Task(
         title="生成剧本",
         task_type=TaskType.SCRIPT_GENERATION,
@@ -221,3 +235,6 @@ def test_persist_task_agent_run_script(db_session):
     assert params["agent_run"]["provider_used"] == "minimax"
     assert params["agent_run"]["prompt"] == "script prompt"
     assert params["agent_run"]["result_ref"]["script_id"] == script.id
+    assert params["agent_run"]["result_ref"]["story_id"] == story.id
+    assert params["agent_run"]["result_ref"]["timeline_id"] == timeline.id
+    assert params["agent_run"]["result_ref"]["timeline_version"] == 3

@@ -61,7 +61,6 @@ describe("production canvas selection", () => {
 
     assert.equal(duplicated.nodes.length, state.nodes.length + 2);
     assert.deepEqual(scriptCopy?.outputs, {
-      episode_id: 12,
       video_duration: 5,
     });
     assert.equal(scriptCopy?.selectedOutputId, undefined);

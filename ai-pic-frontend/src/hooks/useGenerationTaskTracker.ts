@@ -37,7 +37,9 @@ export function isGenerationTaskActive(
 export function useGenerationTaskTracker<K extends string>({
   labels,
   onCompleted,
+  onCancelled,
   onFailed,
+  onTimeout,
   onNotify,
   pollIntervalMs = POLL_INTERVAL_MS,
   maxPollMs = MAX_POLL_MS,
@@ -48,11 +50,17 @@ export function useGenerationTaskTracker<K extends string>({
     taskId: number,
     task: Task | null,
   ) => void | Promise<void>;
+  onCancelled?: (
+    kind: K,
+    taskId: number,
+    task: Task | null,
+  ) => void | Promise<void>;
   onFailed?: (
     kind: K,
     taskId: number,
     error: string | null,
   ) => void | Promise<void>;
+  onTimeout?: (kind: K, taskId: number) => void | Promise<void>;
   onNotify?: (message: string, variant: NotifyVariant) => void;
   pollIntervalMs?: number;
   maxPollMs?: number;
@@ -63,16 +71,20 @@ export function useGenerationTaskTracker<K extends string>({
   const timersRef = useRef(new Map<K, ReturnType<typeof setTimeout>>());
   const mountedRef = useRef(true);
   const onCompletedRef = useRef(onCompleted);
+  const onCancelledRef = useRef(onCancelled);
   const onFailedRef = useRef(onFailed);
   const onNotifyRef = useRef(onNotify);
+  const onTimeoutRef = useRef(onTimeout);
   const labelsRef = useRef(labels);
 
   useEffect(() => {
     onCompletedRef.current = onCompleted;
+    onCancelledRef.current = onCancelled;
     onFailedRef.current = onFailed;
     onNotifyRef.current = onNotify;
+    onTimeoutRef.current = onTimeout;
     labelsRef.current = labels;
-  }, [labels, onCompleted, onFailed, onNotify]);
+  }, [labels, onCancelled, onCompleted, onFailed, onNotify, onTimeout]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -113,11 +125,15 @@ export function useGenerationTaskTracker<K extends string>({
           "error",
         );
         void onFailedRef.current?.(kind, taskId, error);
+      } else if (phase === "cancelled") {
+        onNotifyRef.current?.(`${label}任务 #${taskId} 已取消`, "warning");
+        void onCancelledRef.current?.(kind, taskId, task);
       } else if (phase === "timeout") {
         onNotifyRef.current?.(
           `${label}任务 #${taskId} 等待超时，请稍后在任务列表查看`,
           "warning",
         );
+        void onTimeoutRef.current?.(kind, taskId);
       }
     },
     [labelFor],

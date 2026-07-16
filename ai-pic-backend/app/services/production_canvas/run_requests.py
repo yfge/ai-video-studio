@@ -24,19 +24,56 @@ def _first_number(outputs: dict, singular: str, plural: str) -> int | None:
     return None
 
 
-def request_for_canvas_node(
-    run: ProductionCanvasRunResponse,
+def _context_number(
+    context: object,
+    outputs: dict,
+    singular: str,
+    plural: str,
+) -> int | None:
+    value = _first_number(outputs, singular, plural)
+    if value is not None:
+        return value
+    fallback = (
+        context.get(singular)
+        if isinstance(context, dict)
+        else getattr(context, singular, None)
+    )
+    return (
+        fallback
+        if isinstance(fallback, int) and not isinstance(fallback, bool)
+        else None
+    )
+
+
+def _context_string(
+    context: object,
+    outputs: dict,
+    key: str,
+) -> str | None:
+    value = outputs.get(key)
+    if isinstance(value, str) and value:
+        return value
+    fallback = (
+        context.get(key) if isinstance(context, dict) else getattr(context, key, None)
+    )
+    return fallback if isinstance(fallback, str) and fallback else None
+
+
+def request_for_canvas_node_context(
+    base: ProductionCanvasSkillExecuteRequest,
     node: ProductionCanvasSavedNode,
+    context: object,
 ) -> ProductionCanvasSkillExecuteRequest:
     outputs = node.outputs or {}
     prompt = outputs.get("prompt")
     frame_indexes = outputs.get("frame_indexes")
     fps = _number(outputs, "fps")
     return ProductionCanvasSkillExecuteRequest(
-        prompt=prompt if isinstance(prompt, str) and prompt else run.prompt,
+        prompt=prompt if isinstance(prompt, str) and prompt else base.prompt,
         skill=node.skill or "",
-        run_id=run.run_id,
+        run_id=base.run_id,
         node_id=node.id,
+        execution_scope="node",
         frame_indexes=(
             frame_indexes
             if isinstance(frame_indexes, list)
@@ -67,9 +104,44 @@ def request_for_canvas_node(
             if isinstance(outputs.get("camera_fixed"), bool)
             else None
         ),
-        episode_id=_first_number(outputs, "episode_id", "episode_ids"),
-        script_id=_first_number(outputs, "script_id", "script_ids"),
-        task_id=_first_number(outputs, "task_id", "task_ids"),
-        virtual_ip_id=_first_number(outputs, "virtual_ip_id", "virtual_ip_ids"),
-        environment_id=_first_number(outputs, "environment_id", "environment_ids"),
+        start_frame_url=(
+            outputs.get("start_frame_url")
+            if isinstance(outputs.get("start_frame_url"), str)
+            else None
+        ),
+        reference_artifacts=[
+            item
+            for item in outputs.get("reference_artifacts", [])
+            if isinstance(item, str) and item
+        ],
+        virtual_ip_id=_context_number(
+            context, outputs, "virtual_ip_id", "virtual_ip_ids"
+        ),
+        environment_id=_context_number(
+            context, outputs, "environment_id", "environment_ids"
+        ),
+        story_id=_context_number(context, outputs, "story_id", "story_ids"),
+        episode_id=_context_number(context, outputs, "episode_id", "episode_ids"),
+        script_id=_context_number(context, outputs, "script_id", "script_ids"),
+        timeline_id=_context_number(context, outputs, "timeline_id", "timeline_ids"),
+        timeline_version=_context_number(
+            context, outputs, "timeline_version", "timeline_versions"
+        ),
+        clip_id=_context_string(context, outputs, "clip_id"),
+        task_id=_context_number(context, outputs, "task_id", "task_ids"),
+    )
+
+
+def request_for_canvas_node(
+    run: ProductionCanvasRunResponse,
+    node: ProductionCanvasSavedNode,
+) -> ProductionCanvasSkillExecuteRequest:
+    return request_for_canvas_node_context(
+        ProductionCanvasSkillExecuteRequest(
+            prompt=run.prompt,
+            skill=node.skill or "",
+            run_id=run.run_id,
+        ),
+        node,
+        run.resolved_context,
     )

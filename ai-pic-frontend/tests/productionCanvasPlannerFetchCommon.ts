@@ -25,6 +25,7 @@ export function taskData({
   errorMessage,
   id,
   progress,
+  resultContext,
   status,
   taskType,
   title,
@@ -33,6 +34,7 @@ export function taskData({
   errorMessage?: string;
   id: number;
   progress: string;
+  resultContext?: Record<string, unknown>;
   status: string;
   taskType: string;
   title: string;
@@ -50,6 +52,7 @@ export function taskData({
     updated_at: updatedAt,
     user_id: 1,
     parameters: {},
+    ...(resultContext ? { result_context: resultContext } : {}),
   };
 }
 

@@ -56,7 +56,7 @@ describe("ProductionCanvasChatBar", () => {
     assert.equal(button.hasAttribute("disabled"), true);
   });
 
-  it("selects an episode and clears a script from the previous episode", () => {
+  it("selects an episode without keeping a Story from another branch", () => {
     const changes: Array<[string, string]> = [];
     const utils = render(
       <ProductionCanvasChatBar
@@ -83,8 +83,8 @@ describe("ProductionCanvasChatBar", () => {
     });
 
     assert.deepEqual(changes, [
+      ["story_id", ""],
       ["episode_id", "12"],
-      ["script_id", ""],
     ]);
   });
 

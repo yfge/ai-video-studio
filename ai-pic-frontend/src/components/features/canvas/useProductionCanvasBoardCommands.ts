@@ -18,6 +18,7 @@ export function useProductionCanvasBoardCommands({
   handleCanvasKeyDown,
   handleFocusSelectedNode,
   handleReset,
+  onResetContext,
   persistence,
   planner,
   updateCanvasDefinition,
@@ -30,6 +31,7 @@ export function useProductionCanvasBoardCommands({
   handleCanvasKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => void;
   handleFocusSelectedNode: (nodeId?: string) => void;
   handleReset: () => void;
+  onResetContext?: () => void;
   persistence: {
     resetRun: () => void;
     runId: string;
@@ -53,6 +55,7 @@ export function useProductionCanvasBoardCommands({
       if (!canEdit()) return;
       handleReset();
       persistence.resetRun();
+      onResetContext?.();
     });
   const executeSavedNode = useSavedNodeExecution(
     persistence,

@@ -39,6 +39,11 @@ export function installCanvasPlanExecutionFetch(): PlannerFetchStub {
           taskType: "script_generation",
           status: "completed",
           progress: "100%",
+          resultContext: {
+            episode_id: 123,
+            script_id: 321,
+            task_id: 77,
+          },
           updatedAt: "2026-07-02T00:03:00Z",
         }),
       );
@@ -80,6 +85,13 @@ export function installCanvasPlanExecutionFetch(): PlannerFetchStub {
     return jsonResponse({
       run_id: "canvas-run-123",
       task_id: 44,
+      resolved_context: {
+        virtual_ip_id: 1,
+        environment_id: 2,
+        story_id: 10,
+        episode_id: 123,
+        task_id: 44,
+      },
       nodes: planExecutionNodes(),
       selected_assets: {
         virtual_ips: [{ id: 1, name: "林妹妹" }],
@@ -165,7 +177,6 @@ function executedSkillResult(executeRequest: RequestPayload) {
       detail: "后台已通过现有 SCRIPT_GENERATION Celery worker 执行。",
       outputs: {
         episode_id: 123,
-        script_id: 321,
         dispatched_task_id: 77,
         task_status: "pending",
         canvas_run_id: "canvas-run-123",
