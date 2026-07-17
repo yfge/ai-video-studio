@@ -246,6 +246,12 @@ describe("timeline clip rework controls", () => {
       }),
     );
     const videoModelSelect = utils.getByLabelText("视频模型");
+    const visibleVideoControls = dom.window.document.querySelector(
+      '[data-clip-video-primary-controls="visible"]',
+    );
+    assert.ok(visibleVideoControls);
+    assert.ok(visibleVideoControls.contains(videoModelSelect));
+    assert.equal(videoModelSelect.closest("details"), null);
     assert.ok(
       within(videoModelSelect).getByRole("option", { name: "自动选择模型" }),
     );
@@ -502,7 +508,14 @@ describe("timeline clip rework controls", () => {
     assert.equal(videoButton.disabled, true);
     assert.ok(utils.getByText("先完成人工复核"));
 
-    fireEvent.click(utils.getByLabelText("已完成人工复核"));
+    const reviewControl = utils.getByLabelText("已完成人工复核");
+    assert.equal(reviewControl.closest("details"), null);
+    assert.ok(
+      dom.window.document
+        .querySelector('[data-clip-human-review-control="visible"]')
+        ?.contains(reviewControl),
+    );
+    fireEvent.click(reviewControl);
 
     assert.equal(videoButton.disabled, false);
     fireEvent.click(videoButton);

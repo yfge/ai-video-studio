@@ -7,7 +7,10 @@ import type {
 import { ClipProductionActionIcon } from "./ClipProductionActionIcon";
 import { ClipProductionActionShell } from "./ClipProductionActionShell";
 import { CompactProductionDetails } from "./CompactProductionDetails";
-import { VideoReferenceSelect } from "./TimelineClipProviderReworkCardSections";
+import {
+  TimelineClipHumanReviewControl,
+  VideoReferenceSelect,
+} from "./TimelineClipProviderReworkCardSections";
 import type { TimelineVideoReferenceChoice } from "./TimelineClipProviderReworkModel";
 import { TimelineClipVideoBindingSummary } from "./TimelineClipVideoBindingSummary";
 import { TimelineClipTaskStatusLine } from "./TimelineClipTaskStatusLine";
@@ -99,6 +102,33 @@ export function TimelineClipVideoReworkCard({
       tone="primary"
     >
       <div
+        data-clip-video-primary-controls="visible"
+        className={VIDEO_FIELD_GRID_CLASS}
+      >
+        <VideoModelSelect
+          value={model}
+          videoModels={videoModels}
+          videoModelsLoading={videoModelsLoading}
+          onChange={onModelChange}
+        />
+        <label className={VIDEO_LABEL_CLASS}>
+          <span>视频时长</span>
+          <span
+            aria-label="Timeline 视频目标时长"
+            className={`${VIDEO_FIELD_CLASS} flex items-center text-slate-600`}
+          >
+            Timeline 目标 {formatDuration(targetDurationSeconds)} 秒，Provider
+            自动适配并裁切
+          </span>
+        </label>
+      </div>
+      {humanReviewRequired ? (
+        <TimelineClipHumanReviewControl
+          checked={operatorReviewed}
+          onChange={onOperatorReviewedChange}
+        />
+      ) : null}
+      <div
         data-clip-action-group="video"
         className="inline-flex w-full min-w-0 items-center gap-0"
       >
@@ -137,24 +167,6 @@ export function TimelineClipVideoReworkCard({
                 留空则使用 Timeline 镜头运动规划
               </span>
             </label>
-            <div className={VIDEO_FIELD_GRID_CLASS}>
-              <VideoModelSelect
-                value={model}
-                videoModels={videoModels}
-                videoModelsLoading={videoModelsLoading}
-                onChange={onModelChange}
-              />
-              <label className={VIDEO_LABEL_CLASS}>
-                <span>视频时长</span>
-                <span
-                  aria-label="Timeline 视频目标时长"
-                  className={`${VIDEO_FIELD_CLASS} flex items-center text-slate-600`}
-                >
-                  Timeline 目标 {formatDuration(targetDurationSeconds)}{" "}
-                  秒，Provider 自动适配并裁切
-                </span>
-              </label>
-            </div>
             <div className={VIDEO_FIELD_GRID_CLASS}>
               <VideoResolutionSelect
                 value={resolution}
@@ -203,23 +215,6 @@ export function TimelineClipVideoReworkCard({
             manualRefsAvailable={manualReferenceAvailable}
             onChange={onVideoReferenceChoiceChange}
           />
-          {humanReviewRequired ? (
-            <label className="flex items-start gap-2 rounded-md border border-amber-100 bg-amber-50 px-2 py-1.5 text-xs text-amber-800">
-              <input
-                type="checkbox"
-                aria-label="已完成人工复核"
-                checked={operatorReviewed}
-                onChange={(event) =>
-                  onOperatorReviewedChange(event.target.checked)
-                }
-                className="mt-0.5"
-              />
-              <span className="grid gap-0.5">
-                <span className="font-semibold">已完成人工复核</span>
-                <span>确认脚本质量、合规风险和关键帧一致性后再生视频。</span>
-              </span>
-            </label>
-          ) : null}
         </div>
       </details>
       <div className="grid gap-2">

@@ -12,6 +12,33 @@ const VIDEO_REFERENCE_HINTS: Record<TimelineVideoReferenceChoice, string> = {
   manual_refs: "仅使用上方「附加参考图 URL」中的图片作为参考。",
 };
 
+export function TimelineClipHumanReviewControl({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label
+      data-clip-human-review-control="visible"
+      className="flex items-start gap-2 rounded-md border border-amber-100 bg-amber-50 px-2 py-1.5 text-xs text-amber-800"
+    >
+      <input
+        type="checkbox"
+        aria-label="已完成人工复核"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="mt-0.5"
+      />
+      <span className="grid gap-0.5">
+        <span className="font-semibold">已完成人工复核</span>
+        <span>确认脚本质量、合规风险和关键帧一致性后再生视频。</span>
+      </span>
+    </label>
+  );
+}
+
 export function VideoReferenceSelect({
   value,
   storyboardAvailable,
