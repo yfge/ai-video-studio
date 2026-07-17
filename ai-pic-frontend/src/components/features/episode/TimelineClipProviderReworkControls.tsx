@@ -12,7 +12,6 @@ import {
   buildTimelineClipVideoReworkTaskPayload,
   isTimelineVideoClip,
   parseReferenceImagesInput,
-  parseOptionalNumber,
 } from "./TimelineClipProviderReworkModel";
 import {
   timelineClipProductionReadiness,
@@ -51,7 +50,6 @@ export function TimelineClipProviderReworkControls({
   const [action, setAction] = useState<TimelineClipVideoReworkAction>("re_cut");
   const [prompt, setPrompt] = useState("");
   const [model, setModel] = useState("");
-  const [duration, setDuration] = useState("");
   const [resolution, setResolution] = useState("720p");
   const [ratio, setRatio] = useState("");
   const [reason, setReason] = useState("");
@@ -72,7 +70,9 @@ export function TimelineClipProviderReworkControls({
     clipId,
     productionReadiness.storyboardReady,
   );
-  const parsedDuration = parseOptionalNumber(duration);
+  const targetDurationSeconds = item
+    ? Math.max((item.endMs - item.startMs) / 1000, 0.1)
+    : null;
   const referenceImages = parseReferenceImagesInput(referenceImagesInput);
   const { selectedStoryboardVirtualIpIds, handleStoryboardVirtualIpToggle } =
     useTimelineClipStoryboardVirtualIpSelection({
@@ -134,12 +134,6 @@ export function TimelineClipProviderReworkControls({
       onNotify?.(message, "warning");
       return;
     }
-    if (duration.trim() && !parsedDuration) {
-      const message = "请输入有效的视频时长";
-      generationActions.setSubmitError(message);
-      onNotify?.(message, "warning");
-      return;
-    }
     if (!productionReadiness.canGenerateVideo) {
       const message =
         productionReadiness.videoGateMessage || VIDEO_IMAGE_GATE_MESSAGE;
@@ -155,7 +149,6 @@ export function TimelineClipProviderReworkControls({
       action,
       prompt,
       model,
-      duration: parsedDuration,
       resolution,
       ratio,
       reason,
@@ -195,7 +188,7 @@ export function TimelineClipProviderReworkControls({
       action={action}
       prompt={prompt}
       model={model}
-      duration={duration}
+      targetDurationSeconds={targetDurationSeconds}
       resolution={resolution}
       ratio={ratio}
       reason={reason}
@@ -230,7 +223,6 @@ export function TimelineClipProviderReworkControls({
       onActionChange={setAction}
       onPromptChange={setPrompt}
       onModelChange={setModel}
-      onDurationChange={setDuration}
       onResolutionChange={setResolution}
       onRatioChange={setRatio}
       onReasonChange={setReason}

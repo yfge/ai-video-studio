@@ -32,7 +32,7 @@ export function TimelineClipProviderReworkCards({
   action,
   prompt,
   model,
-  duration,
+  targetDurationSeconds,
   resolution,
   ratio,
   reason,
@@ -67,7 +67,6 @@ export function TimelineClipProviderReworkCards({
   onActionChange,
   onPromptChange,
   onModelChange,
-  onDurationChange,
   onResolutionChange,
   onRatioChange,
   onReasonChange,
@@ -85,7 +84,7 @@ export function TimelineClipProviderReworkCards({
   action: TimelineClipVideoReworkAction;
   prompt: string;
   model: string;
-  duration: string;
+  targetDurationSeconds: number | null;
   resolution: string;
   ratio: string;
   reason: string;
@@ -120,7 +119,6 @@ export function TimelineClipProviderReworkCards({
   onActionChange: (value: TimelineClipVideoReworkAction) => void;
   onPromptChange: (value: string) => void;
   onModelChange: (value: string) => void;
-  onDurationChange: (value: string) => void;
   onResolutionChange: (value: string) => void;
   onRatioChange: (value: string) => void;
   onReasonChange: (value: string) => void;
@@ -199,7 +197,7 @@ export function TimelineClipProviderReworkCards({
             action={action}
             prompt={prompt}
             model={model}
-            duration={duration}
+            targetDurationSeconds={targetDurationSeconds}
             resolution={resolution}
             ratio={ratio}
             reason={reason}
@@ -228,7 +226,6 @@ export function TimelineClipProviderReworkCards({
             onActionChange={onActionChange}
             onPromptChange={onPromptChange}
             onModelChange={onModelChange}
-            onDurationChange={onDurationChange}
             onResolutionChange={onResolutionChange}
             onRatioChange={onRatioChange}
             onReasonChange={onReasonChange}

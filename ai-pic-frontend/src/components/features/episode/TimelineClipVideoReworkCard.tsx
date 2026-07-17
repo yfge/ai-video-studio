@@ -26,7 +26,7 @@ export function TimelineClipVideoReworkCard({
   action,
   prompt,
   model,
-  duration,
+  targetDurationSeconds,
   resolution,
   ratio,
   reason,
@@ -51,7 +51,6 @@ export function TimelineClipVideoReworkCard({
   onActionChange,
   onPromptChange,
   onModelChange,
-  onDurationChange,
   onResolutionChange,
   onRatioChange,
   onReasonChange,
@@ -61,7 +60,7 @@ export function TimelineClipVideoReworkCard({
   action: TimelineClipVideoReworkAction;
   prompt: string;
   model: string;
-  duration: string;
+  targetDurationSeconds: number | null;
   resolution: string;
   ratio: string;
   reason: string;
@@ -86,7 +85,6 @@ export function TimelineClipVideoReworkCard({
   onActionChange: (value: TimelineClipVideoReworkAction) => void;
   onPromptChange: (value: string) => void;
   onModelChange: (value: string) => void;
-  onDurationChange: (value: string) => void;
   onResolutionChange: (value: string) => void;
   onRatioChange: (value: string) => void;
   onReasonChange: (value: string) => void;
@@ -147,16 +145,14 @@ export function TimelineClipVideoReworkCard({
                 onChange={onModelChange}
               />
               <label className={VIDEO_LABEL_CLASS}>
-                <span>时长（秒）</span>
-                <input
-                  type="number"
-                  min={0.1}
-                  step={0.1}
-                  value={duration}
-                  onChange={(event) => onDurationChange(event.target.value)}
-                  placeholder="默认用片段时长"
-                  className={VIDEO_FIELD_CLASS}
-                />
+                <span>视频时长</span>
+                <span
+                  aria-label="Timeline 视频目标时长"
+                  className={`${VIDEO_FIELD_CLASS} flex items-center text-slate-600`}
+                >
+                  Timeline 目标 {formatDuration(targetDurationSeconds)}{" "}
+                  秒，Provider 自动适配并裁切
+                </span>
               </label>
             </div>
             <div className={VIDEO_FIELD_GRID_CLASS}>
@@ -246,4 +242,9 @@ export function TimelineClipVideoReworkCard({
       </div>
     </ClipProductionActionShell>
   );
+}
+
+function formatDuration(value: number | null) {
+  if (!value || !Number.isFinite(value)) return "—";
+  return value.toFixed(3).replace(/\.?0+$/, "");
 }

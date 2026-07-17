@@ -29,7 +29,6 @@ export function buildTimelineClipVideoReworkTaskPayload({
   action,
   prompt,
   model,
-  duration,
   resolution,
   ratio,
   reason,
@@ -45,7 +44,6 @@ export function buildTimelineClipVideoReworkTaskPayload({
   action: TimelineClipVideoReworkAction;
   prompt?: string | null;
   model?: string | null;
-  duration?: number | null;
   resolution?: string | null;
   ratio?: string | null;
   reason?: string | null;
@@ -69,9 +67,6 @@ export function buildTimelineClipVideoReworkTaskPayload({
   if (cleanedPrompt) payload.prompt = cleanedPrompt;
   const cleanedModel = model?.trim();
   if (cleanedModel) payload.model = cleanedModel;
-  if (duration && Number.isFinite(duration) && duration > 0) {
-    payload.duration = duration;
-  }
   const cleanedRatio = ratio?.trim();
   if (cleanedRatio) payload.ratio = cleanedRatio;
   const cleanedReason = reason?.trim();

@@ -86,11 +86,20 @@ function timelineItemMatchesClipId(
   clipId: string,
 ) {
   const meta = timelineItemMeta(item);
+  const sourceRefs =
+    meta.source_refs && typeof meta.source_refs === "object"
+      ? (meta.source_refs as Record<string, unknown>)
+      : null;
+  const aliases = [meta.source_clip_ids, sourceRefs?.source_clip_ids]
+    .flatMap((value) => (Array.isArray(value) ? value : []))
+    .map((value) => getString(value))
+    .filter((value): value is string => Boolean(value));
   return (
     item.id === clipId ||
     getString(meta.clip_id) === clipId ||
     getString(meta.timeline_clip_id) === clipId ||
     getString(meta.source_clip_id) === clipId ||
-    getString(meta.id) === clipId
+    getString(meta.id) === clipId ||
+    aliases.includes(clipId)
   );
 }

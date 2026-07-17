@@ -67,7 +67,6 @@ describe("timeline clip rework controls", () => {
         action: "re_cut",
         prompt: " steadier motion ",
         model: " keling:kling-v2 ",
-        duration: 1.2,
         resolution: "1080p",
         ratio: "9:16",
         reason: " motion fix ",
@@ -77,7 +76,6 @@ describe("timeline clip rework controls", () => {
         action: "re_cut",
         prompt: "steadier motion",
         model: "keling:kling-v2",
-        duration: 1.2,
         resolution: "1080p",
         ratio: "9:16",
         asset_role: "generated_video",
@@ -258,6 +256,11 @@ describe("timeline clip rework controls", () => {
     assert.ok(utils.getByRole("option", { name: "9:16" }));
     assert.ok(utils.getByLabelText("重做动作"));
     assert.ok(utils.getByLabelText("运动提示词覆盖"));
+    assert.match(
+      utils.getByLabelText("Timeline 视频目标时长").textContent || "",
+      /Timeline 目标 1 秒，Provider 自动适配并裁切/,
+    );
+    assert.equal(utils.queryByText("时长（秒）"), null);
     assert.ok(utils.getByText("留空则使用 Timeline 镜头运动规划"));
   });
 

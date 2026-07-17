@@ -900,6 +900,24 @@ describe("EpisodeTimelineWorkspace layout", () => {
     );
   });
 
+  it("resolves an absorbed legacy clip deep link to its grouped video window", async () => {
+    mockWorkspaceFetch();
+    const syncedClipIds: Array<string | null> = [];
+
+    const utils = render(
+      workspace(groupedVideoTimeline(), "video_scene_1_beat_2_002", undefined, {
+        onSelectedClipIdChange: (clipId) => syncedClipIds.push(clipId),
+      }),
+      { container: dom.window.document.body },
+    );
+
+    await waitFor(() => {
+      assert.ok(utils.getByLabelText("在时间轴中选择 聚合镜头"));
+      assert.ok(utils.getAllByText("视频 1").length >= 1);
+    });
+    assert.deepEqual(syncedClipIds, ["video_scene_1_beat_1_001"]);
+  });
+
   it("falls back to the first video clip when a deep link clip id is stale", async () => {
     mockWorkspaceFetch();
     const syncedClipIds: Array<string | null> = [];
@@ -3904,6 +3922,27 @@ function twoVideoTimeline() {
           start_ms: 1300,
           end_ms: 2400,
           text: "第二个视频",
+        },
+      ],
+    },
+  ]);
+}
+
+function groupedVideoTimeline() {
+  return baseTimeline([
+    {
+      track_type: "video",
+      clips: [
+        {
+          clip_id: "video_scene_1_beat_1_001",
+          source_clip_ids: [
+            "video_scene_1_beat_1_001",
+            "video_scene_1_beat_2_002",
+          ],
+          track_type: "video",
+          start_ms: 0,
+          end_ms: 6000,
+          text: "聚合镜头",
         },
       ],
     },
