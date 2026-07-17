@@ -7,7 +7,9 @@ from app.services.video.video_duration import normalize_target_seconds
 from app.services.video.video_task_dispatcher import VideoTaskDispatcher
 
 
-def resolve_target_duration_seconds(frame: Dict[str, Any], opts: Dict[str, Any]) -> float:
+def resolve_target_duration_seconds(
+    frame: Dict[str, Any], opts: Dict[str, Any]
+) -> float:
     override = opts.get("duration")
     if override is not None:
         return normalize_target_seconds(override)
@@ -35,6 +37,7 @@ def submit_provider_task(
     reference_images: Optional[list[Any]] = None,
     duration: int,
     opts: Dict[str, Any],
+    target_duration_seconds: float | None = None,
 ) -> Any:
     payload = {
         "prompt": prompt,
@@ -44,6 +47,7 @@ def submit_provider_task(
         "model": opts.get("model"),
         "prefer_provider": None,
         "duration": duration,
+        "target_duration_seconds": target_duration_seconds,
         "fps": opts["fps"],
         "resolution": opts["resolution"],
         "ratio": opts.get("ratio"),

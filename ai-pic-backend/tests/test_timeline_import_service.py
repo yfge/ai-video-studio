@@ -99,17 +99,16 @@ def test_import_audio_timeline_creates_timeline_spec_tracks(db_session):
     tracks = {track["track_type"]: track for track in spec["tracks"]}
     assert set(tracks) == {"dialogue", "video", "subtitle"}
     assert len(tracks["dialogue"]["clips"]) == 1
-    assert len(tracks["video"]["clips"]) == 3
+    assert len(tracks["video"]["clips"]) == 2
     assert len(tracks["subtitle"]["clips"]) == 1
     assert all(clip["beat_type"] == "dialogue" for clip in tracks["dialogue"]["clips"])
     assert all(clip["beat_type"] == "dialogue" for clip in tracks["subtitle"]["clips"])
     assert [clip["beat_type"] for clip in tracks["video"]["clips"]] == [
-        "dialogue",
-        "action",
+        "beat_window",
         "action",
     ]
-    assert tracks["video"]["clips"][1]["end_ms"] == 2000
-    assert tracks["video"]["clips"][1]["absorbed_pause_beat_ids"] == [103]
+    assert tracks["video"]["clips"][0]["end_ms"] == 2000
+    assert tracks["video"]["clips"][0]["grouped_beat_ids"] == [101, 102, 103]
     assert tracks["video"]["clips"][-1]["audio_excluded_reason"] == "fallback_narration"
     assert tracks["video"]["clips"][-1]["source_beat_type"] == "dialogue"
 
@@ -132,7 +131,7 @@ def test_import_audio_timeline_creates_timeline_spec_tracks(db_session):
     assert video_clip["characters_involved"] == ["A", "B"]
     assert video_clip["dialogue_action"] == "points at the console"
     assert video_clip["dialogue_emotion"] == "urgent"
-    assert tracks["video"]["clips"][1]["characters_involved"] == ["A", "B"]
+    assert tracks["video"]["clips"][0]["characters_involved"] == ["A", "B"]
     assert video_clip["clip_id"] == stable_clip_id(
         track_type="video", scene_id=11, beat_id=101, ordinal=1
     )

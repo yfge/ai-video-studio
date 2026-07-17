@@ -4,7 +4,13 @@ from copy import deepcopy
 from datetime import datetime
 from typing import Any
 
-from app.services.timeline_shot_plan_coercion import coerce_timeline_shot_plan_payload
+from app.services.timeline_shot_plan_context import (
+    clips_for_track,
+    overlapping_clips,
+    strip_text,
+    timed_text,
+    unique_texts,
+)
 from app.services.timeline_shot_plan_models import TimelineShotPlan
 from app.services.timeline_shot_plan_styles import style_prompt_instruction
 
@@ -36,7 +42,8 @@ def build_timeline_shot_plan_prompt(
         "film stock, named visual style, color pairing, or production design; "
         "3) composition_geometry describes screen positions, left/right/center, "
         "foreground/background, and geometric relationships; "
-        "4) motion_timeline has 2-4 ordered action beats inside the clip duration, "
+        "4) motion_timeline has 2-4 ordered action beats inside the clip duration "
+        "and follows source_motion_timeline when it is provided, "
         "or 1 beat for very short silent pause clips; "
         "5) emotional_landing states the shot's final mood, rhythm, and light temperature. "
         "Set prompt_method to direction_reference_geometry_timeline_emotion_v1. "
@@ -77,14 +84,14 @@ def validate_timeline_shot_plan_matches(
                 "expected_duration_ms": expected,
                 "actual_duration_ms": shot.get("duration_ms"),
             }
-        source_text = _strip_text(clip.get("text"))
+        source_text = strip_text(clip.get("text"))
         dialogue_text = _dialogue_text_for_video_clip(clip, spec)
-        if source_text and not _strip_text(shot.get("plot")):
+        if source_text and not strip_text(shot.get("plot")):
             return {
                 "message": "timeline shot plan plot missing",
                 "clip_id": clip_id,
             }
-        if dialogue_text and not _strip_text(shot.get("dialogue_source")):
+        if dialogue_text and not strip_text(shot.get("dialogue_source")):
             return {
                 "message": "timeline shot plan dialogue source missing",
                 "clip_id": clip_id,
@@ -140,35 +147,25 @@ def apply_timeline_shot_plan(
     return updated
 
 
-def clips_for_track(spec: dict[str, Any], track_type: str) -> list[dict[str, Any]]:
-    tracks = spec.get("tracks")
-    if not isinstance(tracks, list):
-        return []
-    for track in tracks:
-        if not isinstance(track, dict):
-            continue
-        if track.get("track_type") == track_type or track.get("type") == track_type:
-            clips = track.get("clips")
-            return [clip for clip in clips or [] if isinstance(clip, dict)]
-    return []
-
-
 def _timeline_prompt_clips(
     spec: dict[str, Any],
     *,
     clip_ids: set[str] | None = None,
 ) -> list[dict[str, Any]]:
-    dialogue_by_key = _clips_by_scene_beat(spec, "dialogue")
-    subtitle_by_key = _clips_by_scene_beat(spec, "subtitle")
     prompt_clips: list[dict[str, Any]] = []
     for clip in clips_for_track(spec, "video"):
         if clip_ids is not None and str(clip.get("clip_id")) not in clip_ids:
             continue
-        key = _scene_beat_key(clip)
-        dialogue_clip = dialogue_by_key.get(key) or {}
-        subtitle_clip = subtitle_by_key.get(key) or {}
+        dialogue_clips = overlapping_clips(spec, clip, "dialogue")
+        subtitle_clips = overlapping_clips(spec, clip, "subtitle")
         source_refs = clip.get("source_refs") or {}
         source_refs = source_refs if isinstance(source_refs, dict) else {}
+        dialogue_events = [timed_text(item, clip) for item in dialogue_clips]
+        source_ranges = [
+            item
+            for item in clip.get("source_beat_ranges") or []
+            if isinstance(item, dict)
+        ]
         prompt_clips.append(
             {
                 "clip_id": clip.get("clip_id"),
@@ -178,13 +175,32 @@ def _timeline_prompt_clips(
                 "start_ms": clip.get("start_ms"),
                 "end_ms": clip.get("end_ms"),
                 "duration_ms": clip.get("duration_ms"),
-                "plot": clip.get("text") or dialogue_clip.get("text") or "",
-                "dialogue": dialogue_clip.get("text")
-                or subtitle_clip.get("text")
-                or "",
-                "speaker_name": dialogue_clip.get("speaker_name"),
-                "dialogue_action": dialogue_clip.get("dialogue_action"),
-                "dialogue_emotion": dialogue_clip.get("dialogue_emotion"),
+                "plot": clip.get("text") or "",
+                "dialogue": "\n".join(
+                    unique_texts(
+                        item.get("text") for item in [*dialogue_clips, *subtitle_clips]
+                    )
+                ),
+                "dialogue_events": dialogue_events,
+                "speaker_names": unique_texts(
+                    item.get("speaker_name") for item in dialogue_clips
+                ),
+                "characters_involved": clip.get("characters_involved") or [],
+                "source_beat_ranges": source_ranges,
+                "source_motion_timeline": [
+                    {
+                        "at_ms": max(
+                            0,
+                            int(item.get("start_ms") or 0)
+                            - int(clip.get("start_ms") or 0),
+                        ),
+                        "beat_type": item.get("beat_type"),
+                        "action": item.get("text") or item.get("dialogue_action") or "",
+                        "speaker_name": item.get("speaker_name"),
+                    }
+                    for item in source_ranges
+                    if item.get("text") or item.get("dialogue_action")
+                ],
                 "character_name": source_refs.get("character_name"),
                 "character_appearance_prompt": source_refs.get(
                     "character_appearance_prompt"
@@ -195,34 +211,10 @@ def _timeline_prompt_clips(
     return prompt_clips
 
 
-def _clips_by_scene_beat(
-    spec: dict[str, Any],
-    track_type: str,
-) -> dict[tuple[Any, Any, Any], dict[str, Any]]:
-    return {_scene_beat_key(clip): clip for clip in clips_for_track(spec, track_type)}
-
-
-def _scene_beat_key(clip: dict[str, Any]) -> tuple[Any, Any, Any]:
-    return (clip.get("scene_id"), clip.get("beat_id"), clip.get("ordinal"))
-
-
 def _dialogue_text_for_video_clip(clip: dict[str, Any], spec: dict[str, Any]) -> str:
-    key = _scene_beat_key(clip)
-    matches = [_clips_by_scene_beat(spec, t).get(key) for t in ("dialogue", "subtitle")]
-    primary = next((item for item in matches if item), {})
-    beat_type = str(clip.get("beat_type") or primary.get("beat_type") or "").lower()
-    if beat_type and beat_type != "dialogue":
-        return ""
-    if not _strip_text(primary.get("speaker_name")):
-        return ""
-    for matched in matches:
-        if not matched:
-            continue
-        text = _strip_text(matched.get("text"))
-        if text:
-            return text
-    return ""
-
-
-def _strip_text(value: Any) -> str:
-    return value.strip() if isinstance(value, str) else ""
+    matches = overlapping_clips(spec, clip, "dialogue")
+    return "\n".join(
+        unique_texts(
+            item.get("text") for item in matches if strip_text(item.get("speaker_name"))
+        )
+    )

@@ -10,6 +10,10 @@ from app.services.timeline_clip_asset_lineage import TimelineClipAssetLineageSer
 from app.services.timeline_import_repair import (
     existing_timeline_needs_audio_track_repair,
 )
+from app.services.timeline_import_upgrade_policy import (
+    timeline_allows_automatic_video_segmentation_upgrade,
+    timeline_needs_video_segmentation_upgrade,
+)
 from app.services.timeline_revision_service import TimelineRevisionService
 from app.services.timeline_spec_builder import (
     audio_timeline_version,
@@ -54,6 +58,9 @@ def import_audio_timeline_to_timeline_spec(
         episode_id=episode.id,
         script_id=script.id,
     )
+    needs_segmentation_upgrade = bool(
+        existing is not None and timeline_needs_video_segmentation_upgrade(existing)
+    )
     if (
         existing is not None
         and not overwrite
@@ -63,6 +70,13 @@ def import_audio_timeline_to_timeline_spec(
             source_version=source_version,
             min_pause_duration_ms=min_pause_duration_ms,
         )
+    ):
+        return TimelineImportResult(timeline=existing, action="skipped")
+    if (
+        existing is not None
+        and not overwrite
+        and needs_segmentation_upgrade
+        and not timeline_allows_automatic_video_segmentation_upgrade(db, existing)
     ):
         return TimelineImportResult(timeline=existing, action="skipped")
 

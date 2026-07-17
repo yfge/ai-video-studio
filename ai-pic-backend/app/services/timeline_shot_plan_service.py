@@ -21,13 +21,13 @@ from app.services.timeline_shot_plan_batching import (
     shot_plan_batch_max_tokens,
     spec_for_video_clip_ids,
 )
+from app.services.timeline_shot_plan_coercion import coerce_timeline_shot_plan_payload
+from app.services.timeline_shot_plan_models import TimelineShotPlan
 from app.services.timeline_shot_plan_payloads import (
     SHOT_PLAN_SCHEMA,
-    TimelineShotPlan,
     apply_timeline_shot_plan,
     build_timeline_shot_plan_prompt,
     clips_for_track,
-    coerce_timeline_shot_plan_payload,
     validate_timeline_shot_plan_matches,
 )
 from app.services.timeline_spec_validation import validate_timeline_spec

@@ -106,6 +106,8 @@ def build_video_generation_metadata(
         or provider_duration_seconds,
         "target_duration_seconds": target_duration_seconds,
         "provider_duration_seconds": provider_duration_seconds,
+        "allowed_durations": params.get("allowed_durations"),
+        "capability_source": params.get("capability_source"),
         "fps": params.get("fps"),
         "resolution": resolution,
         "ratio": ratio,

@@ -96,6 +96,7 @@ def persist_submitted_timeline_video_task(
         provider_duration_seconds=provider_duration_seconds,
         timeline_rework=timeline_rework,
     )
+    params_payload.update(_duration_resolution_fields(response))
     repo.create(
         task_id=task_id,
         script_id=None,
@@ -118,6 +119,20 @@ def persist_submitted_timeline_video_task(
         submitted_at=datetime.utcnow(),
         expires_at=datetime.utcnow() + VIDEO_TASK_TIMEOUT,
     )
+
+
+def _duration_resolution_fields(response: Any) -> dict[str, Any]:
+    data = response.data if isinstance(response.data, dict) else {}
+    return {
+        key: data[key]
+        for key in (
+            "target_duration_seconds",
+            "provider_duration_seconds",
+            "allowed_durations",
+            "capability_source",
+        )
+        if key in data
+    }
 
 
 def persist_failed_video_task(

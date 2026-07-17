@@ -44,7 +44,9 @@ class TimelineClipVideoReworkSubmissionService:
         start_url = self._abs_optional(payload.get("image_url"))
         end_url = self._abs_optional(payload.get("end_image_url"))
         reference_images = self._reference_images(payload.get("reference_images"))
-        target_duration_seconds = float(payload.get("duration") or 5.0)
+        target_duration_seconds = float(
+            payload.get("target_duration_seconds") or payload.get("duration") or 5.0
+        )
         request_duration_seconds = coerce_duration(target_duration_seconds)
         model_type = self._model_type(start_url, reference_images)
         attempt = TimelineVideoSubmissionAttempt(
@@ -69,6 +71,7 @@ class TimelineClipVideoReworkSubmissionService:
                 reference_images=reference_images,
                 duration=request_duration_seconds,
                 opts=opts,
+                target_duration_seconds=target_duration_seconds,
             )
         except Exception as exc:
             error_message = f"视频任务提交异常: {exc}"
@@ -87,7 +90,9 @@ class TimelineClipVideoReworkSubmissionService:
         model_type = self._response_model_type(response) or model_type
 
         provider_duration_seconds = int(
-            (response.data or {}).get("duration") or request_duration_seconds
+            (response.data or {}).get("provider_duration_seconds")
+            or (response.data or {}).get("duration")
+            or request_duration_seconds
         )
         persist_submitted_timeline_video_task(
             self.video_tasks,

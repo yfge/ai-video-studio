@@ -127,7 +127,7 @@ def test_timeline_shot_plan_api_rejects_empty_text_for_sourced_clip(
     assert "timeline_shot_plan" not in video_clip["source_refs"]
 
 
-def test_timeline_shot_plan_api_allows_action_clip_without_dialogue_source(
+def test_timeline_shot_plan_api_requires_overlapping_dialogue_for_action_window(
     client,
     db_session,
     monkeypatch,
@@ -161,11 +161,10 @@ def test_timeline_shot_plan_api_allows_action_clip_without_dialogue_source(
         json={"expected_version": timeline["version"]},
     )
 
-    assert response.status_code == 200
-    shot_plan = response.json()["spec"]["tracks"][1]["clips"][0]["source_refs"][
-        "timeline_shot_plan"
-    ]
-    assert shot_plan["dialogue_source"] == ""
+    assert response.status_code == 502
+    assert response.json()["detail"]["message"] == (
+        "timeline shot plan dialogue source missing"
+    )
 
 
 def test_timeline_shot_plan_api_rejects_short_motion_timeline_for_sourced_clip(

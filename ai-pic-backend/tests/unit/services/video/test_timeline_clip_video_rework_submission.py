@@ -34,15 +34,24 @@ def test_grid_rework_submission_records_reference_only_request_as_i2v(
         reference_images,
         duration,
         opts,
+        target_duration_seconds,
     ):
         captured.update(
             start_url=start_url,
             end_url=end_url,
             reference_images=reference_images,
+            target_duration_seconds=target_duration_seconds,
         )
         return AIResponse(
             success=True,
-            data={"task_id": "provider-task-grid", "duration": duration},
+            data={
+                "task_id": "provider-task-grid",
+                "duration": duration,
+                "target_duration_seconds": target_duration_seconds,
+                "provider_duration_seconds": duration,
+                "allowed_durations": [4, 6, 8],
+                "capability_source": "volcengine",
+            },
             provider="volcengine",
             model="doubao-seedance-2-0-260128",
             task_type=AITaskType.VIDEO_GENERATION,
@@ -69,10 +78,15 @@ def test_grid_rework_submission_records_reference_only_request_as_i2v(
     params = json.loads(video_task.parameters)
     assert captured["start_url"] is None
     assert captured["reference_images"] == ["https://example.com/storyboard-grid.png"]
+    assert captured["target_duration_seconds"] == 4
     assert video_task.model_type == "image_to_video"
     assert video_task.generation_metadata["model_type"] == "image_to_video"
     assert params["reference_images"] == ["https://example.com/storyboard-grid.png"]
     assert params["timeline_rework"]["reference_mode"] == "storyboard_grid_panel"
+    assert params["allowed_durations"] == [4, 6, 8]
+    assert params["capability_source"] == "volcengine"
+    assert video_task.generation_metadata["allowed_durations"] == [4, 6, 8]
+    assert video_task.generation_metadata["capability_source"] == "volcengine"
 
 
 def test_clip_storyboard_rework_submission_records_reference_only_request_as_i2v(
@@ -100,11 +114,13 @@ def test_clip_storyboard_rework_submission_records_reference_only_request_as_i2v
         reference_images,
         duration,
         opts,
+        target_duration_seconds,
     ):
         captured.update(
             start_url=start_url,
             end_url=end_url,
             reference_images=reference_images,
+            target_duration_seconds=target_duration_seconds,
         )
         return AIResponse(
             success=True,
@@ -134,9 +150,8 @@ def test_clip_storyboard_rework_submission_records_reference_only_request_as_i2v
     )
     params = json.loads(video_task.parameters)
     assert captured["start_url"] is None
-    assert captured["reference_images"] == [
-        "https://example.com/clip-storyboard.png"
-    ]
+    assert captured["reference_images"] == ["https://example.com/clip-storyboard.png"]
+    assert captured["target_duration_seconds"] == 4
     assert video_task.model_type == "image_to_video"
     assert video_task.generation_metadata["model_type"] == "image_to_video"
     assert params["reference_images"] == ["https://example.com/clip-storyboard.png"]

@@ -14,7 +14,7 @@ def _bootstrap(db: Session) -> tuple[Episode, Script]:
     return episode, script
 
 
-def test_import_audio_timeline_absorbs_short_pauses_into_previous_video_clip(
+def test_import_audio_timeline_groups_short_beats_into_one_scene_video_window(
     db_session,
 ):
     episode, script = _bootstrap(db_session)
@@ -75,16 +75,21 @@ def test_import_audio_timeline_absorbs_short_pauses_into_previous_video_clip(
 
     tracks = {track["track_type"]: track for track in result.timeline.spec["tracks"]}
     video_clips = tracks["video"]["clips"]
-    assert [clip["beat_type"] for clip in video_clips] == [
-        "dialogue",
-        "action",
-        "pause",
-    ]
-    assert [clip["beat_id"] for clip in video_clips] == [201, 203, 204]
-    assert video_clips[0]["end_ms"] == 1420
-    assert video_clips[0]["duration_ms"] == 1420
-    assert video_clips[0]["absorbed_pause_beat_ids"] == [202]
-    assert video_clips[-1]["duration_ms"] == 1700
+    assert len(video_clips) == 1
+    assert video_clips[0]["start_ms"] == 0
+    assert video_clips[0]["end_ms"] == 4700
+    assert video_clips[0]["duration_ms"] == 4700
+    assert video_clips[0]["grouped_beat_ids"] == [201, 202, 203, 204]
+    assert len(video_clips[0]["source_clip_ids"]) == 4
+    assert [clip["beat_id"] for clip in tracks["dialogue"]["clips"]] == [201]
+    assert [clip["beat_id"] for clip in tracks["subtitle"]["clips"]] == [201]
+    assert result.timeline.spec["source"]["video_segmentation"] == {
+        "strategy": "beat_window_v2",
+        "min_duration_ms": 5000,
+        "target_duration_ms": 6000,
+        "max_duration_ms": 8000,
+        "tail_min_duration_ms": 3000,
+    }
 
 
 def test_import_audio_timeline_attaches_short_drama_production_metadata(db_session):
@@ -150,3 +155,72 @@ def test_import_audio_timeline_attaches_short_drama_production_metadata(db_sessi
     assert refs["vertical_visual_contract"]["aspect_ratio"] == "9:16"
     assert refs["human_review"]["status"] == "pending"
     assert refs["short_drama_quality"]["hook_role"] == "opening_hook"
+
+
+def test_video_windows_compact_tiny_beats_and_split_long_beat_without_audio_drift(
+    db_session,
+):
+    episode, script = _bootstrap(db_session)
+    beats = [
+        _beat(41, 401, "action", 0, 31, "tap"),
+        _beat(41, 402, "dialogue", 31, 293, "A", speaker="Lead"),
+        _beat(41, 403, "action", 293, 960, "turn"),
+        _beat(41, 404, "action", 960, 6000, "cross the room"),
+        _beat(41, 405, "dialogue", 6000, 11000, "B", speaker="Guest"),
+        _beat(41, 406, "action", 11000, 16000, "door closes"),
+        _beat(42, 407, "action", 16000, 25000, "continuous long move"),
+    ]
+    audio_timeline = {
+        "script_id": script.id,
+        "episode_audio": {"duration_seconds": 25, "version": 7},
+        "beats": beats,
+    }
+
+    result = import_audio_timeline_to_timeline_spec(
+        db_session,
+        episode=episode,
+        script=script,
+        audio_timeline=audio_timeline,
+    )
+
+    tracks = {track["track_type"]: track for track in result.timeline.spec["tracks"]}
+    video = tracks["video"]["clips"]
+    assert [(clip["start_ms"], clip["end_ms"]) for clip in video] == [
+        (0, 6000),
+        (6000, 11000),
+        (11000, 16000),
+        (16000, 22000),
+        (22000, 25000),
+    ]
+    assert video[-1]["clip_id"].endswith("_part_2")
+    assert all(5000 <= clip["duration_ms"] <= 8000 for clip in video[:-1])
+    assert video[-1]["duration_ms"] == 3000
+    assert [clip["start_ms"] for clip in video[1:]] == [
+        clip["end_ms"] for clip in video[:-1]
+    ]
+    assert video[0]["grouped_beat_ids"] == [401, 402, 403, 404]
+    assert [clip["beat_id"] for clip in tracks["dialogue"]["clips"]] == [402, 405]
+    assert [clip["start_ms"] for clip in tracks["subtitle"]["clips"]] == [31, 6000]
+    assert [clip["end_ms"] for clip in tracks["subtitle"]["clips"]] == [293, 11000]
+
+
+def _beat(
+    scene_id: int,
+    beat_id: int,
+    beat_type: str,
+    start_ms: int,
+    end_ms: int,
+    text: str,
+    *,
+    speaker: str | None = None,
+) -> dict:
+    return {
+        "scene_id": scene_id,
+        "scene_number": scene_id - 40,
+        "beat_id": beat_id,
+        "beat_type": beat_type,
+        "speaker_name": speaker,
+        "text": text,
+        "start_ms": start_ms,
+        "end_ms": end_ms,
+    }

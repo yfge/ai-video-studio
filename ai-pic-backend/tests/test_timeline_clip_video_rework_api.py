@@ -193,7 +193,7 @@ def test_timeline_clip_video_rework_queues_provider_task(
             "action": "re_cut",
             "prompt": "Regenerate the rainy close-up with steadier motion.",
             "model": "keling:kling-v2",
-            "duration": 1.2,
+            "duration": 99,
             "resolution": "720p",
         },
     )
@@ -213,6 +213,8 @@ def test_timeline_clip_video_rework_queues_provider_task(
     assert params["auto_render"] is True
     assert params["render_type"] == "final"
     assert params["render_preset"] == {"fps": 24, "resolution": "1080x1920"}
+    assert params["duration"] == 1.2
+    assert params["target_duration_seconds"] == 1.2
     assert dispatched["task_id"] == task_id
     assert dispatched["payload"]["clip_id"] == clip_id
 

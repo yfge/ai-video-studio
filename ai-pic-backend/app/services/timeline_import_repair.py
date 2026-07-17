@@ -8,6 +8,9 @@ from app.models.timeline import Timeline
 from app.services.audio.dialogue_processing.audio_dialogue_filter import (
     should_treat_dialogue_as_action_for_audio,
 )
+from app.services.timeline_import_upgrade_policy import (
+    timeline_needs_video_segmentation_upgrade,
+)
 from app.services.timeline_video_pause_policy import DEFAULT_VIDEO_MIN_PAUSE_DURATION_MS
 
 
@@ -19,6 +22,8 @@ def existing_timeline_needs_audio_track_repair(
     min_pause_duration_ms: int = DEFAULT_VIDEO_MIN_PAUSE_DURATION_MS,
 ) -> bool:
     """Return True when old imports contain repairable audio/video drift."""
+    if timeline_needs_video_segmentation_upgrade(timeline):
+        return True
     if not _same_audio_timeline_version(
         getattr(timeline, "source_audio_timeline_version", None),
         source_version,

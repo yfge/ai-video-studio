@@ -105,7 +105,7 @@ class TimelineClipVideoReworkQueueService:
         clip_storyboard_payload = None
         grid_payload = None
         reference_mode = payload.reference_mode or "start_end"
-        target_duration = payload.duration or clip_duration_seconds(clip)
+        target_duration = clip_duration_seconds(clip)
         bound_context = build_video_rework_bound_context(
             self.db,
             timeline=timeline,
@@ -170,6 +170,7 @@ class TimelineClipVideoReworkQueueService:
             "image_url": start_url,
             "end_image_url": end_url,
             "duration": target_duration,
+            "target_duration_seconds": target_duration,
             "model": payload.model,
             "fps": payload.fps,
             "resolution": payload.resolution,

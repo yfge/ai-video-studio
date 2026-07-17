@@ -158,6 +158,33 @@ def test_timeline_shot_plan_prompt_includes_character_anchor_hint():
     assert "same protagonist anchor" in prompt
 
 
+def test_timeline_shot_plan_prompt_collects_all_dialogue_overlapping_video_window():
+    episode = SimpleNamespace(id=133)
+    script = SimpleNamespace(id=117)
+    spec = _timeline_spec(episode, script)
+    dialogue = spec["tracks"][0]["clips"][0]
+    dialogue.update({"start_ms": 500, "end_ms": 1600, "duration_ms": 1100})
+    second = {
+        **dialogue,
+        "clip_id": "dialogue_scene_001_beat_002_002",
+        "beat_id": "beat_002",
+        "ordinal": 2,
+        "start_ms": 2200,
+        "end_ms": 3400,
+        "duration_ms": 1200,
+        "speaker_name": "访客",
+        "text": "第二句必须一起进入镜头上下文。",
+    }
+    spec["tracks"][0]["clips"].append(second)
+
+    prompt = build_timeline_shot_plan_prompt(spec, style="3d_cartoon")
+
+    assert "时间线先走" in prompt
+    assert "第二句必须一起进入镜头上下文" in prompt
+    assert "'speaker_names': ['机器人', '访客']" in prompt
+    assert "dialogue_events" in prompt
+
+
 def test_timeline_shot_plan_api_batches_large_timeline_without_truncation(
     client,
     db_session,

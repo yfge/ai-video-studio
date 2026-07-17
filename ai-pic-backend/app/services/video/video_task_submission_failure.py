@@ -54,6 +54,21 @@ def persist_timeline_video_submission_failure(
         provider_duration_seconds=attempt.provider_duration_seconds,
         timeline_rework=attempt.timeline_rework,
     )
+    response_data = (
+        response.data if isinstance(getattr(response, "data", None), dict) else {}
+    )
+    params.update(
+        {
+            key: response_data[key]
+            for key in (
+                "target_duration_seconds",
+                "provider_duration_seconds",
+                "allowed_durations",
+                "capability_source",
+            )
+            if key in response_data
+        }
+    )
     params["submission_failure"] = failure
     metadata = build_video_generation_metadata(
         provider,

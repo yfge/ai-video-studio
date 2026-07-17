@@ -61,9 +61,12 @@ def test_import_repairs_non_dialogue_clips_on_audio_tracks(db_session):
 
     spec = deepcopy(created.timeline.spec)
     tracks = {track["track_type"]: track for track in spec["tracks"]}
-    action_video_clip = next(
-        clip for clip in tracks["video"]["clips"] if clip["beat_type"] == "action"
-    )
+    action_video_clip = {
+        **tracks["video"]["clips"][0],
+        "beat_id": 102,
+        "beat_type": "action",
+        "ordinal": 2,
+    }
     tracks["dialogue"]["clips"].append(
         _stale_clip(action_video_clip, track_type="dialogue", with_audio=True)
     )
@@ -89,7 +92,8 @@ def test_import_repairs_non_dialogue_clips_on_audio_tracks(db_session):
     }
     assert _beat_types(repaired_tracks["dialogue"]) == ["dialogue"]
     assert _beat_types(repaired_tracks["subtitle"]) == ["dialogue"]
-    assert _beat_types(repaired_tracks["video"]) == ["dialogue", "action"]
+    assert _beat_types(repaired_tracks["video"]) == ["beat_window"]
+    assert repaired_tracks["video"]["clips"][0]["grouped_beat_ids"] == [101, 102]
     clip_assets = (
         db_session.query(TimelineClipAsset)
         .filter(TimelineClipAsset.timeline_id == repaired.timeline.id)
@@ -158,13 +162,13 @@ def test_import_repairs_fallback_narrator_prose_on_audio_tracks(db_session):
         track["track_type"]: track for track in repaired.timeline.spec["tracks"]
     }
     assert _beat_types(repaired_tracks["dialogue"]) == ["dialogue"]
-    assert _beat_types(repaired_tracks["video"]) == ["dialogue", "action", "action"]
+    assert _beat_types(repaired_tracks["video"]) == ["beat_window", "action"]
     assert repaired_tracks["video"]["clips"][-1]["audio_excluded_reason"] == (
         "fallback_narration"
     )
 
 
-def test_import_repairs_short_pause_video_clips_on_same_audio_version(db_session):
+def test_import_repairs_legacy_short_pause_video_clips_into_scene_window(db_session):
     episode, script = _bootstrap(db_session)
     audio_timeline = _audio_timeline(script)
     audio_timeline["episode_audio"]["duration_seconds"] = 2.02
@@ -235,9 +239,13 @@ def test_import_repairs_short_pause_video_clips_on_same_audio_version(db_session
     repaired_tracks = {
         track["track_type"]: track for track in repaired.timeline.spec["tracks"]
     }
-    assert _beat_types(repaired_tracks["video"]) == ["dialogue", "action"]
-    assert repaired_tracks["video"]["clips"][-1]["end_ms"] == 2020
-    assert repaired_tracks["video"]["clips"][-1]["absorbed_pause_beat_ids"] == [103]
+    assert _beat_types(repaired_tracks["video"]) == ["beat_window"]
+    assert repaired_tracks["video"]["clips"][0]["end_ms"] == 2020
+    assert repaired_tracks["video"]["clips"][0]["grouped_beat_ids"] == [
+        101,
+        102,
+        103,
+    ]
 
 
 def _stale_clip(clip: dict, *, track_type: str, with_audio: bool) -> dict:

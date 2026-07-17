@@ -273,9 +273,9 @@ def test_process_timeline_pipeline_imports_audio_timeline_to_timeline_spec(
         assert tracks["dialogue"]["clips"][0]["clip_id"].startswith(
             f"dialogue_scene_{scene_ids[0]}_beat_501_"
         )
-        assert [clip["beat_id"] for clip in tracks["video"]["clips"]] == [501, 503]
-        assert tracks["video"]["clips"][0]["absorbed_pause_beat_ids"] == [502]
-        assert tracks["video"]["clips"][0]["end_ms"] == 1700
+        assert [clip["beat_id"] for clip in tracks["video"]["clips"]] == [501, 502]
+        assert tracks["video"]["clips"][1]["grouped_beat_ids"] == [502, 503]
+        assert tracks["video"]["clips"][1]["end_ms"] == 2400
         assert (
             tracks["video"]["clips"][0]["source_refs"]["timeline_shot_plan"]["provider"]
             == "deepseek"

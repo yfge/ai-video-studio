@@ -190,7 +190,14 @@ class TimelineClipVideoReworkTaskRequest(TimelineVersionRequest):
     action: TimelineClipVideoReworkAction = "re_cut"
     prompt: Optional[str] = Field(None, max_length=4000)
     model: Optional[str] = Field(None, max_length=128)
-    duration: Optional[float] = Field(None, gt=0)
+    duration: Optional[float] = Field(
+        None,
+        gt=0,
+        description=(
+            "Deprecated compatibility field. Timeline clip timing always controls "
+            "the generated asset target duration."
+        ),
+    )
     fps: int = Field(24, ge=1, le=120)
     resolution: str = Field("720p", max_length=64)
     ratio: Optional[str] = Field(None, max_length=32)

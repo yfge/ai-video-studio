@@ -6,12 +6,17 @@ from app.models.script import Episode, Script
 from app.services.audio.dialogue_processing.audio_dialogue_filter import (
     should_treat_dialogue_as_action_for_audio,
 )
+from app.services.timeline_short_drama_metadata import (
+    attach_short_drama_video_metadata,
+    build_short_drama_spec_metadata,
+)
+from app.services.timeline_spec_values import int_ms, slug
+from app.services.timeline_video_clip_metadata import attach_video_window_metadata
 from app.services.timeline_video_pause_policy import (
     DEFAULT_VIDEO_MIN_PAUSE_DURATION_MS,
     video_track_beats,
 )
-from app.services.timeline_short_drama_metadata import attach_short_drama_video_metadata
-from app.services.timeline_short_drama_metadata import build_short_drama_spec_metadata
+from app.services.timeline_video_segmentation_config import video_segmentation_metadata
 
 
 def build_timeline_spec_from_audio_timeline(
@@ -61,6 +66,7 @@ def build_timeline_spec_from_audio_timeline(
         "duration_ms": duration_ms,
         "source": {
             "type": "audio_timeline",
+            "video_segmentation": video_segmentation_metadata(),
             "episode_audio": {
                 "oss_url": episode_audio.get("oss_url"),
                 "duration_seconds": episode_audio.get("duration_seconds"),
@@ -108,7 +114,7 @@ def stable_clip_id(
     ordinal: int,
 ) -> str:
     return (
-        f"{_slug(track_type)}_scene_{_slug(scene_id)}_beat_{_slug(beat_id)}_"
+        f"{slug(track_type)}_scene_{slug(scene_id)}_beat_{slug(beat_id)}_"
         f"{ordinal:03d}"
     )
 
@@ -131,8 +137,8 @@ def _normalize_beats(beats: list[Any]) -> list[dict[str, Any]]:
     for beat in beats:
         if not isinstance(beat, dict):
             continue
-        start_ms = _int_ms(beat.get("start_ms"))
-        end_ms = _int_ms(beat.get("end_ms"))
+        start_ms = int_ms(beat.get("start_ms"))
+        end_ms = int_ms(beat.get("end_ms"))
         if start_ms is None or end_ms is None:
             raise RuntimeError("audio_timeline_beat_missing_timing")
         if end_ms < start_ms:
@@ -171,13 +177,20 @@ def _clip(
     scene_id = beat.get("scene_id")
     beat_id = beat.get("beat_id")
     ordinal = int(beat["ordinal"])
+    base_clip_id = stable_clip_id(
+        track_type=track_type,
+        scene_id=scene_id,
+        beat_id=beat_id,
+        ordinal=ordinal,
+    )
+    part_index = int(beat.get("video_part_index") or 1)
+    clip_id = (
+        f"{base_clip_id}_part_{part_index}"
+        if track_type == "video" and part_index > 1
+        else base_clip_id
+    )
     clip = {
-        "clip_id": stable_clip_id(
-            track_type=track_type,
-            scene_id=scene_id,
-            beat_id=beat_id,
-            ordinal=ordinal,
-        ),
+        "clip_id": clip_id,
         "track_type": track_type,
         "scene_id": scene_id,
         "scene_number": beat.get("scene_number"),
@@ -187,7 +200,11 @@ def _clip(
         "start_ms": beat["start_ms"],
         "end_ms": beat["end_ms"],
         "duration_ms": beat["duration_ms"],
-        "timing_source": "audio_timeline.beats",
+        "timing_source": (
+            "audio_timeline.beat_windows"
+            if track_type == "video"
+            else "audio_timeline.beats"
+        ),
         "source": {
             "kind": "audio_timeline_beat",
             "scene_id": scene_id,
@@ -200,25 +217,17 @@ def _clip(
         },
         "text": beat.get("text"),
     }
-    if beat.get("characters_involved"):
-        clip["characters_involved"] = beat.get("characters_involved")
-    if beat.get("speaker_name"):
-        clip["speaker_name"] = beat.get("speaker_name")
-    if beat.get("dialogue_action"):
-        clip["dialogue_action"] = beat.get("dialogue_action")
-    if beat.get("dialogue_emotion"):
-        clip["dialogue_emotion"] = beat.get("dialogue_emotion")
-    if beat.get("audio_excluded_reason"):
-        clip["audio_excluded_reason"] = beat.get("audio_excluded_reason")
-    if beat.get("source_beat_type"):
-        clip["source_beat_type"] = beat.get("source_beat_type")
-    if beat.get("absorbed_pause_beat_ids"):
-        clip["absorbed_pause_beat_ids"] = beat.get("absorbed_pause_beat_ids")
-        clip["absorbed_pause_ranges"] = beat.get("absorbed_pause_ranges") or []
-        clip["absorbed_pause_duration_ms"] = beat.get("absorbed_pause_duration_ms") or 0
-        clip["source_refs"]["absorbed_pause_beat_ids"] = beat.get(
-            "absorbed_pause_beat_ids"
-        )
+    for key in (
+        "characters_involved",
+        "speaker_name",
+        "speaker_names",
+        "dialogue_action",
+        "dialogue_emotion",
+        "audio_excluded_reason",
+        "source_beat_type",
+    ):
+        if beat.get(key):
+            clip[key] = beat[key]
     if track_type == "dialogue":
         clip["asset_ref"] = {
             "kind": "episode_audio",
@@ -227,24 +236,12 @@ def _clip(
             "duration_ms": beat["duration_ms"],
         }
     elif track_type == "video":
-        clip["asset_ref"] = None
-        clip["placeholder"] = True
+        attach_video_window_metadata(
+            clip,
+            beat,
+            part_index=part_index,
+            clip_id_factory=stable_clip_id,
+        )
     elif track_type == "subtitle":
         clip["asset_ref"] = None
     return clip
-
-
-def _int_ms(value: Any) -> int | None:
-    if value is None:
-        return None
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def _slug(value: Any) -> str:
-    raw = str(value if value is not None else "unknown").strip().lower()
-    safe = [ch if ch.isalnum() else "_" for ch in raw]
-    slug = "".join(safe).strip("_")
-    return slug or "unknown"
