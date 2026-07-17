@@ -536,6 +536,97 @@ describe("timeline clip rework controls", () => {
     );
   });
 
+  it("clears operator review after refreshing a stale Timeline", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const refreshedVersions: number[] = [];
+    const notifications: Array<{ message: string; variant: string }> = [];
+    globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(url), init });
+      if (calls.length === 1) {
+        return new Response(
+          JSON.stringify({ detail: "timeline version conflict" }),
+          {
+            status: 409,
+            statusText: "Conflict",
+            headers: { "content-type": "application/json" },
+          },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          id: 8,
+          business_id: "timeline-8",
+          episode_id: 1,
+          script_id: 1,
+          title: "Timeline 8",
+          status: "draft",
+          version: 4,
+          created_at: "2026-07-17T10:00:00Z",
+          updated_at: "2026-07-17T10:30:00Z",
+          spec: {
+            spec_version: "timeline.v1",
+            episode_id: 1,
+            script_id: 1,
+            version: 4,
+            tracks: [],
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }) as typeof fetch;
+
+    const utils = render(
+      React.createElement(TimelineClipProviderReworkControls, {
+        timelineId: 8,
+        timelineVersion: 3,
+        clipId: "video_scene_1_beat_1_001",
+        item: videoClipWithPendingHumanReview(),
+        onGenerationCompleted: (timeline) => {
+          if (timeline) refreshedVersions.push(timeline.version);
+        },
+        onNotify: (message, variant) => {
+          notifications.push({ message, variant });
+        },
+      }),
+      { container: dom.window.document.body },
+    );
+
+    const reviewControl = utils.getByLabelText(
+      "已完成人工复核",
+    ) as HTMLInputElement;
+    const videoButton = utils.getByRole("button", {
+      name: "生成/重做此片段视频",
+    }) as HTMLButtonElement;
+    fireEvent.click(reviewControl);
+    assert.equal(reviewControl.checked, true);
+
+    fireEvent.click(videoButton);
+    await waitFor(() => assert.equal(calls.length, 2));
+    await waitFor(() => assert.equal(reviewControl.checked, false));
+
+    assert.equal(videoButton.disabled, true);
+    assert.deepEqual(refreshedVersions, [4]);
+    assert.deepEqual(notifications, [
+      {
+        message:
+          "Timeline 已更新，已刷新；本次未提交视频生成任务，不会产生生成费用。请重新复核后再生成。",
+        variant: "warning",
+      },
+    ]);
+    assert.deepEqual(
+      calls.map((call) => call.url),
+      [
+        "/api/v1/timelines/8/clips/video_scene_1_beat_1_001/rework/video",
+        "/api/v1/timelines/8",
+      ],
+    );
+    assert.ok(
+      utils.getByText(
+        "Timeline 已更新，已刷新；本次未提交视频生成任务，不会产生生成费用。请重新复核后再生成。",
+      ),
+    );
+  });
+
   it("keeps storyboard and video submit paths clip-scoped from the two-step controls", async () => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
     globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {

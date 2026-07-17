@@ -69,7 +69,7 @@ interface EpisodeTimelineWorkspacePanelsProps {
   onNavigateToTasks: () => void;
   onNavigateToCharacters: () => void;
   onReworkRecorded: () => void | Promise<void>;
-  onGenerationCompleted: () => void | Promise<void>;
+  onGenerationCompleted: (timeline?: TimelineResponse) => void | Promise<void>;
   onNotify: (
     message: string,
     variant: "info" | "success" | "warning" | "error",

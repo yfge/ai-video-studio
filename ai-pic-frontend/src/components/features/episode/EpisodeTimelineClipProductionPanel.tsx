@@ -7,6 +7,7 @@ import type {
   NormalizedScene,
   TimelineClipAssetResponse,
   TimelineResolvedVideoListResponse,
+  TimelineResponse,
 } from "@/utils/api/types";
 import { timelineItemMeta } from "./EpisodeTimelineWorkspaceModel";
 import {
@@ -87,7 +88,7 @@ export function EpisodeTimelineClipProductionPanel({
   onNavigateToTasks: () => void;
   onNavigateToCharacters: () => void;
   onReworkRecorded?: () => void | Promise<void>;
-  onGenerationCompleted?: () => void | Promise<void>;
+  onGenerationCompleted?: (timeline?: TimelineResponse) => void | Promise<void>;
   onNotify?: (message: string, variant: NotifyVariant) => void;
 }) {
   const clipId = selectedTimelineClipId(item);

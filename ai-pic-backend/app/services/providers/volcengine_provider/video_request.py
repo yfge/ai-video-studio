@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 from ..base import AIModelType
+from .video_image_inputs import prepare_video_image_inputs
 from .video_models import (
     SEEDANCE_10_FAST_MODEL,
     SEEDANCE_10_LITE_I2V_MODEL,
@@ -126,6 +127,29 @@ def _build_content(
 ) -> list[Dict[str, Any]]:
     content: list[Dict[str, Any]] = []
     first_last_mode = bool(image_url or end_image_url)
+    reference_field = (
+        "reference_images"
+        if extra_kwargs.get("reference_images")
+        else "reference_image_urls"
+    )
+    raw_references = (
+        []
+        if first_last_mode or not supports_reference_media(ark_model)
+        else _coerce_urls(extra_kwargs.get(reference_field))[:9]
+    )
+    raw_reference_videos = (
+        []
+        if first_last_mode or not supports_reference_media(ark_model)
+        else _coerce_urls(
+            extra_kwargs.get("reference_videos") or extra_kwargs.get("video_urls")
+        )[:3]
+    )
+    image_url, end_image_url, reference_images = prepare_video_image_inputs(
+        image_url=image_url,
+        end_image_url=end_image_url,
+        reference_images=raw_references,
+        reference_field=reference_field,
+    )
     if image_url:
         content.append(_media_item("image", image_url, "first_frame"))
     if end_image_url:
@@ -135,18 +159,12 @@ def _build_content(
         return content
 
     if supports_reference_media(ark_model):
-        ref_images = extra_kwargs.get("reference_images") or extra_kwargs.get(
-            "reference_image_urls"
-        )
-        ref_videos = extra_kwargs.get("reference_videos") or extra_kwargs.get(
-            "video_urls"
-        )
         ref_audios = extra_kwargs.get("reference_audios") or extra_kwargs.get(
             "audio_urls"
         )
-        for url in _coerce_urls(ref_images)[:9]:
+        for url in reference_images:
             content.append(_media_item("image", url, "reference_image"))
-        for url in _coerce_urls(ref_videos)[:3]:
+        for url in raw_reference_videos:
             content.append(_media_item("video", url, "reference_video"))
         has_visual_ref = any(
             item["type"] in {"image_url", "video_url"} for item in content

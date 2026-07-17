@@ -22,6 +22,7 @@ export interface HttpClientOptions extends RequestInit {
 
 export interface HttpResponse<T = unknown> {
   success: boolean;
+  status?: number;
   data?: T;
   message?: string;
   error?: string;
@@ -118,6 +119,7 @@ export async function httpClient<T = unknown>(
 
       return {
         success: false,
+        status: response.status,
         error: "登录已过期，请重新登录",
         trace,
       };
@@ -138,14 +140,20 @@ export async function httpClient<T = unknown>(
         // Otherwise, wrap in standard format
         data = {
           success: response.ok,
+          error:
+            !response.ok && typeof json?.detail === "string"
+              ? json.detail
+              : undefined,
           data: json as T,
         };
       }
+      data.status = response.status;
       data.trace = readTraceHeaders(response, trace);
     } else {
       // Non-JSON response
       data = {
         success: response.ok,
+        status: response.status,
         data: undefined as unknown as T,
         trace: readTraceHeaders(response, trace),
       };
@@ -166,6 +174,7 @@ export async function httpClient<T = unknown>(
       return {
         ...data,
         success: false,
+        status: response.status,
         error: errorMessage,
         trace: readTraceHeaders(response, trace),
       };

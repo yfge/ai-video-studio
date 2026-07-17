@@ -11,6 +11,7 @@ export interface ApiTraceMeta {
 // Generic API response wrapper
 export interface ApiResponse<T = unknown> {
   success: boolean;
+  status?: number;
   data?: T;
   message?: string;
   error?: string;

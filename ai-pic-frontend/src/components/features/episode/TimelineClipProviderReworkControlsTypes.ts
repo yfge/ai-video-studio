@@ -1,5 +1,9 @@
 import type { TimelineItem } from "@/components/features";
-import type { Environment, EpisodeCharacter } from "@/utils/api/types";
+import type {
+  Environment,
+  EpisodeCharacter,
+  TimelineResponse,
+} from "@/utils/api/types";
 import type {
   StoryboardCharacterImageOptions,
   StoryboardReferenceImageOption,
@@ -37,6 +41,6 @@ export type TimelineClipProviderReworkControlsProps = {
   videoModelsLoading?: boolean;
   onNavigateToCharacters?: () => void;
   onQueued?: () => void | Promise<void>;
-  onGenerationCompleted?: () => void | Promise<void>;
+  onGenerationCompleted?: (timeline?: TimelineResponse) => void | Promise<void>;
   onNotify?: (message: string, variant: NotifyVariant) => void;
 };

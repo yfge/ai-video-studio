@@ -21,19 +21,26 @@ export function useTimelineGenerationRefresh({
   reloadRenderJobs?: () => void | Promise<void>;
   reloadResolvedVideos?: () => void | Promise<void>;
 }) {
-  return useCallback(async () => {
-    await reloadClipAssets?.();
-    await reloadResolvedVideos?.();
-    // 片段视频成功后后端会自动排最终渲染，这里刷新渲染面板让新 job 立即可见
-    await reloadRenderJobs?.();
-    if (!timelineSpecId || !onTimelineUpdated) return;
-    const res = await timelineAPI.getTimeline(timelineSpecId);
-    if (res.success && res.data) onTimelineUpdated(res.data);
-  }, [
-    onTimelineUpdated,
-    reloadClipAssets,
-    reloadRenderJobs,
-    reloadResolvedVideos,
-    timelineSpecId,
-  ]);
+  return useCallback(
+    async (timeline?: TimelineResponse) => {
+      if (timeline) {
+        onTimelineUpdated?.(timeline);
+        return;
+      }
+      await reloadClipAssets?.();
+      await reloadResolvedVideos?.();
+      // 片段视频成功后后端会自动排最终渲染，这里刷新渲染面板让新 job 立即可见
+      await reloadRenderJobs?.();
+      if (!timelineSpecId || !onTimelineUpdated) return;
+      const res = await timelineAPI.getTimeline(timelineSpecId);
+      if (res.success && res.data) onTimelineUpdated(res.data);
+    },
+    [
+      onTimelineUpdated,
+      reloadClipAssets,
+      reloadRenderJobs,
+      reloadResolvedVideos,
+      timelineSpecId,
+    ],
+  );
 }

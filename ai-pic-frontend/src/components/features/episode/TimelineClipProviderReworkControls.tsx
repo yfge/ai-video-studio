@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { timelineAPI } from "@/utils/api/endpoints";
 import type { Environment, EpisodeCharacter } from "@/utils/api/types";
 import type {
   TimelineClipStoryboardStyle,
@@ -23,6 +22,7 @@ import { useTimelineClipProviderGenerationActions } from "./useTimelineClipProvi
 import { useTimelineClipGenerationTaskTracker } from "./useTimelineClipGenerationTaskTracker";
 import type { TimelineClipProviderReworkControlsProps } from "./TimelineClipProviderReworkControlsTypes";
 import { useTimelineClipVideoReferenceChoice } from "./useTimelineClipVideoReferenceChoice";
+import { queueTimelineClipVideoReworkWithVersionRefresh } from "./TimelineClipVideoReworkSubmission";
 const EMPTY_EPISODE_CHARACTERS: EpisodeCharacter[] = [];
 const EMPTY_ENVIRONMENTS: Environment[] = [];
 export function TimelineClipProviderReworkControls({
@@ -162,15 +162,17 @@ export function TimelineClipProviderReworkControls({
         storyboardReferenceSelection.selectedStoryboardEnvironmentReferenceImages,
     });
     try {
-      const res = await timelineAPI.queueTimelineClipVideoRework(
+      const res = await queueTimelineClipVideoReworkWithVersionRefresh({
         timelineId,
         clipId,
         payload,
-      );
+        onTimelineRefreshed: onGenerationCompleted,
+      });
       if (!res.success || !res.data) {
+        if (res.status === 409) setOperatorReviewed(false);
         const message = res.error || "提交视频重做任务失败";
         generationActions.setSubmitError(message);
-        onNotify?.(message, "error");
+        onNotify?.(message, res.status === 409 ? "warning" : "error");
         return;
       }
       setPrompt("");
