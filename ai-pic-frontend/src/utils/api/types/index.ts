@@ -15,6 +15,7 @@ export * from "./user.types";
 export * from "./task.types";
 export * from "./workbench.types";
 export * from "./production-canvas.types";
+export * from "./production-canvas-production.types";
 export * from "./production-canvas-planner.types";
 export * from "./production-canvas-run.types";
 export * from "./production-canvas-collaboration.types";

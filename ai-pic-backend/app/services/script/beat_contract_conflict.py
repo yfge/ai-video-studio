@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from app.services.script.beat_contract_specificity import is_specific_text
+
+_DEADLINE_PATTERN = re.compile(
+    r"(?:\d+\s*(?:秒|分钟|小时|天|周|月)|今天|明天|后天|本周|下周|本月|下月|月底|年底)"
+)
 
 _STAKES_MARKERS = (
     "秒",
@@ -12,8 +17,18 @@ _STAKES_MARKERS = (
     "清零",
     "归零",
     "丢失",
+    "失去",
     "删除",
     "永久",
+    "生命",
+    "死亡",
+    "受伤",
+    "自由",
+    "身份",
+    "名誉",
+    "关系",
+    "机会",
+    "目标",
     "奖金",
     "合同",
     "客户",
@@ -37,12 +52,33 @@ _STAKES_MARKERS = (
     "停机",
     "封禁",
     "锁定",
+    "公开",
+    "播放",
+    "传播",
+    "复制",
+    "写入",
+    "回传",
+    "占用",
+    "模板",
+    "样本",
+    "底稿",
+    "署名",
 )
 
 _OPPOSITION_MARKERS = (
     "系统",
     "权限",
+    "规则",
     "黑影",
+    "对手",
+    "人物",
+    "家人",
+    "时间",
+    "距离",
+    "天气",
+    "道路",
+    "门",
+    "关键物件",
     "客户",
     "队友",
     "供应商",
@@ -58,6 +94,12 @@ _OPPOSITION_MARKERS = (
     "篡改",
     "封禁",
     "屏幕",
+    "会议屏",
+    "大屏",
+    "连屏",
+    "工作群",
+    "提示窗",
+    "侧栏",
     "文件",
     "接口",
     "回调",
@@ -114,7 +156,7 @@ def conflict_issues(scene: Any) -> list[dict[str, Any]]:
             }
         )
 
-    if conflict.stakes.strip() and not _has_marker(conflict.stakes, _STAKES_MARKERS):
+    if conflict.stakes.strip() and not has_concrete_stakes(conflict.stakes):
         issues.append(
             {
                 "check_id": "scene_conflict_stakes",
@@ -154,3 +196,11 @@ def conflict_issues(scene: Any) -> list[dict[str, Any]]:
 
 def _has_marker(text: str, markers: tuple[str, ...]) -> bool:
     return any(marker in text for marker in markers)
+
+
+def has_concrete_stakes(text: str) -> bool:
+    return bool(_DEADLINE_PATTERN.search(text)) or _has_marker(text, _STAKES_MARKERS)
+
+
+def has_concrete_opposition(text: str) -> bool:
+    return _has_marker(text, _OPPOSITION_MARKERS)

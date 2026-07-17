@@ -47,7 +47,7 @@ describe("ProductionCanvasBoard", () => {
     assert.ok(utils.getByText("短剧生产链路"));
     assert.ok(
       utils.getByText(
-        "Brief -> Script -> Audio + Timeline -> Storyboard Support -> Image Candidates -> Video Candidates -> Render -> Export -> Report",
+        "Intent Model -> Production Brief -> Content Plan -> Asset Decision -> Script -> Audio + Timeline -> Storyboard Support -> Image Candidates -> Video Candidates -> Render -> Export -> Report",
       ),
     );
 

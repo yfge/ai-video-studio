@@ -39,32 +39,7 @@ def preferred_character(beats: list[dict[str, Any]]) -> str | None:
             )
             if character and character not in LOW_VALUE_CHARACTERS:
                 counts[character] = counts.get(character, 0) + 1
-    ap_name = next((name for name in counts if "AP" in name or "回归" in name), None)
-    return ap_name or (max(counts, key=counts.get) if counts else None)
-
-
-def progression_event(protagonist: str, order: int) -> str:
-    return (
-        f"{protagonist}将原始文件放到投影左侧，屏幕标红被改数字。",
-        f"{protagonist}指向会议纪要时间戳，助理调出修改日志。",
-        "客户在投影前停住动作，篡改者低头按灭手机屏幕。",
-        "手机录音波形跳动，篡改者低声承认从音箱传出。",
-    )[(order - 1) % 4]
-
-
-def progression_action(protagonist: str, order: int) -> str:
-    return (
-        f"{protagonist}把两份数据页并排推到客户面前。",
-        "助理把修改日志窗口拖到投影中央。",
-        "客户拿起笔在问题数字旁画圈。",
-        "篡改者后退半步，手机通知栏露出删除提醒。",
-    )[(order - 1) % 4]
-
-
-def progression_dialogue(order: int) -> str:
-    return ("看时间戳。", "原始页在这。", "日志能对上。", "别删文件。")[
-        (order - 1) % 4
-    ]
+    return max(counts, key=counts.get) if counts else None
 
 
 def beat_screen_text(beat: dict[str, Any]) -> str:
@@ -81,5 +56,8 @@ def beat_text(beat: dict[str, Any]) -> str:
 
 def scene_screen_text(beats: list[dict[str, Any]]) -> str:
     return compact(
-        "".join(str(beat.get("visible_event") or "") + beat_screen_text(beat) for beat in beats)
+        "".join(
+            str(beat.get("visible_event") or "") + beat_screen_text(beat)
+            for beat in beats
+        )
     )

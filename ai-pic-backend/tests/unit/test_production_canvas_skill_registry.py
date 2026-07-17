@@ -8,6 +8,7 @@ def test_canvas_skill_registry_maps_full_short_drama_chain_to_backend_reuse():
 
     assert [skill.id for skill in skills] == [
         "brief.compose",
+        "content.plan",
         "asset.select",
         "virtual_ip.image",
         "environment.image",

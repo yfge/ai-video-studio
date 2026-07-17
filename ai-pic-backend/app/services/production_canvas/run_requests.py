@@ -69,6 +69,7 @@ def request_for_canvas_node_context(
     planning_mode = outputs.get("planning_mode")
     frame_indexes = outputs.get("frame_indexes")
     fps = _number(outputs, "fps")
+    production_context = outputs.get("production_context")
     return ProductionCanvasSkillExecuteRequest(
         prompt=prompt if isinstance(prompt, str) and prompt else base.prompt,
         planning_mode=(
@@ -109,6 +110,11 @@ def request_for_canvas_node_context(
             outputs.get("camera_fixed")
             if isinstance(outputs.get("camera_fixed"), bool)
             else None
+        ),
+        production_context=(
+            production_context
+            if isinstance(production_context, dict)
+            else base.production_context
         ),
         start_frame_url=(
             outputs.get("start_frame_url")

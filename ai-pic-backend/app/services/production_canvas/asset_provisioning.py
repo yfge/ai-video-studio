@@ -9,7 +9,7 @@ from app.repositories.virtual_ip_environment_repository import (
 )
 from app.repositories.virtual_ip_repository import VirtualIPRepository
 from app.schemas.production_canvas import ProductionCanvasPlanRequest
-from app.services.production_canvas.asset_prompt_intent import parse_canvas_asset_prompt
+from app.schemas.production_canvas_brief import ProductionCanvasAssetIntent
 from app.services.production_canvas.asset_selection import (
     CanvasAssetSelection,
     select_canvas_assets,
@@ -58,7 +58,7 @@ def _restore_or_add_link(
                 environment_id=environment.id,
                 environment_business_id=environment.business_id,
                 usage_type="scene_pool",
-                usage_note="由生产画布 prompt 绑定",
+                usage_note="由结构化生产上下文绑定",
             )
         )
     return True
@@ -70,19 +70,28 @@ def provision_missing_canvas_assets(
     request: ProductionCanvasPlanRequest,
     selection: CanvasAssetSelection,
     *,
+    asset_intent: ProductionCanvasAssetIntent | None = None,
     explicit_environment_id: int | None = None,
+    asset_policy: str = "reuse_preferred",
 ) -> tuple[ProductionCanvasPlanRequest, CanvasAssetSelection]:
-    intent = parse_canvas_asset_prompt(request.prompt)
+    intent = asset_intent or ProductionCanvasAssetIntent()
+    environment_name = next(iter(intent.environment_names), None)
     ip_repo = VirtualIPRepository(db)
     env_repo = EnvironmentRepository(db)
+    force_new = asset_policy == "create_new"
+    allow_create = asset_policy in {
+        "reuse_preferred",
+        "create_if_missing",
+        "create_new",
+    }
     virtual_ip = (
         ip_repo.get_owned_by_id(selection.selected.virtual_ips[0].id, user)
-        if selection.selected.virtual_ips
+        if selection.selected.virtual_ips and not force_new
         else None
     )
     environment = (
         env_repo.get_owned_by_identifier(selection.selected.environments[0].id, user)
-        if selection.selected.environments
+        if selection.selected.environments and not force_new
         else None
     )
     created_virtual_ip_ids: list[int] = []
@@ -93,18 +102,19 @@ def provision_missing_canvas_assets(
         if (
             virtual_ip is None
             and request.virtual_ip_id is None
-            and request.story_id is None
             and intent.virtual_ip_name
+            and allow_create
         ):
-            virtual_ip = _same_name(
-                ip_repo.list_accessible(user=user, limit=200),
-                intent.virtual_ip_name,
-            )
+            if not force_new:
+                virtual_ip = _same_name(
+                    ip_repo.list_accessible(user=user, limit=200),
+                    intent.virtual_ip_name,
+                )
             if virtual_ip is None:
                 virtual_ip = VirtualIP(
                     user_id=user.id,
                     name=intent.virtual_ip_name,
-                    description=request.prompt,
+                    description=intent.virtual_ip_description or request.prompt,
                     tags=["production-canvas"],
                     is_active=True,
                 )
@@ -116,19 +126,21 @@ def provision_missing_canvas_assets(
         if (
             environment is None
             and request.environment_id is None
-            and intent.environment_name
+            and environment_name
+            and allow_create
         ):
-            environment = _same_name(
-                env_repo.list_accessible(user=user, limit=200),
-                intent.environment_name,
-            )
+            if not force_new:
+                environment = _same_name(
+                    env_repo.list_accessible(user=user, limit=200),
+                    environment_name,
+                )
             if environment is None:
                 environment = Environment(
                     user_id=user.id,
-                    name=intent.environment_name,
+                    name=environment_name,
                     description=request.prompt,
                     tags=["production-canvas"],
-                    extra_metadata={"source": "production_canvas_prompt"},
+                    extra_metadata={"source": "production_canvas_context"},
                 )
                 db.add(environment)
                 db.flush()

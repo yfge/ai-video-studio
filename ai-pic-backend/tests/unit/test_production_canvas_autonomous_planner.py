@@ -41,9 +41,19 @@ def _valid_proposal() -> dict:
                 "depends_on": [],
             },
             {
+                "skill": "content.plan",
+                "reason": "把目标扩展成结构化内容计划。",
+                "depends_on": ["brief.compose"],
+            },
+            {
+                "skill": "asset.select",
+                "reason": "关联内容计划需要的资产。",
+                "depends_on": ["content.plan"],
+            },
+            {
                 "skill": "script.generate",
                 "reason": "生成视频所需剧本。",
-                "depends_on": ["brief.compose"],
+                "depends_on": ["asset.select"],
             },
             {
                 "skill": "image.candidates",
@@ -79,15 +89,20 @@ async def test_autonomous_planner_compiles_a_typed_skill_subset():
     assert decision.evidence.provider == "test-provider"
     assert decision.selected_skills == [
         "brief.compose",
+        "content.plan",
+        "asset.select",
         "script.generate",
         "image.candidates",
         "video.candidates",
     ]
-    assert len(decision.edges) == 3
+    assert len(decision.edges) == 5
     video_edge = decision.edges[-1]
     assert video_edge.from_port == "approved_image"
     assert video_edge.to_port == "start_frame"
     assert video_edge.binding_type == "selected_output"
+    assert '"skill": "brief.compose"' in manager.calls[0]["prompt"]
+    assert "每个步骤必须使用字段 skill" in manager.calls[0]["prompt"]
+    assert "不得增加 schema_name" in manager.calls[0]["prompt"]
 
 
 @pytest.mark.asyncio
@@ -136,7 +151,7 @@ async def test_autonomous_planner_falls_back_after_bounded_repair():
     assert decision.evidence.validation_errors
     assert decision.selected_skills[0] == "brief.compose"
     assert decision.selected_skills[-1] == "report.summarize"
-    assert len(decision.edges) == 10
+    assert len(decision.edges) == 11
 
 
 @pytest.mark.asyncio
@@ -145,7 +160,7 @@ async def test_autonomous_planner_falls_back_when_ai_is_unavailable():
 
     assert decision.evidence.mode == "deterministic_fallback"
     assert decision.evidence.fallback_reason == "ai_manager_unavailable"
-    assert len(decision.selected_skills) == 12
+    assert len(decision.selected_skills) == 13
 
 
 def test_run_restore_preserves_the_planner_selected_subset_and_edges():

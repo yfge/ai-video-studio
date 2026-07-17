@@ -3,6 +3,7 @@ import {
   productionCanvasRequestContext,
   type ProductionCanvasContextDraft,
 } from "./productionCanvasContext";
+import type { ProductionCanvasBriefOverrides } from "@/utils/api/types";
 import { productionCanvasExecutionPublications } from "./productionCanvasExecutionResults";
 import type { ProductionCanvasNode } from "./productionCanvasModel";
 import { productionCanvasSkillExecuteRequest } from "./productionCanvasSkillRequest";
@@ -11,10 +12,16 @@ export async function createProductionCanvasPlan(
   prompt: string,
   context: ProductionCanvasContextDraft,
   planningMode: "series" | "single_video" = "series",
+  options: {
+    briefOverrides?: ProductionCanvasBriefOverrides;
+    clarificationAnswers?: Record<string, string>;
+  } = {},
 ) {
   const response = await productionCanvasAPI.createPlan({
     prompt,
     ...(planningMode === "single_video" ? { planning_mode: planningMode } : {}),
+    brief_overrides: options.briefOverrides,
+    clarification_answers: options.clarificationAnswers,
     ...productionCanvasRequestContext(context),
   });
   if (!response.success || !response.data) {

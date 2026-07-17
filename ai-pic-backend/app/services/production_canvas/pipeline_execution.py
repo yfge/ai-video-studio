@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from sqlalchemy.orm import Session
-
 from app.models.user import User
 from app.repositories.timeline_repository import TimelineRepository
 from app.schemas.production_canvas import (
@@ -26,6 +24,7 @@ from app.services.production_canvas.script_request import (
 from app.services.script.generation_queue import queue_script_generation_task
 from app.services.script.timeline_pipeline_queue import queue_timeline_pipeline_task
 from app.services.storyboard.generation_queue import queue_storyboard_generation_task
+from sqlalchemy.orm import Session
 
 
 def _running_response(
@@ -73,12 +72,17 @@ def execute_script_generation(
             required_inputs=["episode_id"],
         )
     script_request = build_canvas_script_generation_request(db, user, request)
+    content_title = (
+        request.production_context.content_plan.title
+        if request.production_context
+        else f"剧集{request.episode_id}"
+    )
     task = queue_script_generation_task(
         db,
         user,
         script_request,
-        title=f"生产画布执行 Script Skill - 剧集{request.episode_id}",
-        description="Production canvas script.generate skill dispatch",
+        title=f"生产画布生成剧本 - {content_title}",
+        description="Production canvas structured script generation",
         prompt=request.prompt,
         target_business_id=request.run_id,
     )

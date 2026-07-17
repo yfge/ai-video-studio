@@ -32,6 +32,37 @@ _HOOK_MARKERS = (
     "抢",
     "改",
     "改了",
+    "未完成",
+    "没动",
+    "空白",
+    "原封不动",
+    "悬着",
+)
+
+_CLAIM_MARKERS = (
+    "落地",
+    "升级",
+    "智能",
+    "自动",
+    "提效",
+    "成功",
+    "完成",
+    "上线",
+    "优化",
+)
+
+_BURDEN_MARKERS = (
+    "待填",
+    "人工",
+    "手动",
+    "补录",
+    "兜底",
+    "积压",
+    "堆着",
+    "加班",
+    "返工",
+    "重复",
+    "未完成",
 )
 
 
@@ -44,7 +75,7 @@ def opening_hook_issues(scene: Any) -> list[dict[str, Any]]:
         return []
 
     screen_text = _opening_screen_text(beat)
-    if any(marker in screen_text for marker in _HOOK_MARKERS):
+    if opening_hook_screen_text_has_substance(screen_text):
         return []
 
     return [
@@ -56,6 +87,14 @@ def opening_hook_issues(scene: Any) -> list[dict[str, Any]]:
             "evidence": {"screen_text": screen_text},
         }
     ]
+
+
+def opening_hook_screen_text_has_substance(screen_text: str) -> bool:
+    compact_text = _compact_text(screen_text)
+    return any(marker in compact_text for marker in _HOOK_MARKERS) or (
+        any(marker in compact_text for marker in _CLAIM_MARKERS)
+        and any(marker in compact_text for marker in _BURDEN_MARKERS)
+    )
 
 
 def _opening_screen_text(beat: Any) -> str:

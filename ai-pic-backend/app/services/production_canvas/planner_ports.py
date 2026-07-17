@@ -32,10 +32,15 @@ def _port(
 SKILL_PORTS: dict[
     str, tuple[list[ProductionCanvasSavedPort], list[ProductionCanvasSavedPort]]
 ] = {
-    "brief.compose": ([], [_port("production_brief", "text")]),
+    "brief.compose": ([], [_port("production_brief", "contract")]),
+    "content.plan": (
+        [_port("production_brief", "contract", required=True)],
+        [_port("production_context", "contract")],
+    ),
     "asset.select": (
-        [_port("production_brief", "text")],
+        [_port("production_context", "contract", required=True)],
         [
+            _port("production_context", "contract"),
             _port("selected_assets", "entity_ref"),
             _port("virtual_ip", "entity_ref"),
             _port("environment", "entity_ref"),
@@ -50,7 +55,7 @@ SKILL_PORTS: dict[
         [_port("environment_image", "image")],
     ),
     "script.generate": (
-        [_port("production_brief", "text", required=True)],
+        [_port("production_context", "contract", required=True)],
         [_port("script", "entity_ref")],
     ),
     "timeline.assemble": (
@@ -84,11 +89,14 @@ SKILL_PORTS: dict[
 }
 
 ALLOWED_BINDINGS = {
-    ("brief.compose", "asset.select"): CanvasPlannerBinding(
+    ("brief.compose", "content.plan"): CanvasPlannerBinding(
         "production_brief", "production_brief"
     ),
-    ("brief.compose", "script.generate"): CanvasPlannerBinding(
-        "production_brief", "production_brief"
+    ("content.plan", "asset.select"): CanvasPlannerBinding(
+        "production_context", "production_context"
+    ),
+    ("asset.select", "script.generate"): CanvasPlannerBinding(
+        "production_context", "production_context"
     ),
     ("asset.select", "virtual_ip.image"): CanvasPlannerBinding(
         "virtual_ip", "virtual_ip"
@@ -114,10 +122,11 @@ ALLOWED_BINDINGS = {
 }
 
 REQUIRED_DEPENDENCIES = {
-    "asset.select": {"brief.compose"},
+    "content.plan": {"brief.compose"},
+    "asset.select": {"content.plan"},
     "virtual_ip.image": {"asset.select"},
     "environment.image": {"asset.select"},
-    "script.generate": {"brief.compose"},
+    "script.generate": {"asset.select"},
     "timeline.assemble": {"script.generate"},
     "storyboard.plan": {"script.generate"},
     "image.candidates": {"script.generate"},
@@ -127,10 +136,11 @@ REQUIRED_DEPENDENCIES = {
 
 CANONICAL_DEPENDENCIES = {
     "brief.compose": [],
-    "asset.select": ["brief.compose"],
+    "content.plan": ["brief.compose"],
+    "asset.select": ["content.plan"],
     "virtual_ip.image": ["asset.select"],
     "environment.image": ["asset.select"],
-    "script.generate": ["brief.compose"],
+    "script.generate": ["asset.select"],
     "timeline.assemble": ["script.generate"],
     "storyboard.plan": ["script.generate"],
     "image.candidates": ["script.generate"],

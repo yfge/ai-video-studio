@@ -1,7 +1,9 @@
 import { useState, type MutableRefObject } from "react";
-import { storyAPI } from "@/utils/api/endpoints";
-import type { ProductionCanvasResolvedContext } from "@/utils/api/types";
-import { singleVideoProjectTitle } from "@/utils/singleVideoProject";
+import type {
+  ProductionCanvasBriefOverrides,
+  ProductionCanvasProductionContext,
+  ProductionCanvasResolvedContext,
+} from "@/utils/api/types";
 import {
   productionCanvasContextOutputs,
   productionCanvasRequestContext,
@@ -68,12 +70,15 @@ export async function runSingleVideoCanvasCreation({
   captureIdentity,
   contextRef,
   draft,
+  briefOverrides,
+  clarificationAnswers,
   executeScript,
   isCurrent,
   onDomainContextResolved,
   onIdentityChange,
   onNodesCreated,
   onRunCreated,
+  onProductionContext,
   prompt,
   publish,
   replaceContext,
@@ -82,6 +87,8 @@ export async function runSingleVideoCanvasCreation({
   captureIdentity: () => ProductionCanvasStateIdentity;
   contextRef: MutableRefObject<ProductionCanvasContextDraft>;
   draft: ProductionCanvasSingleVideoDraft;
+  briefOverrides: ProductionCanvasBriefOverrides;
+  clarificationAnswers: Record<string, string>;
   executeScript: (
     node: ProductionCanvasNode,
     nodes: ProductionCanvasNode[],
@@ -95,6 +102,9 @@ export async function runSingleVideoCanvasCreation({
     context?: ProductionCanvasResolvedContext,
   ) => void;
   onRunCreated?: (runId: string) => void;
+  onProductionContext: (
+    context: ProductionCanvasProductionContext | null,
+  ) => void;
   prompt: string;
   publish: (
     publication: ProductionCanvasExecutionPublication,
@@ -105,36 +115,26 @@ export async function runSingleVideoCanvasCreation({
   setExecutingNodeId: (nodeId: string | null) => void;
 }) {
   let identity = captureIdentity();
-  const selectedAssets = productionCanvasRequestContext(contextRef.current);
-  const project = await storyAPI.createSingleVideoProject({
-    title: singleVideoProjectTitle(draft.title, prompt),
-    prompt,
-    duration_minutes: draft.durationMinutes,
-    aspect_ratio: draft.aspectRatio,
-    style: draft.style.trim() || undefined,
-    virtual_ip_id: selectedAssets.virtual_ip_id ?? undefined,
-    environment_id: selectedAssets.environment_id ?? undefined,
-    start_generation: false,
-  });
-  if (!project.success || !project.data) {
-    throw new Error(project.error || "单条视频项目创建失败");
-  }
-  if (!isCurrent(identity)) return;
-  replaceContext(project.data.context);
-  onDomainContextResolved?.(project.data.context, true);
-
   const plan = await createProductionCanvasPlan(
     prompt,
     contextRef.current,
     "single_video",
+    {
+      briefOverrides: {
+        ...briefOverrides,
+        title: draft.title.trim() || briefOverrides.title,
+      },
+      clarificationAnswers,
+    },
   );
   if (!isCurrent(identity)) return;
+  onProductionContext(plan.production_context || null);
   if (plan.run_id) {
     onRunCreated?.(plan.run_id);
     identity = captureIdentity();
     onIdentityChange(identity);
   }
-  const resolvedContext = plan.resolved_context || project.data.context;
+  const resolvedContext = plan.resolved_context || {};
   replaceContext(resolvedContext);
   onDomainContextResolved?.(resolvedContext, true);
   const contextOutputs = productionCanvasContextOutputs(resolvedContext);
@@ -142,6 +142,7 @@ export async function runSingleVideoCanvasCreation({
     productionCanvasPlanNodeToCanvasNode(node, plan, contextOutputs),
   );
   onNodesCreated(nodes, resolvedContext);
+  if (!plan.production_context?.brief.ready_for_execution) return;
 
   const scriptNode = nodes.find((node) => node.skill === "script.generate");
   if (!scriptNode || scriptNode.status !== "ready") {

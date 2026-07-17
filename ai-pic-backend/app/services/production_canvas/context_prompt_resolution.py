@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from typing import Callable, TypeVar
 
 from app.models.script import Episode, Story
@@ -19,16 +18,10 @@ from app.services.production_canvas.asset_selection import (
 from sqlalchemy.orm import Session
 
 T = TypeVar("T")
-EPISODE_NUMBER = re.compile(r"(?:第\s*)?(\d+)\s*集", re.IGNORECASE)
 
 
 def _owner_id(user: User) -> int | None:
     return None if user.is_admin or user.is_superuser else int(user.id)
-
-
-def _episode_number(prompt: str) -> int | None:
-    match = EPISODE_NUMBER.search(prompt)
-    return int(match.group(1)) if match else None
 
 
 def _unique_best(items: list[T], score: Callable[[T], int]) -> T | None:
@@ -52,10 +45,13 @@ def _choose_story(prompt: str, stories: list[Story]) -> Story | None:
     )
 
 
-def _choose_episode(prompt: str, episodes: list[Episode]) -> Episode | None:
-    number = _episode_number(prompt)
-    if number is not None:
-        matched = [item for item in episodes if item.episode_number == number]
+def _choose_episode(
+    prompt: str,
+    episodes: list[Episode],
+    episode_number: int | None,
+) -> Episode | None:
+    if episode_number is not None:
+        matched = [item for item in episodes if item.episode_number == episode_number]
         return matched[0] if len(matched) == 1 else None
     normalized = prompt.casefold()
     matched = [
@@ -95,14 +91,15 @@ def resolve_prompt_story_episode(
     db: Session,
     user: User,
     request: ProductionCanvasPlanRequest,
+    *,
+    episode_number: int | None = None,
 ) -> ProductionCanvasPlanRequest:
     story_id = request.story_id
-    number = _episode_number(request.prompt)
     if story_id is None:
         stories = ProductionCanvasContextRepository(db).list_stories(
             user,
             virtual_ip_id=request.virtual_ip_id,
-            episode_number=number,
+            episode_number=episode_number,
         )
         story = _choose_story(request.prompt, stories)
         story_id = int(story.id) if story else None
@@ -112,7 +109,11 @@ def resolve_prompt_story_episode(
             story_id,
             user_id=_owner_id(user),
         )
-        episode = _choose_episode(request.prompt, episodes)
+        episode = _choose_episode(
+            request.prompt,
+            episodes,
+            episode_number,
+        )
         episode_id = int(episode.id) if episode else None
     return request.model_copy(update={"story_id": story_id, "episode_id": episode_id})
 

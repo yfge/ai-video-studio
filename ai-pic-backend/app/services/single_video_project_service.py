@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from sqlalchemy.orm import Session
+import math
+from dataclasses import dataclass
 
 from app.core.exceptions import ValidationError
 from app.models.script import Episode, Story, StoryCharacter
@@ -17,11 +18,20 @@ from app.schemas.single_video_project import (
 )
 from app.services.script.generation_queue import queue_script_generation_task
 from app.services.single_video_generation import build_single_video_script_request
+from sqlalchemy.orm import Session
+
+
+@dataclass(frozen=True)
+class ResolvedSingleVideoSpec:
+    duration_seconds: int
+    duration_minutes: int
+    aspect_ratio: str
 
 
 def _project_metadata(
     request: SingleVideoProjectRequest,
     *,
+    spec: ResolvedSingleVideoSpec,
     episode_id: int | None = None,
     task_id: int | None = None,
 ) -> dict:
@@ -32,8 +42,9 @@ def _project_metadata(
         "brief": {
             "prompt": request.prompt,
             "style": request.style,
-            "duration_minutes": request.duration_minutes,
-            "aspect_ratio": request.aspect_ratio,
+            "duration_seconds": spec.duration_seconds,
+            "duration_minutes": spec.duration_minutes,
+            "aspect_ratio": spec.aspect_ratio,
         },
         **({"episode_id": episode_id} if episode_id else {}),
         **({"script_task_id": task_id} if task_id else {}),
@@ -49,6 +60,7 @@ def create_single_video_project(
     user: User,
     request: SingleVideoProjectRequest,
 ) -> SingleVideoProjectResponse:
+    spec = _resolve_project_spec(request)
     virtual_ip = (
         VirtualIPRepository(db).get_owned_by_id(request.virtual_ip_id, user)
         if request.virtual_ip_id
@@ -73,7 +85,7 @@ def create_single_video_project(
                 field="environment_id",
             )
 
-    metadata = _project_metadata(request)
+    metadata = _project_metadata(request, spec=spec)
     main_characters = (
         [
             {
@@ -91,8 +103,8 @@ def create_single_video_project(
         story_format="short_drama",
         genre="single_video",
         theme=request.style,
-        duration_minutes=request.duration_minutes,
-        default_aspect_ratio=request.aspect_ratio,
+        duration_minutes=spec.duration_minutes,
+        default_aspect_ratio=spec.aspect_ratio,
         premise=request.prompt,
         synopsis=request.prompt,
         main_characters=main_characters,
@@ -112,8 +124,8 @@ def create_single_video_project(
             episode_number=1,
             title=request.title,
             summary=request.prompt,
-            duration_minutes=request.duration_minutes,
-            aspect_ratio=request.aspect_ratio,
+            duration_minutes=spec.duration_minutes,
+            aspect_ratio=spec.aspect_ratio,
             generation_prompt=request.prompt,
             generation_params={"source": "single_video_project"},
             tags=["single-video"],
@@ -136,7 +148,11 @@ def create_single_video_project(
                 )
             )
 
-        metadata = _project_metadata(request, episode_id=int(episode.id))
+        metadata = _project_metadata(
+            request,
+            spec=spec,
+            episode_id=int(episode.id),
+        )
         story.extra_metadata = metadata
         episode.extra_metadata = metadata
         db.flush()
@@ -149,8 +165,8 @@ def create_single_video_project(
                 build_single_video_script_request(
                     episode_id=int(episode.id),
                     prompt=request.prompt,
-                    duration_minutes=request.duration_minutes,
-                    aspect_ratio=request.aspect_ratio,
+                    duration_seconds=spec.duration_seconds,
+                    aspect_ratio=spec.aspect_ratio,
                     style=request.style,
                 ),
                 title=f"生成单条视频剧本 - {request.title}",
@@ -160,6 +176,7 @@ def create_single_video_project(
             )
             metadata = _project_metadata(
                 request,
+                spec=spec,
                 episode_id=int(episode.id),
                 task_id=int(task.id),
             )
@@ -190,3 +207,19 @@ def create_single_video_project(
     except Exception:
         db.rollback()
         raise
+
+
+def _resolve_project_spec(
+    request: SingleVideoProjectRequest,
+) -> ResolvedSingleVideoSpec:
+    duration_seconds = (
+        request.duration_seconds
+        or (request.duration_minutes * 60 if request.duration_minutes else None)
+        or 180
+    )
+    aspect_ratio = request.aspect_ratio or "9:16"
+    return ResolvedSingleVideoSpec(
+        duration_seconds=int(duration_seconds),
+        duration_minutes=max(1, math.ceil(duration_seconds / 60)),
+        aspect_ratio=aspect_ratio,
+    )

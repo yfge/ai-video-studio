@@ -121,7 +121,13 @@ def test_canvas_plan_does_not_guess_between_ambiguous_stories(db_session):
         item for item in plan.skill_results if item.skill == "script.generate"
     )
     assert script_result.status == "blocked"
-    assert script_result.outputs["required_inputs"] == ["episode_id"]
+    assert script_result.outputs["required_inputs"] == ["production_context"]
+    questions = plan.production_context.brief.clarifications
+    assert questions[0].id == "context.story_id"
+    assert {option.label.split(" ")[0] for option in questions[0].options} == {
+        "甲线",
+        "乙线",
+    }
 
 
 def test_canvas_plan_resolves_and_validates_timeline_clip_context(db_session):
@@ -263,35 +269,3 @@ def test_canvas_plan_rejects_explicit_environment_with_implicit_unlinked_ip(
                 environment_id=environment.id,
             ),
         )
-
-
-def test_canvas_plan_links_prompt_environment_when_story_resolves_ip(
-    db_session,
-):
-    user = _user(db_session, "canvas_context_auto_environment_owner")
-    virtual_ip = VirtualIP(user_id=user.id, name="女主角", is_active=True)
-    environment = Environment(
-        user_id=user.id,
-        name="办公室",
-        category="indoor",
-    )
-    db_session.add_all([virtual_ip, environment])
-    db_session.commit()
-    story, episode = _story_episode(
-        db_session,
-        user,
-        virtual_ip,
-        "办公室逆袭",
-        episode_number=1,
-    )
-
-    plan = build_canvas_skill_plan(
-        db_session,
-        user,
-        ProductionCanvasPlanRequest(prompt="制作办公室逆袭第1集"),
-    )
-
-    assert plan.resolved_context.virtual_ip_id == virtual_ip.id
-    assert plan.resolved_context.environment_id == environment.id
-    assert plan.resolved_context.story_id == story.id
-    assert plan.resolved_context.episode_id == episode.id

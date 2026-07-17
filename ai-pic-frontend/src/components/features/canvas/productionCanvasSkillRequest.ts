@@ -1,4 +1,7 @@
-import type { ProductionCanvasSkillExecuteRequest } from "@/utils/api/types";
+import type {
+  ProductionCanvasProductionContext,
+  ProductionCanvasSkillExecuteRequest,
+} from "@/utils/api/types";
 import {
   emptyProductionCanvasContext,
   productionCanvasRequestContext,
@@ -74,6 +77,11 @@ export function productionCanvasSkillExecuteRequest({
     ),
   );
   const planningMode = outputString(node.outputs, "planning_mode");
+  const productionContext =
+    node.outputs?.production_context &&
+    typeof node.outputs.production_context === "object"
+      ? (node.outputs.production_context as ProductionCanvasProductionContext)
+      : undefined;
   return {
     prompt:
       fallbackPrompt ||
@@ -101,6 +109,7 @@ export function productionCanvasSkillExecuteRequest({
     resolution: outputString(node.outputs, "resolution"),
     ratio: outputString(node.outputs, "ratio"),
     camera_fixed: outputBoolean(node.outputs, "camera_fixed"),
+    production_context: productionContext,
     virtual_ip_id: virtualIpId,
     environment_id: environmentId,
     story_id: scopedMediaNode

@@ -107,48 +107,6 @@ export function ProductionCanvasSingleVideoFields({
           className={fieldClass}
         />
       </label>
-      <label className="min-w-0">
-        <span className="text-[11px] font-semibold text-gray-600">时长</span>
-        <select
-          aria-label="视频时长"
-          value={draft.durationMinutes}
-          onChange={(event) =>
-            onDraftChange({
-              durationMinutes: Number(event.target.value) as 3 | 5,
-            })
-          }
-          className={fieldClass}
-        >
-          <option value={3}>3 分钟</option>
-          <option value={5}>5 分钟</option>
-        </select>
-      </label>
-      <label className="min-w-0">
-        <span className="text-[11px] font-semibold text-gray-600">画幅</span>
-        <select
-          aria-label="视频画幅"
-          value={draft.aspectRatio}
-          onChange={(event) =>
-            onDraftChange({
-              aspectRatio: event.target.value as "9:16" | "16:9",
-            })
-          }
-          className={fieldClass}
-        >
-          <option value="9:16">9:16 竖屏</option>
-          <option value="16:9">16:9 横屏</option>
-        </select>
-      </label>
-      <label className="min-w-0">
-        <span className="text-[11px] font-semibold text-gray-600">风格</span>
-        <input
-          aria-label="视频风格"
-          value={draft.style}
-          onChange={(event) => onDraftChange({ style: event.target.value })}
-          placeholder="可选"
-          className={fieldClass}
-        />
-      </label>
       <AssetFields
         assetOptions={assetOptions}
         context={context}

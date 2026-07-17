@@ -2,11 +2,19 @@ from __future__ import annotations
 
 import json
 
+import pytest
 from app.models.script import Episode, Script, Story
 from app.models.story_structure import Environment
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP, VirtualIPEnvironment
+from app.services.ai_service import ai_service
+from tests.integration.production_canvas_ai_stub import ProductionCanvasAIStub
+
+
+@pytest.fixture(autouse=True)
+def _stub_canvas_planner_ai(monkeypatch):
+    monkeypatch.setattr(ai_service, "ai_manager", ProductionCanvasAIStub())
 
 
 def _create_script_context(db_session, user: User) -> Script:
@@ -60,16 +68,28 @@ def test_production_canvas_plan_api_reuses_ip_environment_assets(client, db_sess
 
     response = client.post(
         "/api/v1/production-canvas/plan",
-        json={"prompt": "基于林妹妹做第 4 集，办公室轻喜剧"},
+        json={
+            "prompt": "基于林妹妹做第 4 集，办公室轻喜剧",
+            "brief_overrides": {"episode_count": 1},
+            "clarification_answers": {
+                "assets.virtual_ip_name": "林妹妹",
+                "assets.environment_names": "共享办公区",
+            },
+        },
     )
 
     assert response.status_code == 200
     payload = response.json()["data"]
-    assert payload["skill_manifest"]["version"] == "production_canvas.v1"
+    assert payload["skill_manifest"]["version"] == "production_canvas.v2"
     assert payload["skill_manifest"]["skills"][0]["id"] == "brief.compose"
     assert payload["selected_assets"]["virtual_ips"][0]["name"] == "林妹妹"
     assert payload["selected_assets"]["environments"][0]["name"] == "共享办公区"
-    assert payload["skill_results"][1]["skill"] == "asset.select"
+    asset_result = next(
+        result
+        for result in payload["skill_results"]
+        if result["skill"] == "asset.select"
+    )
+    assert asset_result["status"] == "review"
     script_result = next(
         result
         for result in payload["skill_results"]
@@ -78,8 +98,10 @@ def test_production_canvas_plan_api_reuses_ip_environment_assets(client, db_sess
     assert script_result["reuse_targets"][0]["target"].endswith("generate_script_async")
     assert payload["task_id"]
     assert payload["run_id"]
-    assert payload["nodes"][1]["skill"] == "asset.select"
-    assert payload["nodes"][1]["reuse_targets"][0]["kind"] == "repository"
+    asset_node = next(
+        node for node in payload["nodes"] if node["skill"] == "asset.select"
+    )
+    assert asset_node["reuse_targets"][0]["kind"] == "repository"
     task = db_session.get(Task, payload["task_id"])
     assert task is not None
     assert task.business_id == payload["run_id"]
@@ -89,7 +111,7 @@ def test_production_canvas_plan_api_reuses_ip_environment_assets(client, db_sess
     params = json.loads(task.parameters)
     assert params["kind"] == "production_canvas_run"
     assert params["prompt"] == "基于林妹妹做第 4 集，办公室轻喜剧"
-    assert params["skill_results"][1]["skill"] == "asset.select"
+    assert any(result["skill"] == "asset.select" for result in params["skill_results"])
     assert params["selected_assets"]["virtual_ips"][0]["name"] == "林妹妹"
 
 
@@ -108,14 +130,25 @@ def test_production_canvas_plan_api_creates_ip_with_existing_environment(
 
     response = client.post(
         "/api/v1/production-canvas/plan",
-        json={"prompt": "创建一个名为首创IP的角色，以首创办公室为场景"},
+        json={
+            "prompt": "创建一个名为首创IP的角色，以首创办公室为场景",
+            "brief_overrides": {"episode_count": 1},
+            "clarification_answers": {
+                "assets.virtual_ip_name": "首创IP",
+                "assets.environment_names": "首创办公室",
+            },
+        },
     )
 
     assert response.status_code == 200
     payload = response.json()["data"]
-    assert payload["nodes"][1]["title"] == "已创建 首创IP 和 首创办公室"
-    assert payload["nodes"][1]["outputs"]["created_virtual_ip_ids"]
-    assert payload["nodes"][1]["outputs"]["created_environment_ids"] == []
+    asset_node = next(
+        node for node in payload["nodes"] if node["skill"] == "asset.select"
+    )
+    assert "IP：新建 首创IP" in asset_node["title"]
+    assert "场景：复用 首创办公室" in asset_node["title"]
+    assert asset_node["outputs"]["created_virtual_ip_ids"]
+    assert asset_node["outputs"]["created_environment_ids"] == []
     assert (
         db_session.query(VirtualIPEnvironment)
         .filter(
@@ -242,53 +275,3 @@ def test_production_canvas_execute_script_skill_blocks_without_episode(
     assert payload["skill_result"]["status"] == "blocked"
     assert payload["skill_result"]["outputs"]["required_inputs"] == ["episode_id"]
     assert calls == []
-
-
-def test_production_canvas_execute_storyboard_skill_dispatches_existing_task(
-    client,
-    db_session,
-    monkeypatch,
-):
-    user = db_session.query(User).filter(User.username == "test_admin").first()
-    script = _create_script_context(db_session, user)
-    dispatched = {}
-
-    def fake_delay(task_id, params, user_id):
-        dispatched["task_id"] = task_id
-        dispatched["params"] = params
-        dispatched["user_id"] = user_id
-
-    monkeypatch.setattr(
-        "app.services.storyboard.generation_queue.storyboard_generate_task.delay",
-        fake_delay,
-    )
-
-    response = client.post(
-        "/api/v1/production-canvas/execute",
-        json={
-            "prompt": "继续现有剧本生成分镜",
-            "skill": "storyboard.plan",
-            "script_id": script.id,
-            "run_id": "abcdabcdabcdabcdabcdabcdabcdabcd",
-        },
-    )
-
-    assert response.status_code == 200
-    payload = response.json()["data"]
-    assert payload["task_id"]
-    assert payload["task_status"] == "pending"
-    assert payload["skill_result"]["skill"] == "storyboard.plan"
-    assert payload["skill_result"]["status"] == "running"
-    assert payload["skill_result"]["outputs"]["script_id"] == script.id
-    assert (
-        payload["skill_result"]["outputs"]["dispatched_task_id"] == payload["task_id"]
-    )
-
-    task = db_session.get(Task, payload["task_id"])
-    assert task.task_type == TaskType.STORYBOARD_GENERATION
-    assert task.target_business_id == "abcdabcdabcdabcdabcdabcdabcdabcd"
-    params = json.loads(task.parameters)
-    assert params["script_id"] == script.id
-    assert params["use_plan"] is True
-    assert dispatched["task_id"] == task.id
-    assert dispatched["params"]["script_id"] == script.id

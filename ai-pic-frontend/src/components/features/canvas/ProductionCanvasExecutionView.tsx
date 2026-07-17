@@ -74,15 +74,20 @@ export function ProductionCanvasExecutionView({
           creationMode={planner.creationMode}
           context={planner.context}
           error={planner.error}
+          clarificationAnswers={planner.clarificationAnswers}
           onCreate={() => {
             void planner.createFromPrompt();
             commands.focusCanvas();
           }}
           onContextChange={planner.setContextValue}
+          onClarificationAnswer={planner.onClarificationAnswer}
           onCreationModeChange={planner.setCreationMode}
           onPromptChange={planner.setPrompt}
+          onPlanningSettingsChange={planner.setPlanningSettings}
           onSingleVideoDraftChange={planner.updateSingleVideoDraft}
           prompt={planner.prompt}
+          planningSettings={planner.planningSettings}
+          productionContext={planner.productionContext}
           running={planner.running}
           singleVideoDraft={planner.singleVideoDraft}
         />

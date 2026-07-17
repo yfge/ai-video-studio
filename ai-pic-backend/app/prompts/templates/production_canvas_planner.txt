@@ -9,15 +9,32 @@
 已选择资产：
 {{ selected_assets_json }}
 
+已解析生产上下文：
+{{ production_context_json }}
+
 可用 Skill 与依赖约束：
 {{ skill_catalog_json }}
 
 规划规则：
 1. 第一个步骤必须是 brief.compose。
-2. 只选择完成目标所需的最小 Skill 子集。
+2. 只选择完成目标所需的最小 Skill 子集；凡是生成故事、剧集或剧本，必须经过 content.plan 和 asset.select。
 3. depends_on 只能引用前面已经出现的 Skill。
 4. 必须满足 required_dependencies；其余依赖只能来自 allowed_dependencies。
 5. video.candidates 必须且只能依赖 image.candidates 或 storyboard.plan 之一。
 6. 不要把 report.summarize 当作其他生产步骤的前置条件。
 7. reason 只写一句可审计的选择理由，不输出隐藏推理过程。
-8. 只输出符合 JSON Schema 的 JSON。
+8. 顶层只能包含 objective、steps、assumptions，不得增加 schema_name、plan 或 result 包装。
+9. 每个步骤必须使用字段 skill，不得使用 id、name 或 skill_id。
+10. 只输出 JSON，不输出代码块或解释，严格采用以下键名结构：
+
+{
+  "objective": "<本次生产目标>",
+  "steps": [
+    {
+      "skill": "brief.compose",
+      "reason": "<一句选择理由>",
+      "depends_on": []
+    }
+  ],
+  "assumptions": []
+}

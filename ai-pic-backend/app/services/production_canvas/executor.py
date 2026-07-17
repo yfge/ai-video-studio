@@ -30,6 +30,7 @@ from app.services.production_canvas.graph_runtime import (
 from app.services.production_canvas.immediate_execution import (
     execute_asset_selection,
     execute_brief_compose,
+    execute_content_planning,
 )
 from app.services.production_canvas.media_execution import (
     execute_storyboard_images,
@@ -49,7 +50,10 @@ from app.services.production_canvas.render_execution import (
 )
 from app.services.production_canvas.report_execution import execute_report_summary
 from app.services.production_canvas.run_context import canvas_run_context
-from app.services.production_canvas.run_persistence import load_canvas_saved_state
+from app.services.production_canvas.run_persistence import (
+    load_canvas_saved_state,
+    load_canvas_skill_run,
+)
 from app.services.production_canvas.run_requests import request_for_canvas_node_context
 from app.services.production_canvas.stale_runtime import canvas_node_input_fingerprint
 from sqlalchemy.orm import Session
@@ -81,6 +85,8 @@ def _dispatch_canvas_skill(
 ) -> ProductionCanvasSkillExecuteResponse:
     if request.skill == "brief.compose":
         return execute_brief_compose(request)
+    if request.skill == "content.plan":
+        return execute_content_planning(request)
     if request.skill == "asset.select":
         return execute_asset_selection(db, user, request)
     if request.skill == "virtual_ip.image":
@@ -214,6 +220,12 @@ def execute_canvas_skill(
     user: User,
     request: ProductionCanvasSkillExecuteRequest,
 ) -> ProductionCanvasSkillExecuteResponse:
+    if request.run_id and request.production_context is None:
+        run = load_canvas_skill_run(db, user, request.run_id)
+        if run is not None and run.production_context is not None:
+            request = request.model_copy(
+                update={"production_context": run.production_context}
+            )
     state = (
         load_canvas_saved_state(db, user, request.run_id) if request.run_id else None
     )

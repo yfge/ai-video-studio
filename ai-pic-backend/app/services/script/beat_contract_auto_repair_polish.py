@@ -1,19 +1,21 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from app.services.script.beat_contract_auto_repair_common import (
-    beat_screen_text,
     beat_text,
     compact,
     has_any,
     preferred_character,
-    progression_action,
-    progression_dialogue,
-    progression_event,
-    scene_screen_text,
     to_float,
     visible_len,
+)
+from app.services.script.beat_contract_cliffhanger import (
+    is_concrete_unresolved_cliffhanger_text,
+)
+from app.services.script.beat_contract_hook import (
+    opening_hook_screen_text_has_substance,
 )
 
 _VAGUE_VISUAL = ("气氛", "氛围", "紧张感", "压迫感")
@@ -36,70 +38,130 @@ _VAGUE = (
 
 
 def repair_beats(scene: dict[str, Any], beats: list[dict[str, Any]]) -> None:
-    protagonist = preferred_character(beats) or "AP"
+    protagonist = preferred_character(beats)
     for beat in beats:
         visible = str(beat.get("visible_event") or "")
         if has_any(visible, _VAGUE_VISUAL):
-            beat["visible_event"] = f"{protagonist}停住脚步举起手机，云端日志时间戳映在屏幕上。"
-        if (beat.get("beat_type") == "payoff" or beat.get("payoff_tag")) and has_any(
-            visible, ("信任", "崩溃", "承认")
+            beat["visible_event"] = _repair_vague_visual(visible, protagonist)
+        if (
+            protagonist
+            and (beat.get("beat_type") == "payoff" or beat.get("payoff_tag"))
+            and has_any(visible, ("信任", "崩溃", "承认"))
         ):
-            beat["visible_event"] = "客户在会议纪要上签字确认继续项目，篡改者手机弹出解雇短信。"
-            beat["payoff_tag"] = "客户签字继续项目"
+            payoff_object = _concrete_object(
+                visible
+                + "".join(
+                    str(item.get("content") or "")
+                    for item in beat.get("action_lines") or []
+                    if isinstance(item, dict)
+                )
+            )
+            beat["visible_event"] = (
+                f"{protagonist}把{payoff_object}结果页推到镜头前，状态栏变为“已确认”。"
+            )
+            beat["action_lines"] = [
+                {
+                    "content": f"{protagonist}指向{payoff_object}结果页上的确认标记。",
+                    "timing": "mid",
+                    "type": "action",
+                }
+            ]
+            beat["payoff_tag"] = f"{payoff_object}结果已确认"
         purpose = str(beat.get("dramatic_purpose") or "")
         if not purpose or has_any(purpose, _VAGUE):
-            beat["dramatic_purpose"] = f"{beat['visible_event']}让证据链进入下一步。"
+            beat["dramatic_purpose"] = (
+                f"{beat['visible_event']}让当前人物选择和局面进入下一步。"
+            )
         for action in beat.get("action_lines") or []:
             if isinstance(action, dict) and has_any(
                 str(action.get("content") or ""), _VAGUE_VISUAL
             ):
-                action["content"] = "小陈横在门口按住平板，云端日志时间戳被蓝框锁定。"
-    if protagonist.replace(" ", "") not in scene_screen_text(beats):
-        beats[0].setdefault("action_lines", []).insert(
-            0,
-            {
-                "content": f"{protagonist}把原始文件推到投影前，客户和团队同时看向屏幕。",
-                "timing": "mid",
-                "type": "action",
-            },
-        )
-    if not any(beat.get("beat_type") == "payoff" or beat.get("payoff_tag") for beat in beats):
-        target = beats[1 if len(beats) > 1 else 0]
-        target["beat_type"] = "reveal"
-        target["payoff_tag"] = "客户签字继续项目"
-        target["visible_event"] = "客户在会议纪要上签字确认继续项目，AP把原始文件编号圈给镜头。"
-    _ensure_recurring_dialogue(beats, protagonist)
+                action["content"] = _repair_vague_visual(
+                    str(action.get("content") or ""),
+                    protagonist,
+                )
+    _ensure_escalation_beat(beats)
 
 
-def harden_opening_hook(beat: dict[str, Any] | None) -> None:
+def harden_opening_hook(
+    beat: dict[str, Any] | None,
+    scene: dict[str, Any] | None = None,
+) -> None:
     if not isinstance(beat, dict):
         return
     beat["beat_type"] = "hook"
-    if not has_any(beat_text(beat), ("异常", "倒计时", "删除", "危机", "证据", "反转", "改")):
-        beat["visible_event"] = "客户拍桌质疑：投影数据被改了，原始文件证据与屏幕数字不符。"
-        beat.setdefault("action_lines", []).insert(
-            0,
-            {
-                "content": "投影数字变红，客户手指重重敲在错误数据上。",
-                "timing": "0-2s",
-                "type": "action",
-            },
+    if opening_hook_screen_text_has_substance(beat_text(beat)):
+        return
+    beats = scene.get("beats") if isinstance(scene, dict) else None
+    if not isinstance(beats, list):
+        return
+    current = str(beat.get("visible_event") or "").strip()
+    for later_beat in beats[1:]:
+        if not isinstance(later_beat, dict):
+            continue
+        evidence = str(later_beat.get("visible_event") or "").strip()
+        if not evidence:
+            continue
+        if not opening_hook_screen_text_has_substance(f"{beat_text(beat)} {evidence}"):
+            continue
+        beat["visible_event"] = (
+            f"{current.rstrip('。')}；{evidence}" if current else evidence
         )
+        return
 
 
-def harden_final_cliffhanger(beat: dict[str, Any] | None) -> None:
+def harden_final_cliffhanger(
+    beat: dict[str, Any] | None,
+    scene: dict[str, Any] | None = None,
+) -> None:
     if not isinstance(beat, dict):
         return
     beat["beat_type"] = "cliffhanger"
-    beat["visible_event"] = "AP手机弹出匿名短信：原始文件将在30秒后删除，下一个停职的是你。"
-    beat["cliffhanger_tag"] = "匿名短信威胁删除原始文件"
-    beat.setdefault("action_lines", []).append(
-        {
-            "content": "AP把手机举到镜头前，短信倒计时从30秒跳到29秒。",
-            "timing": "outro",
-            "type": "action",
-        }
+    text = " ".join(
+        [
+            str(beat.get("visible_event") or ""),
+            str(beat.get("cliffhanger_tag") or ""),
+            *[
+                str(action.get("content") or "")
+                for action in beat.get("action_lines") or []
+                if isinstance(action, dict)
+            ],
+            *[
+                str(line.get("content") or "")
+                for line in beat.get("dialogue_lines") or []
+                if isinstance(line, dict)
+            ],
+        ]
     )
+    if is_concrete_unresolved_cliffhanger_text(text):
+        return
+    conflict = scene.get("conflict") if isinstance(scene, dict) else None
+    opposition = (
+        str(conflict.get("opposition") or "").strip()
+        if isinstance(conflict, dict)
+        else ""
+    )
+    protagonist = preferred_character([beat])
+    unresolved = compact(opposition)[:28] or "当前阻力"
+    existing = str(beat.get("visible_event") or "").strip()
+    beat["visible_event"] = (
+        f"{existing.rstrip('。')}；{unresolved}仍未解除。"
+        if existing
+        else (
+            f"{protagonist}停下动作，{unresolved}仍未解除。"
+            if protagonist
+            else f"{unresolved}仍未解除。"
+        )
+    )
+    beat["cliffhanger_tag"] = f"{unresolved}仍未解决"
+    if protagonist:
+        beat.setdefault("action_lines", []).append(
+            {
+                "content": f"{protagonist}转向阻力来源，镜头停在尚未解决的状态上。",
+                "timing": "outro",
+                "type": "action",
+            }
+        )
 
 
 def align_scene_durations(
@@ -115,86 +177,49 @@ def align_scene_durations(
     remaining = max(1.0, estimated - first)
     base = round(remaining / len(rest), 2)
     for index, beat in enumerate(rest):
-        beat["duration_seconds"] = base if index < len(rest) - 1 else round(
-            remaining - (base * index), 2
+        beat["duration_seconds"] = (
+            base if index < len(rest) - 1 else round(remaining - (base * index), 2)
         )
 
 
-def dedupe_progression(beats: list[dict[str, Any]]) -> None:
-    seen_screen: set[str] = set()
-    seen_lines: set[str] = set()
-    protagonist = preferred_character(beats) or "AP"
-    for beat in beats:
-        state = compact(beat_screen_text(beat))
-        if state in seen_screen:
-            order = int(to_float(beat.get("order_index")) or len(seen_screen) + 1)
-            beat["visible_event"] = progression_event(protagonist, order)
-            beat["action_lines"] = [
-                {
-                    "content": progression_action(protagonist, order),
-                    "timing": "mid",
-                    "type": "action",
-                }
-            ]
-            state = compact(beat_screen_text(beat))
-        seen_screen.add(state)
-        for line in beat.get("dialogue_lines") or []:
-            if not isinstance(line, dict):
-                continue
-            text = compact(str(line.get("content") or ""))
-            if text in seen_lines:
-                line["content"] = progression_dialogue(
-                    int(to_float(beat.get("order_index")) or 1)
-                )
-                text = compact(line["content"])
-            seen_lines.add(text)
+def _repair_vague_visual(text: str, protagonist: str | None) -> str:
+    clauses = [
+        item.strip()
+        for item in re.split(r"[，,；;。]", text)
+        if item.strip() and not has_any(item, _VAGUE_VISUAL)
+    ]
+    concrete = "，".join(clauses)
+    if visible_len(concrete) >= 4:
+        return concrete.rstrip("。") + "。"
+    if not protagonist:
+        return text
+    target = _concrete_object(text)
+    return f"{protagonist}把{target}移到镜头前，状态变化清楚可见。"
 
 
-def shorten_dialogue_lines(beats: list[dict[str, Any]]) -> None:
-    for beat in beats:
-        for line in beat.get("dialogue_lines") or []:
-            if isinstance(line, dict) and visible_len(str(line.get("content") or "")) > 15:
-                line["content"] = _short_dialogue(str(line.get("content") or ""))
-
-
-def _short_dialogue(text: str) -> str:
-    replacements = (
-        (("版本同步",), "可能是同步问题。"),
-        (("会议纪要",), "纪要有你签字。"),
-        (("刚才", "误会"), "刚才误会了。"),
-        (("原始文件",), "原始文件在这。"),
-        (("云端数据",), "云端875，投影920。"),
-        (("左边", "右边"), "左云端，右投影。"),
-        (("签过字",), "签字在这，怎么说？"),
+def _concrete_object(text: str) -> str:
+    choices = (
+        ("合同", "合同"),
+        ("奖金", "奖金记录"),
+        ("日志", "日志"),
+        ("文件", "文件"),
+        ("数据", "数据"),
+        ("权限", "权限"),
+        ("素材", "素材"),
+        ("方案", "方案"),
+        ("客户", "客户确认页"),
+        ("倒计时", "倒计时页面"),
+        ("手机", "手机页面"),
+        ("电话", "电话页面"),
     )
-    for markers, replacement in replacements:
-        if all(marker in text for marker in markers):
-            return replacement
-    for separator in ("。", "！", "？", "；", "，", ",", ":", "："):
-        if separator in text:
-            candidate = text.split(separator, 1)[0].strip(" ，,：:") + "。"
-            if 4 <= visible_len(candidate) <= 15:
-                return candidate
-    return f"{compact(text)[:14]}。"
+    return next((label for marker, label in choices if marker in text), "当前结果")
 
 
-def _ensure_recurring_dialogue(
-    beats: list[dict[str, Any]], protagonist: str
-) -> None:
-    covered = {
-        beat.get("order_index")
-        for beat in beats
-        for line in beat.get("dialogue_lines", [])
-        if isinstance(line, dict) and str(line.get("character") or "") == protagonist
-    }
-    for beat in beats:
-        if len(covered) >= 2:
-            break
-        if beat.get("order_index") not in covered:
-            beat.setdefault("dialogue_lines", []).append(
-                {
-                    "character": protagonist,
-                    "content": progression_dialogue(int(beat["order_index"])),
-                }
-            )
-            covered.add(beat.get("order_index"))
+def _ensure_escalation_beat(beats: list[dict[str, Any]]) -> None:
+    if any(beat.get("beat_type") in {"conflict", "reveal"} for beat in beats):
+        return
+    candidates = [
+        beat for beat in beats if beat.get("beat_type") not in {"hook", "cliffhanger"}
+    ]
+    if candidates:
+        candidates[0]["beat_type"] = "reveal"

@@ -57,18 +57,22 @@ def test_canvas_skill_plan_selects_existing_ip_and_environment_pool(db_session):
         )
     )
     db_session.commit()
-
     plan = build_canvas_skill_plan(
         db_session,
         user,
         ProductionCanvasPlanRequest(
             prompt="基于林妹妹做第 4 集，办公室轻喜剧，生成完整短剧链路",
+            brief_overrides={"episode_count": 1},
+            clarification_answers={
+                "assets.virtual_ip_name": "林妹妹",
+                "assets.environment_names": "共享办公区",
+            },
         ),
     )
-
-    assert plan.skill_manifest.version == "production_canvas.v1"
-    assert [skill.id for skill in plan.skill_manifest.skills[:7]] == [
+    assert plan.skill_manifest.version == "production_canvas.v2"
+    assert [skill.id for skill in plan.skill_manifest.skills[:8]] == [
         "brief.compose",
+        "content.plan",
         "asset.select",
         "virtual_ip.image",
         "environment.image",
@@ -76,8 +80,9 @@ def test_canvas_skill_plan_selects_existing_ip_and_environment_pool(db_session):
         "timeline.assemble",
         "storyboard.plan",
     ]
-    assert [result.skill for result in plan.skill_results[:7]] == [
+    assert [result.skill for result in plan.skill_results[:8]] == [
         "brief.compose",
+        "content.plan",
         "asset.select",
         "virtual_ip.image",
         "environment.image",
@@ -102,16 +107,17 @@ def test_canvas_skill_plan_selects_existing_ip_and_environment_pool(db_session):
     )
     assert plan.selected_assets.virtual_ips[0].name == "林妹妹"
     assert plan.selected_assets.environments[0].name == "共享办公区"
-    assert "复用现有 IP" in plan.nodes[1].detail
-    assert plan.nodes[1].outputs["environment_ids"] == [environment.id]
-    assert plan.nodes[1].reuse_targets[0].target.endswith("VirtualIPRepository")
-    assert plan.nodes[1].outputs["candidate_environment_ids"] == [environment.id]
+    asset_node = next(node for node in plan.nodes if node.skill == "asset.select")
+    assert "命中现有可访问资产" in asset_node.detail
+    assert asset_node.outputs["environment_ids"] == [environment.id]
+    assert asset_node.reuse_targets[0].target.endswith("VirtualIPRepository")
+    assert asset_node.outputs["candidate_environment_ids"] == [environment.id]
     assert virtual_ip_image_result.status == "ready"
     assert virtual_ip_image_result.outputs["virtual_ip_ids"] == [virtual_ip.id]
     assert environment_image_result.status == "ready"
     assert environment_image_result.outputs["environment_ids"] == [environment.id]
-    assert script_result.status == "blocked"
-    assert script_result.outputs["required_inputs"] == ["episode_id"]
+    assert script_result.status == "ready"
+    assert script_result.outputs["episode_id"] == plan.resolved_context.episode_id
 
 
 def test_canvas_skill_plan_creates_prompt_assets_when_no_match_exists(db_session):
@@ -138,15 +144,29 @@ def test_canvas_skill_plan_creates_prompt_assets_when_no_match_exists(db_session
     plan = build_canvas_skill_plan(
         db_session,
         user,
-        ProductionCanvasPlanRequest(prompt="基于林妹妹做第 4 集，办公室轻喜剧"),
+        ProductionCanvasPlanRequest(
+            prompt="基于林妹妹做第 4 集，办公室轻喜剧",
+            brief_overrides={"episode_count": 1},
+            clarification_answers={
+                "assets.virtual_ip_name": "林妹妹",
+                "assets.environment_names": "办公室",
+            },
+        ),
     )
 
     assert plan.selected_assets.virtual_ips[0].name == "林妹妹"
     assert plan.selected_assets.environments[0].name == "办公室"
-    assert plan.nodes[1].title == "已创建 林妹妹 和 办公室"
-    assert plan.nodes[1].outputs["created_virtual_ip_ids"]
-    assert plan.nodes[1].outputs["created_environment_ids"]
-    assert plan.skill_results[1].status == "review"
+    asset_node = next(node for node in plan.nodes if node.skill == "asset.select")
+    assert "IP：新建 林妹妹" in asset_node.title
+    assert "场景：新建 办公室" in asset_node.title
+    assert asset_node.outputs["created_virtual_ip_ids"]
+    assert asset_node.outputs["created_environment_ids"]
+    assert (
+        next(
+            result for result in plan.skill_results if result.skill == "asset.select"
+        ).status
+        == "review"
+    )
     virtual_ip_image_result = next(
         result for result in plan.skill_results if result.skill == "virtual_ip.image"
     )
@@ -181,13 +201,20 @@ def test_canvas_skill_plan_links_existing_environment_to_created_ip(db_session):
         db_session,
         user,
         ProductionCanvasPlanRequest(
-            prompt="创建一个名为首创IP的角色，以首创办公室为场景"
+            prompt="创建一个名为首创IP的角色，以首创办公室为场景",
+            brief_overrides={"episode_count": 1},
+            clarification_answers={
+                "assets.virtual_ip_name": "首创IP",
+                "assets.environment_names": "首创办公室",
+            },
         ),
     )
 
-    assert plan.nodes[1].title == "已创建 首创IP 和 首创办公室"
-    assert plan.nodes[1].outputs["created_virtual_ip_ids"]
-    assert plan.nodes[1].outputs["created_environment_ids"] == []
+    asset_node = next(node for node in plan.nodes if node.skill == "asset.select")
+    assert "IP：新建 首创IP" in asset_node.title
+    assert "场景：复用 首创办公室" in asset_node.title
+    assert asset_node.outputs["created_virtual_ip_ids"]
+    assert asset_node.outputs["created_environment_ids"] == []
     assert (
         db_session.query(VirtualIPEnvironment)
         .filter(
@@ -220,8 +247,13 @@ def test_canvas_skill_plan_can_select_environment_without_ip(db_session):
 
     assert plan.selected_assets.virtual_ips == []
     assert plan.selected_assets.environments[0].name == "办公室"
-    assert plan.nodes[1].title == "IP 待确认；已选择环境：办公室"
-    assert plan.nodes[1].outputs["environment_ids"] == [environment.id]
+    asset_node = next(node for node in plan.nodes if node.skill == "asset.select")
+    assert asset_node.title == "场景：复用 办公室"
+    assert asset_node.status == "blocked"
+    assert asset_node.outputs["environment_ids"] == [environment.id]
+    assert plan.production_context.brief.clarifications[0].id == (
+        "assets.virtual_ip_name"
+    )
 
 
 def test_canvas_skill_plan_links_explicit_prompt_environment_for_ip(db_session):
@@ -243,7 +275,14 @@ def test_canvas_skill_plan_links_explicit_prompt_environment_for_ip(db_session):
     plan = build_canvas_skill_plan(
         db_session,
         user,
-        ProductionCanvasPlanRequest(prompt="基于林妹妹做一个办公室职场短剧"),
+        ProductionCanvasPlanRequest(
+            prompt="基于林妹妹做一个办公室职场短剧",
+            brief_overrides={"episode_count": 1},
+            clarification_answers={
+                "assets.virtual_ip_name": "林妹妹",
+                "assets.environment_names": "办公室",
+            },
+        ),
     )
 
     assert plan.resolved_context.virtual_ip_id == virtual_ip.id

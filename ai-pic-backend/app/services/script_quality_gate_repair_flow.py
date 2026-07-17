@@ -5,6 +5,7 @@ from copy import deepcopy
 from typing import Any, Dict, Optional
 
 from app.schemas.generation import ScriptModel
+from app.schemas.production_script import ProductionScriptModel
 from app.services.quality_gate_core import (
     MAX_QUALITY_GATE_REPAIRS,
     NarrativeQualityGateError,
@@ -24,9 +25,11 @@ from app.services.script_quality_gate_repair_guard import (
 from app.services.script_quality_gate_repair_support import (
     SCRIPT_BEAT_CONTRACT_REPAIR_INSTRUCTIONS,
     refresh_unknown_speaker_validation_result,
+    with_script_gate,
 )
 
 logger = logging.getLogger(__name__)
+
 
 async def enforce_script_quality_gate_with_repair(
     *,
@@ -66,7 +69,9 @@ async def enforce_script_quality_gate_with_repair(
         "prefer_provider": prefer_provider,
         "require_beat_contract": require_beat_contract,
     }
-    gate = await evaluate_script_quality_gate(content=content, result=result, **gate_options)
+    gate = await evaluate_script_quality_gate(
+        content=content, result=result, **gate_options
+    )
     result, gate = await _refresh_gate(
         evaluate_script_quality_gate,
         result=result,
@@ -83,21 +88,30 @@ async def enforce_script_quality_gate_with_repair(
         gate_options=gate_options,
     )
     if gate["passed"]:
-        return _with_script_gate(result, content, gate), content, gate
+        return with_script_gate(result, content, gate), content, gate
 
     for attempt in range(1, max_repairs + 1):
+        repair_model = ProductionScriptModel if require_beat_contract else ScriptModel
         repaired = await repair_quality_gate_payload(
             ai_manager=ai_manager,
             kind="script",
             payload=content,
             quality_gate=gate,
-            schema={"name": "script", "schema": ScriptModel.model_json_schema()},
-            model=model or ("deepseek-v4-flash" if require_beat_contract else result.get("model_used")),
-            prefer_provider=prefer_provider or ("deepseek" if require_beat_contract else result.get("provider_used")),
+            schema={"name": "script", "schema": repair_model.model_json_schema()},
+            model=model
+            or (
+                "deepseek-v4-flash"
+                if require_beat_contract
+                else result.get("model_used")
+            ),
+            prefer_provider=prefer_provider
+            or ("deepseek" if require_beat_contract else result.get("provider_used")),
             temperature=temperature,
-            extra_instructions=SCRIPT_BEAT_CONTRACT_REPAIR_INSTRUCTIONS
-            if require_beat_contract
-            else None,
+            extra_instructions=(
+                SCRIPT_BEAT_CONTRACT_REPAIR_INSTRUCTIONS
+                if require_beat_contract
+                else None
+            ),
         )
         attempts.append(
             {
@@ -116,11 +130,22 @@ async def enforce_script_quality_gate_with_repair(
         if not structure_ok:
             logger.warning("Rejected script quality repair that lost structure")
             continue
-        content = _auto_repair_beat_contract(
+        auto_repaired = _auto_repair_beat_contract(
             repaired,
             require_beat_contract=require_beat_contract,
             target_chars_per_episode=target_chars_per_episode,
         )
+        post_repair_ok, post_repair_details = repair_preserves_script_structure(
+            before=content,
+            repaired=auto_repaired,
+        )
+        attempts[-1]["post_auto_repair_guard"] = post_repair_details
+        if not post_repair_ok:
+            logger.warning(
+                "Rejected beat contract auto repair that lost story identity"
+            )
+            continue
+        content = auto_repaired
         gate = await evaluate_script_quality_gate(
             content=content,
             result=result,
@@ -146,7 +171,7 @@ async def enforce_script_quality_gate_with_repair(
         )
         attempts[-1]["output_gate"] = quality_gate_attempt_snapshot(gate)
         if gate["passed"]:
-            return _with_script_gate(result, content, gate), content, gate
+            return with_script_gate(result, content, gate), content, gate
 
     gate["repair_attempts"] = attempts
     raise NarrativeQualityGateError("script", gate)
@@ -221,9 +246,3 @@ async def _apply_auto_characters(
         gate_options=gate_options,
         repair_attempts=repair_attempts,
     )
-
-
-def _with_script_gate(
-    result: Dict[str, Any], content: Dict[str, Any], gate: Dict[str, Any]
-) -> Dict[str, Any]:
-    return {**result, "content": content, "normalized": content, "quality_gate": gate}

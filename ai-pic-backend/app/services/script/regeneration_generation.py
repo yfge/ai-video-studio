@@ -124,6 +124,7 @@ async def build_regenerated_script_payload(
         marketing_overrides=marketing_overrides,
         prefer_provider=prefer_provider,
         model_id=model_id,
+        requirements=request_dict.get("additional_requirements"),
     )
     if scoring_artifacts and agent_run:
         agent_run = {**agent_run, "scoring": scoring_artifacts}
@@ -151,6 +152,7 @@ async def _build_regeneration_scoring(
     marketing_overrides: Dict[str, Any],
     prefer_provider: str | None,
     model_id: str | None,
+    requirements: str | None,
 ) -> Dict[str, Any] | None:
     marketing_defaults = merge_marketing_meta(
         story_data,
@@ -174,6 +176,7 @@ async def _build_regeneration_scoring(
             scenes=scenes,
             dialogues=dialogues,
             hook_plan=marketing_defaults.get("hook_plan"),
+            requirements=requirements,
             prefer_provider=prefer_provider,
             prefer_model=model_id,
         )

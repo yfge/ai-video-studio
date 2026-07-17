@@ -1,5 +1,4 @@
 import pytest
-
 from app.services.script.beat_contract_auto_repair import (
     auto_repair_script_beat_contract,
 )
@@ -41,6 +40,36 @@ def test_auto_repair_preserves_three_second_opening_hook_with_many_beats():
     assert first_beat.duration_seconds <= 3
     assert "opening_hook_duration" not in failed
     assert "opening_hook_substance" not in failed
+
+
+@pytest.mark.unit
+def test_auto_repair_promotes_existing_later_evidence_into_thin_hook():
+    payload = _valid_contract()
+    first_scene = payload["scenes"][0]
+    first_scene["beats"][0][
+        "visible_event"
+    ] = "三块屏同时亮着“AI落地”，林妹妹把“智能协同”纸页拍在桌上。"
+    first_scene["beats"][0]["action_lines"] = [
+        {"content": "林妹妹抬眼盯住主屏。"},
+    ]
+    first_scene["beats"][0]["dialogue_lines"] = [
+        {"character": "林妹妹", "content": "技术升级，还是PPT升级？"},
+    ]
+    first_scene["beats"][1][
+        "visible_event"
+    ] = "流程图终点写着“人工兜底”，补录清单被推到镜头前。"
+
+    repaired = auto_repair_script_beat_contract(
+        {"structured_script_contract": payload},
+        target_chars_per_episode=500,
+    )
+    contract = normalize_script_beat_contract(repaired)
+    report = evaluate_beat_contract_quality(contract)
+
+    failed = {item["check_id"] for item in report["failed_checks"]}
+    assert "opening_hook_substance" not in failed
+    assert "人工兜底" in contract.scenes[0].beats[0].visible_event
+    assert "现场负责人" not in str(repaired)
 
 
 @pytest.mark.unit
@@ -87,7 +116,8 @@ def test_auto_repair_replaces_abstract_opposition_with_concrete_source():
 
     failed = {item["check_id"] for item in report["failed_checks"]}
     assert "scene_conflict_opposition" not in failed
-    assert "文件" in contract.scenes[0].conflict.opposition
+    assert "匿名短信" in contract.scenes[0].conflict.opposition
+    assert "奖金归零" in contract.scenes[0].conflict.opposition
 
 
 @pytest.mark.unit
@@ -105,87 +135,28 @@ def test_auto_repair_replaces_thin_opposition_value():
     failed = {item["check_id"] for item in report["failed_checks"]}
     assert "scene_conflict_specificity" not in failed
     assert contract.scenes[0].conflict.opposition != "篡改者"
-    assert "30秒倒计时" in contract.scenes[0].conflict.opposition
+    assert "奖金归零" in contract.scenes[0].conflict.opposition
 
 
 @pytest.mark.unit
-def test_auto_repair_injects_workplace_data_commercial_anchors():
+def test_auto_repair_preserves_concrete_meeting_screen_opposition():
     payload = _valid_contract()
-    payload["title"] = "数据迷局"
-    payload["logline"] = "AP在并购尽调会上发现客户合同数据被篡改。"
-    payload["scenes"] = [
-        {
-            "scene_number": 1,
-            "slug_line": "内. 会议室 - 日",
-            "location": "会议室",
-            "time_of_day": "日",
-            "estimated_duration_seconds": 45,
-            "dramatic_role": "hook",
-            "conflict": {
-                "question": "AP如何稳住客户质疑？",
-                "stakes": "客户合同可能取消。",
-                "opposition": "篡改者",
-                "turn": "AP发现数据被篡改。",
-            },
-            "beats": [
-                {
-                    "order_index": 1,
-                    "beat_type": "hook",
-                    "dramatic_purpose": "引入冲突。",
-                    "visible_event": "客户质疑数据。",
-                    "action_lines": [{"content": "张总拍桌。"}],
-                    "dialogue_lines": [{"character": "AP", "content": "我查。"}],
-                    "duration_seconds": 3,
-                }
-            ],
-        },
-        {
-            "scene_number": 2,
-            "slug_line": "内. 会议室 - 日",
-            "location": "会议室",
-            "time_of_day": "日",
-            "estimated_duration_seconds": 75,
-            "dramatic_role": "escalation",
-            "conflict": {
-                "question": "AP如何揭露篡改者？",
-                "stakes": "客户合同可能取消。",
-                "opposition": "篡改者",
-                "turn": "陈默试图删除文件。",
-            },
-            "beats": [],
-        },
-        {
-            "scene_number": 3,
-            "slug_line": "内. 会议室 - 日",
-            "location": "会议室",
-            "time_of_day": "日",
-            "estimated_duration_seconds": 60,
-            "dramatic_role": "cliffhanger",
-            "conflict": {
-                "question": "幕后主使是谁？",
-                "stakes": "证据可能被删除。",
-                "opposition": "匿名威胁",
-                "turn": "新威胁出现。",
-            },
-            "beats": [],
-        },
-    ]
+    opposition = (
+        "会议屏上已经写好“智能协同、效率翻倍、人工兜底”，" "并持续显示自动宣讲状态。"
+    )
+    payload["scenes"][0]["conflict"]["opposition"] = opposition
 
     repaired = auto_repair_script_beat_contract(
         {"structured_script_contract": payload},
-        target_chars_per_episode=1300,
+        target_chars_per_episode=500,
     )
-    text = repaired["content"]
     contract = normalize_script_beat_contract(repaired)
     report = evaluate_beat_contract_quality(contract)
 
-    assert report["passed"] is True
-    assert "60秒，合同作废" in text
-    assert "日志已锁" in text
-    assert "改完给你20万" in text
-    assert "这只是第一层" in text
-    assert "张总手机倒计时从60秒跳到59秒" in text
-    assert text.index("陈默突然抢AP手机") < text.index("手机给我")
+    failed = {item["check_id"] for item in report["failed_checks"]}
+    assert "scene_conflict_opposition" not in failed
+    assert contract.scenes[0].conflict.opposition == opposition
+    assert "阻止目标完成" not in str(repaired)
 
 
 @pytest.mark.unit
@@ -207,11 +178,12 @@ def test_auto_repair_replaces_vague_cliffhanger_opposition():
     failed = {item["check_id"] for item in report["failed_checks"]}
     assert "scene_conflict_specificity" not in failed
     assert "崩溃" not in contract.scenes[-1].conflict.opposition
-    assert "30秒倒计时" in contract.scenes[-1].conflict.opposition
+    assert "李明" in contract.scenes[-1].conflict.opposition
+    assert "奖金归零" in contract.scenes[-1].conflict.opposition
 
 
 @pytest.mark.unit
-def test_auto_repair_makes_turn_purpose_and_protagonist_screen_action_specific():
+def test_auto_repair_leaves_missing_protagonist_action_for_model_repair():
     payload = _valid_contract()
     scene = payload["scenes"][0]
     scene["conflict"]["turn"] = "AP发现数据被篡改，并意识到内部有人动手脚。"
@@ -232,8 +204,7 @@ def test_auto_repair_makes_turn_purpose_and_protagonist_screen_action_specific()
 
     failed = {item["check_id"] for item in report["failed_checks"]}
     assert "scene_conflict_turn" not in failed
-    assert "scene_protagonist_screen_presence" not in failed
+    assert "scene_protagonist_screen_presence" in failed
     assert "beat_dramatic_purpose_specificity" not in failed
-    assert "AP回归角色-20260618T164912" in (
-        contract.scenes[0].beats[0].action_lines[0].content
-    )
+    assert "走到画面中央" not in repaired["content"]
+    assert "当前场景中的关键变化" not in repaired["content"]

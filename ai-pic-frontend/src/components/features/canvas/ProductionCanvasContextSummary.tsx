@@ -1,5 +1,5 @@
 import type { ProductionCanvasContextDraft } from "./productionCanvasContext";
-import type { ProductionCanvasSingleVideoDraft } from "./productionCanvasCreation";
+import type { ProductionCanvasPlanningSettings } from "./productionCanvasPlanningSettings";
 import type { ProductionCanvasChatBarAssetOptions } from "./ProductionCanvasChatBarFields";
 
 function optionName(
@@ -17,19 +17,24 @@ export function ProductionCanvasContextSummary({
   assetOptions,
   context,
   singleVideo,
-  singleVideoDraft,
+  settings,
 }: {
   assetOptions: ProductionCanvasChatBarAssetOptions;
   context: ProductionCanvasContextDraft;
   singleVideo: boolean;
-  singleVideoDraft: ProductionCanvasSingleVideoDraft;
+  settings: ProductionCanvasPlanningSettings;
 }) {
   const items = singleVideo
     ? [
         ["IP", optionName(assetOptions.virtualIPs, context.virtual_ip_id)],
-        ["风格", singleVideoDraft.style || "可选"],
-        ["时长", `${singleVideoDraft.durationMinutes} 分钟`],
-        ["画幅", singleVideoDraft.aspectRatio],
+        ["风格", settings.visualStyle || "自动解析"],
+        [
+          "时长",
+          settings.durationSeconds
+            ? `${settings.durationSeconds} 秒`
+            : "自动解析",
+        ],
+        ["画幅", settings.aspectRatio || "自动解析"],
         ["环境", optionName(assetOptions.environments, context.environment_id)],
       ]
     : [

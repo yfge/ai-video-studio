@@ -7,8 +7,14 @@ from app.schemas.production_canvas import (
     ProductionCanvasResolvedContext,
     ProductionCanvasSkillManifest,
 )
-from app.services.production_canvas.context_resolution import resolve_canvas_plan
 from app.services.production_canvas.nodes import build_plan_nodes
+from app.services.production_canvas.production_context_builder import (
+    build_deterministic_production_planning_draft,
+    build_production_planning_draft,
+)
+from app.services.production_canvas.production_context_resolution import (
+    resolve_production_context,
+)
 from app.services.production_canvas.runner import build_canvas_skill_results
 from app.services.production_canvas.skills import list_canvas_skill_definitions
 from sqlalchemy.orm import Session
@@ -22,7 +28,7 @@ from .autonomous_planner import (
 
 def _manifest() -> ProductionCanvasSkillManifest:
     return ProductionCanvasSkillManifest(
-        version="production_canvas.v1",
+        version="production_canvas.v2",
         entry_skill="production_canvas.create",
         skills=list_canvas_skill_definitions(),
         reuse_policy="backend_reuses_existing_services_and_tasks",
@@ -30,7 +36,11 @@ def _manifest() -> ProductionCanvasSkillManifest:
 
 
 def _plan_response(resolved, decision: CanvasPlannerDecision):
-    all_results = build_canvas_skill_results(resolved.request, resolved.assets)
+    all_results = build_canvas_skill_results(
+        resolved.request,
+        resolved.assets,
+        resolved.context,
+    )
     by_skill = {result.skill: result for result in all_results}
     skill_results = [
         by_skill[skill] for skill in decision.selected_skills if skill in by_skill
@@ -42,6 +52,7 @@ def _plan_response(resolved, decision: CanvasPlannerDecision):
         ),
         skill_manifest=_manifest(),
         selected_assets=resolved.assets.selected,
+        production_context=resolved.context,
         skill_results=skill_results,
         nodes=build_plan_nodes(skill_results),
         edges=decision.edges,
@@ -54,7 +65,8 @@ def build_canvas_skill_plan(
     user: User,
     request: ProductionCanvasPlanRequest,
 ) -> ProductionCanvasPlanResponse:
-    resolved = resolve_canvas_plan(db, user, request)
+    planning = build_deterministic_production_planning_draft(request)
+    resolved = resolve_production_context(db, user, request, planning)
     return _plan_response(
         resolved,
         deterministic_canvas_planner_decision(
@@ -69,7 +81,8 @@ async def build_autonomous_canvas_skill_plan(
     user: User,
     request: ProductionCanvasPlanRequest,
 ) -> ProductionCanvasPlanResponse:
-    resolved = resolve_canvas_plan(db, user, request)
+    planning = await build_production_planning_draft(request)
+    resolved = resolve_production_context(db, user, request, planning)
     context = ProductionCanvasResolvedContext.model_validate(
         resolved.request.model_dump(exclude={"prompt", "planning_mode"})
     )
@@ -77,5 +90,6 @@ async def build_autonomous_canvas_skill_plan(
         prompt=resolved.request.prompt,
         resolved_context=context,
         selected_assets=resolved.assets.selected,
+        production_context=resolved.context,
     )
     return _plan_response(resolved, decision)

@@ -97,7 +97,7 @@ def test_canvas_brief_and_asset_skills_execute_without_dispatcher_gap(db_session
         ),
     )
 
-    assert brief.skill_result.status == "ready"
+    assert brief.skill_result.status == "review"
     assert brief.skill_result.outputs["prompt"] == "基于林妹妹做第 4 集，办公室轻喜剧"
     assert "dispatcher" not in brief.skill_result.outputs.get("required_inputs", [])
     assert assets.skill_result.status == "review"

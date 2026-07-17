@@ -19,7 +19,7 @@ class ProductionCanvasPlannerProposal(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     objective: str = Field(..., min_length=1, max_length=500)
-    steps: list[ProductionCanvasPlannerStep] = Field(..., min_length=1, max_length=12)
+    steps: list[ProductionCanvasPlannerStep] = Field(..., min_length=1, max_length=16)
     assumptions: list[str] = Field(default_factory=list, max_length=8)
 
 

@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import type { ProductionCanvasResolvedContext } from "@/utils/api/types";
 import {
   productionCanvasContextOutputs,
   productionCanvasRequestContext,
 } from "./productionCanvasContext";
 import { waitForProductionCanvasBusyPaint } from "./productionCanvasBusyPaint";
 import { createProductionCanvasPlan as createCanvasPlan } from "./productionCanvasSkillExecution";
-import { useProductionCanvasExecutionTracker } from "./useProductionCanvasExecutionTracker";
 import { useProductionCanvasContextDraft } from "./useProductionCanvasContextDraft";
 import { useProductionCanvasExecutionActions } from "./useProductionCanvasExecutionActions";
 import { useProductionCanvasOperationRun } from "./useProductionCanvasOperationRun";
@@ -15,13 +13,15 @@ import {
   productionCanvasSavedEdges,
 } from "./productionCanvasPlanGraph";
 import { productionCanvasPlanNodeToCanvasNode } from "./productionCanvasSkillNodes";
-import { isProductionCanvasAuthoritativeContext } from "./productionCanvasTaskResultContext";
 import type { ProductionCanvasSkillPlannerProps } from "./productionCanvasSkillPlannerTypes";
 import {
   runSingleVideoCanvasCreation,
   useProductionCanvasSingleVideoMode,
 } from "./useProductionCanvasSingleVideoPlanner";
 import { useProductionCanvasProgressiveReveal } from "./useProductionCanvasProgressiveReveal";
+import { productionCanvasBriefOverrides } from "./productionCanvasPlanningSettings";
+import { useProductionCanvasPlanningState } from "./useProductionCanvasPlanningState";
+import { useProductionCanvasPlannerExecutionTracker } from "./useProductionCanvasPlannerExecutionTracker";
 
 export function useProductionCanvasSkillPlanner({
   currentRunId,
@@ -35,7 +35,15 @@ export function useProductionCanvasSkillPlanner({
   taskMaxPollMs,
   taskPollIntervalMs,
 }: ProductionCanvasSkillPlannerProps) {
-  const [prompt, setPrompt] = useState("");
+  const planningState = useProductionCanvasPlanningState();
+  const {
+    clarificationAnswers,
+    planningSettings,
+    productionContext,
+    prompt,
+    resetPlanningContext,
+    setProductionContext,
+  } = planningState;
   const {
     context,
     contextRef,
@@ -62,36 +70,22 @@ export function useProductionCanvasSkillPlanner({
   const autoExecutionActiveRef = useRef(false);
   const autoContinuationPendingRef = useRef(false);
   const progressiveReveal = useProductionCanvasProgressiveReveal(currentRunId);
-  const handleDomainContextResolved = (
-    resolved: ProductionCanvasResolvedContext,
-  ) => {
-    const replace = isProductionCanvasAuthoritativeContext(resolved);
-    if (replace) replaceContext(resolved);
-    else mergeResolvedContext(resolved);
-    onDomainContextResolved?.(resolved, replace);
-    if (autoContinuationRef.current) autoContinuationPendingRef.current = true;
-  };
-  const trackExecutionNodes = useProductionCanvasExecutionTracker({
-    captureContextFingerprint: () => {
-      const domainContext = productionCanvasRequestContext(contextRef.current);
-      delete domainContext.task_id;
-      return JSON.stringify(domainContext);
-    },
-    captureOperationIdentity: runGuard.capture,
-    maxPollMs: taskMaxPollMs,
-    onDomainContextResolved: handleDomainContextResolved,
-    onNodesCreated: (createdNodes, resolvedContext) => {
-      progressiveReveal.revealExecutionNodes(createdNodes);
-      onNodesCreated(createdNodes, resolvedContext);
-    },
-    pollIntervalMs: taskPollIntervalMs,
-    runId: currentRunId,
-    operationEpoch: activeIdentity.epoch,
-  });
-  const publishExecutionNodes: typeof trackExecutionNodes = (...args) => {
-    progressiveReveal.revealExecutionNodes(args[1]);
-    trackExecutionNodes(...args);
-  };
+  const { handleDomainContextResolved, publishExecutionNodes } =
+    useProductionCanvasPlannerExecutionTracker({
+      autoContinuationPendingRef,
+      autoContinuationRef,
+      captureOperationIdentity: runGuard.capture,
+      contextRef,
+      currentRunId,
+      mergeResolvedContext,
+      onDomainContextResolved,
+      onNodesCreated,
+      operationEpoch: activeIdentity.epoch,
+      progressiveReveal,
+      replaceResolvedContext: replaceContext,
+      taskMaxPollMs,
+      taskPollIntervalMs,
+    });
   const { continueAutoExecution, executeSkillNode, executeSkillRequest } =
     useProductionCanvasExecutionActions({
       autoContinuationPendingRef,
@@ -151,7 +145,9 @@ export function useProductionCanvasSkillPlanner({
       if (selectedMode === "single_video") {
         progressiveReveal.disable();
         await runSingleVideoCanvasCreation({
+          briefOverrides: productionCanvasBriefOverrides(planningSettings),
           captureIdentity: runGuard.capture,
+          clarificationAnswers,
           contextRef,
           draft: singleVideoDraft,
           executeScript: (node, executionNodes, runId) =>
@@ -162,6 +158,7 @@ export function useProductionCanvasSkillPlanner({
             operationIdentity = identity;
           },
           onNodesCreated,
+          onProductionContext: setProductionContext,
           onRunCreated,
           prompt: trimmed,
           publish: (publication, runId, identity) =>
@@ -178,8 +175,17 @@ export function useProductionCanvasSkillPlanner({
         return;
       }
       const requestContext = productionCanvasRequestContext(contextRef.current);
-      const plan = await createCanvasPlan(trimmed, contextRef.current);
+      const plan = await createCanvasPlan(
+        trimmed,
+        contextRef.current,
+        "series",
+        {
+          briefOverrides: productionCanvasBriefOverrides(planningSettings),
+          clarificationAnswers,
+        },
+      );
       if (!runGuard.isCurrent(operationIdentity)) return;
+      setProductionContext(plan.production_context || null);
       if (plan.run_id) {
         onRunCreated?.(plan.run_id);
         operationIdentity = runGuard.capture();
@@ -196,6 +202,7 @@ export function useProductionCanvasSkillPlanner({
         productionCanvasPlanEdges(createdNodes);
       progressiveReveal.begin(createdNodes, plannedEdges, plan.run_id);
       onNodesCreated(createdNodes, resolvedContext);
+      if (!plan.production_context?.brief.ready_for_execution) return;
       autoContinuationRef.current = { prompt: trimmed, runId: plan.run_id };
       await continueAutoExecution(createdNodes);
     } catch (err) {
@@ -210,6 +217,7 @@ export function useProductionCanvasSkillPlanner({
     }
   };
   return {
+    clarificationAnswers,
     creationMode,
     context,
     createFromPrompt,
@@ -218,13 +226,20 @@ export function useProductionCanvasSkillPlanner({
     executingNodeId,
     executionError,
     mergeContext: handleDomainContextResolved,
+    onClarificationAnswer: planningState.onClarificationAnswer,
+    planningSettings,
+    productionContext,
     prompt,
     replaceContext,
     revealedNodeIds: progressiveReveal.revealedNodeIds,
     running: running || operationBlocked,
     setContextValue,
-    setCreationMode,
-    setPrompt,
+    setCreationMode: (mode: "series" | "single_video") => {
+      setCreationMode(mode);
+      resetPlanningContext();
+    },
+    setPlanningSettings: planningState.setPlanningSettings,
+    setPrompt: planningState.setPrompt,
     singleVideoDraft,
     updateSingleVideoDraft,
   };

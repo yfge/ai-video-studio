@@ -16,6 +16,10 @@ import {
   type ProductionCanvasChatBarAssetOptions,
 } from "./ProductionCanvasChatBarFields";
 import { ProductionCanvasContextSummary } from "./ProductionCanvasContextSummary";
+import { ProductionCanvasClarifications } from "./ProductionCanvasClarifications";
+import { ProductionCanvasPlanningSettingsFields } from "./ProductionCanvasPlanningSettingsFields";
+import type { ProductionCanvasPlanningSettings } from "./productionCanvasPlanningSettings";
+import type { ProductionCanvasProductionContext } from "@/utils/api/types";
 
 export function ProductionCanvasChatBar({
   advancedControls,
@@ -27,7 +31,12 @@ export function ProductionCanvasChatBar({
   onContextChange,
   onCreationModeChange = () => undefined,
   onPromptChange,
+  onClarificationAnswer = () => undefined,
+  onPlanningSettingsChange = () => undefined,
   onSingleVideoDraftChange = () => undefined,
+  planningSettings,
+  productionContext,
+  clarificationAnswers = {},
   prompt,
   running,
   singleVideoDraft = initialProductionCanvasSingleVideoDraft,
@@ -41,10 +50,17 @@ export function ProductionCanvasChatBar({
   onContextChange: (key: ProductionCanvasContextKey, value: string) => void;
   onCreationModeChange?: (mode: ProductionCanvasCreationMode) => void;
   onPromptChange: (value: string) => void;
+  onClarificationAnswer?: (id: string, value: string) => void;
+  onPlanningSettingsChange?: (
+    patch: Partial<ProductionCanvasPlanningSettings>,
+  ) => void;
   onSingleVideoDraftChange?: (
     patch: Partial<ProductionCanvasSingleVideoDraft>,
   ) => void;
   prompt: string;
+  planningSettings: ProductionCanvasPlanningSettings;
+  productionContext?: ProductionCanvasProductionContext | null;
+  clarificationAnswers?: Record<string, string>;
   running: boolean;
   singleVideoDraft?: ProductionCanvasSingleVideoDraft;
 }) {
@@ -53,6 +69,13 @@ export function ProductionCanvasChatBar({
   );
   const assetOptions = providedAssetOptions || loadedAssetOptions;
   const singleVideo = creationMode === "single_video";
+  const pendingQuestions =
+    productionContext?.brief.clarifications.filter(
+      (item) => item.required && !item.answer,
+    ) || [];
+  const answersComplete = pendingQuestions.every(
+    (item) => clarificationAnswers[item.id]?.trim(),
+  );
 
   return (
     <div className="bg-white p-4 sm:p-5">
@@ -111,10 +134,20 @@ export function ProductionCanvasChatBar({
             "primary",
             "h-11 px-5 text-sm lg:mb-0.5 lg:min-w-32",
           )}
-          disabled={running || !prompt.trim()}
+          disabled={
+            running ||
+            !prompt.trim() ||
+            (pendingQuestions.length > 0 && !answersComplete)
+          }
           onClick={onCreate}
         >
-          {running ? "执行中" : singleVideo ? "创建并生成" : "整体创建"}
+          {running
+            ? "执行中"
+            : pendingQuestions.length
+            ? "补充并重新规划"
+            : singleVideo
+            ? "创建并生成"
+            : "整体创建"}
         </button>
       </div>
       <details
@@ -129,7 +162,7 @@ export function ProductionCanvasChatBar({
             assetOptions={assetOptions}
             context={context}
             singleVideo={singleVideo}
-            singleVideoDraft={singleVideoDraft}
+            settings={planningSettings}
           />
           <span className="shrink-0 text-[13px] font-medium text-slate-600 group-open:text-blue-700">
             <span className="group-open:hidden">更多</span>
@@ -152,8 +185,18 @@ export function ProductionCanvasChatBar({
               onContextChange={onContextChange}
             />
           )}
+          <ProductionCanvasPlanningSettingsFields
+            mode={creationMode}
+            settings={planningSettings}
+            onChange={onPlanningSettingsChange}
+          />
         </div>
       </details>
+      <ProductionCanvasClarifications
+        answers={clarificationAnswers}
+        context={productionContext}
+        onAnswer={onClarificationAnswer}
+      />
       {error || assetOptions.error ? (
         <div className="mt-3 text-sm text-red-600" role="alert">
           {error || assetOptions.error}

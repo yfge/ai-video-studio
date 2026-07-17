@@ -262,14 +262,14 @@ def test_script_scenes_short_drama_production_prompt_has_quality_brief():
             "script_score_thresholds": {"overall": 4.5, "dimension": 4.2},
         },
     )
-
     assert "生产级场景规划硬门槛" in prompt
     assert "timestamp skeleton" in prompt
     assert "0-3 秒 ignition" in prompt
     assert "close-up reaction" in prompt
-    assert "客户张总给出60秒撤单" in prompt
-    assert "数字不会撒谎，看时间戳" in prompt
-    assert "改完给你20万，不做就裁你" in prompt
+    assert "不得用其他题材样板替换" in prompt
+    assert "只能来自当前 story / episode / additional_requirements" in prompt
+    assert "不要只写“情绪升级/剧情推进”" in prompt
+    assert "问题 -> 行动 -> 结果变化" in prompt
 
 
 def test_script_scenes_short_drama_standard_prompt_omits_production_brief():

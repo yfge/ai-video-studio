@@ -12,12 +12,12 @@ export type ProductionCanvasNodeStatus =
   | "blocked";
 export type ProductionCanvasPortType =
   | "text"
+  | "contract"
   | "image"
   | "video"
   | "audio"
   | "entity_ref"
   | "execution_ref";
-
 export type ProductionCanvasPort = {
   id: string;
   label: string;

@@ -106,8 +106,12 @@ def test_single_video_project_reuses_assets_and_queues_existing_script_pipeline(
     assert params["generation_mode"] == "production"
     assert params["auto_timeline_pipeline"] is True
     assert params["target_chars_per_episode"] == 1500
-    assert "成片总时长：5 分钟" in params["additional_requirements"]
-    assert "其他成片时长不生效" in params["additional_requirements"]
+    assert "成片总时长：300 秒" in params["additional_requirements"]
+    assert "其他数字只有在明确属于剧情时" in params["additional_requirements"]
+    assert (
+        "标题、logline、概要、场景时长和正文必须统一按 300 秒成片"
+        in params["additional_requirements"]
+    )
     assert dispatched["task_id"] == task.id
     assert dispatched["params"]["episode_id"] == payload["episode_id"]
     assert payload["context"]["virtual_ip_id"] == virtual_ip.id
@@ -149,19 +153,25 @@ def test_single_video_project_rejects_unlinked_ip_environment_pair(
     assert db_session.query(Story).filter(Story.title == "不应创建").count() == 0
 
 
-def test_single_video_canvas_plan_does_not_guess_prompt_assets(
+def test_single_video_canvas_plan_reuses_unique_prompt_asset(
     client,
     db_session,
     monkeypatch,
 ):
+    monkeypatch.setattr(
+        "app.services.ai_service.ai_service.ai_manager",
+        None,
+    )
     user = db_session.query(User).filter(User.username == "test_admin").first()
-    db_session.add(VirtualIP(user_id=user.id, name="林妹妹", is_active=True))
+    virtual_ip = VirtualIP(user_id=user.id, name="林妹妹", is_active=True)
+    db_session.add(virtual_ip)
     db_session.commit()
     project_response = client.post(
         "/api/v1/stories/single-video",
         json={
             "title": "无 IP 的单条视频",
             "prompt": "基于林妹妹做一分钟办公短剧",
+            "duration_seconds": 60,
             "start_generation": False,
         },
     )
@@ -174,13 +184,14 @@ def test_single_video_canvas_plan_does_not_guess_prompt_assets(
             "planning_mode": "single_video",
             "story_id": project["story_id"],
             "episode_id": project["episode_id"],
+            "brief_overrides": {"duration_seconds": 60},
         },
     )
 
     assert response.status_code == 200, response.text
     plan = response.json()["data"]
-    assert plan["selected_assets"]["virtual_ips"] == []
-    assert plan["resolved_context"].get("virtual_ip_id") is None
+    assert plan["selected_assets"]["virtual_ips"][0]["id"] == virtual_ip.id
+    assert plan["resolved_context"]["virtual_ip_id"] == virtual_ip.id
     script_node = next(
         node for node in plan["nodes"] if node["skill"] == "script.generate"
     )
@@ -210,11 +221,13 @@ def test_single_video_canvas_plan_does_not_guess_prompt_assets(
     task = db_session.get(Task, execution_response.json()["data"]["task_id"])
     params = json.loads(task.parameters)
     requirements = params["additional_requirements"]
-    assert params["target_chars_per_episode"] == 900
-    assert requirements.startswith("## 系统生产约束（优先级最高）")
-    assert "成片总时长：3 分钟" in requirements
-    assert "其他成片时长不生效" in requirements
-    assert requirements.index("成片总时长：3 分钟") < requirements.index(
-        "基于林妹妹做一分钟办公短剧"
+    assert params["target_chars_per_episode"] == 600
+    assert requirements.startswith("## Production Context v1（最高优先级）")
+    assert "本集/本条成片总时长必须是 60 秒" in requirements
+    assert "标题、logline、场景时长、beats 和正文必须使用同一时长" in requirements
+    assert "其他数字只有在明确属于剧情时" in requirements
+    assert requirements.index("基于林妹妹做一分钟办公短剧") < requirements.index(
+        "本集/本条成片总时长必须是 60 秒"
     )
-    assert dispatched["params"]["target_chars_per_episode"] == 900
+    assert "180 秒" not in requirements
+    assert dispatched["params"]["target_chars_per_episode"] == 600

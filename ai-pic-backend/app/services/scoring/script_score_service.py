@@ -14,13 +14,7 @@ from app.core.logging import get_logger
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation import ScriptScoreDimensions, ScriptScoreResult
-from app.services.scoring.script_score_calibration import (
-    calibrate_commercial_anchor_score,
-)
-from app.services.scoring.script_score_schema import (
-    script_score_json_schema,
-    script_score_json_schema as _script_score_json_schema,
-)
+from app.services.scoring.script_score_schema import script_score_json_schema
 from app.services.script_score_thresholds import (
     PASS_DIMENSION_THRESHOLD,
     PASS_OVERALL_THRESHOLD,
@@ -48,6 +42,7 @@ class ScriptScoreService:
         episode: Optional[Dict[str, Any]] = None,
         scenes: Optional[List[Dict[str, Any]]] = None,
         dialogues: Optional[List[Dict[str, Any]]] = None,
+        requirements: Optional[str] = None,
         prefer_provider: Optional[str] = None,
         prefer_model: Optional[str] = None,
     ) -> ScriptScoreResult:
@@ -60,6 +55,7 @@ class ScriptScoreService:
             episode: 剧集上下文（集数、标题、概要）
             scenes: 场景列表
             dialogues: 对白列表
+            requirements: 原始目标与生产约束
             prefer_provider: 优先使用的 AI 提供商
             prefer_model: 优先使用的模型
 
@@ -73,6 +69,7 @@ class ScriptScoreService:
             "episode": episode or {},
             "scenes": scenes or [],
             "dialogues": dialogues or [],
+            "requirements": requirements or "",
         }
 
         # 渲染 prompt
@@ -87,6 +84,7 @@ class ScriptScoreService:
                 "story_title": story.get("title") if story else None,
                 "episode_number": episode.get("episode_number") if episode else None,
                 "script_length": len(script_content),
+                "requirements_length": len(requirements or ""),
             },
         )
 
@@ -114,7 +112,6 @@ class ScriptScoreService:
 
         # 解析响应
         result = self._parse_score_response(response_text)
-        result = calibrate_commercial_anchor_score(result, script_content)
 
         logger.info(
             "Script scored",

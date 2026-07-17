@@ -1,6 +1,6 @@
 # Production Canvas Design
 
-> Status: Implemented through Phase 7; consolidated release validation remains
+> Status: Implemented through Phase 9; consolidated release validation remains
 > open
 >
 > Last updated: 2026-07-16
@@ -163,6 +163,79 @@ Sources:
 - https://openreview.net/forum?id=bVljzwUxnT
 - https://arxiv.org/abs/2509.03581
 
+### Structured production context and content planning
+
+A Skill label is presentation metadata, not the production contract. Script
+generation must not receive only a fixed skill name plus the raw prompt. The
+canonical executable path for story or episode work is:
+
+```text
+brief.compose -> content.plan -> asset.select -> script.generate
+```
+
+Downstream image, video, Timeline, render, export, and report skills may be
+selected by the constrained planner, but they consume the same versioned
+`production_context.v1` rather than reparsing the prompt independently.
+
+`production_context.v1` contains:
+
+- `production_brief.v1`: original prompt, creative intent, required and
+  forbidden facts, video specification, requested/selected models, asset
+  intent, conflicts, and unanswered clarifications.
+- `content_plan.v1`: premise, synopsis, main conflict, character arcs,
+  reusable environments, recurring story engine, episode contracts,
+  continuity rules, and future threads.
+- Asset decisions: requested name, reused/created/missing decision, selected
+  entity ID, candidates, and reason.
+- Created and selected Story/Episode/IP/Environment identifiers needed by the
+  existing production services.
+
+Context interpretation is model-first and execution remains deterministic:
+
+1. Explicit domain IDs are validated against current ownership and lineage.
+2. The context model reads the complete original prompt once and produces the
+   schema-validated Brief and Content Plan. It owns semantic extraction of
+   people, products, events, models, styles, target episode, and production
+   constraints; Skill IDs do not participate in that interpretation.
+3. Operator overrides and clarification answers are reapplied after model
+   generation and therefore remain authoritative.
+4. The asset resolver and model catalog validate the structured names against
+   real accessible assets and enabled provider capabilities. Provider aliases
+   are normalized only at this execution boundary.
+5. Persisted Story/Episode metadata fills fields the current request leaves
+   unspecified; conflicting prompt values remain authoritative for the new run
+   and the conflict is retained as evidence.
+6. If the context model is unavailable or its bounded repair fails, the
+   fallback preserves the raw prompt and explicit operator fields but does not
+   infer names, models, styles, or episode numbers from regexes or fixed
+   dictionaries. Missing material decisions remain blocked for clarification.
+
+The former `production_prompt_parser` and `asset_prompt_intent` paths are not
+part of the executable contract. They caused model output to be overwritten by
+fixed vocabulary and made asset provisioning reparse the prompt independently.
+Asset provisioning now consumes `brief.assets`; episode resolution consumes
+`video_spec.focus_episode_number`; every downstream Skill consumes the same
+`production_context.v1`.
+
+The planner asks before execution when a missing answer would materially change
+the result: ambiguous Story/IP/Environment matches, an unavailable requested
+model, a missing required protagonist for a series, or an asset policy that
+does not permit automatic creation. It does not ask about optional details that
+can safely use a visible default.
+
+The Script Skill compiles the complete production context into the existing
+production script request. The original prompt, current episode contract,
+duration, style, models, asset associations, continuity rules, must-include
+facts, and must-avoid facts are all present in the request. Generic quality
+repair may improve structure, but it must derive conflict and payoff from the
+current source material and must never replace provider output with a fixed
+workplace template.
+
+Persisted runs retain `production_context.v1`. Executing a node by `run_id`
+rehydrates that context when older callers omit it. Older runs and direct
+script requests without structured context continue through the compatibility
+path instead of failing schema validation.
+
 ## Product Principles
 
 ### Domain concepts over infrastructure concepts
@@ -271,7 +344,7 @@ Required fields:
 
 Primary node types:
 
-- Brief and production-plan node.
+- Production Brief, Content Plan, and Asset Decision nodes.
 - Script, scene, beat, and shot-plan node.
 - Character, environment, style, and uploaded-media reference node.
 - Storyboard-support and keyframe node.

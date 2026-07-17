@@ -8,12 +8,12 @@ from app.models.script import Episode, Story
 from app.services.ai.script_text import build_script_text
 from app.services.ai_service import ai_service
 from app.services.narrative_quality_gate import enforce_script_quality_gate_with_repair
+from app.services.script.content_normalization import normalize_script_content
 from app.services.script.generation_attempt_contract import (
     apply_beat_contract_payload,
     attempt_temperature,
     has_beat_contract_payload,
 )
-from app.services.script.content_normalization import normalize_script_content
 from app.services.script.sync_generation_payloads import (
     build_agent_run,
     parse_ai_content,
@@ -50,7 +50,9 @@ async def generate_prepared_script_attempt(
         style_preferences=request_dict.get("style_preferences"),
         model=model_id,
         prefer_provider=prefer_provider,
-        temperature=attempt_temperature(attempt_no, request_dict.get("temperature", 0.7)),
+        temperature=attempt_temperature(
+            attempt_no, request_dict.get("temperature", 0.7)
+        ),
         generation_mode=request_dict.get("generation_mode") or "production",
     )
     if not result:
@@ -118,7 +120,9 @@ async def generate_prepared_script_attempt(
         db=db,
         model=model_id,
         prefer_provider=prefer_provider,
-        temperature=attempt_temperature(attempt_no, request_dict.get("temperature", 0.7)),
+        temperature=attempt_temperature(
+            attempt_no, request_dict.get("temperature", 0.7)
+        ),
         lint_threshold=request_dict.get("quality_threshold", 9.0),
         target_chars_per_episode=request_dict.get("target_chars_per_episode", 1300),
         require_beat_contract=request_dict.get("generation_mode") == "production",
@@ -149,6 +153,7 @@ async def score_prepared_script_attempt(
     marketing_overrides: Dict[str, Any],
     model_id: str | None,
     prefer_provider: str | None,
+    requirements: str | None = None,
 ) -> Dict[str, Any]:
     from app.services.scoring.artifacts import generate_scoring_artifacts
 
@@ -169,6 +174,7 @@ async def score_prepared_script_attempt(
         scenes=generated.get("scenes") or [],
         dialogues=generated.get("dialogues") or [],
         hook_plan=marketing_defaults.get("hook_plan"),
+        requirements=requirements,
         prefer_provider=prefer_provider,
         prefer_model=model_id,
     )

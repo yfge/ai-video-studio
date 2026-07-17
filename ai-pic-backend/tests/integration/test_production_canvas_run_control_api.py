@@ -2,11 +2,19 @@ from __future__ import annotations
 
 import json
 
+import pytest
 from app.models.task import Task, TaskStatus, TaskType
+from app.services.ai_service import ai_service
+from tests.integration.production_canvas_ai_stub import ProductionCanvasAIStub
 from tests.integration.test_production_canvas_downstream_api import (
     _brief_chain_state,
     _create_run,
 )
+
+
+@pytest.fixture(autouse=True)
+def _stub_canvas_planner_ai(monkeypatch):
+    monkeypatch.setattr(ai_service, "ai_manager", ProductionCanvasAIStub())
 
 
 def _action(client, run_id: str, **payload) -> dict:
@@ -137,7 +145,7 @@ def test_retry_selects_original_or_current_definition(client):
     )
 
     assert original["executions"][0]["skill_result"]["status"] == "blocked"
-    assert current["executions"][0]["skill_result"]["status"] == "ready"
+    assert current["executions"][0]["skill_result"]["status"] == "review"
     attempts = current["run"]["execution_attempts"]
     assert [item["definition_mode"] for item in attempts] == [
         "current",

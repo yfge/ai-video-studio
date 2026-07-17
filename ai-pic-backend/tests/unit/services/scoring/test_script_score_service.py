@@ -200,6 +200,7 @@ class TestScriptScoreService:
             script_content="Test script content",
             story={"title": "Test Story", "genre": "Drama"},
             episode={"episode_number": 1, "title": "Pilot"},
+            requirements="使用林妹妹、gpt-img-2 和 Seedance 2.0 制作一分钟 3D 卡通。",
         )
 
         assert result.overall_score == 4.5
@@ -208,9 +209,10 @@ class TestScriptScoreService:
         prompt = mock_ai_service.ai_manager.generate_text.call_args.kwargs["prompt"]
         assert "总分 >= 4.5" in prompt
         assert "所有维度 >= 4.2" in prompt
-        assert "精品线校准锚点" in prompt
-        assert "客户撤单倒计时" in prompt
-        assert "不要再用“男二动机需补充”" in prompt
+        assert "原始目标与生产约束" in prompt
+        assert "林妹妹、gpt-img-2 和 Seedance 2.0" in prompt
+        assert "遗漏或替换用户指定" in prompt
+        assert "客户撤单倒计时" not in prompt
 
 
 class TestScoreThresholds:

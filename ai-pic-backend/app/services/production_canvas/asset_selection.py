@@ -82,8 +82,6 @@ def _select_virtual_ips(
     if request.virtual_ip_id:
         selected = repo.get_owned_by_id(request.virtual_ip_id, user)
         return selected, [selected]
-    if request.planning_mode == "single_video":
-        return None, []
     candidates = [
         asset
         for asset in repo.list_accessible(user=user, limit=200)
@@ -91,10 +89,11 @@ def _select_virtual_ips(
     ]
     if not candidates:
         return None, []
-    selected = max(
-        candidates,
-        key=lambda item: (_match_score(request.prompt, item), int(item.id)),
-    )
+    best_score = max(_match_score(request.prompt, item) for item in candidates)
+    best = [
+        item for item in candidates if _match_score(request.prompt, item) == best_score
+    ]
+    selected = best[0] if len(best) == 1 else None
     return selected, candidates
 
 
@@ -137,8 +136,6 @@ def _select_environment(
     if request.environment_id:
         selected = env_repo.get_owned_by_identifier(request.environment_id, user)
         return selected, [selected]
-    if request.planning_mode == "single_video":
-        return None, []
     linked = []
     if virtual_ip:
         linked = VirtualIPEnvironmentRepository(db).list_for_virtual_ip(
@@ -156,10 +153,11 @@ def _select_environment(
     ]
     if not candidates:
         return None, []
-    selected = max(
-        candidates,
-        key=lambda item: (_match_score(request.prompt, item), int(item.id)),
-    )
+    best_score = max(_match_score(request.prompt, item) for item in candidates)
+    best = [
+        item for item in candidates if _match_score(request.prompt, item) == best_score
+    ]
+    selected = best[0] if len(best) == 1 else None
     return selected, candidates
 
 

@@ -18,15 +18,15 @@ _DIMENSION_REWRITE_GUIDANCE = {
     ),
     "cultural_fit": (
         "文化适配需达到精品线：减少含混或合规风险表达，"
-        "用职场合同、客户、证据、权限和责任链推动冲突。"
+        "严格使用当前题材、市场、受众和世界规则推动冲突。"
     ),
     "clip_ability": (
         "素材可剪性需达到精品线：每60秒至少两个台词+画面双钩子，"
-        "明确15s/30s/60s可剪片段的首帧动作、关键台词和卡点。"
+        "按实际成片时长明确可剪片段的首帧动作、关键台词和卡点。"
     ),
     "logic_coherence": (
-        "逻辑一致性需达到精品线：补齐证据来源、录音/纪要/日志的取得路径、"
-        "角色首次获知信息的画面依据，以及客户态度转变的可见证据。"
+        "逻辑一致性需达到精品线：补齐关键信息或物件的来源、取得路径、"
+        "角色首次获知信息的画面依据，以及关键关系或外部状态变化的可见结果。"
     ),
 }
 
@@ -77,11 +77,11 @@ def _append_asset_guidance(items: List[str], scoring: Dict[str, Any]) -> None:
     asset_count = asset_tags.get("asset_count")
     durations = asset_tags.get("durations")
     if not isinstance(asset_count, (int, float)) or asset_count < 3:
-        items.append("投流素材不足：必须内置至少 15s、30s、60s 三类可剪高能段落。")
+        items.append("投流素材不足：请按实际成片时长补足可独立理解的高能段落。")
     elif isinstance(durations, list) and not {15, 30, 60}.issubset(
         {int(item) for item in durations if _looks_numeric(item)}
     ):
-        items.append("投流时长覆盖不足：补齐 15s、30s、60s 的钩子、反杀和卡点片段。")
+        items.append("投流时长覆盖不足：按实际成片长度补齐钩子、兑现和卡点片段。")
 
 
 def _safe_dict(value: Any) -> Dict[str, Any]:

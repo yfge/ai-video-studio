@@ -4,7 +4,9 @@ import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { JSDOM } from "jsdom";
 
 import { useProductionCanvasSkillPlanner } from "../src/components/features/canvas/useProductionCanvasSkillPlanner";
+import { runSingleVideoCanvasCreation } from "../src/components/features/canvas/useProductionCanvasSingleVideoPlanner";
 import type { ProductionCanvasNode } from "../src/components/features/canvas/productionCanvasModel";
+import { emptyProductionCanvasContext } from "../src/components/features/canvas/productionCanvasContext";
 
 const dom = new JSDOM("<!doctype html><html><body></body></html>", {
   url: "http://localhost/canvas",
@@ -31,7 +33,7 @@ describe("single-video canvas planner", () => {
     dom.window.document.body.replaceChildren();
   });
 
-  it("creates the project, plans it, and executes only script.generate", async () => {
+  it("plans structured context and executes only script.generate", async () => {
     const requests: Array<{ url: string; body: Record<string, unknown> }> = [];
     globalThis.fetch = (async (input, init) => {
       const url = String(input);
@@ -40,20 +42,6 @@ describe("single-video canvas planner", () => {
         unknown
       >;
       requests.push({ url, body });
-      if (url.includes("/api/v1/stories/single-video")) {
-        return new Response(
-          JSON.stringify({
-            story_id: 101,
-            story_business_id: "story-101",
-            episode_id: 202,
-            episode_business_id: "episode-202",
-            task_id: null,
-            task_status: null,
-            context: { story_id: 101, episode_id: 202 },
-          }),
-          { status: 201, headers: { "content-type": "application/json" } },
-        );
-      }
       if (url.includes("/api/v1/production-canvas/plan")) {
         return new Response(
           JSON.stringify({
@@ -68,6 +56,9 @@ describe("single-video canvas planner", () => {
                 skills: [],
               },
               selected_assets: { virtual_ips: [], environments: [] },
+              production_context: {
+                brief: { ready_for_execution: true },
+              },
               nodes: [
                 {
                   id: "script-generate",
@@ -163,10 +154,10 @@ describe("single-video canvas planner", () => {
           <button
             type="button"
             onClick={() =>
-              planner.updateSingleVideoDraft({
-                durationMinutes: 5,
+              planner.setPlanningSettings({
+                durationSeconds: "300",
                 aspectRatio: "16:9",
-                style: "明亮科技感",
+                visualStyle: "明亮科技感",
               })
             }
           >
@@ -212,31 +203,101 @@ describe("single-video canvas planner", () => {
     );
     assert.deepEqual(
       requests.map((request) =>
-        request.url.includes("/stories/single-video")
-          ? "project"
-          : request.url.includes("/production-canvas/plan")
-          ? "plan"
-          : "execute",
+        request.url.includes("/production-canvas/plan") ? "plan" : "execute",
       ),
-      ["project", "plan", "execute"],
+      ["plan", "execute"],
     );
     assert.deepEqual(requests[0].body, {
-      title: "介绍桌面机器人，突出三项卖点",
       prompt: "介绍桌面机器人，突出三项卖点",
-      duration_minutes: 5,
-      aspect_ratio: "16:9",
-      style: "明亮科技感",
-      start_generation: false,
+      planning_mode: "single_video",
+      brief_overrides: {
+        duration_seconds: 300,
+        aspect_ratio: "16:9",
+        visual_style: "明亮科技感",
+      },
+      clarification_answers: {},
     });
+    assert.equal(requests[1].body.skill, "script.generate");
     assert.equal(requests[1].body.planning_mode, "single_video");
-    assert.equal(requests[1].body.story_id, 101);
-    assert.equal(requests[1].body.episode_id, 202);
-    assert.equal(requests[2].body.skill, "script.generate");
-    assert.equal(requests[2].body.planning_mode, "single_video");
     assert.equal(
       requests.some((request) => request.body.skill === "image.candidates"),
       false,
     );
     assert.ok(nodeUpdates[0].some((node) => node.skill === "image.candidates"));
+  });
+
+  it("keeps the plan blocked while a required clarification is unanswered", async () => {
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          success: true,
+          data: {
+            prompt: "做一条品牌短片",
+            run_id: "run-needs-answer",
+            resolved_context: {},
+            production_context: {
+              brief: {
+                ready_for_execution: false,
+                clarifications: [
+                  {
+                    id: "virtual_ip",
+                    question: "请选择要复用的 IP",
+                    required: true,
+                    answer: null,
+                  },
+                ],
+              },
+            },
+            nodes: [
+              {
+                id: "script-generate",
+                label: "Script Skill",
+                title: "生成剧本",
+                status: "ready",
+                x: 100,
+                y: 100,
+                width: 220,
+                kind: "skill_result",
+                skill: "script.generate",
+                detail: "等待上下文",
+                outputs: {},
+                reuse_targets: [],
+              },
+            ],
+          },
+        }),
+        { headers: { "content-type": "application/json" } },
+      )) as typeof fetch;
+
+    let executionCount = 0;
+    let receivedContext: unknown = null;
+    await runSingleVideoCanvasCreation({
+      captureIdentity: () => ({ runId: "", epoch: 1 }),
+      contextRef: { current: { ...emptyProductionCanvasContext } },
+      draft: { title: "" },
+      briefOverrides: {},
+      clarificationAnswers: {},
+      executeScript: async () => {
+        executionCount += 1;
+        return [];
+      },
+      isCurrent: () => true,
+      onIdentityChange: () => undefined,
+      onNodesCreated: () => undefined,
+      onProductionContext: (context) => {
+        receivedContext = context;
+      },
+      prompt: "做一条品牌短片",
+      publish: () => undefined,
+      replaceContext: () => undefined,
+      setExecutingNodeId: () => undefined,
+    });
+
+    assert.equal(executionCount, 0);
+    assert.equal(
+      (receivedContext as { brief?: { ready_for_execution?: boolean } })?.brief
+        ?.ready_for_execution,
+      false,
+    );
   });
 });

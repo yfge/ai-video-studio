@@ -49,6 +49,7 @@ async def generate_scoring_artifacts(
     scenes: Optional[List[Dict[str, Any]]] = None,
     dialogues: Optional[List[Dict[str, Any]]] = None,
     hook_plan: Optional[Dict[str, Any]] = None,
+    requirements: Optional[str] = None,
     prefer_provider: Optional[str] = None,
     prefer_model: Optional[str] = None,
 ) -> Dict[str, Any]:
@@ -66,6 +67,7 @@ async def generate_scoring_artifacts(
         episode=episode,
         scenes=scenes,
         dialogues=dialogues,
+        requirements=requirements,
         prefer_provider=prefer_provider,
         prefer_model=prefer_model,
     )

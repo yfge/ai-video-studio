@@ -1,5 +1,14 @@
 from __future__ import annotations
 
+import pytest
+from app.services.ai_service import ai_service
+from tests.integration.production_canvas_ai_stub import ProductionCanvasAIStub
+
+
+@pytest.fixture(autouse=True)
+def _stub_canvas_planner_ai(monkeypatch):
+    monkeypatch.setattr(ai_service, "ai_manager", ProductionCanvasAIStub())
+
 
 def _node(
     node_id: str,
@@ -61,7 +70,12 @@ def _brief_chain_state(*, block_middle: bool = False) -> dict:
 def _create_run(client, state: dict) -> str:
     response = client.post(
         "/api/v1/production-canvas/plan",
-        json={"prompt": "验证下游执行"},
+        json={
+            "prompt": "验证下游执行",
+            "clarification_answers": {
+                "assets.virtual_ip_name": "测试主角",
+            },
+        },
     )
     assert response.status_code == 200
     run_id = response.json()["data"]["run_id"]
@@ -135,7 +149,7 @@ def test_changed_typed_output_marks_descendants_stale_until_rerun(client):
     stale_nodes = {
         node["id"]: node for node in saved.json()["data"]["saved_state"]["nodes"]
     }
-    assert stale_nodes["root"]["status"] == "ready"
+    assert stale_nodes["root"]["status"] == "review"
     assert stale_nodes["middle"]["status"] == "stale"
     assert stale_nodes["leaf"]["status"] == "stale"
     evaluation = client.get(f"/api/v1/production-canvas/runs/{run_id}/graph").json()[
@@ -163,5 +177,5 @@ def test_changed_typed_output_marks_descendants_stale_until_rerun(client):
     }
     refreshed = client.get(f"/api/v1/production-canvas/runs/{run_id}").json()["data"]
     refreshed_nodes = {node["id"]: node for node in refreshed["saved_state"]["nodes"]}
-    assert refreshed_nodes["middle"]["status"] == "ready"
-    assert refreshed_nodes["leaf"]["status"] == "ready"
+    assert refreshed_nodes["middle"]["status"] == "review"
+    assert refreshed_nodes["leaf"]["status"] == "review"

@@ -82,7 +82,7 @@ async def test_production_generation_derives_guidance_from_strict_score_gaps():
     assert "character_recognizability=4.0" in generated_requirements[1]
     assert "clip_ability=4.0" in generated_requirements[1]
     assert "logic_coherence=4.0" in generated_requirements[1]
-    assert "至少 15s、30s、60s" in generated_requirements[1]
+    assert "按实际成片时长" in generated_requirements[1]
 
 
 @pytest.mark.unit
@@ -97,13 +97,11 @@ def test_render_production_requirements_expands_commercial_rewrite_contract():
     assert "商业评分硬交付清单" in requirements
     assert "overall_score >= 4.5" in requirements
     assert "每项 >= 4.2" in requirements
-    assert "15s、30s、60s 三类投流片段" in requirements
-    assert "不能被主角一问就承认" in requirements
-    assert "助理必须有具名动作标签" in requirements
-    assert "私下对峙合理性" in requirements
-    assert "客户张总给出60秒撤单倒计时" in requirements
-    assert "数字不会撒谎，看时间戳" in requirements
-    assert "改完给你20万，不做就裁你" in requirements
+    assert "按实际成片总时长" in requirements
+    assert "不得用评分样板替换用户题材" in requirements
+    assert "不得为了凑评分擅自新增无关人物" in requirements
+    assert "客户张总给出60秒撤单倒计时" not in requirements
+    assert "改完给你20万，不做就裁你" not in requirements
     assert "返修落地校验" in requirements
     assert "针对「角色辨识度不足」" in requirements
     assert "visible_event" in requirements

@@ -1,149 +1,33 @@
 from __future__ import annotations
 
 from app.schemas.production_canvas import (
-    CanvasNodeStatus,
     ProductionCanvasPlanRequest,
     ProductionCanvasSkillResult,
 )
+from app.schemas.production_canvas_content import ProductionCanvasProductionContext
 from app.services.production_canvas.asset_selection import CanvasAssetSelection
+from app.services.production_canvas.runner_contract import (
+    asset_detail,
+    asset_status,
+    asset_title,
+    downstream_detail,
+    downstream_outputs,
+    downstream_status,
+    required_inputs,
+)
 from app.services.production_canvas.skills import list_canvas_skill_definitions
-
-
-def _asset_names(assets) -> str:
-    return "、".join(asset.name for asset in assets)
-
-
-def _asset_title(selection: CanvasAssetSelection) -> str:
-    ip_names = _asset_names(selection.selected.virtual_ips)
-    env_names = _asset_names(selection.selected.environments)
-    created = bool(
-        selection.created_virtual_ip_ids or selection.created_environment_ids
-    )
-    if ip_names and env_names:
-        return f"已{'创建' if created else '选择'} {ip_names} 和 {env_names}"
-    if ip_names:
-        return f"已{'创建' if created else '选择'} IP：{ip_names}；环境待确认"
-    if env_names:
-        return f"IP 待确认；已{'创建' if created else '选择'}环境：{env_names}"
-    return "待确认 IP 和环境资产"
-
-
-def _asset_detail(selection: CanvasAssetSelection) -> str:
-    ip_names = _asset_names(selection.selected.virtual_ips) or "待选择 IP"
-    env_names = _asset_names(selection.selected.environments) or "待选择环境"
-    if selection.created_virtual_ip_ids or selection.created_environment_ids:
-        return f"根据 prompt 选择或创建 IP：{ip_names}；环境：{env_names}"
-    return f"复用现有 IP：{ip_names}；环境：{env_names}"
-
-
-def _asset_status(selection: CanvasAssetSelection) -> CanvasNodeStatus:
-    if selection.selected.virtual_ips or selection.selected.environments:
-        return "review"
-    return "blocked"
-
-
-def _downstream_status(
-    request: ProductionCanvasPlanRequest,
-    selection: CanvasAssetSelection,
-    skill_id: str,
-) -> CanvasNodeStatus:
-    if skill_id == "virtual_ip.image" and selection.selected.virtual_ips:
-        return "ready"
-    if skill_id == "environment.image" and selection.selected.environments:
-        return "ready"
-    if skill_id == "script.generate":
-        if request.script_id:
-            return "review"
-        if request.episode_id:
-            return "ready"
-    if skill_id in {"timeline.assemble", "image.candidates"} and request.script_id:
-        return "review"
-    if skill_id == "video.candidates" and request.script_id:
-        return "blocked"
-    if (
-        skill_id
-        in {
-            "storyboard.plan",
-        }
-        and request.script_id
-    ):
-        return "ready"
-    if skill_id in {"timeline.render", "timeline.export"} and request.script_id:
-        return "review"
-    if skill_id == "report.summarize" and request.task_id:
-        return "ready"
-    return "blocked"
-
-
-def _downstream_outputs(
-    request: ProductionCanvasPlanRequest,
-    selection: CanvasAssetSelection,
-) -> dict:
-    outputs = dict(selection.outputs())
-    outputs.update(request.model_dump(exclude={"prompt"}, exclude_none=True))
-    return outputs
-
-
-def _required_inputs(
-    request: ProductionCanvasPlanRequest,
-    selection: CanvasAssetSelection,
-    skill_id: str,
-) -> list[str]:
-    if skill_id == "virtual_ip.image" and not selection.selected.virtual_ips:
-        return ["virtual_ip_id"]
-    if skill_id == "environment.image" and not selection.selected.environments:
-        return ["environment_id"]
-    if skill_id == "script.generate" and request.episode_id is None:
-        return ["episode_id"]
-    if (
-        skill_id
-        in {
-            "storyboard.plan",
-            "image.candidates",
-            "video.candidates",
-            "timeline.assemble",
-            "timeline.render",
-            "timeline.export",
-        }
-        and request.script_id is None
-    ):
-        return ["script_id"]
-    if skill_id == "report.summarize" and request.task_id is None:
-        return ["task_id"]
-    return []
-
-
-def _downstream_detail(
-    request: ProductionCanvasPlanRequest,
-    selection: CanvasAssetSelection,
-    skill_id: str,
-) -> str:
-    if skill_id == "script.generate" and request.script_id:
-        return "已绑定现有剧本；仅在显式要求重生成时调用剧本 worker。"
-    if skill_id == "timeline.assemble" and request.script_id:
-        return "优先复用当前剧本的 Timeline；缺失时由操作员显式创建。"
-    if skill_id == "image.candidates" and request.script_id:
-        return "等待操作员从当前剧本分镜显式生成图片候选。"
-    if skill_id == "video.candidates" and request.script_id:
-        return "等待图片候选通过人工选用后生成视频候选。"
-    if skill_id in {"timeline.render", "timeline.export"} and not _required_inputs(
-        request, selection, skill_id
-    ):
-        return "人工触发后复用当前 Timeline 版本，保留 RenderJob 和成片资产证据。"
-    if not _required_inputs(request, selection, skill_id):
-        return "后台复用现有 API、service 或 worker；前端只展示执行结果。"
-    return "需要先补齐执行上下文，之后才会调用现有生成 API、service 或 worker。"
 
 
 def build_canvas_skill_results(
     request: ProductionCanvasPlanRequest,
     selection: CanvasAssetSelection,
+    context: ProductionCanvasProductionContext,
 ) -> list[ProductionCanvasSkillResult]:
     asset_outputs = {
         **selection.outputs(),
         "planning_mode": request.planning_mode,
+        "production_context": context.model_dump(),
     }
-    downstream_outputs = _downstream_outputs(request, selection)
     results: list[ProductionCanvasSkillResult] = []
     for skill in list_canvas_skill_definitions():
         if skill.id == "brief.compose":
@@ -151,13 +35,38 @@ def build_canvas_skill_results(
                 ProductionCanvasSkillResult(
                     skill=skill.id,
                     label=skill.label,
-                    status="ready",
-                    title="已从聊天目标生成生产 brief",
-                    detail=f"目标：{request.prompt}",
+                    status=(
+                        "review" if context.brief.ready_for_execution else "blocked"
+                    ),
+                    title="已解析生产意图、参数、模型与规格",
+                    detail=(
+                        f"目标：{context.brief.intent.objective}"
+                        if context.brief.ready_for_execution
+                        else "存在必须由用户补充的生产信息。"
+                    ),
                     outputs={
-                        "prompt": request.prompt,
+                        "production_brief": context.brief.model_dump(),
+                        "prompt": context.brief.source_prompt,
                         "planning_mode": request.planning_mode,
                     },
+                    reuse_targets=skill.reuse_targets,
+                )
+            )
+            continue
+        if skill.id == "content.plan":
+            results.append(
+                ProductionCanvasSkillResult(
+                    skill=skill.id,
+                    label=skill.label,
+                    status=(
+                        "review" if context.brief.ready_for_execution else "blocked"
+                    ),
+                    title=f"内容规划：{context.content_plan.title}",
+                    detail=(
+                        f"{len(context.content_plan.episodes)} 集规划；"
+                        f"持续机制：{context.content_plan.recurring_engine}"
+                    ),
+                    outputs={"production_context": context.model_dump()},
                     reuse_targets=skill.reuse_targets,
                 )
             )
@@ -167,25 +76,25 @@ def build_canvas_skill_results(
                 ProductionCanvasSkillResult(
                     skill=skill.id,
                     label=skill.label,
-                    status=_asset_status(selection),
-                    title=_asset_title(selection),
-                    detail=_asset_detail(selection),
+                    status=asset_status(selection, context),
+                    title=asset_title(selection, context),
+                    detail=asset_detail(selection, context),
                     outputs=asset_outputs,
                     reuse_targets=skill.reuse_targets,
                 )
             )
             continue
-        outputs = dict(downstream_outputs)
-        required_inputs = _required_inputs(request, selection, skill.id)
-        if required_inputs:
-            outputs["required_inputs"] = required_inputs
+        outputs = downstream_outputs(request, selection, context, skill.id)
+        missing_inputs = required_inputs(request, selection, skill.id, context)
+        if missing_inputs:
+            outputs["required_inputs"] = missing_inputs
         results.append(
             ProductionCanvasSkillResult(
                 skill=skill.id,
                 label=skill.label,
-                status=_downstream_status(request, selection, skill.id),
+                status=downstream_status(request, selection, skill.id, context),
                 title=skill.description,
-                detail=_downstream_detail(request, selection, skill.id),
+                detail=downstream_detail(request, selection, skill.id, context),
                 outputs=outputs,
                 reuse_targets=skill.reuse_targets,
             )

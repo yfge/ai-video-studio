@@ -7,14 +7,16 @@ def build_single_video_script_request(
     *,
     episode_id: int,
     prompt: str,
-    duration_minutes: int,
+    duration_seconds: int,
     aspect_ratio: str,
     style: str | None = None,
 ) -> ScriptGenerationRequest:
     constraints = [
         "## 系统生产约束（优先级最高）",
-        f"- 成片总时长：{duration_minutes} 分钟。",
-        "- 用户创意描述中的其他成片时长不生效，以系统生产时长为准。",
+        f"- 成片总时长：{duration_seconds} 秒。",
+        f"- 标题、logline、概要、场景时长和正文必须统一按 {duration_seconds} 秒成片。",
+        "- 该规格来自用户显式设置或对原始目标的结构化解析。",
+        "- 其他数字只有在明确属于剧情时才能作为戏内数字。",
         "- 内容形态：独立单条视频，不得扩展为多集。",
         f"- 目标画幅：{aspect_ratio}。",
     ]
@@ -31,7 +33,7 @@ def build_single_video_script_request(
         episode_id=episode_id,
         generation_mode="production",
         auto_timeline_pipeline=True,
-        target_chars_per_episode=max(600, min(2500, duration_minutes * 300)),
+        target_chars_per_episode=max(600, min(2500, round(duration_seconds * 5))),
         additional_requirements=requirements,
         style_preferences=[style] if style else None,
     )

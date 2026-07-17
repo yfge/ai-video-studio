@@ -19,6 +19,12 @@ Critical script repair instructions:
 """.strip()
 
 
+def with_script_gate(
+    result: Dict[str, Any], content: Dict[str, Any], gate: Dict[str, Any]
+) -> Dict[str, Any]:
+    return {**result, "content": content, "normalized": content, "quality_gate": gate}
+
+
 def refresh_unknown_speaker_validation_result(
     *,
     result: Dict[str, Any],
@@ -32,7 +38,9 @@ def refresh_unknown_speaker_validation_result(
     if story_model is None or not _is_unknown_speaker_only_character_result(result):
         return result
     scenes = content.get("scenes") if isinstance(content.get("scenes"), list) else []
-    dialogues = content.get("dialogues") if isinstance(content.get("dialogues"), list) else []
+    dialogues = (
+        content.get("dialogues") if isinstance(content.get("dialogues"), list) else []
+    )
     policy_check = story_model_character_check(
         story_model,
         episode_id,

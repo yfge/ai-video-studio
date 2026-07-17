@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
+from app.services.ai.scripts_continuity_contract import sync_structured_contract
 from app.services.continuity.script_continuity import (
     run_script_continuity_audit,
     run_script_dialogues_rewrite_with_audit,
@@ -81,12 +82,21 @@ def _merge_rewrite(
         payload["dialogues"] = new_dialogues
     if new_stage is not None:
         payload["stage_directions"] = new_stage
+    contract_synced = sync_structured_contract(
+        payload,
+        scenes=new_scenes,
+        dialogues=new_dialogues,
+        stage_directions=new_stage,
+    )
     payload.setdefault("metadata", {})
     if isinstance(payload["metadata"], dict):
-        payload["metadata"]["continuity_rewrite"] = {
+        rewrite_metadata = {
             "verdict": "fail",
             "issue_count": issue_count,
         }
+        if contract_synced is not None:
+            rewrite_metadata["structured_contract_synced"] = contract_synced
+        payload["metadata"]["continuity_rewrite"] = rewrite_metadata
 
 
 def _optional_list(value: Any) -> list[Any] | None:

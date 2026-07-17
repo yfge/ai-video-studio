@@ -12,6 +12,7 @@ from app.schemas.production_canvas import (
     ProductionCanvasSavedEdge,
     ProductionCanvasSelectedAssets,
 )
+from app.schemas.production_canvas_content import ProductionCanvasProductionContext
 from app.schemas.production_canvas_planner import (
     ProductionCanvasPlannerEvidence,
     ProductionCanvasPlannerProposal,
@@ -129,6 +130,7 @@ async def plan_canvas_skills(
     prompt: str,
     resolved_context: ProductionCanvasResolvedContext,
     selected_assets: ProductionCanvasSelectedAssets,
+    production_context: ProductionCanvasProductionContext | None = None,
     ai_manager: Any = _DEFAULT_MANAGER,
 ) -> CanvasPlannerDecision:
     manager = ai_service.ai_manager if ai_manager is _DEFAULT_MANAGER else ai_manager
@@ -147,6 +149,14 @@ async def plan_canvas_skills(
                 ),
                 "selected_assets_json": json.dumps(
                     selected_assets.model_dump(),
+                    ensure_ascii=False,
+                ),
+                "production_context_json": json.dumps(
+                    (
+                        production_context.model_dump(exclude_none=True)
+                        if production_context
+                        else {}
+                    ),
                     ensure_ascii=False,
                 ),
                 "skill_catalog_json": _catalog_json(),

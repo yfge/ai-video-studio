@@ -9,17 +9,18 @@ from .planner_ports import canvas_skill_node_id, canvas_skill_ports
 
 NODE_LAYOUT = {
     "brief.compose": (80, 360, 210, None, None),
-    "asset.select": (340, 360, 240, "/virtual-ip", "检查资产选择"),
-    "virtual_ip.image": (620, 360, 240, "/tasks", "查看 IP 图任务"),
-    "environment.image": (900, 360, 240, "/tasks", "查看环境图任务"),
-    "script.generate": (1180, 360, 240, "/stories", "进入故事生产"),
-    "timeline.assemble": (1460, 360, 250, "/tasks", "查看时间线任务"),
-    "storyboard.plan": (1750, 360, 240, "/tasks", "查看分镜任务"),
-    "image.candidates": (2030, 360, 250, "/tasks", "查看图片任务"),
-    "video.candidates": (2320, 360, 250, "/tasks", "查看视频任务"),
-    "timeline.render": (2610, 360, 240, "/stories", "查看渲染状态"),
-    "timeline.export": (2890, 360, 240, "/stories", "查看成片资产"),
-    "report.summarize": (3170, 360, 240, "/tasks", "查看报告证据"),
+    "content.plan": (340, 360, 240, None, None),
+    "asset.select": (620, 360, 240, "/virtual-ip", "检查资产选择"),
+    "virtual_ip.image": (900, 360, 240, "/tasks", "查看 IP 图任务"),
+    "environment.image": (1180, 360, 240, "/tasks", "查看环境图任务"),
+    "script.generate": (1460, 360, 240, "/stories", "进入故事生产"),
+    "timeline.assemble": (1740, 360, 250, "/tasks", "查看时间线任务"),
+    "storyboard.plan": (2030, 360, 240, "/tasks", "查看分镜任务"),
+    "image.candidates": (2310, 360, 250, "/tasks", "查看图片任务"),
+    "video.candidates": (2600, 360, 250, "/tasks", "查看视频任务"),
+    "timeline.render": (2890, 360, 240, "/stories", "查看渲染状态"),
+    "timeline.export": (3170, 360, 240, "/stories", "查看成片资产"),
+    "report.summarize": (3450, 360, 240, "/tasks", "查看报告证据"),
 }
 
 

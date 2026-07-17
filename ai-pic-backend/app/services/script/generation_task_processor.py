@@ -70,6 +70,7 @@ def process_script_generation_task(
                 marketing_overrides=marketing_overrides,
                 model_id=model_id,
                 prefer_provider=prefer_provider,
+                requirements=request_dict.get("additional_requirements"),
             )
 
         generated, production_meta, scoring_artifacts = _run_generation_mode(

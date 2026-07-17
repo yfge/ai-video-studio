@@ -1,40 +1,49 @@
 from __future__ import annotations
 
-from app.schemas.production_canvas import (
-    ProductionCanvasSkillDefinition,
-    ProductionCanvasSkillReuseTarget,
-)
+from app.schemas.production_canvas import ProductionCanvasSkillDefinition
 
 from .clip_skills import CLIP_SKILL_DEFINITIONS
-
-
-def _target(
-    kind: str,
-    label: str,
-    target: str,
-    description: str | None = None,
-) -> ProductionCanvasSkillReuseTarget:
-    return ProductionCanvasSkillReuseTarget(
-        kind=kind,
-        label=label,
-        target=target,
-        description=description,
-    )
-
+from .skill_targets import skill_target as _target
 
 SKILL_DEFINITIONS = [
     ProductionCanvasSkillDefinition(
         id="brief.compose",
         label="Brief Skill",
-        description="Turn the chat production goal into a structured short-drama brief.",
+        description="调用结构化上下文模型解析意图、参数、资产、模型、视频规格与待补充问题。",
         reuse_targets=[
-            _target("artifact", "Canvas prompt", "production_canvas.prompt"),
+            _target(
+                "artifact",
+                "Production Brief v1",
+                "production_canvas.production_brief.v1",
+            ),
+        ],
+    ),
+    ProductionCanvasSkillDefinition(
+        id="content.plan",
+        label="Content Planning",
+        description="消费结构化 Brief，把目标扩展为故事主线、角色弧、场景池、逐集合同与持续发展钩子。",
+        reuse_targets=[
+            _target(
+                "artifact",
+                "Content Plan v1",
+                "production_canvas.content_plan.v1",
+            ),
+            _target(
+                "service",
+                "Story generation",
+                "app.services.story.story_generation_service.StoryGenerationService",
+            ),
+            _target(
+                "service",
+                "Episode generation",
+                "app.services.episode.episode_generation_service.EpisodeGenerationService",
+            ),
         ],
     ),
     ProductionCanvasSkillDefinition(
         id="asset.select",
         label="Asset Selection",
-        description="Inspect existing IP and environment assets and select matching reuse inputs.",
+        description="按内容规划判断 IP/场景是复用、歧义待选，还是缺失后创建。",
         reuse_targets=[
             _target(
                 "repository",
@@ -90,7 +99,7 @@ SKILL_DEFINITIONS = [
     ProductionCanvasSkillDefinition(
         id="script.generate",
         label="Script Skill",
-        description="Queue production script generation through the existing script pipeline.",
+        description="以完整 production_context 编译剧本请求并调用现有生产剧本链路。",
         reuse_targets=[
             _target(
                 "api",

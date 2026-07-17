@@ -141,9 +141,10 @@ async def test_production_beat_contract_prompt_contains_strict_score_gate():
     assert "timestamp skeleton" in prompt
     assert "0-3 秒 ignition" in prompt
     assert "close-up reaction" in prompt
-    assert "客户张总给出60秒撤单" in prompt
-    assert "数字不会撒谎，看时间戳" in prompt
-    assert "改完给你20万，不做就裁你" in prompt
+    assert "Prompt 忠实度" in prompt
+    assert "不得用无关题材或固定人物替换" in prompt
+    assert "客户张总给出60秒撤单" not in prompt
+    assert "改完给你20万，不做就裁你" not in prompt
     assert "good beat" in prompt
     assert "bad beat" in prompt
 

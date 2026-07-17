@@ -224,6 +224,34 @@ stable clip / Task` 上下文；旧 `agent_run.result_ref` 与结果路径继续
 - [x] 补齐自主方案、修复成功、确定性回退、动态边创建/恢复的后端与前端回归，并完成
       当前环境真实浏览器验证。
 
+### Production Canvas Phase 9（结构化生产上下文与内容规划）
+
+- [x] 将 Skill 名称降为展示/路由元数据，建立
+      `brief.compose -> content.plan -> asset.select -> script.generate`
+      类型化合同；下游统一消费版本化 `production_context.v1`，不再各自只解析原始
+      prompt。
+- [x] Production Brief 结构化保存原始目标、创意意图、时长/集数/画幅/分辨率/FPS、
+      视觉风格、模型请求与选用、资产策略、冲突证据和必须回答的问题；明确 prompt
+      的本次生产规格优先于历史默认值。
+- [x] 意图理解改为模型优先：上下文模型一次性输出 schema 校验后的 Brief/Content
+      Plan；删除角色、环境、模型、风格和目标集数的固定词表/正则解析以及模型结果
+      反向覆盖。fallback 只保留原始 prompt 和显式参数，不再猜名称。
+- [x] Content Planning Skill 将一句话扩展为 premise、主冲突、角色弧、可复用场景、
+      跨集持续机制、逐集合同、连续性规则和未来线索；结合现有 IP/Environment/
+      Story/Episode 判断复用、歧义待选或缺失后创建。
+- [x] 对多 Story/多资产匹配、系列缺少主角、请求模型不可用、仅复用策略下资产缺失
+      等关键歧义先反问；回答进入同一 Brief 并重新规划，不允许系统擅自猜测或重复
+      创建业务实体。
+- [x] Script Skill 将完整 Production Context 编译进现有 production script worker；
+      删除 AP/张总/小陈/陈默/撤单/篡改固定职场模板注入和固定短语分数校准，质量修复
+      只能从当前 prompt/provider 内容推导冲突、升级和兑现。
+- [x] 前端支持生产规格、模型、风格、澄清答案和结构化上下文摘要；单条视频先规划，
+      仅在必答澄清完成后由后端统一复用/创建兼容 Story/Episode，再自动执行
+      `script.generate`。
+- [x] 用 `episode_id=194`（实际 `episode_number=1`）和原始目标完成真实浏览器重跑，
+      确认请求包含林妹妹、gpt-img-2、seedance 2.0、60 秒、3D 卡通、AI 落地与反转，
+      且新剧本不再被固定职场模板替换。
+
 ### 单条视频快捷生产（Story 列表与 Production Canvas 共享）
 
 - [x] 新增共享后端创建能力：只要求标题/描述、3 或 5 分钟、画幅与可选风格；IP 和
@@ -232,8 +260,9 @@ stable clip / Task` 上下文；旧 `agent_run.result_ref` 与结果路径继续
       前端统一展示为 `视频项目 -> 主视频`，不要求用户先完成系列故事建模。
 - [x] `/stories` 提供“创建单条视频”主入口，创建后直接跟踪现有剧本生成 Task 并进入
       Script/Timeline 工作区；系列故事入口继续保留。
-- [x] `/canvas` 提供“单条视频 / 系列制作”模式切换；单条视频模式先创建兼容项目，
-      再规划并只自动执行 `script.generate`，不得自动触发图片、视频或渲染费用。
+- [x] `/canvas` 提供“单条视频 / 系列制作”模式切换；单条视频模式先解析结构化
+      Brief/Content Plan，并在必答澄清完成后由后端统一复用或创建兼容项目，再只自动
+      执行 `script.generate`，不得自动触发图片、视频或渲染费用。
 - [x] 无 IP 的单条视频层级以真实 Story 为根；Run 节点和执行请求保留
       `planning_mode=single_video`，恢复后也不得重新按 prompt 猜测或创建资产。
 - [x] 补齐后端 API/资产安全、前端入口/工作区、Canvas 编排与无 IP 层级回归，并通过

@@ -32,3 +32,17 @@ def test_quality_gate_rejects_abstract_scene_stakes_and_opposition():
     assert report["passed"] is False
     assert "scene_conflict_stakes" in failed
     assert "scene_conflict_opposition" in failed
+
+
+@pytest.mark.unit
+def test_quality_gate_accepts_concrete_publication_deadline_as_stakes():
+    payload = _valid_contract()
+    payload["scenes"][0]["conflict"][
+        "stakes"
+    ] = "她的表达会被复制进下周全员播放模板，个人形象将被长期占用。"
+    contract = normalize_script_beat_contract(payload)
+
+    report = evaluate_beat_contract_quality(contract)
+
+    failed = {item["check_id"] for item in report["failed_checks"]}
+    assert "scene_conflict_stakes" not in failed

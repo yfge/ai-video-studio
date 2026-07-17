@@ -1,6 +1,7 @@
 import pytest
 from app.utils.model_utils import (
     DEFAULT_OPENAI_IMAGE_MODEL,
+    canonicalize_openai_image_model,
     is_gpt_image_model,
     is_openai_image_model,
     normalize_openai_image_style,
@@ -29,6 +30,10 @@ def test_parse_model_and_provider_splits_and_infers():
     assert model == DEFAULT_OPENAI_IMAGE_MODEL
     assert provider == "openai"
 
+    model, provider = parse_model_and_provider("seedance 2.0")
+    assert model == "seedance 2.0"
+    assert provider == "volcengine"
+
 
 def test_oai_image_model_detection():
     assert is_openai_image_model("gpt-image-2") is True
@@ -38,6 +43,7 @@ def test_oai_image_model_detection():
     assert is_gpt_image_model("gpt-image-2") is True
     assert is_gpt_image_model("chatgpt-img-2") is True
     assert is_gpt_image_model("dall-e-3") is False
+    assert canonicalize_openai_image_model("gpt-img-3") == "gpt-image-3"
 
 
 @pytest.mark.parametrize(

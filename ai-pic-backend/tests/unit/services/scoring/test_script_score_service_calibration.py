@@ -6,10 +6,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from app.services.providers.base import AIModelType, AIResponse, AITaskType
-from app.services.scoring.script_score_service import (
-    ScriptScoreService,
-    _script_score_json_schema,
-)
+from app.services.scoring.script_score_schema import script_score_json_schema
+from app.services.scoring.script_score_service import ScriptScoreService
 
 
 @pytest.fixture
@@ -26,7 +24,7 @@ def score_service(mock_ai_service):
 
 
 @pytest.mark.asyncio
-async def test_score_script_calibrates_when_commercial_anchors_are_present(
+async def test_score_script_does_not_override_model_score_for_fixed_phrases(
     score_service, mock_ai_service
 ):
     mock_ai_service.ai_manager.generate_text.return_value = AIResponse(
@@ -74,12 +72,12 @@ async def test_score_script_calibrates_when_commercial_anchors_are_present(
         episode={"episode_number": 1, "title": "数据迷局"},
     )
 
-    assert result.verdict == "pass"
-    assert result.overall_score == 4.5
-    assert result.dimension_scores.character_recognizability == 4.5
-    assert result.dimension_scores.logic_coherence == 4.5
-    assert result.risks == []
-    assert result.rewrite_guidance == []
+    assert result.verdict == "review"
+    assert result.overall_score == 4.0
+    assert result.dimension_scores.character_recognizability == 3.5
+    assert result.dimension_scores.logic_coherence == 3.5
+    assert result.risks == ["角色动机不够明确", "第2场过渡略平"]
+    assert result.rewrite_guidance == ["男二动机需补充"]
 
 
 @pytest.mark.asyncio
@@ -136,7 +134,7 @@ async def test_score_script_does_not_calibrate_without_visible_motive_anchor(
 
 
 def test_script_score_schema_is_provider_compatible():
-    schema = _script_score_json_schema()
+    schema = script_score_json_schema()
     schema_text = str(schema)
 
     assert "$defs" not in schema_text

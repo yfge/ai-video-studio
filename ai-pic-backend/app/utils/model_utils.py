@@ -20,6 +20,8 @@ def canonicalize_openai_image_model(model_id: Optional[str]) -> Optional[str]:
     lower = raw.lower()
     if lower.startswith("dalle-"):
         return lower.replace("dalle-", "dall-e-", 1)
+    if lower.startswith("gpt-img-"):
+        return lower.replace("gpt-img-", "gpt-image-", 1)
     return _OPENAI_IMAGE_MODEL_ALIASES.get(lower, raw)
 
 
@@ -42,6 +44,7 @@ def infer_provider_from_model(model_id: str) -> Optional[str]:
         mid.startswith(("seedream", "volcengine"))
         or "doubao" in mid
         or "seedream" in mid
+        or "seedance" in mid
     ):
         return "volcengine"
     if mid.startswith("deepseek"):

@@ -1,5 +1,4 @@
 import pytest
-
 from app.services.script.beat_contract_auto_repair import (
     auto_repair_script_beat_contract,
 )
@@ -33,6 +32,8 @@ def test_auto_repair_dedupes_screen_dialogue_and_hardens_payoff():
     assert "dialogue_progression_repetition" not in failed
     assert "beat_visible_event_specificity" not in failed
     assert "payoff_specificity" not in failed
+    for generic_line in ("状态变了", "再看这一步", "阻力还在", "还没结束"):
+        assert generic_line not in str(repaired)
 
 
 @pytest.mark.unit
@@ -114,7 +115,7 @@ def test_auto_repair_replaces_vague_stakes_and_purpose():
     assert "scene_conflict_specificity" not in failed
     assert "scene_conflict_turn" not in failed
     assert "beat_dramatic_purpose_specificity" not in failed
-    assert "300万项目合同" in contract.scenes[0].conflict.stakes
+    assert "奖金归零" in contract.scenes[0].conflict.stakes
 
 
 @pytest.mark.unit
@@ -139,6 +140,7 @@ def test_auto_repair_replaces_prompt_style_opening_purpose():
 def test_auto_repair_replaces_generic_scene_turn_key_line():
     payload = _valid_contract()
     payload["scenes"][0]["conflict"]["turn"] = "发现关键线索"
+    expected_turn = payload["scenes"][0]["beats"][-1]["visible_event"]
 
     repaired = auto_repair_script_beat_contract(
         {"structured_script_contract": payload},
@@ -150,7 +152,26 @@ def test_auto_repair_replaces_generic_scene_turn_key_line():
     failed = {item["check_id"] for item in report["failed_checks"]}
     assert "scene_conflict_turn" not in failed
     assert contract.scenes[0].conflict.turn != "发现关键线索"
-    assert "原始文件" in contract.scenes[0].conflict.turn
+    assert contract.scenes[0].conflict.turn == expected_turn
+
+
+@pytest.mark.unit
+def test_auto_repair_reuses_visible_event_for_abstract_scene_turn():
+    payload = _valid_contract()
+    scene = payload["scenes"][0]
+    scene["conflict"]["turn"] = "她连续点破流程问题后，吐槽从情绪变成有证据的拆台。"
+    expected_turn = scene["beats"][-1]["visible_event"]
+
+    repaired = auto_repair_script_beat_contract(
+        {"structured_script_contract": payload},
+        target_chars_per_episode=500,
+    )
+    contract = normalize_script_beat_contract(repaired)
+    report = evaluate_beat_contract_quality(contract)
+
+    failed = {item["check_id"] for item in report["failed_checks"]}
+    assert "scene_conflict_turn" not in failed
+    assert contract.scenes[0].conflict.turn == expected_turn
 
 
 @pytest.mark.unit
@@ -169,11 +190,12 @@ def test_auto_repair_replaces_vague_visual_language_in_actions():
     repaired_text = repaired["content"]
 
     assert "气氛" not in repaired_text
-    assert "云端日志时间戳" in repaired_text
+    assert "所有人注视AP" in repaired_text
+    assert "电话上显示倒计时" in repaired_text
 
 
 @pytest.mark.unit
-def test_auto_repair_coerces_malformed_embedded_contract_without_top_level_scenes():
+def test_auto_repair_rejects_malformed_contract_without_inventing_story_content():
     malformed_contract = {
         "contract_version": "script-beat-v1",
         "scenes": [
@@ -193,9 +215,6 @@ def test_auto_repair_coerces_malformed_embedded_contract_without_top_level_scene
         {"structured_script_contract": malformed_contract},
         target_chars_per_episode=500,
     )
-    contract = normalize_script_beat_contract(repaired)
-    report = evaluate_beat_contract_quality(contract)
-
-    assert contract.scenes[0].slug_line == "内. 会议室 - 日"
-    assert contract.scenes[0].beats[0].visible_event
-    assert report["passed"] is True, report
+    assert repaired == {"structured_script_contract": malformed_contract}
+    assert "现场负责人" not in str(repaired)
+    assert "当前场景" not in str(repaired)

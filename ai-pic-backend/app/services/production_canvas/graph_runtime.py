@@ -94,6 +94,19 @@ def resolved_canvas_inputs(
             (port for port in target.input_ports if port.id == edge.to_port),
             None,
         )
+        if (
+            target_port
+            and target_port.type == "text"
+            and edge.from_port == "production_brief"
+            and isinstance(value, dict)
+        ):
+            value = (
+                source.outputs.get("prompt")
+                or value.get("source_prompt")
+                or value.get("intent", {}).get(
+                    "objective",
+                )
+            )
         if target_port and target_port.multiple:
             current = values.setdefault(edge.to_port, [])
             current.extend(value if isinstance(value, list) else [value])
@@ -109,8 +122,10 @@ def resolved_canvas_inputs(
 
 def _request_updates(values: dict[str, Any]) -> dict[str, Any]:
     updates: dict[str, Any] = {}
+    production_context = values.get("production_context")
+    if isinstance(production_context, dict):
+        updates["production_context"] = production_context
     scalar_fields = {
-        "production_brief": "prompt",
         "shot_context": "prompt",
         "script": "script_id",
         "episode": "episode_id",
@@ -127,6 +142,9 @@ def _request_updates(values: dict[str, Any]) -> dict[str, Any]:
             value = value[0]
         if value is not None:
             updates[field] = value
+    legacy_brief = values.get("production_brief")
+    if isinstance(legacy_brief, str) and legacy_brief:
+        updates["prompt"] = legacy_brief
     start_frame = values.get("start_frame")
     if isinstance(start_frame, list) and start_frame:
         start_frame = start_frame[0]

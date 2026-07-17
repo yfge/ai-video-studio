@@ -171,8 +171,9 @@ export interface EpisodeGenerationRequest {
 export interface SingleVideoProjectRequest {
   title: string;
   prompt: string;
-  duration_minutes: 3 | 5;
-  aspect_ratio: "9:16" | "16:9";
+  duration_minutes?: number;
+  duration_seconds?: number;
+  aspect_ratio?: "9:16" | "16:9" | "1:1";
   style?: string;
   virtual_ip_id?: number;
   environment_id?: number;
