@@ -10,7 +10,6 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 import httpx
-
 from app.core.config import settings
 from app.core.logging import get_logger
 
@@ -24,6 +23,7 @@ from .base import (
 )
 from .codex_auth import CodexAuthError, read_codex_auth, refresh_codex_auth
 from .codex_image import run_codex_image_generation
+from .codex_image_references import upload_codex_reference_files
 from .codex_models import (
     CODEX_IMAGE_MODEL_ID,
     DEFAULT_CODEX_TEXT_MODEL,
@@ -155,6 +155,12 @@ class CodexProvider(BaseProvider):
                 height=kwargs.get("height"),
                 aspect_ratio=kwargs.get("aspect_ratio"),
                 post_raw=_post,
+                upload_references=lambda refs: upload_codex_reference_files(
+                    refs,
+                    client=client,
+                    responses_url=self.endpoint,
+                    headers=self._headers(),
+                ),
                 sleep=_anyio.sleep,
                 logger=logger,
             )

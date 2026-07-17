@@ -43,6 +43,20 @@ def test_payload_includes_references_and_size():
     assert payload["tools"] == [{"type": "image_generation", "size": "1536x1024"}]
 
 
+def test_payload_accepts_uploaded_reference_file_ids():
+    payload = build_codex_image_payload(
+        prompt="p",
+        model="gpt-5.4",
+        size="auto",
+        reference_images=[{"file_id": "file_123"}],
+    )
+
+    assert payload["input"][0]["content"][1] == {
+        "type": "input_image",
+        "file_id": "file_123",
+    }
+
+
 def test_payload_auto_size_omits_size_param():
     payload = build_codex_image_payload(prompt="p", model="gpt-5.4", size="auto")
     assert payload["tools"] == [{"type": "image_generation"}]
@@ -160,11 +174,12 @@ async def test_codex_image_retries_wrong_physical_aspect_ratio():
 @pytest.mark.asyncio
 async def test_codex_image_retries_transient_reference_download_timeout():
     calls = 0
-    sleeps = []
+    payloads = []
 
-    async def post_raw(_payload):
+    async def post_raw(payload):
         nonlocal calls
         calls += 1
+        payloads.append(payload)
         if calls == 1:
             raise RuntimeError(
                 "Codex endpoint returned 400: Unable to download content from "
@@ -183,8 +198,11 @@ async def test_codex_image_retries_transient_reference_download_timeout():
             ]
         )
 
-    async def record_sleep(seconds):
-        sleeps.append(seconds)
+    async def upload_references(_references):
+        return ["file_reference"]
+
+    async def no_sleep(_seconds):
+        return None
 
     class Logger:
         def info(self, *_args):
@@ -201,10 +219,66 @@ async def test_codex_image_retries_transient_reference_download_timeout():
         height=1024,
         aspect_ratio="1:1",
         post_raw=post_raw,
-        sleep=record_sleep,
+        upload_references=upload_references,
+        sleep=no_sleep,
         logger=Logger(),
     )
 
     assert calls == 2
-    assert sleeps == [10]
+    assert payloads[1]["input"][0]["content"][1] == {
+        "type": "input_image",
+        "file_id": "file_reference",
+    }
     assert image.startswith("data:image/png;base64,")
+
+
+@pytest.mark.asyncio
+async def test_codex_image_keeps_urls_when_generation_accepts_them():
+    payloads = []
+    upload_calls = 0
+
+    async def upload_references(_references):
+        nonlocal upload_calls
+        upload_calls += 1
+        return ["file_character", "file_environment"]
+
+    async def post_raw(payload):
+        payloads.append(payload)
+        return _sse(
+            [
+                {
+                    "type": "response.output_item.done",
+                    "item": {
+                        "type": "image_generation_call",
+                        "result": _png_b64(1024, 1024),
+                        "output_format": "png",
+                    },
+                }
+            ]
+        )
+
+    class Logger:
+        def info(self, *_args):
+            pass
+
+        def warning(self, *_args):
+            pass
+
+    await run_codex_image_generation(
+        prompt="storyboard",
+        references=["https://example.com/a.png", "https://example.com/b.png"],
+        size_hint="1024x1024",
+        width=1024,
+        height=1024,
+        aspect_ratio="1:1",
+        post_raw=post_raw,
+        upload_references=upload_references,
+        sleep=lambda _seconds: None,
+        logger=Logger(),
+    )
+
+    assert upload_calls == 0
+    assert payloads[0]["input"][0]["content"][1:] == [
+        {"type": "input_image", "image_url": "https://example.com/a.png"},
+        {"type": "input_image", "image_url": "https://example.com/b.png"},
+    ]

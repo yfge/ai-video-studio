@@ -53,3 +53,32 @@ def test_dispatch_timeline_generation_routes_audio_timeline(monkeypatch):
     assert _dispatch_celery_task(task, user_id=9) is True
 
     assert calls == [("audio_timeline", (124, params, 9))]
+
+
+def test_dispatch_timeline_clip_storyboard_routes_grid_worker(monkeypatch):
+    calls = []
+
+    monkeypatch.setattr(
+        "app.services.task_worker_grid_storyboard.grid_storyboard_sheet_generate_task.delay",
+        lambda *args: calls.append(("grid_storyboard", args)),
+    )
+    monkeypatch.setattr(
+        "app.services.task_worker_storyboard_media.storyboard_image_generate_task.delay",
+        lambda *args: calls.append(("legacy_storyboard", args)),
+    )
+    params = {
+        "kind": "timeline_clip_storyboard",
+        "timeline_id": 76,
+        "clip_id": "video_scene_591_beat_4352_001",
+    }
+    task = Task(
+        id=6449,
+        title="Timeline clip storyboard",
+        task_type=TaskType.STORYBOARD_IMAGE_GENERATION,
+        parameters=json.dumps(params),
+        user_id=9,
+    )
+
+    assert _dispatch_celery_task(task, user_id=9) is True
+
+    assert calls == [("grid_storyboard", (6449, params, 9))]
