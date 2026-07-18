@@ -6,6 +6,7 @@ import { selectProductionCanvasNode } from "./productionCanvasSelection";
 import {
   applyProductionCanvasContext,
   createProductionCanvasState,
+  type ProductionCanvasState,
 } from "./productionCanvasState";
 import {
   CANVAS_BASE_HEIGHT,
@@ -22,8 +23,9 @@ import { useProductionCanvasKeyboardCommands } from "./useProductionCanvasKeyboa
 export function useProductionCanvasController(
   storageKey?: string | null,
   canEdit: () => boolean = () => true,
+  initialState: () => ProductionCanvasState = createProductionCanvasState,
 ) {
-  const history = useProductionCanvasHistory(createProductionCanvasState);
+  const history = useProductionCanvasHistory(initialState);
   const {
     canvasState,
     setCanvasDefinition,
@@ -54,9 +56,9 @@ export function useProductionCanvasController(
   });
 
   useEffect(() => {
-    replaceCanvasState(readStoredCanvasState(storageKey));
+    replaceCanvasState(readStoredCanvasState(storageKey, initialState()));
     setStorageLoaded(true);
-  }, [replaceCanvasState, storageKey]);
+  }, [initialState, replaceCanvasState, storageKey]);
 
   useEffect(() => {
     if (!storageKey || !storageLoaded || typeof window === "undefined") return;
@@ -81,7 +83,7 @@ export function useProductionCanvasController(
       nodes: applyProductionCanvasContext(state.nodes, context),
     }));
   const handleReset = () => {
-    replaceCanvasState(createProductionCanvasState());
+    replaceCanvasState(initialState());
     if (storageKey && typeof window !== "undefined") {
       window.localStorage.removeItem(storageKey);
     }

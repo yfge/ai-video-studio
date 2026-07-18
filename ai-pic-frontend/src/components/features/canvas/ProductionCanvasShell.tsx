@@ -3,8 +3,10 @@ import { ProductionCanvasBackLink } from "./ProductionCanvasBackLink";
 import { ProductionCanvasContent } from "./ProductionCanvasBoard";
 
 export function ProductionCanvasShell({
+  blank = false,
   initialRunId,
 }: {
+  blank?: boolean;
   initialRunId?: string | null;
 }) {
   return (
@@ -16,8 +18,10 @@ export function ProductionCanvasShell({
       rightSlot={<ProductionCanvasBackLink />}
     >
       <ProductionCanvasContent
+        blank={blank}
         initialRunId={initialRunId}
         initialView="execution"
+        storageKey={blank ? null : undefined}
       />
     </OperatorShell>
   );

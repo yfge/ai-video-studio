@@ -8,6 +8,10 @@ import {
   type ProductionCanvasView,
 } from "./ProductionCanvasViewSwitch";
 import { PRODUCTION_CANVAS_STORAGE_KEY } from "./productionCanvasViewModel";
+import {
+  createBlankProductionCanvasState,
+  createProductionCanvasState,
+} from "./productionCanvasState";
 import { collectProductionCanvasContext } from "./productionCanvasSharedContext";
 import {
   mergeProductionCanvasHierarchySyncContext,
@@ -26,6 +30,7 @@ import { useProductionCanvasTaskSync } from "./useProductionCanvasTaskSync";
 
 type ProductionCanvasContentProps = {
   autosaveDelayMs?: number | null;
+  blank?: boolean;
   initialRunId?: string | null;
   initialView?: ProductionCanvasView;
   storageKey?: string | null;
@@ -40,6 +45,7 @@ export function ProductionCanvasContent(
 
 function ProductionCanvasSession({
   autosaveDelayMs = 1200,
+  blank = false,
   initialRunId,
   initialView,
   storageKey = PRODUCTION_CANVAS_STORAGE_KEY,
@@ -81,6 +87,7 @@ function ProductionCanvasSession({
   const controller = useProductionCanvasController(
     storageKey,
     accessGate.canEdit,
+    blank ? createBlankProductionCanvasState : createProductionCanvasState,
   );
   const persistence = useProductionCanvasRunPersistence({
     autosaveDelayMs: activeView === "execution" ? autosaveDelayMs : null,

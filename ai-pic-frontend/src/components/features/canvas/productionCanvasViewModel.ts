@@ -84,8 +84,10 @@ function storedSections(value: unknown): ProductionCanvasSection[] {
   });
 }
 
-export function readStoredCanvasState(storageKey: string | null | undefined) {
-  const fallback = createProductionCanvasState();
+export function readStoredCanvasState(
+  storageKey: string | null | undefined,
+  fallback = createProductionCanvasState(),
+) {
   if (!storageKey || typeof window === "undefined") return fallback;
 
   try {

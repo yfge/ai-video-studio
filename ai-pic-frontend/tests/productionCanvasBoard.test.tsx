@@ -112,6 +112,22 @@ describe("ProductionCanvasBoard", () => {
     assert.ok(utils.getByText("100%"));
   });
 
+  it("starts a requested blank canvas without template nodes", () => {
+    const utils = render(<ProductionCanvasContent blank storageKey={null} />, {
+      container: dom.window.document.body,
+    });
+
+    assert.ok(
+      utils.container.querySelector(
+        "[data-production-canvas='infinite-canvas']",
+      ),
+    );
+    assert.equal(
+      utils.container.querySelectorAll("[data-canvas-node]").length,
+      0,
+    );
+  });
+
   it("undoes and redoes graph definition changes", () => {
     const utils = render(<ProductionCanvasContent storageKey={null} />, {
       container: dom.window.document.body,

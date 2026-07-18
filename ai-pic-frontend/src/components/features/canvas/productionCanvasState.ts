@@ -54,6 +54,10 @@ export function createProductionCanvasState(
   };
 }
 
+export function createBlankProductionCanvasState() {
+  return createProductionCanvasState([], []);
+}
+
 export function moveProductionCanvasNode(
   nodes: ProductionCanvasNode[],
   nodeId: string,
