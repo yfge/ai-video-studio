@@ -13,7 +13,19 @@ export function useEpisodeMetadata(
   const [timelineSpec, setTimelineSpec] = useState<TimelineResponse | null>(
     null,
   );
-  const [timelineSpecLoading, setTimelineSpecLoading] = useState(false);
+  const [timelineSpecRequestLoading, setTimelineSpecRequestLoading] =
+    useState(false);
+  const [resolvedTimelineKey, setResolvedTimelineKey] = useState<string | null>(
+    null,
+  );
+  const requestedTimelineKey =
+    episode?.id && selectedScript?.id
+      ? `${episode.id}:${selectedScript.id}`
+      : null;
+  const timelineSpecLoading = Boolean(
+    (requestedTimelineKey && requestedTimelineKey !== resolvedTimelineKey) ||
+      timelineSpecRequestLoading,
+  );
 
   const episodeMeta = useMemo(() => {
     const meta =
@@ -28,13 +40,15 @@ export function useEpisodeMetadata(
     const scriptId = selectedScript?.id;
     if (!episodeId || !scriptId) {
       setTimelineSpec(null);
-      setTimelineSpecLoading(false);
+      setTimelineSpecRequestLoading(false);
+      setResolvedTimelineKey(null);
       return;
     }
 
+    const requestKey = `${episodeId}:${scriptId}`;
     let cancelled = false;
     setTimelineSpec(null);
-    setTimelineSpecLoading(true);
+    setTimelineSpecRequestLoading(true);
 
     void timelineAPI
       .listEpisodeTimelines(episodeId)
@@ -53,7 +67,10 @@ export function useEpisodeMetadata(
         if (!cancelled) setTimelineSpec(null);
       })
       .finally(() => {
-        if (!cancelled) setTimelineSpecLoading(false);
+        if (!cancelled) {
+          setResolvedTimelineKey(requestKey);
+          setTimelineSpecRequestLoading(false);
+        }
       });
 
     return () => {
