@@ -190,6 +190,11 @@ def _persist_generated_script(
         extra_meta = {**extra_meta, **marketing_defaults}
     if agent_run:
         extra_meta = {**(extra_meta or {}), "agent_run": agent_run}
+    if episode_data.get("source_novel"):
+        extra_meta = {
+            **(extra_meta or {}),
+            "source_novel": episode_data["source_novel"],
+        }
 
     db_script = Script(
         episode_id=request.episode_id,

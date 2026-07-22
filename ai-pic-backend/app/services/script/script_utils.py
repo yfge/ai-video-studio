@@ -9,9 +9,11 @@ from typing import Any, Dict, List
 
 from app.core.validators.character_registry import preferred_display_name
 from app.models.script import Episode, Story
+from app.repositories.episode_repository import list_previous_episodes
 from app.utils.marketing_meta import merge_marketing_meta
 from sqlalchemy.orm import Session
 
+from .novel_source_context import build_source_novel_context
 from .scene_utils import extract_episode_scenes
 
 
@@ -36,15 +38,11 @@ def collect_previous_episode_summaries(
     if current_episode_number <= 1:
         return []
 
-    previous_episodes = (
-        db.query(Episode)
-        .filter(
-            Episode.story_id == story_id,
-            Episode.episode_number < current_episode_number,
-        )
-        .order_by(Episode.episode_number.desc())
-        .limit(limit)
-        .all()
+    previous_episodes = list_previous_episodes(
+        db,
+        story_id=story_id,
+        current_episode_number=current_episode_number,
+        limit=limit,
     )
 
     summaries: List[Dict[str, Any]] = []
@@ -172,6 +170,7 @@ def build_episode_data(episode: Episode) -> Dict[str, Any]:
         "duration_minutes": episode.duration_minutes,
         "scene_count": scene_count,
         "scenes": scenes,
+        "source_novel": build_source_novel_context(episode),
         **marketing_meta,
     }
 

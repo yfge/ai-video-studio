@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import Any, Dict, List, Optional
 
 from app.models.script import Story, StoryCharacter
@@ -217,6 +215,7 @@ class StoryGenerationService:
                 "temperature": request.temperature or 0.7,
             },
             "tags": request.tags,
+            "workflow_mode": request.workflow_mode,
             "extra_metadata": extra_metadata,
             "status": "draft",
         }

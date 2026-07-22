@@ -12,6 +12,9 @@ Provides modular story endpoints split by concern:
 """
 
 from app.services.ai_service import ai_service
+from app.services.story.story_novel_task_processor import (
+    process_story_novel_task as process_story_novel_export_task,
+)
 from fastapi import APIRouter
 
 from .async_tasks import _process_story_generation_task
@@ -20,8 +23,9 @@ from .characters import router as characters_router
 from .crud import router as crud_router
 from .generation import router as generation_router
 from .meta import router as meta_router
-from .novel import process_story_novel_export_task
 from .novel import router as novel_router
+from .novel_adaptation import router as novel_adaptation_router
+from .novel_revisions import router as novel_revisions_router
 from .readiness import router as readiness_router
 from .single_video import router as single_video_router
 
@@ -33,6 +37,8 @@ for sub_router in [
     generation_router,
     async_router,
     novel_router,
+    novel_revisions_router,
+    novel_adaptation_router,
     characters_router,
     meta_router,
     readiness_router,

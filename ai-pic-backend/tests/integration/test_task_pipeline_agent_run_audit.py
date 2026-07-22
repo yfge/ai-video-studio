@@ -62,7 +62,12 @@ def test_story_episode_script_generate_async_persists_task_agent_run(
 
     story_resp = client.post(
         "/api/v1/stories/generate-async",
-        json={"title": "Test Story", "genre": "drama", "character_ids": [vip.id]},
+        json={
+            "title": "Test Story",
+            "genre": "drama",
+            "character_ids": [vip.id],
+            "workflow_mode": "direct",
+        },
     )
     assert story_resp.status_code == 200, story_resp.text
     story_task_id = story_resp.json()["data"]["task_id"]

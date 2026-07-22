@@ -11,6 +11,7 @@ Snapshot summary derived from current SQLAlchemy models and Alembic history.
 - `tasks`
 - `video_generation_tasks`
 - `story_novel_exports`
+- `story_novel_chapters`
 - `story_treatments`
 - `story_step_outlines`
 - `scenes`
@@ -33,5 +34,16 @@ Snapshot summary derived from current SQLAlchemy models and Alembic history.
 - Timeline main chain tables: `8d1b6e2a4f90_add_timeline_main_chain_tables.py`
 - Timeline revisions and lifecycle state: `a4f5c6d7e8f9_add_timeline_revisions_and_lifecycle.py`
 - Timeline clip asset lineage: `c5e6f7a8b9c0_add_timeline_clip_assets.py`
+- Story novel adaptation chain: `e6f7a8b9c0d1_add_story_novel_adaptation_chain.py`
+
+## Narrative lineage
+
+- `stories.workflow_mode` selects `direct` or `novel_adaptation_v1`;
+  `stories.canonical_novel_export_id` points to the current approved revision.
+- `story_novel_exports` stores revision lifecycle, Story snapshot, content hash,
+  continuity evidence, adaptation plan, and approval evidence.
+- `story_novel_chapters` stores ordered editable chapter checkpoints.
+- `episodes.source_novel_export_id`, source business ID, and
+  `source_chapter_refs` freeze the approved narrative lineage used by Script.
 
 This file is intentionally compact; regenerate or expand it when schema-first tooling is added.

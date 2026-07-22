@@ -148,6 +148,7 @@ export function useStoryDetail({ storyKey, showAlert }: UseStoryDetailOptions) {
     timelinesByEpisode,
     loading,
     loadingScripts,
+    refresh: loadData,
     showPrompt,
     setShowPrompt,
     ...episodeGeneration,

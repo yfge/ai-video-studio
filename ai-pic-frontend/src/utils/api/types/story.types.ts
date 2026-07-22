@@ -1,10 +1,5 @@
-/**
- * Story and episode type definitions.
- */
-
 import type { ProductionCanvasResolvedContext } from "./production-canvas-context.types";
 
-// Hook/traffic planning types
 interface HookBeat {
   beat_type?: string;
   description: string;
@@ -26,7 +21,6 @@ export interface AdSnippet {
   call_to_action?: string;
 }
 
-// Story character reference
 export interface StoryCharacter {
   id: number;
   business_id: string;
@@ -64,6 +58,8 @@ export interface Story {
   target_audience?: string;
   duration_minutes?: number;
   default_aspect_ratio?: "9:16" | "16:9";
+  workflow_mode?: "direct" | "novel_adaptation_v1";
+  canonical_novel_export_id?: number | null;
   premise?: string;
   synopsis?: string;
   main_conflict?: string;
@@ -116,6 +112,9 @@ export interface Episode {
   generation_prompt?: string;
   ai_model?: string;
   generation_params?: Record<string, unknown>;
+  source_novel_export_id?: number | null;
+  source_novel_export_business_id?: string | null;
+  source_chapter_refs?: Array<Record<string, unknown>> | null;
   created_at: string;
   updated_at: string;
 }
@@ -124,6 +123,7 @@ export interface Episode {
 export interface StoryGenerationRequest {
   title: string;
   genre: string;
+  workflow_mode?: "direct" | "novel_adaptation_v1";
   market_region?: string;
   micro_genre?: string;
   hook_plan?: HookPlan;

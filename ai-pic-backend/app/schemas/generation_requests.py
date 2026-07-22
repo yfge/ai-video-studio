@@ -9,6 +9,9 @@ class StoryGenerationRequest(BaseModel):
         "standard",
         description="生成链路：standard（同步/调试）/ production（异步生产质量门）",
     )
+    workflow_mode: Literal["direct", "novel_adaptation_v1"] = Field(
+        "novel_adaptation_v1", description="系列叙事生产链路"
+    )
     # 基本信息
     title: str = Field(..., max_length=255)
     story_format: Literal["short_drama", "tv_series", "film"] = Field(
@@ -180,7 +183,9 @@ class ScriptGenerationRequest(BaseModel):
 class StoryNovelExportRequest(BaseModel):
     """将 Story 扩写为长文本小说（默认知乎体）。"""
 
-    style: Literal["zhihu"] = Field("zhihu", description="输出风格：zhihu（知乎体）")
+    style: Literal["zhihu", "prose"] = Field(
+        "zhihu", description="输出风格：zhihu（兼容导出）/ prose（章节小说版本）"
+    )
     target_words: int = Field(
         20000, ge=10000, le=30000, description="目标字数（1-3万字）"
     )

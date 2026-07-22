@@ -119,6 +119,11 @@ def build_generation_extra_metadata(
         }
     if agent_run:
         extra_meta = {**(extra_meta or {}), "agent_run": agent_run}
+    if episode_data.get("source_novel"):
+        extra_meta = {
+            **(extra_meta or {}),
+            "source_novel": episode_data["source_novel"],
+        }
     return extra_meta
 
 

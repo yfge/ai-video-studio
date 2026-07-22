@@ -29,6 +29,7 @@ export * from "./virtual-ip-image.endpoints";
 
 // Story endpoints
 export * from "./story.endpoints";
+export * from "./story-novel.endpoints";
 
 // Episode endpoints
 export * from "./episode.endpoints";

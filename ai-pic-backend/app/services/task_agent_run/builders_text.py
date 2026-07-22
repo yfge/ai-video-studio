@@ -9,18 +9,12 @@ from app.services.task_agent_run.utils import (
 
 
 def build_story_novel_export_agent_run(db, task, *, user_id: int) -> Dict[str, Any]:
-    from app.models.script import Story
-    from app.models.story_novel_export import StoryNovelExport
+    from app.repositories.story_novel_repository import StoryNovelRepository
 
-    export_row = (
-        db.query(StoryNovelExport)
-        .filter(
-            StoryNovelExport.task_id == task.id,
-            StoryNovelExport.is_deleted.is_(False),
-            StoryNovelExport.user_id == user_id,
-        )
-        .order_by(StoryNovelExport.id.desc())
-        .first()
+    export_row = StoryNovelRepository(db).revision_for_task_or_target(
+        task.id,
+        getattr(task, "target_business_id", None),
+        user_id,
     )
     params = loads_task_parameters(getattr(task, "parameters", None))
     model_value = (
@@ -33,20 +27,6 @@ def build_story_novel_export_agent_run(db, task, *, user_id: int) -> Dict[str, A
     if export_row:
         story_business_id = export_row.story_business_id
         story_id = export_row.story_id
-    else:
-        story_business_id = getattr(task, "target_business_id", None)
-        if story_business_id:
-            story = (
-                db.query(Story)
-                .filter(
-                    Story.business_id == story_business_id,
-                    Story.is_deleted.is_(False),
-                    Story.user_id == user_id,
-                )
-                .first()
-            )
-            if story:
-                story_id = story.id
 
     payload: Dict[str, Any] = {
         "generation_method": "story_novel_export",
@@ -57,6 +37,9 @@ def build_story_novel_export_agent_run(db, task, *, user_id: int) -> Dict[str, A
             "story_id": story_id,
             "story_business_id": story_business_id,
             "export_id": getattr(export_row, "id", None) if export_row else None,
+            "revision_business_id": (
+                getattr(export_row, "business_id", None) if export_row else None
+            ),
             "file_relative_path": (
                 getattr(export_row, "file_relative_path", None) if export_row else None
             ),
@@ -67,4 +50,6 @@ def build_story_novel_export_agent_run(db, task, *, user_id: int) -> Dict[str, A
         payload["target_words"] = getattr(export_row, "target_words", None)
         payload["total_words"] = getattr(export_row, "total_words", None)
         payload["chapter_count"] = getattr(export_row, "chapter_count", None)
+        payload["content_hash"] = getattr(export_row, "content_hash", None)
+        payload["lifecycle_status"] = getattr(export_row, "lifecycle_status", None)
     return payload

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from app.models.script import Episode, Story
+from app.services.script.novel_source_context import build_source_novel_context
 from app.services.script.scene_utils import extract_episode_scenes
 from app.services.script.script_utils import (
     collect_previous_episode_summaries as _collect_previous_episode_summaries,
@@ -107,6 +108,7 @@ def build_episode_data(episode: Episode) -> Dict[str, Any]:
         "duration_minutes": episode.duration_minutes,
         "scene_count": scene_count,
         "scenes": scenes,
+        "source_novel": build_source_novel_context(episode),
         **marketing_meta,
     }
 

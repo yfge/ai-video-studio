@@ -3,7 +3,7 @@ from app.core.database import Base
 from .episode_character import EpisodeCharacter
 from .image import Image
 from .script import Episode, Script, ScriptTemplate, Story, StoryCharacter
-from .story_novel_export import StoryNovelExport
+from .story_novel_export import StoryNovelChapter, StoryNovelExport
 from .story_structure import (
     Environment,
     Scene,
@@ -46,6 +46,7 @@ __all__ = [
     "ScriptTemplate",
     "StoryCharacter",
     "StoryNovelExport",
+    "StoryNovelChapter",
     "StoryTreatment",
     "StoryStepOutline",
     "Environment",

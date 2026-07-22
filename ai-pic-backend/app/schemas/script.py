@@ -20,6 +20,9 @@ class StoryBase(BaseModel):
     default_aspect_ratio: Literal["9:16", "16:9"] = Field(
         "9:16", description="默认画幅：9:16/16:9"
     )
+    workflow_mode: Literal["direct", "novel_adaptation_v1"] = Field(
+        "novel_adaptation_v1", description="故事生产链路"
+    )
 
     premise: Optional[str] = None
     synopsis: Optional[str] = None
@@ -65,7 +68,6 @@ class StoryUpdate(BaseModel):
     default_aspect_ratio: Optional[Literal["9:16", "16:9"]] = Field(
         None, description="默认画幅：9:16/16:9"
     )
-
     premise: Optional[str] = None
     synopsis: Optional[str] = None
     main_conflict: Optional[str] = None
@@ -90,6 +92,7 @@ class StoryResponse(StoryBase):
     generation_prompt: Optional[str] = None
     ai_model: Optional[str] = None
     generation_params: Optional[Dict[str, Any]] = None
+    canonical_novel_export_id: Optional[int] = None
     creator: Optional[UserSummary] = Field(None, validation_alias="owner")
     created_at: datetime
     updated_at: datetime
@@ -149,6 +152,9 @@ class EpisodeResponse(EpisodeBase):
     generation_prompt: Optional[str] = None
     ai_model: Optional[str] = None
     generation_params: Optional[Dict[str, Any]] = None
+    source_novel_export_id: Optional[int] = None
+    source_novel_export_business_id: Optional[str] = None
+    source_chapter_refs: Optional[List[Dict[str, Any]]] = None
     created_at: datetime
     updated_at: datetime
 

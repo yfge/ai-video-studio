@@ -2,26 +2,17 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.models.script import Episode, Story, StoryCharacter
-from sqlalchemy.orm import Session, joinedload
+from app.models.script import Story
+from app.repositories.story_novel_repository import StoryNovelRepository
+from sqlalchemy.orm import Session
 
 from .story_novel_export_utils import clip_text
-
-
-def _not_deleted(query, model):
-    return query.filter(model.is_deleted.is_(False))
 
 
 def _load_episode_summaries(
     db: Session, *, story_id: int, limit: int = 30
 ) -> list[dict[str, Any]]:
-    episodes = (
-        _not_deleted(db.query(Episode), Episode)
-        .filter(Episode.story_id == story_id)
-        .order_by(Episode.episode_number.asc())
-        .limit(limit)
-        .all()
-    )
+    episodes = StoryNovelRepository(db).story_episodes(story_id, limit)
     result: list[dict[str, Any]] = []
     for ep in episodes:
         result.append(
@@ -38,13 +29,7 @@ def _load_episode_summaries(
 def _load_story_character_profiles(
     db: Session, *, story_id: int, limit: int = 50
 ) -> list[dict[str, Any]]:
-    rows = (
-        _not_deleted(db.query(StoryCharacter), StoryCharacter)
-        .filter(StoryCharacter.story_id == story_id)
-        .options(joinedload(StoryCharacter.virtual_ip))
-        .limit(limit)
-        .all()
-    )
+    rows = StoryNovelRepository(db).story_characters(story_id, limit)
 
     result: list[dict[str, Any]] = []
     for row in rows:
@@ -81,7 +66,9 @@ def _load_story_character_profiles(
     return result
 
 
-def build_story_novel_payload(db: Session, *, story: Story) -> dict[str, Any]:
+def build_story_novel_payload(
+    db: Session, *, story: Story, include_episodes: bool = True
+) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "title": story.title,
         "story_format": getattr(story, "story_format", None),
@@ -98,7 +85,11 @@ def build_story_novel_payload(db: Session, *, story: Story) -> dict[str, Any]:
         "resolution": clip_text(story.resolution, 1500),
         "main_characters": story.main_characters,
         "character_relationships": story.character_relationships,
-        "episodes": _load_episode_summaries(db, story_id=story.id, limit=30),
+        "episodes": (
+            _load_episode_summaries(db, story_id=story.id, limit=30)
+            if include_episodes
+            else []
+        ),
         "characters": _load_story_character_profiles(db, story_id=story.id, limit=50),
     }
     return payload
@@ -127,7 +118,7 @@ def _compact_plot_points(value: Any, *, max_items: int, max_len: int) -> list[st
 
 
 def shrink_story_novel_payload_for_plan(
-    story_payload: dict[str, Any]
+    story_payload: dict[str, Any],
 ) -> dict[str, Any]:
     """Reduce story payload size to improve plan JSON compliance."""
 

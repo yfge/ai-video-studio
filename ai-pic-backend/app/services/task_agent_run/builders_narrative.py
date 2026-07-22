@@ -29,6 +29,9 @@ def build_story_agent_run(db, task, *, user_id: int) -> Dict[str, Any]:
     prompt = getattr(story, "generation_prompt", None)
     if prompt:
         agent_run = {**agent_run, "prompt": prompt}
+    source_novel = meta.get("source_novel")
+    if isinstance(source_novel, dict):
+        agent_run = {**agent_run, "source_novel": source_novel}
     agent_run["result_ref"] = {
         "story_id": story.id,
         "story_business_id": getattr(story, "business_id", None),

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import Any, Dict, List, Optional, Tuple
 
 from app.models.script import Episode, Story
@@ -23,6 +21,7 @@ from sqlalchemy.orm import Session
 
 from . import episode_generation_persistence as persistence
 from . import episode_generation_utils as utils
+from .novel_workflow_guard import ensure_direct_episode_generation_allowed
 
 # Backward-compat: some tests/legacy callers monkeypatch this name.
 ai_service = ai_service_module.ai_service
@@ -102,6 +101,7 @@ class EpisodeGenerationService:
         self, request: EpisodeGenerationRequest
     ) -> List[Episode]:
         story = self._get_story(request.story_id)
+        ensure_direct_episode_generation_allowed(story)
         focus_characters = self._get_focus_characters(request.focus_characters)
         story_data = build_story_data(story)
         hook_plan_payload = (

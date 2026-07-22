@@ -35,6 +35,22 @@ def list_episodes_by_ids(
     return query.all()
 
 
+def list_previous_episodes(
+    db: Session, *, story_id: int, current_episode_number: int, limit: int
+) -> list[Episode]:
+    return (
+        db.query(Episode)
+        .filter(
+            Episode.story_id == story_id,
+            Episode.episode_number < current_episode_number,
+            Episode.is_deleted.is_(False),
+        )
+        .order_by(Episode.episode_number.desc())
+        .limit(limit)
+        .all()
+    )
+
+
 def find_accessible_episode(
     db: Session,
     *,

@@ -29,9 +29,9 @@ export interface HttpResponse<T = unknown> {
   trace?: ApiTraceMeta;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
-function getAuthToken(): string | null {
+export function getAuthToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("auth_token");
 }

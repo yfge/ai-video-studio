@@ -2,6 +2,10 @@ from datetime import datetime
 
 from app.core.database import Base
 from app.models.base import SoftDeleteBusinessMixin
+from app.models.story_novel_lineage import (
+    EpisodeNovelSourceMixin,
+    StoryNovelWorkflowMixin,
+)
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -17,7 +21,7 @@ from sqlalchemy.dialects import mysql
 from sqlalchemy.orm import relationship
 
 
-class Story(SoftDeleteBusinessMixin, Base):
+class Story(StoryNovelWorkflowMixin, SoftDeleteBusinessMixin, Base):
     """故事概要模型"""
 
     __tablename__ = "stories"
@@ -43,7 +47,6 @@ class Story(SoftDeleteBusinessMixin, Base):
         default="9:16",
         comment="默认画幅：9:16/16:9",
     )
-
     # 故事内容
     premise = Column(Text, comment="故事前提")
     synopsis = Column(Text, comment="故事概要")
@@ -87,7 +90,7 @@ class Story(SoftDeleteBusinessMixin, Base):
     )
 
 
-class Episode(SoftDeleteBusinessMixin, Base):
+class Episode(EpisodeNovelSourceMixin, SoftDeleteBusinessMixin, Base):
     """剧集模型"""
 
     __tablename__ = "episodes"
@@ -101,7 +104,6 @@ class Episode(SoftDeleteBusinessMixin, Base):
     )
     episode_number = Column(Integer, nullable=False, comment="集数")
     title = Column(String(255), nullable=False, comment="剧集标题")
-
     # 剧集内容
     summary = Column(Text, comment="剧集概要")
     plot_points = Column(JSON, comment="情节要点")

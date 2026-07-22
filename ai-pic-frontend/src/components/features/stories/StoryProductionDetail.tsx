@@ -15,7 +15,8 @@ import {
   operatorTableRowClass,
 } from "@/components/shared";
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
-import { EpisodeGeneratePanel } from "@/components/features/story-detail/EpisodeGeneratePanel";
+import { StoryNovelExportPanel } from "@/components/features/story-detail/StoryNovelExportPanel";
+import { StoryNovelWorkflowPanel } from "@/components/features/story-detail/StoryNovelWorkflowPanel";
 import { StoryReadinessPanel } from "@/components/features/story-detail/StoryReadinessPanel";
 import { useStoryDetail } from "@/hooks/useStoryDetail";
 import { episodeWorkspaceHref } from "@/utils/routes";
@@ -27,9 +28,9 @@ import {
   storyDisplayText,
 } from "./StoryProductionModel";
 // prettier-ignore
-import { CharacterChip, ReadyCell, StoryEnvironmentCoverage } from "./StoryProductionDetailParts";
+import { CharacterChip, ReadyCell, StoryEnvironmentCoverage, StoryOutlineSection } from "./StoryProductionDetailParts";
 import { useEpisodeGenerationAnchor } from "./useEpisodeGenerationAnchor";
-
+import { StoryDetailEpisodeGeneration } from "./StoryDetailEpisodeGeneration";
 export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
   const { showAlert } = useAlertModal();
   const state = useStoryDetail({ storyKey, showAlert });
@@ -40,41 +41,20 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
     timelinesByEpisode,
     loading,
     loadingScripts,
-    genOpen,
     setGenOpen,
-    genForm,
-    setGenForm,
-    promptPreview,
-    useAsync,
-    setUseAsync,
-    includeContinuityLedger,
-    setIncludeContinuityLedger,
-    includeCharacterCards,
-    setIncludeCharacterCards,
-    recentEpisodesCount,
-    setRecentEpisodesCount,
-    contextPackPreview,
-    contextPackLoading,
-    contextPackError,
-    handlePreviewPrompt,
-    handlePreviewContextPack,
-    handleGenerateEpisodes,
-    episodesTask,
+    refresh,
     readiness,
     readinessLoading,
     readinessError,
     quickFixLoading,
-    canGenerate,
     checkReadiness,
     runQuickFix,
     storyEnvironmentLinks,
   } = state;
   const openEpisodeGeneration = useEpisodeGenerationAnchor(setGenOpen);
-
   if (loading) {
     return <OperatorState title="加载故事详情..." />;
   }
-
   if (!story) {
     return <OperatorState title="故事不存在或无权访问。" tone="red" />;
   }
@@ -105,16 +85,18 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={openEpisodeGeneration}
-                  className={operatorButtonClass(
-                    "primary",
-                    "whitespace-nowrap",
-                  )}
-                >
-                  生成剧集
-                </button>
+                {story.workflow_mode !== "novel_adaptation_v1" ? (
+                  <button
+                    type="button"
+                    onClick={openEpisodeGeneration}
+                    className={operatorButtonClass(
+                      "primary",
+                      "whitespace-nowrap",
+                    )}
+                  >
+                    生成剧集
+                  </button>
+                ) : null}
                 <button className={operatorButtonClass("secondary")}>
                   编辑故事
                 </button>
@@ -137,37 +119,22 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
             </div>
           </OperatorPanel>
 
-          <OperatorPanel id="episode-generation" className="scroll-mt-24 p-5">
-            <EpisodeGeneratePanel
-              genOpen={genOpen}
-              setGenOpen={setGenOpen}
-              genForm={genForm}
-              setGenForm={setGenForm}
-              useAsync={useAsync}
-              setUseAsync={setUseAsync}
-              promptPreview={promptPreview}
-              onPreviewPrompt={handlePreviewPrompt}
-              onGenerate={handleGenerateEpisodes}
-              canGenerate={canGenerate}
-              episodesTask={episodesTask}
-              contextPackPreviewProps={{
-                includeContinuityLedger,
-                setIncludeContinuityLedger,
-                includeCharacterCards,
-                setIncludeCharacterCards,
-                recentEpisodesCount,
-                setRecentEpisodesCount,
-                contextPackPreview,
-                contextPackLoading,
-                contextPackError,
-                onPreviewContextPack: handlePreviewContextPack,
-              }}
+          <StoryOutlineSection story={story} />
+          {story.workflow_mode === "novel_adaptation_v1" ? (
+            <StoryNovelWorkflowPanel
+              story={story}
+              onEpisodesApplied={refresh}
             />
-          </OperatorPanel>
+          ) : (
+            <>
+              <StoryNovelExportPanel story={story} />
+              <StoryDetailEpisodeGeneration state={state} />
+            </>
+          )}
 
           <OperatorPanel>
             <OperatorSectionHeader
-              title="剧集生产状态"
+              title="4. 剧集生产状态"
               action={
                 <span className="text-xs text-gray-500">
                   {loadingScripts ? "剧本加载中" : `共 ${episodes.length} 集`}

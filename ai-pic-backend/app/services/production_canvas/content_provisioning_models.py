@@ -21,6 +21,7 @@ def create_story(
     )
     story = Story(
         user_id=user.id,
+        workflow_mode="direct",
         title=content.title,
         story_format="short_drama",
         genre=brief.intent.genre or "剧情",

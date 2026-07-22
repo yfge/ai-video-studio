@@ -9,6 +9,10 @@ from app.core.middleware import get_current_active_user
 from app.models.task import Task, TaskType
 from app.models.user import User
 from app.schemas.generation_requests import EpisodeGenerationRequest
+from app.services.episode.episode_generation_service import EpisodeGenerationService
+from app.services.episode.novel_workflow_guard import (
+    ensure_direct_episode_generation_allowed,
+)
 from app.services.task_worker import episode_generate_task
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -23,6 +27,8 @@ async def generate_episodes_async(
     db: Session = Depends(get_db),
 ):
     """Generate episodes asynchronously via Celery worker."""
+    story = EpisodeGenerationService(db, current_user)._get_story(request.story_id)
+    ensure_direct_episode_generation_allowed(story)
     payload = request.model_dump()
     payload["generation_mode"] = "production"
     payload["production_mode"] = True

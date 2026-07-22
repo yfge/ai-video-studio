@@ -19,6 +19,8 @@ This directory holds design notes, API references, and testing guides. Keep this
 - `docs/exec-plans/active/storyboard-keyframe-video-generation.md` — implementation
   plan for selected-clip storyboard, start/end keyframe, video generation
   interaction, and shared prompt contract improvements.
+- `docs/exec-plans/active/story-novel-adaptation-chain.md` — checkpointed
+  Story → Novel → Episode → Script workflow for new narrative series.
 - `docs/exec-plans/completed/` — completed execution plans and archived implementation outlines.
 
 ## Agent System Of Record
@@ -55,6 +57,8 @@ Keep durable engineering rules in repository docs like the files above. Do not t
 
 ## Design Documents
 
+- `docs/design/story-novel-episode-script.md` — approved novel revisions as the
+  narrative SSOT feeding Episode/Script while Timeline remains production SSOT.
 - `docs/design/production-canvas.md` — executable short-drama production canvas,
   typed dependency graph, candidate review, and Timeline integration design.
 - `docs/design/duration-orchestrator-agent.md` — Duration Orchestrator Agent 设计（端到端时长闭环验证）

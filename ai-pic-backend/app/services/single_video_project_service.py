@@ -99,6 +99,7 @@ def create_single_video_project(
     )
     story = Story(
         user_id=user.id,
+        workflow_mode="direct",
         title=request.title,
         story_format="short_drama",
         genre="single_video",

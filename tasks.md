@@ -6,7 +6,8 @@
 
 - 目标用户：专业短剧制作团队，不是小白一键成片用户。
 - 产品模式：ToB 生产工作流系统，不是通用 AI 视频玩具。
-- 第一性原理：`Timeline` 是系统的单一事实来源（SSOT）。
+- 第一性原理：已审批 canonical 小说是新系列的叙事 SSOT；`Timeline` 是生产时间、
+  clip 顺序、资产谱系和交付 SSOT。二者通过 Episode/Script 的固定来源证据衔接。
 - 无限画布定位：生产编排、候选评审和执行证据视图；画布布局不改变
   Timeline clip 顺序、时长或版本。
 - 默认生产模式：对白/音轨时间轴驱动时长，图像/视频生成只是向时间轴填充 clip 资产。
@@ -46,6 +47,11 @@
 
 ## 状态概览
 
+- P0：新系列使用 `Story 合同 → 小说版本 → 分集改编计划 → Episode → Script`
+  链路；历史 Story、单条视频和 Script 后 Timeline 主链保持兼容。设计真源见
+  `docs/design/story-novel-episode-script.md`，执行计划见
+  `docs/exec-plans/active/story-novel-adaptation-chain.md`。无付费浏览器验收见
+  `artifacts/runs/story-novel-v1-20260722T170000/summary.json`。
 - P0：无限画布已有交互、保存恢复、动态节点、类型化端口与边、按图输入解析、
   Run Node、Run Downstream、stale descendants、故事板/视频候选评审和显式
   `timeline.place` 回填。当前缺口是 clip-storyboard v2 的当前环境

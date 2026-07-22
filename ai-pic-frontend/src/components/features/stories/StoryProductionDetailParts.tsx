@@ -1,10 +1,83 @@
 "use client";
 
-import { StatusPill } from "@/components/shared";
+import {
+  OperatorPanel,
+  OperatorSectionHeader,
+  StatusPill,
+} from "@/components/shared";
 import type {
+  Story,
   StoryCharacter,
   VirtualIPEnvironmentLink,
 } from "@/utils/api/types";
+
+const STORY_OUTLINE_TEXT_FIELDS = [
+  ["目标观众", "target_audience"],
+  ["核心情绪痛点", "core_emotional_pain"],
+  ["故事大期待", "big_expectation"],
+  ["主角目标", "protagonist_goal"],
+  ["结构冲突", "structural_conflict"],
+  ["信息差", "information_gap"],
+  ["前三集主线", "first_three_episode_spine"],
+  ["拍摄可行性", "shootability"],
+] as const;
+
+const STORY_OUTLINE_LIST_FIELDS = [
+  ["阶段期待", "small_expectation_ladder"],
+  ["阶段高潮", "stage_highs"],
+  ["投流钩子", "traffic_hooks"],
+  ["合规风险", "compliance_risks"],
+] as const;
+
+export function StoryOutlineSection({ story }: { story: Story }) {
+  const raw = story.extra_metadata?.structured_story_contract;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const contract = raw as Record<string, unknown>;
+
+  return (
+    <OperatorPanel>
+      <OperatorSectionHeader
+        title="1. 故事合同"
+        subtitle="新生产故事的结构化创作合同"
+      />
+      <div className="grid gap-4 p-5 md:grid-cols-2">
+        {STORY_OUTLINE_TEXT_FIELDS.map(([label, key]) => {
+          const value = contract[key];
+          if (typeof value !== "string" || !value.trim()) return null;
+          return (
+            <div key={key}>
+              <div className="text-xs font-medium text-gray-500">{label}</div>
+              <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-gray-800">
+                {value}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+      <div className="grid gap-4 border-t border-gray-100 p-5 md:grid-cols-2">
+        {STORY_OUTLINE_LIST_FIELDS.map(([label, key]) => {
+          const values = Array.isArray(contract[key])
+            ? contract[key].filter(
+                (value): value is string =>
+                  typeof value === "string" && Boolean(value.trim()),
+              )
+            : [];
+          if (!values.length) return null;
+          return (
+            <div key={key}>
+              <div className="text-xs font-medium text-gray-500">{label}</div>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-gray-800">
+                {values.map((value, index) => (
+                  <li key={`${key}-${index}`}>{value}</li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+    </OperatorPanel>
+  );
+}
 
 export function ReadyCell({ ready }: { ready: boolean }) {
   return (

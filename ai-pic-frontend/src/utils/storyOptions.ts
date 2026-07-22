@@ -46,6 +46,7 @@ export const STORY_GENERATE_DEFAULTS: StoryGenerationForm = {
   title: "",
   story_format: "short_drama",
   genre: "drama",
+  workflow_mode: "novel_adaptation_v1",
   market_region: "",
   micro_genre: "",
   pacing_template: "",
