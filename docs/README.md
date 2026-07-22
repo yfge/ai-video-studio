@@ -57,6 +57,9 @@ Keep durable engineering rules in repository docs like the files above. Do not t
 
 ## Design Documents
 
+- `docs/design/narrative-memory-and-dramatic-state.md` — story-scoped Canon,
+  anchored character memory and growth, manual shared-memory promotion,
+  offscreen events, audience disclosure, subtext, and operator UI design.
 - `docs/design/story-novel-episode-script.md` — approved novel revisions as the
   narrative SSOT feeding Episode/Script while Timeline remains production SSOT.
 - `docs/design/production-canvas.md` — executable short-drama production canvas,

@@ -1,5 +1,9 @@
 # Story → Novel → Episode → Script v1
 
+> Narrative memory follow-up: `docs/design/narrative-memory-and-dramatic-state.md`
+> defines story-scoped Canon, anchored character memory/growth, manual shared
+> memory promotion, audience disclosure, subtext, and the related operator UI.
+
 ## Decision
 
 New narrative series use this chain:
