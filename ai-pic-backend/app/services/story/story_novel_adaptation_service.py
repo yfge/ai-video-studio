@@ -5,8 +5,12 @@ from typing import Any
 from app.models.script import Episode
 from app.models.story_structure import StoryStepOutline, StoryTreatment
 from app.models.user import User
+from app.repositories.narrative_memory_repository import NarrativeMemoryRepository
 from app.repositories.story_novel_repository import StoryNovelRepository
 from app.schemas.story_novel_export import AdaptationPlanEpisode
+from app.services.narrative_memory.generation_context_service import (
+    NarrativeGenerationContextService,
+)
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -129,6 +133,14 @@ class StoryNovelAdaptationService:
             )
             self.db.add(episode)
             self.db.flush()
+            NarrativeGenerationContextService(
+                NarrativeMemoryRepository(self.db)
+            ).freeze_episode(
+                story,
+                episode,
+                adaptation_plan_version=int(plan.get("version") or 1),
+                commit=False,
+            )
             episodes.append(episode)
             beats = row.get("plot_points") or [row["summary"]]
             for sequence, beat in enumerate(beats, start=1):

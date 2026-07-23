@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from app.models.script import Story
+from app.models.script import Episode, Story
 from app.prompts.templates import PromptTemplate
+from app.repositories.narrative_memory_repository import NarrativeMemoryRepository
 from app.repositories.virtual_ip_repository import VirtualIPRepository
 from app.schemas.context_pack import ContextPackBudget
 from app.schemas.generation_requests import EpisodeGenerationRequest
@@ -11,6 +12,9 @@ from app.services import story_structure_service
 from app.services.ai_service import ai_service
 from app.services.context_pack.story_context_pack_builder import (
     build_story_context_pack,
+)
+from app.services.narrative_memory.generation_context_service import (
+    NarrativeGenerationContextService,
 )
 from app.utils.marketing_meta import merge_marketing_meta
 from sqlalchemy.orm import Session
@@ -97,6 +101,29 @@ def attach_context_pack(
             extra={"error": str(exc), "story_id": story.id},
         )
         return None
+
+
+def attach_narrative_memory_context(
+    db: Session, story: Story, story_data: Dict[str, Any]
+) -> Dict[str, Any] | None:
+    context = NarrativeGenerationContextService(
+        NarrativeMemoryRepository(db)
+    ).latest_context(story)
+    if context:
+        story_data["narrative_memory"] = context
+    return context
+
+
+def freeze_episode_memory(db: Session, story: Story, episode: Episode) -> None:
+    NarrativeGenerationContextService(NarrativeMemoryRepository(db)).freeze_episode(
+        story, episode
+    )
+
+
+def resolve_episode_model(model_id: str | None) -> tuple[str | None, str | None]:
+    if model_id and ":" in model_id:
+        return tuple(model_id.split(":", 1))
+    return None, model_id
 
 
 def load_focus_characters(

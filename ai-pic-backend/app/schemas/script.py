@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional
 
 from app.schemas.story_character import StoryCharacterCreate, StoryCharacterResponse
+from app.schemas.story_seed import StorySeedModel
 from app.schemas.user import UserSummary
 from pydantic import BaseModel, Field, field_validator
 
@@ -40,6 +41,8 @@ class StoryBase(BaseModel):
     is_public: bool = False
     tags: Optional[List[str]] = None
     extra_metadata: Optional[Dict[str, Any]] = None
+    story_seed: Optional[StorySeedModel] = None
+    story_seed_status: str = "draft"
 
     @field_validator("story_format", mode="before")
     @classmethod
@@ -84,6 +87,8 @@ class StoryUpdate(BaseModel):
     is_public: Optional[bool] = None
     tags: Optional[List[str]] = None
     extra_metadata: Optional[Dict[str, Any]] = None
+    story_seed: Optional[StorySeedModel] = None
+    story_seed_status: Optional[str] = None
 
 
 class StoryResponse(StoryBase):
@@ -96,6 +101,17 @@ class StoryResponse(StoryBase):
     creator: Optional[UserSummary] = Field(None, validation_alias="owner")
     created_at: datetime
     updated_at: datetime
+    story_seed_updated_at: Optional[datetime] = None
+    story_seed_schema: str = "story_seed_v1"
+    story_seed_version: int = 1
+    memory_mode: str = "off"
+    canon_branch_id: str = "main"
+    shared_memory_baseline: Optional[Dict[str, Any]] = None
+    shared_memory_baseline_version: int = 0
+    shared_memory_baseline_hash: Optional[str] = None
+    memory_ledger_version: int = 0
+    memory_ledger_hash: Optional[str] = None
+    memory_review_status: str = "not_initialized"
 
     story_characters: Optional[List[StoryCharacterResponse]] = None
 
@@ -120,6 +136,12 @@ class EpisodeBase(BaseModel):
     status: str = Field("draft", description="状态：draft, approved, published")
     tags: Optional[List[str]] = None
     extra_metadata: Optional[Dict[str, Any]] = None
+    memory_snapshot_evidence: Optional[Dict[str, Any]] = None
+    memory_ledger_version: Optional[int] = None
+    memory_ledger_hash: Optional[str] = None
+    disclosure_policy: Optional[Dict[str, Any]] = None
+    memory_snapshot_stale: bool = False
+    memory_snapshot_stale_reason: Optional[Dict[str, Any]] = None
 
 
 class EpisodeCreate(EpisodeBase):

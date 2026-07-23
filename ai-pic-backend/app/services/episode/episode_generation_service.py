@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
 from app.models.script import Episode, Story
 from app.models.user import User
@@ -6,7 +6,9 @@ from app.repositories.script_repository import StoryRepository
 from app.repositories.virtual_ip_repository import VirtualIPRepository
 from app.schemas.generation_requests import EpisodeGenerationRequest
 from app.services import ai_service as ai_service_module
+from app.services.episode.async_generation_task_helpers import resolve_episode_model
 from app.services.episode.episode_generation_context import (
+    attach_narrative_memory_context,
     build_preview_prompt,
     build_story_data,
 )
@@ -23,7 +25,6 @@ from . import episode_generation_persistence as persistence
 from . import episode_generation_utils as utils
 from .novel_workflow_guard import ensure_direct_episode_generation_allowed
 
-# Backward-compat: some tests/legacy callers monkeypatch this name.
 ai_service = ai_service_module.ai_service
 
 
@@ -61,16 +62,10 @@ class EpisodeGenerationService:
                 )
         return focus_characters
 
-    @staticmethod
-    def _split_model(model_id: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
-        if model_id and ":" in model_id:
-            prefer_provider, resolved = model_id.split(":", 1)
-            return prefer_provider, resolved
-        return None, model_id
-
     def build_preview_prompt(self, request: EpisodeGenerationRequest) -> str:
         story = self._get_story(request.story_id)
         story_data = build_story_data(story)
+        attach_narrative_memory_context(self.db, story, story_data)
         hook_plan_payload = (
             request.hook_plan.model_dump() if request.hook_plan else None
         )
@@ -104,6 +99,7 @@ class EpisodeGenerationService:
         ensure_direct_episode_generation_allowed(story)
         focus_characters = self._get_focus_characters(request.focus_characters)
         story_data = build_story_data(story)
+        attach_narrative_memory_context(self.db, story, story_data)
         hook_plan_payload = (
             request.hook_plan.model_dump() if request.hook_plan else None
         )
@@ -123,9 +119,7 @@ class EpisodeGenerationService:
                 "ad_snippets": ad_snippets_payload,
             },
         )
-        prefer_provider, model_id = self._split_model(request.model)
-        # Resolve AI service dynamically so tests can monkeypatch the shared module
-        # singleton without having to patch this module-level alias.
+        prefer_provider, model_id = resolve_episode_model(request.model)
         try:
             result = await ai_service_module.ai_service.generate_episodes(
                 story=story_data,
@@ -148,11 +142,11 @@ class EpisodeGenerationService:
             ) from exc
         if not result:
             raise HTTPException(status_code=500, detail="AI剧集生成失败")
-        raw_step_outlines = None
-        if isinstance(result, dict):
-            raw_step_outlines = result.get("step_outlines") or result.get(
-                "step_outlines_raw"
-            )
+        raw_step_outlines = (
+            result.get("step_outlines") or result.get("step_outlines_raw")
+            if isinstance(result, dict)
+            else None
+        )
         step_outlines = (
             utils.parse_step_outlines(raw_step_outlines, request.episode_count)
             if raw_step_outlines
@@ -224,6 +218,12 @@ class EpisodeGenerationService:
             hook_plan_payload=hook_plan_payload,
             ad_snippets_payload=ad_snippets_payload,
         )
+        self.db.flush()
+        persistence.freeze_episode_memory_evidence(
+            db=self.db,
+            story=story,
+            episodes=created_episodes,
+        )
         continuity_ledger = result_payload.get("continuity_ledger")
         if isinstance(continuity_ledger, dict) and continuity_ledger:
             extra_meta = (
@@ -234,7 +234,6 @@ class EpisodeGenerationService:
                 "continuity_ledger": continuity_ledger,
             }
         self.db.commit()
-
         if step_outlines and created_episodes:
             persistence.persist_step_outline_beats(
                 db=self.db,

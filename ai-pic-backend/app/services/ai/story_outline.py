@@ -6,7 +6,9 @@ from app.prompts.manager import prompt_manager
 from app.prompts.template_resolver import resolve_template_name
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation import StoryOutlineModel
+from app.schemas.story_seed import StorySeedEnvelope, extract_story_seed_envelope
 from app.services.ai.structured_output import generate_with_repair, validate_payload
+from app.services.story_agent_validation import story_outline_schema
 from app.utils.story_parser import extract_story_outline_payload
 
 
@@ -70,10 +72,10 @@ class StoryOutlineMixin:
                 "content_restrictions": content_restrictions or [],
                 "generation_mode": generation_mode,
                 "production_mode": production_mode,
-                "story_contract_version": "story_contract_v1",
+                "story_seed_version": "story_seed_v1",
             }
 
-            story_schema = StoryOutlineModel.model_json_schema()
+            story_schema = story_outline_schema(production_mode=production_mode)
 
             if self.story_agent:
                 lg = await self.story_agent.generate(
@@ -145,9 +147,15 @@ class StoryOutlineMixin:
                         schema=story_schema,
                         system_prompt=system_prompt,
                         repair_system_prompt=strict_system_prompt,
-                        pydantic_model=StoryOutlineModel,
-                        extractor=extract_story_outline_payload,
-                        max_repairs=2,
+                        pydantic_model=(
+                            StorySeedEnvelope if production_mode else StoryOutlineModel
+                        ),
+                        extractor=(
+                            extract_story_seed_envelope
+                            if production_mode
+                            else extract_story_outline_payload
+                        ),
+                        max_repairs=1,
                     )
 
                     content_text = output.get("content") or ""
@@ -182,7 +190,9 @@ class StoryOutlineMixin:
                             "generation_mode": generation_mode,
                             "production_mode": production_mode,
                             "prompt_version": resolved_template,
-                            "contract_version": "story_contract_v1",
+                            "contract_version": (
+                                "story_seed_v1" if production_mode else "legacy_outline"
+                            ),
                         }
                 except Exception as exc:
                     self.logger.warning(f"AI服务管理器故事生成失败，尝试回退: {exc}")

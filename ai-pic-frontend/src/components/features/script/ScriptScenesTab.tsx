@@ -26,6 +26,11 @@ import {
   operatorButtonClass,
 } from "@/components/shared";
 import { SceneStructurePanel, type SceneNode } from "../SceneStructurePanel";
+import { DramaticStatePanel } from "./DramaticStatePanel";
+import {
+  ScriptContentBlock,
+  ScriptStructureSummary,
+} from "./ScriptScenePanels";
 
 interface ScriptScenesTabProps {
   script: Script;
@@ -56,10 +61,14 @@ export function ScriptScenesTab(props: ScriptScenesTabProps) {
       variant="rail-main-inspector"
       className="h-[calc(100vh-18rem)] min-h-[560px]"
       rail={
-        <OperatorContextRail title="场景列表" subtitle={`共 ${props.scenes.length} 个`}>
+        <OperatorContextRail
+          title="场景列表"
+          subtitle={`共 ${props.scenes.length} 个`}
+        >
           <div className="space-y-2">
             {props.scenes.map((scene, index) => {
-              const sceneNumber = toSceneNumber(scene.scene_number) ?? index + 1;
+              const sceneNumber =
+                toSceneNumber(scene.scene_number) ?? index + 1;
               return (
                 <OperatorListRow
                   key={`${sceneNumber}-${index}`}
@@ -87,20 +96,37 @@ export function ScriptScenesTab(props: ScriptScenesTabProps) {
         <OperatorMainCanvas className="space-y-4">
           <OperatorPanel>
             <OperatorSectionHeader
-              title={props.activeScene ? `场景 ${activeNumber || ""}` : "场景详情"}
+              title={
+                props.activeScene ? `场景 ${activeNumber || ""}` : "场景详情"
+              }
               subtitle={props.activeScene?.location || "选择左侧场景查看详情"}
             />
             <div className="space-y-4 p-4">
               {props.activeScene ? (
                 <>
                   <p className="text-sm leading-6 text-gray-700">
-                    {formatText(props.activeScene.description, "暂无场景描述", 500)}
+                    {formatText(
+                      props.activeScene.description,
+                      "暂无场景描述",
+                      500,
+                    )}
                   </p>
-                  <ContentBlock title="对白" items={sceneDialogues} empty="暂无对白" />
-                  <ContentBlock title="舞台指令" items={sceneDirections} empty="暂无舞台指令" />
+                  <ScriptContentBlock
+                    title="对白"
+                    items={sceneDialogues}
+                    empty="暂无对白"
+                  />
+                  <ScriptContentBlock
+                    title="舞台指令"
+                    items={sceneDirections}
+                    empty="暂无舞台指令"
+                  />
                 </>
               ) : (
-                <OperatorState title="请选择场景" detail="左侧列表用于定位剧本场景。" />
+                <OperatorState
+                  title="请选择场景"
+                  detail="左侧列表用于定位剧本场景。"
+                />
               )}
             </div>
           </OperatorPanel>
@@ -113,19 +139,29 @@ export function ScriptScenesTab(props: ScriptScenesTabProps) {
           action={
             <button
               type="button"
-              onClick={() => props.setShowStructureEditor(!props.showStructureEditor)}
+              onClick={() =>
+                props.setShowStructureEditor(!props.showStructureEditor)
+              }
               className={operatorButtonClass("secondary")}
             >
               {props.showStructureEditor ? "收起" : "编辑"}
             </button>
           }
         >
-          {props.structureLoading ? <OperatorState title="加载结构化场景..." /> : null}
-          {props.structureError ? <OperatorState title={props.structureError} tone="red" /> : null}
-          <StructureSummary
+          {props.structureLoading ? (
+            <OperatorState title="加载结构化场景..." />
+          ) : null}
+          {props.structureError ? (
+            <OperatorState title={props.structureError} tone="red" />
+          ) : null}
+          <ScriptStructureSummary
             scene={props.selectedNormalizedScene}
             beats={props.sceneBeats}
             shots={props.sceneShots}
+          />
+          <DramaticStatePanel
+            scriptId={props.script.business_id}
+            sceneId={activeNumber ? String(activeNumber) : undefined}
           />
           {props.showStructureEditor ? (
             <div className="mt-4">
@@ -150,65 +186,12 @@ function filterByScene<T extends string | { scene_number?: unknown }>(
   return items.filter((item) => {
     if (typeof item === "string") return false;
     const candidate = item.scene_number;
-    return toSceneNumber(
-      typeof candidate === "string" || typeof candidate === "number"
-        ? candidate
-        : undefined,
-    ) === sceneNumber;
+    return (
+      toSceneNumber(
+        typeof candidate === "string" || typeof candidate === "number"
+          ? candidate
+          : undefined,
+      ) === sceneNumber
+    );
   });
-}
-
-function ContentBlock({
-  title,
-  items,
-  empty,
-}: {
-  title: string;
-  items: Array<string | { character?: string; content?: string }>;
-  empty: string;
-}) {
-  return (
-    <div>
-      <h3 className="text-sm font-semibold text-gray-800">{title}</h3>
-      <div className="mt-2 space-y-2">
-        {items.length ? (
-          items.map((item, index) => (
-            <div key={index} className="rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
-              {typeof item === "string" ? item : `${item.character || "角色"}：${item.content || ""}`}
-            </div>
-          ))
-        ) : (
-          <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-500">
-            {empty}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function StructureSummary({
-  scene,
-  beats,
-  shots,
-}: {
-  scene?: NormalizedScene;
-  beats?: SceneBeat[];
-  shots?: NormalizedShot[];
-}) {
-  if (!scene) {
-    return <OperatorState title="未匹配规范化场景" tone="amber" />;
-  }
-  return (
-    <div className="space-y-3">
-      <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
-        <div className="text-sm font-medium text-gray-950">
-          {scene.slug_line || `场景 ${scene.scene_number}`}
-        </div>
-        <div className="mt-1 text-xs text-gray-500">
-          节拍 {beats?.length || 0} · 镜头 {shots?.length || 0}
-        </div>
-      </div>
-    </div>
-  );
 }

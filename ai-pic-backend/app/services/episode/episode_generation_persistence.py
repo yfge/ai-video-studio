@@ -4,10 +4,14 @@ from typing import Any, Dict, List
 
 from app.models.script import Episode, Story
 from app.repositories.episode_repository import find_episode_by_story_number
+from app.repositories.narrative_memory_repository import NarrativeMemoryRepository
 from app.schemas.generation import EpisodePlanItem
 from app.schemas.generation_requests import EpisodeGenerationRequest
 from app.services import story_structure_service
 from app.services.ai_service import ai_service
+from app.services.narrative_memory.generation_context_service import (
+    NarrativeGenerationContextService,
+)
 from app.utils.marketing_meta import merge_marketing_meta
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -125,6 +129,14 @@ def create_episode_models(
         created.append(db_episode)
 
     return created
+
+
+def freeze_episode_memory_evidence(
+    *, db: Session, story: Story, episodes: List[Episode]
+) -> None:
+    service = NarrativeGenerationContextService(NarrativeMemoryRepository(db))
+    for episode in episodes:
+        service.freeze_episode(story, episode, commit=False)
 
 
 def persist_step_outline_beats(

@@ -17,23 +17,24 @@ const dom = new JSDOM("<!doctype html><html><body></body></html>", {
 describe("StoryOutlineSection", () => {
   afterEach(() => cleanup());
 
-  it("renders the production contract for a new story", () => {
+  it("renders the Story Seed contract for a new story", () => {
     const utils = render(<StoryOutlineSection story={newStory()} />, {
       container: dom.window.document.body,
     });
 
-    assert.ok(utils.getByText("1. 故事合同"));
+    assert.ok(utils.getByText("1. 故事大纲（Story Seed）"));
     assert.ok(utils.getByText("都市职场短剧用户"));
-    assert.ok(utils.getByText("前三集拿到会议录音"));
-    assert.ok(utils.getByText("手机录音反击"));
+    assert.ok(utils.getByText("查清数据篡改真相"));
+    assert.ok(utils.getByText("数据证据争夺"));
   });
 
-  it("stays hidden for a legacy story without a production contract", () => {
+  it("offers a locally editable fallback seed for a legacy story", () => {
     const utils = render(<StoryOutlineSection story={legacyStory()} />, {
       container: dom.window.document.body,
     });
 
-    assert.equal(utils.queryByText("1. 故事合同"), null);
+    assert.ok(utils.getByText("1. 故事大纲（Story Seed）"));
+    assert.ok(utils.getByText("旧故事"));
   });
 });
 
@@ -56,21 +57,20 @@ function newStory(): Story {
     id: 2,
     business_id: "new-story",
     title: "新故事",
-    extra_metadata: {
-      structured_story_contract: {
-        target_audience: "都市职场短剧用户",
-        core_emotional_pain: "信任被团队背叛",
-        big_expectation: "查清数据篡改真相",
-        small_expectation_ladder: ["前三集拿到会议录音"],
-        protagonist_goal: "三天内拿到证据",
-        structural_conflict: "必须借对手资源调查对手",
-        information_gap: "观众知道录音存在，对手不知道",
-        first_three_episode_spine: "身份、证据、核心冲突",
-        stage_highs: ["会议室反击"],
-        shootability: "办公室、会议室、走廊可拍",
-        compliance_risks: [],
-        traffic_hooks: ["手机录音反击"],
-      },
+    story_seed_status: "confirmed",
+    story_seed: {
+      schema: "story_seed_v1",
+      title: "新故事",
+      premise: "查清数据篡改真相",
+      outline: "主角从会议录音入手追查数据篡改。",
+      protagonists: [
+        { virtual_ip_business_id: "vip-hero", initial_state: "尚未掌握证据" },
+      ],
+      world_constraints: ["证据必须来自真实业务记录"],
+      central_conflict: "数据证据争夺",
+      ending_direction: null,
+      target_audience: "都市职场短剧用户",
+      content_constraints: [],
     },
   };
 }

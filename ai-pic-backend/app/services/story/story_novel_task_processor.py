@@ -20,6 +20,7 @@ from .story_novel_ai_prompts import (
 from .story_novel_domain import active_chapters, compact_chapter_context
 from .story_novel_export_ai import generate_story_novel_text
 from .story_novel_legacy_task import run_legacy_export
+from .story_novel_memory_context import chapter_memory_context
 from .story_novel_revision_service import StoryNovelRevisionService
 
 
@@ -80,6 +81,7 @@ async def _generate_missing_chapters(service, revision, task, *, only_position=N
                 chapter_plan=row_plan,
                 previous=compact_chapter_context(revision, position),
                 target_words=per_chapter,
+                memory_context=chapter_memory_context(service.db, revision, position),
             ),
             max_tokens=min(16000, max(2500, per_chapter * 2)),
         )

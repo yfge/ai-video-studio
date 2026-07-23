@@ -20,6 +20,7 @@ interface StoryGenerateFormProps {
   onCharacterToggle: (characterId: number) => void;
   onPreviewPrompt: () => void;
   onSubmit: () => void;
+  onSaveDraft: () => void;
   onNavigateToVirtualIP: () => void;
 }
 
@@ -37,13 +38,14 @@ export function StoryGenerateForm({
   onCharacterToggle,
   onPreviewPrompt,
   onSubmit,
+  onSaveDraft,
   onNavigateToVirtualIP,
 }: StoryGenerateFormProps) {
   return (
     <CreationOverlay
       open={open}
-      title="AI生成故事"
-      subtitle="与环境/虚拟IP一致的创建面板，补充角色与设定后提交生成"
+      title="创建 Story Seed"
+      subtitle="轻量故事初始条件；生成结果可在故事详情中继续人工编辑"
       onClose={onClose}
       widthClassName="max-w-5xl"
     >
@@ -64,10 +66,18 @@ export function StoryGenerateForm({
         <div>
           <button
             type="button"
+            onClick={onSaveDraft}
+            disabled={generating}
+            className={operatorButtonClass("secondary")}
+          >
+            保存 Story Seed 草稿（不调用模型）
+          </button>
+          <button
+            type="button"
             onClick={onPreviewPrompt}
             className={operatorButtonClass("secondary")}
           >
-            生成提示词预览
+            预览生成输入
           </button>
           {showPromptPreview && (
             <div className="mt-3 max-h-64 overflow-auto rounded-md border border-gray-200 bg-gray-50 p-3">
@@ -87,7 +97,7 @@ export function StoryGenerateForm({
             className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
           />
           <label htmlFor="asyncToggle" className="text-sm text-gray-700">
-            使用异步任务（推荐，支持队列）
+            使用异步任务（推荐）
           </label>
         </div>
 
@@ -105,7 +115,11 @@ export function StoryGenerateForm({
             disabled={generating}
             className={operatorButtonClass("primary")}
           >
-            {generating ? "生成中..." : useAsync ? "创建异步任务" : "开始生成"}
+            {generating
+              ? "生成中..."
+              : useAsync
+              ? "生成 Story Seed（可能调用模型）"
+              : "立即生成 Story Seed（可能调用模型）"}
           </button>
         </div>
       </form>

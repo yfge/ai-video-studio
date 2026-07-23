@@ -2,7 +2,7 @@ from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
 
 
-def test_story_outline_short_drama_production_prompt_has_researched_brief():
+def test_story_outline_production_prompt_is_a_lightweight_story_seed():
     prompt = prompt_manager.render_prompt(
         PromptTemplate.STORY_OUTLINE.value,
         {
@@ -27,13 +27,11 @@ def test_story_outline_short_drama_production_prompt_has_researched_brief():
         },
     )
 
-    assert "structured_story_contract" in prompt
-    assert "大期待" in prompt
-    assert "小期待阶梯" in prompt
-    assert "信息差设计" in prompt
-    assert "前三集立主线" in prompt
-    assert "少写心理，多写行为" in prompt
-    assert "禁止只写“情绪升级、推进剧情、巨大反转”" in prompt
+    assert "story_seed_v1" in prompt
+    assert "只建立后续小说创作所需的初始条件" in prompt
+    assert "不得生成前三集结构" in prompt
+    assert "投流钩子" in prompt
+    assert "structured_story_contract" not in prompt
 
 
 def test_story_outline_short_drama_standard_prompt_omits_production_contract():

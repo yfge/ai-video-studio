@@ -2,6 +2,13 @@ from app.core.database import Base
 
 from .episode_character import EpisodeCharacter
 from .image import Image
+from .narrative_memory import (
+    CharacterMemory,
+    CharacterMemoryPromotion,
+    CharacterMemorySnapshot,
+    NarrativeAnchor,
+    NarrativeEvent,
+)
 from .script import Episode, Script, ScriptTemplate, Story, StoryCharacter
 from .story_novel_export import StoryNovelChapter, StoryNovelExport
 from .story_structure import (
@@ -29,6 +36,11 @@ __all__ = [
     "User",
     "UserAuditLog",
     "Image",
+    "NarrativeAnchor",
+    "NarrativeEvent",
+    "CharacterMemory",
+    "CharacterMemorySnapshot",
+    "CharacterMemoryPromotion",
     "Task",
     "VideoGenerationTask",
     "MediaAsset",

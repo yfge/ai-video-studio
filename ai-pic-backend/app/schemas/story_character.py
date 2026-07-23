@@ -35,6 +35,7 @@ class StoryCharacterUpdate(BaseModel):
 
 class StoryCharacterResponse(StoryCharacterBase):
     id: int
+    business_id: str
     story_id: int
     virtual_ip_business_id: Optional[str] = None
     virtual_ip_name: Optional[str] = None

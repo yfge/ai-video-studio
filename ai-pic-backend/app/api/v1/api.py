@@ -25,6 +25,7 @@ from app.api.v1.endpoints import (
     virtual_ip_voice_samples,
     workbench,
 )
+from app.api.v1.endpoints.narrative_memory import promotion_router
 from fastapi import APIRouter
 
 api_router = APIRouter()
@@ -43,6 +44,7 @@ api_router.include_router(
 api_router.include_router(
     virtual_ip_voice_samples.router, prefix="/virtual-ips", tags=["virtual-ips"]
 )
+api_router.include_router(promotion_router, tags=["narrative-memory"])
 
 # 剧本相关路由
 api_router.include_router(stories.router, prefix="/stories", tags=["stories"])

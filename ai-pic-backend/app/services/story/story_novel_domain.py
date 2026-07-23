@@ -31,6 +31,13 @@ def build_story_snapshot(story: Story) -> dict[str, Any]:
         "setting_time": story.setting_time,
         "setting_location": story.setting_location,
         "world_building": story.world_building,
+        "story_seed": story.story_seed,
+        "story_seed_version": story.story_seed_version,
+        "shared_memory_baseline_version": story.shared_memory_baseline_version,
+        "shared_memory_baseline_hash": story.shared_memory_baseline_hash,
+        "shared_memory_baseline": story.shared_memory_baseline,
+        "memory_ledger_version": story.memory_ledger_version,
+        "memory_ledger_hash": story.memory_ledger_hash,
         "captured_at": datetime.utcnow().isoformat(),
     }
 

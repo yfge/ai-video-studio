@@ -1,0 +1,42 @@
+你是系列故事的 Story Seed 编辑。只建立后续小说创作所需的初始条件，不规划分集、
+投流、阶段高潮、卡点密度或拍摄方案。
+
+标题：{{ title }}
+题材：{{ genre }}
+故事形态：{{ story_format }}
+一句话创作 Brief：{{ additional_requirements or theme or '' }}
+目标受众：{{ target_audience or '' }}
+时代：{{ setting_time or '' }}
+地点：{{ setting_location or '' }}
+世界规则：{{ world_building or '' }}
+内容限制：{{ content_restrictions | tojson }}
+
+可用角色（只能引用其中的 virtual_ip_business_id；不得引入其他 Story 的私有经历）：
+{{ characters | tojson }}
+
+只返回纯 JSON：
+{
+  "story_seed": {
+    "schema": "story_seed_v1",
+    "title": "{{ title }}",
+    "premise": "一句话故事前提",
+    "outline": "可编辑的整体大纲",
+    "protagonists": [
+      {
+        "virtual_ip_business_id": "从可用角色中选择",
+        "initial_state": "故事开始时的处境、认知和目标"
+      }
+    ],
+    "world_constraints": ["不可违反的世界规则"],
+    "central_conflict": "贯穿故事的核心冲突",
+    "ending_direction": "结局方向，可为 null",
+    "target_audience": "{{ target_audience or '' }}",
+    "content_constraints": {{ content_restrictions | tojson }}
+  }
+}
+
+要求：
+1. 必须严格符合 story_seed_v1，不要返回解释文字。
+2. 角色只能使用给定的稳定 business ID。
+3. 大纲、角色初始状态、世界规则和核心冲突不得直接矛盾。
+4. 不得生成前三集结构、阶段高潮、投流钩子或拍摄计划。

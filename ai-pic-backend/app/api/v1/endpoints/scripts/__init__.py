@@ -2,6 +2,7 @@
 
 from typing import List, Optional
 
+from app.api.v1.endpoints.narrative_memory import dramatic_state_router
 from app.api.v1.endpoints.scripts.audio_storyboard import (
     _process_script_audio_storyboard_task,
 )
@@ -80,6 +81,7 @@ router.include_router(audio_timeline_router)
 router.include_router(timeline_pipeline_router)
 router.include_router(audio_storyboard_router)
 router.include_router(storyboard_router)
+router.include_router(dramatic_state_router)
 
 
 def _process_script_generation_task(task_id: int, request_dict: dict, user_id: int):

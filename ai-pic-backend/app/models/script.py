@@ -11,7 +11,6 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
-    Float,
     ForeignKey,
     Integer,
     String,
@@ -74,6 +73,19 @@ class Story(StoryNovelWorkflowMixin, SoftDeleteBusinessMixin, Base):
     is_public = Column(Boolean, default=False, comment="是否公开")
     tags = Column(JSON, comment="标签列表")
     extra_metadata = Column(JSON, comment="额外元数据")
+    story_seed = Column(JSON, comment="轻量故事种子 story_seed_v1")
+    story_seed_schema = Column(String(32), default="story_seed_v1")
+    story_seed_status = Column(String(24), default="draft")
+    story_seed_version = Column(Integer, default=1)
+    story_seed_updated_at = Column(DateTime, comment="故事种子最近更新时间")
+    memory_mode = Column(String(32), default="story_scoped_memory_v1")
+    canon_branch_id = Column(String(32), default="main")
+    shared_memory_baseline = Column(JSON, comment="冻结的角色公共记忆基线")
+    shared_memory_baseline_version = Column(Integer, default=0)
+    shared_memory_baseline_hash = Column(String(64))
+    memory_ledger_version = Column(Integer, default=0)
+    memory_ledger_hash = Column(String(64))
+    memory_review_status = Column(String(24), default="not_initialized")
 
     # 时间戳
     created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
@@ -132,6 +144,12 @@ class Episode(EpisodeNovelSourceMixin, SoftDeleteBusinessMixin, Base):
     )
     tags = Column(JSON, comment="标签列表")
     extra_metadata = Column(JSON, comment="额外元数据")
+    memory_snapshot_evidence = Column(JSON, comment="每个主要角色的起点记忆快照")
+    memory_ledger_version = Column(Integer, nullable=True)
+    memory_ledger_hash = Column(String(64), nullable=True)
+    disclosure_policy = Column(JSON, comment="允许揭示、必须隐藏和推进线索")
+    memory_snapshot_stale = Column(Boolean, default=False)
+    memory_snapshot_stale_reason = Column(JSON, nullable=True)
 
     # 时间戳
     created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
@@ -263,30 +281,4 @@ class StoryCharacter(SoftDeleteBusinessMixin, Base):
         return self.name or f"角色{self.id}"
 
 
-class ScriptTemplate(SoftDeleteBusinessMixin, Base):
-    """剧本模板模型"""
-
-    __tablename__ = "script_templates"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(255), nullable=False, comment="模板名称")
-    category = Column(String(50), comment="模板分类")
-
-    # 模板内容
-    template_content = Column(Text, comment="模板内容")
-    structure = Column(JSON, comment="结构定义")
-    variables = Column(JSON, comment="变量定义")
-
-    # 使用信息
-    usage_count = Column(Integer, default=0, comment="使用次数")
-    rating = Column(Float, comment="评分")
-
-    # 状态
-    is_active = Column(Boolean, default=True, comment="是否激活")
-    is_public = Column(Boolean, default=False, comment="是否公开")
-
-    # 时间戳
-    created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
-    updated_at = Column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment="更新时间"
-    )
+from app.models.script_template import ScriptTemplate  # noqa: E402,F401

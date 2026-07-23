@@ -5,7 +5,6 @@
 import { httpClient } from "../client";
 import type {
   Story,
-  StoryCharacter,
   StoryGenerationRequest,
   SingleVideoProjectRequest,
   SingleVideoProjectResponse,
@@ -14,6 +13,8 @@ import type {
   QuickFixResponse,
 } from "../types/story.types";
 import type { ApiResponse } from "../types/common.types";
+import type { StoryCharacter } from "../types/story-character.types";
+import type { StoryCreateRequest } from "../types/story-seed.types";
 
 // Helper to check if value is a business ID
 function isBusinessIdentifier(value: number | string): boolean {
@@ -66,6 +67,15 @@ async function generateStory(
   data: StoryGenerationRequest,
 ): Promise<ApiResponse<Story>> {
   return httpClient<Story>("/api/v1/stories/generate", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+async function createStory(
+  data: StoryCreateRequest,
+): Promise<ApiResponse<Story>> {
+  return httpClient<Story>("/api/v1/stories/", {
     method: "POST",
     body: JSON.stringify(data),
   });
@@ -203,6 +213,7 @@ async function quickFixStory(
 export const storyAPI = {
   getStories,
   getStory,
+  createStory,
   generateStory,
   generateStoryAsync,
   createSingleVideoProject,

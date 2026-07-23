@@ -7,8 +7,10 @@ import {
   operatorInputClass,
 } from "@/components/shared";
 import type { StoryNovelChapter, StoryNovelRevision } from "@/utils/api/types";
+import { narrativeMemoryAPI } from "@/utils/api/endpoints";
 
 interface Props {
+  storyId: string;
   revision: StoryNovelRevision;
   busy: boolean;
   onSave: (
@@ -27,6 +29,7 @@ function ChapterCard({
   onMove,
   onRegenerate,
   orderedIds,
+  storyId,
 }: {
   chapter: StoryNovelChapter;
   locked: boolean;
@@ -35,10 +38,12 @@ function ChapterCard({
   onMove: Props["onMove"];
   onRegenerate: Props["onRegenerate"];
   orderedIds: string[];
+  storyId: string;
 }) {
   const [title, setTitle] = useState(chapter.title);
   const [content, setContent] = useState(chapter.content_text);
   const [summary, setSummary] = useState(chapter.summary || "");
+  const [memoryStatus, setMemoryStatus] = useState("未提取");
   useEffect(() => {
     setTitle(chapter.title);
     setContent(chapter.content_text);
@@ -52,6 +57,19 @@ function ChapterCard({
     [ids[index], ids[next]] = [ids[next], ids[index]];
     onMove(ids);
   };
+  const extractMemory = async () => {
+    setMemoryStatus("正在提交提取任务…");
+    const response = await narrativeMemoryAPI.extractCandidates(
+      storyId,
+      "novel_chapter",
+      chapter.business_id,
+    );
+    setMemoryStatus(
+      response.success && response.data
+        ? `候选任务 #${response.data.task_id}`
+        : response.error || "提取失败；正文已保留",
+    );
+  };
   return (
     <article className="rounded-lg border border-gray-200 bg-white p-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -60,6 +78,9 @@ function ChapterCard({
           tone={chapter.review_status === "ready" ? "green" : "amber"}
         >
           {chapter.review_status === "ready" ? "就绪" : "待复核"}
+        </StatusPill>
+        <StatusPill tone={memoryStatus === "未提取" ? "gray" : "blue"}>
+          记忆 {memoryStatus}
         </StatusPill>
         <div className="ml-auto flex gap-2">
           <button
@@ -124,8 +145,27 @@ function ChapterCard({
           >
             局部重生成
           </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void extractMemory()}
+            className={operatorButtonClass("secondary")}
+          >
+            提取/重算本章记忆候选（可能调用模型）
+          </button>
         </div>
-      ) : null}
+      ) : (
+        <div className="mt-3">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void extractMemory()}
+            className={operatorButtonClass("secondary")}
+          >
+            提取/重算本章记忆候选（可能调用模型）
+          </button>
+        </div>
+      )}
     </article>
   );
 }
@@ -147,6 +187,7 @@ export function StoryNovelChapterEditor(props: Props) {
           onMove={props.onMove}
           onRegenerate={props.onRegenerate}
           orderedIds={orderedIds}
+          storyId={props.storyId}
         />
       ))}
     </div>

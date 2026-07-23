@@ -8,7 +8,7 @@
 
 New narrative series use this chain:
 
-`Story contract → approved novel revision → approved adaptation plan → Episode → Script → Timeline`
+`Story Seed → approved novel revision → approved adaptation plan → Episode → Script → Timeline`
 
 There are two complementary sources of truth:
 
@@ -60,7 +60,7 @@ An Episode never follows the Story canonical pointer after it is created.
 
 ## Model context boundaries
 
-Prose generation reads only the frozen Story/IP/world/structured-contract snapshot and previous generated chapter summaries. It never reads Episode, removing the former `Episode → Novel → Episode` loop.
+Prose generation reads only the frozen StorySeed/IP/world snapshot, previous generated chapter summaries, and the Story-scoped memory context allowed by the narrative-memory design. It never reads Episode, removing the former `Episode → Novel → Episode` loop.
 
 Script request schemas do not gain operator parameters. The Episode context builder automatically includes only its mapped source chapter summaries, business IDs, hashes, adaptation goal, novel hash, and plan version. The same evidence is copied into Script metadata and the Task agent run; full unrelated chapters are excluded.
 
@@ -84,7 +84,7 @@ All new identifiers are business IDs.
 - `POST /stories/novel/revisions/{revision}/adaptation-plan/approve`
 - `POST /stories/novel/revisions/{revision}/adaptation-plan/apply`
 
-The existing Story page presents four stages: Story contract, novel revision/chapter editor, adaptation-plan editor, and Episode production state.
+The Story page presents four stages: Story Seed, novel revision/chapter editor, adaptation-plan editor, and Episode production state.
 
 ## Explicit non-goals
 

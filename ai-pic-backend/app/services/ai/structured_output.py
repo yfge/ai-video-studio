@@ -65,7 +65,7 @@ def validate_payload(
 
     try:
         parsed = model.model_validate(raw_json)
-        return parsed.model_dump(), None, raw_json
+        return parsed.model_dump(by_alias=True), None, raw_json
     except ValidationError as exc:
         return None, _validation_errors_json_safe(exc), raw_json
 

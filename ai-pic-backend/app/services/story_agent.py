@@ -103,7 +103,7 @@ class StoryLangGraphAgent:
             "content_restrictions": content_restrictions or [],
             "generation_mode": generation_mode,
             "production_mode": production_mode,
-            "story_contract_version": "story_contract_v1",
+            "story_seed_version": "story_seed_v1",
         }
         resolved_template = resolve_template_name(
             PromptTemplate.STORY_OUTLINE.value, variables, prompt_manager.prompts_dir
@@ -137,6 +137,7 @@ class StoryLangGraphAgent:
         story_quality_warnings: list[str] = []
         character_warnings: list[str] = []
 
+        missing_fields: list[str] = []
         try:
             if parsed:
                 validation = validate_story_outline_candidate(
@@ -165,42 +166,10 @@ class StoryLangGraphAgent:
                         reasoning=reasoning + ["validated"],
                         validation=validation,
                     )
-        except Exception:
-            pass
+        except Exception as exc:
+            missing_fields = _extract_missing_fields(exc)
 
-        missing_fields: list[str] = []
-        for attempt in range(3):
-            if parsed:
-                try:
-                    validation = validate_story_outline_candidate(
-                        parsed,
-                        characters=characters,
-                        hook_plan=hook_plan,
-                        content_restrictions=content_restrictions,
-                        production_mode=production_mode,
-                        log_suffix=" (repair attempt)",
-                    )
-                    character_warnings = validation.character_warnings
-                    story_quality_warnings = validation.story_quality_warnings
-                    quality_gate_issues = validation.quality_gate_issues
-                    quality_gate_issue_details = validation.quality_gate_issue_details
-                    if validation.passed:
-                        return build_story_agent_result(
-                            latest_text=latest_text,
-                            parsed=parsed,
-                            resolved_template=resolved_template,
-                            provider_used=provider_used,
-                            model_used=model_used,
-                            usage=usage,
-                            prompt=prompt,
-                            generation_mode=generation_mode,
-                            production_mode=production_mode,
-                            reasoning=reasoning + [f"validated_attempt_{attempt}"],
-                            validation=validation,
-                        )
-                except Exception as exc:  # pragma: no cover - schema guard
-                    missing_fields = _extract_missing_fields(exc)
-
+        for attempt in range(1):
             repair_prompt = prompt_manager.render_prompt(
                 PromptTemplate.STORY_OUTLINE_REPAIR.value,
                 {
@@ -209,7 +178,7 @@ class StoryLangGraphAgent:
                     "original_output": latest_text,
                     "missing_fields": missing_fields,
                     "production_mode": production_mode,
-                    "story_contract_version": "story_contract_v1",
+                    "story_seed_version": "story_seed_v1",
                     "quality_gate_issues": quality_gate_issues,
                     "quality_gate_issue_details": quality_gate_issue_details,
                     "story_quality_warnings": story_quality_warnings,
@@ -231,5 +200,32 @@ class StoryLangGraphAgent:
             model_used = repair_resp.model or model_used
             usage = repair_resp.usage or usage
             reasoning.append(f"repair_attempt_{attempt + 1}")
+            if not parsed:
+                continue
+            try:
+                validation = validate_story_outline_candidate(
+                    parsed,
+                    characters=characters,
+                    hook_plan=hook_plan,
+                    content_restrictions=content_restrictions,
+                    production_mode=production_mode,
+                    log_suffix=" (repair result)",
+                )
+            except Exception:  # pragma: no cover - schema guard
+                continue
+            if validation.passed:
+                return build_story_agent_result(
+                    latest_text=latest_text,
+                    parsed=parsed,
+                    resolved_template=resolved_template,
+                    provider_used=provider_used,
+                    model_used=model_used,
+                    usage=usage,
+                    prompt=prompt,
+                    generation_mode=generation_mode,
+                    production_mode=production_mode,
+                    reasoning=reasoning + [f"validated_attempt_{attempt + 1}"],
+                    validation=validation,
+                )
 
         return None

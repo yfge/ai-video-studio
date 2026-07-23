@@ -20,6 +20,7 @@ import {
   VoiceSettingsPanel,
 } from "@/components/features";
 import { VirtualIPReadinessWarnings } from "@/components/features/virtual-ip-detail/VirtualIPReadinessWarnings";
+import { VirtualIPMemorySummaryCard } from "@/components/features/virtual-ip-detail/VirtualIPMemorySummaryCard";
 import { useVirtualIPDetail } from "@/hooks/useVirtualIPDetail";
 import {
   VirtualIPBackgroundStorySection,
@@ -105,50 +106,51 @@ export default function VirtualIPDetail() {
       <div className="space-y-5">
         <VirtualIPProductionNotice />
         <VirtualIPReadinessWarnings readiness={virtualIP.readiness} />
+        <VirtualIPMemorySummaryCard virtualIpId={virtualIP.business_id} />
 
         <OperatorWorkspace
           variant="main-inspector"
           main={
             <OperatorMainCanvas>
               <OperatorPanel>
-            <VirtualIPInfoSection
-              virtualIP={virtualIP}
-              editing={editing}
-              editForm={editForm}
-              setEditForm={setEditForm}
-              onSubmit={handleUpdateIP}
-              addTag={addTag}
-              removeTag={removeTag}
-              formId={editFormId}
-            />
-            <VirtualIPBackgroundStorySection
-              virtualIP={virtualIP}
-              editing={editing}
-              editForm={editForm}
-              setEditForm={setEditForm}
-            />
-            <VirtualIPAdditionalInfoSection
-              virtualIP={virtualIP}
-              editing={editing}
-              editForm={editForm}
-              setEditForm={setEditForm}
-            />
-            <VoiceSettingsPanel
-              editing={editing}
-              voiceEnums={voiceEnums}
-              voiceTypeFilter={voiceTypeFilter}
-              setVoiceTypeFilter={setVoiceTypeFilter}
-              voiceSettings={voiceSettings}
-              setVoiceSettings={setVoiceSettings}
-              voicePreviewText={voicePreviewText}
-              setVoicePreviewText={setVoicePreviewText}
-              voiceLoading={voiceLoading}
-              previewLoading={previewLoading}
-              previewAudioUrl={previewAudioUrl}
-              voiceOptions={voiceOptions}
-              onPreviewVoice={handlePreviewVoice}
-            />
-            <VirtualIPMetaStrip virtualIP={virtualIP} />
+                <VirtualIPInfoSection
+                  virtualIP={virtualIP}
+                  editing={editing}
+                  editForm={editForm}
+                  setEditForm={setEditForm}
+                  onSubmit={handleUpdateIP}
+                  addTag={addTag}
+                  removeTag={removeTag}
+                  formId={editFormId}
+                />
+                <VirtualIPBackgroundStorySection
+                  virtualIP={virtualIP}
+                  editing={editing}
+                  editForm={editForm}
+                  setEditForm={setEditForm}
+                />
+                <VirtualIPAdditionalInfoSection
+                  virtualIP={virtualIP}
+                  editing={editing}
+                  editForm={editForm}
+                  setEditForm={setEditForm}
+                />
+                <VoiceSettingsPanel
+                  editing={editing}
+                  voiceEnums={voiceEnums}
+                  voiceTypeFilter={voiceTypeFilter}
+                  setVoiceTypeFilter={setVoiceTypeFilter}
+                  voiceSettings={voiceSettings}
+                  setVoiceSettings={setVoiceSettings}
+                  voicePreviewText={voicePreviewText}
+                  setVoicePreviewText={setVoicePreviewText}
+                  voiceLoading={voiceLoading}
+                  previewLoading={previewLoading}
+                  previewAudioUrl={previewAudioUrl}
+                  voiceOptions={voiceOptions}
+                  onPreviewVoice={handlePreviewVoice}
+                />
+                <VirtualIPMetaStrip virtualIP={virtualIP} />
               </OperatorPanel>
               <div className="mt-5">
                 <VirtualIPEnvironmentPanel
@@ -158,14 +160,16 @@ export default function VirtualIPDetail() {
               </div>
             </OperatorMainCanvas>
           }
-          inspector={<VirtualIPInspectorPanel
-            virtualIP={virtualIP}
-            editing={editing}
-            editFormId={editFormId}
-            linkedEnvironmentCount={linkedEnvironmentCount}
-            setEditing={setEditing}
-            onDelete={handleDeleteIP}
-          />}
+          inspector={
+            <VirtualIPInspectorPanel
+              virtualIP={virtualIP}
+              editing={editing}
+              editFormId={editFormId}
+              linkedEnvironmentCount={linkedEnvironmentCount}
+              setEditing={setEditing}
+              onDelete={handleDeleteIP}
+            />
+          }
         />
 
         <VirtualIPImageManager virtualIPKey={ipKey} virtualIP={virtualIP} />

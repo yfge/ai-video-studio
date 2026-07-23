@@ -43,6 +43,8 @@ def resolve_template_name(
     template_name: str, variables: Mapping[str, Any], prompts_dir: Path
 ) -> str:
     """Resolve a base template to a story_format-specific variant if available."""
+    if template_name == "story_outline" and variables.get("production_mode"):
+        return "story_seed"
     story_format = _extract_story_format(variables)
     if not story_format or story_format not in _SUPPORTED_STORY_FORMATS:
         return template_name

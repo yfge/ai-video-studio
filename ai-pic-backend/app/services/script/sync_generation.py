@@ -195,6 +195,15 @@ def _persist_generated_script(
             **(extra_meta or {}),
             "source_novel": episode_data["source_novel"],
         }
+    if episode_data.get("narrative_memory"):
+        extra_meta = {
+            **(extra_meta or {}),
+            "narrative_memory": episode_data["narrative_memory"],
+            "audience_disclosure": episode_data.get("audience_disclosure") or {},
+            "narrative_memory_stale_at_generation": bool(
+                episode_data.get("memory_snapshot_stale")
+            ),
+        }
 
     db_script = Script(
         episode_id=request.episode_id,

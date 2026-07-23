@@ -11,6 +11,7 @@ import {
 } from "@/utils/storyOptions";
 import type { Story, VirtualIP } from "@/utils/api/types";
 import { fetchAllPages } from "@/utils/api/pagination";
+import { useStoryCreationActions } from "./useStoryCreationActions";
 
 export interface UseStoriesOptions {
   showAlert: (options: {
@@ -33,7 +34,6 @@ export function useStories({ showAlert }: UseStoriesOptions) {
   const [allStories, setAllStories] = useState<Story[]>([]);
   const [virtualIPs, setVirtualIPs] = useState<VirtualIP[]>([]);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
   const [showGenerateForm, setShowGenerateForm] = useState(false);
 
   const [selectedGenre, setSelectedGenre] = useState<string>("");
@@ -78,61 +78,6 @@ export function useStories({ showAlert }: UseStoriesOptions) {
     void loadData();
   }, [loadData]);
 
-  const handleGenerateStory = async () => {
-    if (!generateForm.title || generateForm.character_ids.length === 0) {
-      showAlert({
-        message: "请填写标题并选择至少一个角色",
-        variant: "warning",
-      });
-      return;
-    }
-
-    try {
-      setGenerating(true);
-      if (useAsync) {
-        const response = await storyAPI.generateStoryAsync(generateForm);
-        if (response.success) {
-          const taskId = (response.data as { task_id?: number } | null)
-            ?.task_id;
-          showAlert({
-            message: taskId
-              ? `已创建异步任务（ID: ${taskId}），可前往任务页查看进度`
-              : "已创建异步任务，可前往任务页查看进度",
-            variant: "info",
-            confirmText: "去任务页",
-            onConfirm: () => {
-              router.push("/tasks");
-            },
-          });
-        } else {
-          showAlert({
-            message: `故事生成失败：${response.error || "未知错误"}`,
-            variant: "error",
-          });
-        }
-      } else {
-        const response = await storyAPI.generateStory(generateForm);
-        if (response.success && response.data) {
-          setAllStories((prev) => [response.data as Story, ...prev]);
-          showAlert({ message: "故事生成成功！", variant: "success" });
-        } else {
-          showAlert({
-            message: `故事生成失败：${response.error || "未知错误"}`,
-            variant: "error",
-          });
-        }
-      }
-      setShowGenerateForm(false);
-      setGenerateForm(INITIAL_GENERATE_FORM);
-      setPromptPreview("");
-    } catch (error) {
-      console.error("故事生成失败:", error);
-      showAlert({ message: "故事生成失败", variant: "error" });
-    } finally {
-      setGenerating(false);
-    }
-  };
-
   const performDeleteStory = async (storyBusinessId: string) => {
     try {
       const response = await storyAPI.deleteStory(storyBusinessId);
@@ -176,9 +121,13 @@ export function useStories({ showAlert }: UseStoriesOptions) {
 
   const handlePreviewPrompt = async () => {
     try {
-      if (!generateForm.title || generateForm.character_ids.length === 0) {
+      if (
+        !generateForm.title ||
+        !generateForm.additional_requirements?.trim() ||
+        generateForm.character_ids.length === 0
+      ) {
         setShowPromptPreview(true);
-        setPromptPreview("请填写标题并至少选择一个角色后再预览提示词");
+        setPromptPreview("请填写标题、创作 Brief，并至少选择一个角色后再预览");
         return;
       }
       setShowPromptPreview(true);
@@ -194,14 +143,25 @@ export function useStories({ showAlert }: UseStoriesOptions) {
     }
   };
 
-  const openGenerateForm = () => setShowGenerateForm(true);
-
   const closeGenerateForm = () => {
     setShowGenerateForm(false);
     setGenerateForm(INITIAL_GENERATE_FORM);
     setPromptPreview("");
     setShowPromptPreview(false);
   };
+
+  const { generating, handleGenerateStory, handleSaveStorySeed } =
+    useStoryCreationActions({
+      generateForm,
+      useAsync,
+      virtualIPs,
+      showAlert,
+      onStoryCreated: (story) =>
+        setAllStories((current) => [story, ...current]),
+      onClose: closeGenerateForm,
+    });
+
+  const openGenerateForm = () => setShowGenerateForm(true);
 
   const navigateToStory = (businessId: string) => {
     router.push(`/stories/${businessId}`);
@@ -235,6 +195,7 @@ export function useStories({ showAlert }: UseStoriesOptions) {
 
     // Event handlers
     handleGenerateStory,
+    handleSaveStorySeed,
     handleDeleteStory,
     handleCharacterToggle,
     handlePreviewPrompt,

@@ -40,7 +40,10 @@ export * from "./virtual-ip.types";
 
 // Story and episode types
 export * from "./story.types";
+export * from "./story-character.types";
+export * from "./story-seed.types";
 export * from "./story-novel.types";
+export * from "./narrative-memory.types";
 export * from "./episode-character.types";
 export * from "./timeline.types";
 

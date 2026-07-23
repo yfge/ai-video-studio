@@ -39,7 +39,13 @@ def _strong_outline() -> dict:
                 }
             ],
         },
-        "selling_points": ["开场公开羞辱", "高压反击", "真相揭示", "职场逆袭", "强卡点"],
+        "selling_points": [
+            "开场公开羞辱",
+            "高压反击",
+            "真相揭示",
+            "职场逆袭",
+            "强卡点",
+        ],
         "cliffhanger_plan": ["但是她发现幕后黑手另有其人"],
         "ad_snippets": [
             {
@@ -52,27 +58,26 @@ def _strong_outline() -> dict:
     }
 
 
-def _strong_outline_with_contract() -> dict:
-    outline = _strong_outline()
-    outline["structured_story_contract"] = {
-        "target_audience": "都市职场逆袭用户",
-        "core_emotional_pain": "专业能力被公开质疑，信任被内部人背叛",
-        "big_expectation": "文闻查清数据篡改真相并夺回项目主导权",
-        "small_expectation_ladder": [
-            "前三集拿到会议录音",
-            "第8-12集逼出篡改数据的人",
-            "第20-30集公开幕后交易证据",
-        ],
-        "protagonist_goal": "三天内找出篡改数据的内部人",
-        "structural_conflict": "文闻必须借用质疑她的团队资源反查团队内部黑手",
-        "information_gap": "观众知道录音存在，对手不知道关键镜头已被拍下",
-        "first_three_episode_spine": "身份、证据、核心冲突前三集立住",
-        "stage_highs": ["会议室反击", "走廊抢手机", "董事会翻盘"],
-        "shootability": "会议室、办公室、走廊三类低成本可拍场景",
-        "compliance_risks": [],
-        "traffic_hooks": ["大屏公开篡改数据", "手机录音反击"],
+def _story_seed() -> dict:
+    return {
+        "story_seed": {
+            "schema": "story_seed_v1",
+            "title": "AP全链路回归样片",
+            "premise": "文闻发现项目数据被篡改。",
+            "outline": "文闻追查数据篡改，并逐步逼近内部黑手。",
+            "protagonists": [
+                {
+                    "virtual_ip_business_id": "vip-wenwen",
+                    "initial_state": "负责项目但尚未掌握证据",
+                }
+            ],
+            "world_constraints": ["关键结论必须有业务记录佐证"],
+            "central_conflict": "文闻必须借用被质疑的团队资源反查团队",
+            "ending_direction": "查清真相并夺回项目主导权",
+            "target_audience": "都市职场逆袭用户",
+            "content_constraints": [],
+        }
     }
-    return outline
 
 
 def _production_generate_kwargs() -> dict:
@@ -81,9 +86,9 @@ def _production_generate_kwargs() -> dict:
         "story_format": "short_drama",
         "genre": "drama",
         "characters": [
-            {"name": "文闻", "description": "商业咨询公司项目负责人"},
-            {"name": "林晚_爽剧测试_01300519", "description": "职场对手"},
-            {"name": "阿飞", "description": "外部压力来源"},
+            {"business_id": "vip-wenwen", "name": "文闻", "description": "项目负责人"},
+            {"business_id": "vip-linwan", "name": "林晚", "description": "职场对手"},
+            {"business_id": "vip-afei", "name": "阿飞", "description": "外部压力来源"},
         ],
         "market_region": "CN",
         "micro_genre": "职场逆袭",
@@ -109,7 +114,7 @@ def _production_generate_kwargs() -> dict:
 
 
 @pytest.mark.asyncio
-async def test_story_agent_repairs_production_outline_until_contract_gate_passes():
+async def test_story_agent_repairs_production_output_until_seed_gate_passes():
     from app.prompts.templates import PromptTemplate
     from app.services.story_agent import LANGGRAPH_AVAILABLE, StoryLangGraphAgent
 
@@ -118,7 +123,7 @@ async def test_story_agent_repairs_production_outline_until_contract_gate_passes
 
     calls: list[str] = []
     repair_vars: dict = {}
-    responses = [_strong_outline(), _strong_outline_with_contract()]
+    responses = [_strong_outline(), _story_seed()]
 
     async def _generate_text(**kwargs: object):
         schema = kwargs.get("json_schema")
@@ -145,13 +150,13 @@ async def test_story_agent_repairs_production_outline_until_contract_gate_passes
 
     assert calls == ["story_outline", "story_outline_repair"]
     assert result["quality_gate"]["passed"] is True
-    assert result["normalized"]["structured_story_contract"]["compliance_risks"] == []
+    assert result["normalized"]["story_seed"]["schema"] == "story_seed_v1"
     assert repair_vars["production_mode"] is True
-    assert "structured_story_contract_required" in repair_vars["quality_gate_issues"]
+    assert "story_seed" in repair_vars["missing_fields"]
 
 
 @pytest.mark.asyncio
-async def test_story_agent_production_schema_requires_structured_contract():
+async def test_story_agent_production_schema_requires_story_seed():
     from app.services.story_agent import LANGGRAPH_AVAILABLE, StoryLangGraphAgent
 
     if not LANGGRAPH_AVAILABLE:
@@ -165,7 +170,7 @@ async def test_story_agent_production_schema_requires_structured_contract():
             captured_schema.update(schema.get("schema") or {})
         return SimpleNamespace(
             success=True,
-            data=_strong_outline_with_contract(),
+            data=_story_seed(),
             provider="deepseek",
             model="deepseek-v4-flash",
             usage={"total_tokens": 1},
@@ -179,7 +184,7 @@ async def test_story_agent_production_schema_requires_structured_contract():
     ):
         await agent.generate(**_production_generate_kwargs())
 
-    assert "structured_story_contract" in captured_schema["required"]
-    contract_schema = captured_schema["properties"]["structured_story_contract"]
-    assert "target_audience" in contract_schema["required"]
-    assert "traffic_hooks" in contract_schema["required"]
+    assert captured_schema["required"] == ["story_seed"]
+    seed_schema = captured_schema["$defs"]["StorySeedModel"]
+    assert "premise" in seed_schema["required"]
+    assert "central_conflict" in seed_schema["required"]

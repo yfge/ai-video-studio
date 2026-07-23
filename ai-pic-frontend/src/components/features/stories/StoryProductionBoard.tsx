@@ -40,6 +40,7 @@ export function StoryProductionBoard({
     selectedStatus,
     setSelectedStatus,
     handleGenerateStory,
+    handleSaveStorySeed,
     handleDeleteStory,
     handleCharacterToggle,
     handlePreviewPrompt,
@@ -125,6 +126,7 @@ export function StoryProductionBoard({
         onCharacterToggle={handleCharacterToggle}
         onPreviewPrompt={handlePreviewPrompt}
         onSubmit={handleGenerateStory}
+        onSaveDraft={handleSaveStorySeed}
         onNavigateToVirtualIP={navigateToVirtualIP}
       />
       <SingleVideoProjectModal

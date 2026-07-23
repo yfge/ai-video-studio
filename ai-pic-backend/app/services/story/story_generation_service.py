@@ -2,17 +2,21 @@ from typing import Any, Dict, List, Optional
 
 from app.models.script import Story, StoryCharacter
 from app.models.user import User
+from app.repositories.narrative_memory_repository import NarrativeMemoryRepository
+from app.repositories.narrative_promotion_repository import NarrativePromotionRepository
 from app.repositories.virtual_ip_repository import VirtualIPRepository
 from app.schemas.generation_requests import StoryGenerationRequest
 from app.services.ai_service import ai_service
+from app.services.narrative_memory.baseline_service import BaselineService
 from app.services.quality_gate_core import NarrativeQualityGateError
+from app.services.story.story_generation_persistence import build_story_data
 from app.services.story.story_generation_utils import (
     build_agent_run,
-    build_extra_metadata,
     resolve_model_provider,
 )
 from app.services.story.story_outline_normalizer import normalize_story_outline_strict
-from app.services.story_quality_gate import evaluate_story_quality_gate
+from app.services.story.story_seed_service import seed_from_generation
+from app.services.story_quality_gate import evaluate_story_seed_quality_gate
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -39,10 +43,22 @@ class StoryGenerationService:
             characters.append(
                 {
                     "id": virtual_ip.id,
+                    "business_id": virtual_ip.business_id,
                     "name": virtual_ip.name,
                     "description": virtual_ip.description,
                     "background_story": virtual_ip.background_story,
                     "style_prompt": virtual_ip.style_prompt,
+                    "shared_memories": [
+                        {
+                            "business_id": item.business_id,
+                            "content": item.content,
+                            "belief": item.belief,
+                            "version": item.version,
+                        }
+                        for item in NarrativePromotionRepository(
+                            self.db
+                        ).list_shared_memories(virtual_ip.id)
+                    ],
                 }
             )
         return characters
@@ -96,14 +112,18 @@ class StoryGenerationService:
         request: StoryGenerationRequest,
         result: Dict[str, Any],
         ai_content: Dict[str, Any],
+        characters: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
-        if request.generation_mode != "production":
+        if request.workflow_mode == "direct":
             return result
-        gate = evaluate_story_quality_gate(
+        seed = seed_from_generation(ai_content, request, characters)
+        ai_content["story_seed"] = seed.model_dump(by_alias=True)
+        gate = evaluate_story_seed_quality_gate(
             story=ai_content,
-            hook_plan=request.hook_plan.model_dump() if request.hook_plan else None,
+            allowed_virtual_ip_business_ids=[
+                item["business_id"] for item in characters
+            ],
             content_restrictions=request.content_restrictions,
-            require_story_contract=True,
         )
         if not gate.get("passed"):
             raise NarrativeQualityGateError("story", gate)
@@ -112,7 +132,7 @@ class StoryGenerationService:
             "quality_gate": gate,
             "generation_mode": request.generation_mode,
             "production_mode": True,
-            "contract_version": "story_contract_v1",
+            "contract_version": "story_seed_v1",
         }
 
     def _persist_story(
@@ -124,10 +144,18 @@ class StoryGenerationService:
         self.db.refresh(story)
 
         for char_id in character_ids:
+            virtual_ip = VirtualIPRepository(self.db).find_accessible_by_id(
+                char_id, user=self.current_user, user_id=story.user_id
+            )
             self.db.add(
                 StoryCharacter(
                     story_id=story.id,
+                    story_business_id=story.business_id,
                     virtual_ip_id=char_id,
+                    virtual_ip_business_id=(
+                        virtual_ip.business_id if virtual_ip else None
+                    ),
+                    character_name=virtual_ip.name if virtual_ip else None,
                     role_type=(
                         "protagonist" if char_id == character_ids[0] else "supporting"
                     ),
@@ -136,89 +164,12 @@ class StoryGenerationService:
             )
         self.db.commit()
         self.db.refresh(story)
+        if story.memory_mode == "story_scoped_memory_v1":
+            BaselineService(
+                NarrativeMemoryRepository(self.db),
+                NarrativePromotionRepository(self.db),
+            ).freeze(story)
         return story
-
-    def _build_story_data(
-        self,
-        request: StoryGenerationRequest,
-        ai_content: Dict[str, Any],
-        result: Dict[str, Any],
-        agent_run: Dict[str, Any],
-        user_id: int,
-    ) -> Dict[str, Any]:
-        extra_metadata = build_extra_metadata(ai_content)
-        if request.market_region and "market_region" not in extra_metadata:
-            extra_metadata["market_region"] = request.market_region
-        if request.micro_genre and "micro_genre" not in extra_metadata:
-            extra_metadata["micro_genre"] = request.micro_genre
-        if request.pacing_template and "pacing_template" not in extra_metadata:
-            extra_metadata["pacing_template"] = request.pacing_template
-        if request.hook_plan and "hook_plan" not in extra_metadata:
-            extra_metadata["hook_plan"] = request.hook_plan.model_dump()
-        if request.twist_density and "twist_density" not in extra_metadata:
-            extra_metadata["twist_density"] = request.twist_density
-        if request.cliffhanger_plan and "cliffhanger_plan" not in extra_metadata:
-            extra_metadata["cliffhanger_plan"] = request.cliffhanger_plan
-        if request.ad_snippets and "ad_snippets" not in extra_metadata:
-            extra_metadata["ad_snippets"] = [
-                s.model_dump() for s in request.ad_snippets
-            ]
-        if agent_run:
-            extra_metadata = {**extra_metadata, "agent_run": agent_run}
-
-        return {
-            "user_id": user_id,
-            "title": request.title,
-            "story_format": request.story_format,
-            "genre": request.genre,
-            "theme": request.theme,
-            "target_audience": request.target_audience,
-            "duration_minutes": request.duration_minutes,
-            "default_aspect_ratio": request.default_aspect_ratio,
-            "setting_time": request.setting_time,
-            "setting_location": request.setting_location,
-            "world_building": request.world_building,
-            "premise": ai_content.get("premise"),
-            "synopsis": ai_content.get("synopsis"),
-            "main_conflict": ai_content.get("main_conflict"),
-            "resolution": ai_content.get("resolution"),
-            "main_characters": ai_content.get("main_characters"),
-            "character_relationships": ai_content.get("character_relationships"),
-            "generation_prompt": (
-                result.get("prompt") if isinstance(result, dict) else None
-            ),
-            "ai_model": (
-                result.get("generation_method") if isinstance(result, dict) else None
-            ),
-            "generation_params": {
-                "character_ids": request.character_ids,
-                "generation_mode": request.generation_mode,
-                "story_format": request.story_format,
-                "default_aspect_ratio": request.default_aspect_ratio,
-                "market_region": request.market_region,
-                "micro_genre": request.micro_genre,
-                "pacing_template": request.pacing_template,
-                "hook_plan": (
-                    request.hook_plan.model_dump() if request.hook_plan else None
-                ),
-                "twist_density": request.twist_density,
-                "cliffhanger_plan": request.cliffhanger_plan,
-                "ad_snippets": (
-                    [s.model_dump() for s in request.ad_snippets]
-                    if request.ad_snippets
-                    else None
-                ),
-                "additional_requirements": request.additional_requirements,
-                "style_preferences": request.style_preferences,
-                "content_restrictions": request.content_restrictions,
-                "model": request.model,
-                "temperature": request.temperature or 0.7,
-            },
-            "tags": request.tags,
-            "workflow_mode": request.workflow_mode,
-            "extra_metadata": extra_metadata,
-            "status": "draft",
-        }
 
     async def generate_story(self, request: StoryGenerationRequest) -> Story:
         if not self.current_user:
@@ -227,10 +178,12 @@ class StoryGenerationService:
         characters = self._build_characters(request.character_ids)
         result = await self._run_story_outline(request, characters)
         ai_content = normalize_story_outline_strict(result)
-        result = self._enforce_story_quality_gate(request, result, ai_content)
+        result = self._enforce_story_quality_gate(
+            request, result, ai_content, characters
+        )
         agent_run = build_agent_run(result)
-        story_data = self._build_story_data(
-            request, ai_content, result, agent_run, self.current_user.id
+        story_data = build_story_data(
+            request, ai_content, result, agent_run, self.current_user.id, characters
         )
         return self._persist_story(story_data, request.character_ids)
 
@@ -241,9 +194,11 @@ class StoryGenerationService:
         characters = self._build_characters(request.character_ids, user_id=user_id)
         result = await self._run_story_outline(request, characters)
         ai_content = normalize_story_outline_strict(result)
-        result = self._enforce_story_quality_gate(request, result, ai_content)
+        result = self._enforce_story_quality_gate(
+            request, result, ai_content, characters
+        )
         agent_run = build_agent_run(result)
-        story_data = self._build_story_data(
-            request, ai_content, result, agent_run, user_id
+        story_data = build_story_data(
+            request, ai_content, result, agent_run, user_id, characters
         )
         return self._persist_story(story_data, request.character_ids)

@@ -11,6 +11,7 @@ Provides modular story endpoints split by concern:
 - readiness: Pre-generation readiness checks
 """
 
+from app.api.v1.endpoints.narrative_memory import story_router as memory_router
 from app.services.ai_service import ai_service
 from app.services.story.story_novel_task_processor import (
     process_story_novel_task as process_story_novel_export_task,
@@ -42,6 +43,7 @@ for sub_router in [
     characters_router,
     meta_router,
     readiness_router,
+    memory_router,
 ]:
     for route in sub_router.routes:
         router.routes.append(route)

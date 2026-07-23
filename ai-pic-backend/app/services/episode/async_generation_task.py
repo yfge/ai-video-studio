@@ -12,13 +12,16 @@ from app.schemas.generation_requests import EpisodeGenerationRequest
 from app.services.ai_service import ai_service
 from app.services.episode.async_generation_task_helpers import (
     attach_context_pack,
+    attach_narrative_memory_context,
     build_episode_result_meta,
     build_marketing_overrides,
     build_outline_agent_run,
     build_story_data,
     build_streamed_episode_agent_run,
     ensure_outline_treatment,
+    freeze_episode_memory,
     load_focus_characters,
+    resolve_episode_model,
 )
 from app.services.episode.episode_generation_result_processor import (
     process_episode_generation_result,
@@ -62,6 +65,7 @@ def run_episode_generation_task(
         story_data = build_story_data(story)
         apply_marketing_overrides(story_data, build_marketing_overrides(request))
         used_context = attach_context_pack(db, story, story_data)
+        attach_narrative_memory_context(db, story, story_data)
         focus_characters = load_focus_characters(db, request, user_id)
         outline_agent_run: Dict[str, Any] = {}
 
@@ -99,6 +103,7 @@ def run_episode_generation_task(
                 progress_fn=_progress,
             )
             if ep and created:
+                freeze_episode_memory(db, story, ep)
                 created_ids.append(ep.id)
 
         result = anyio.run(
@@ -124,6 +129,9 @@ def run_episode_generation_task(
             created_ids=created_ids,
             progress_fn=_progress,
         )
+        for generated_episode in list_episodes_by_ids(db, created_ids):
+            if not generated_episode.memory_snapshot_evidence:
+                freeze_episode_memory(db, story, generated_episode)
         _complete_task(
             db, task_repo, episode_repo, task_id, request, story, created_ids
         )
@@ -144,10 +152,7 @@ async def _generate_episodes(
     focus_characters: list[Dict[str, Any]],
     callbacks: EpisodeGenerationCallbacks,
 ) -> Dict[str, Any] | None:
-    prefer_provider = None
-    model_id = request.model
-    if model_id and ":" in model_id:
-        prefer_provider, model_id = model_id.split(":", 1)
+    prefer_provider, model_id = resolve_episode_model(request.model)
     return await ai_service.generate_episodes(
         story=story_data,
         episode_count=request.episode_count,

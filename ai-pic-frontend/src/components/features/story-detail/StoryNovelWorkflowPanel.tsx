@@ -88,7 +88,7 @@ export function StoryNovelWorkflowPanel({
         <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 px-5 py-4">
           <button
             type="button"
-            disabled={workflow.busy}
+            disabled={workflow.busy || story.story_seed_status !== "confirmed"}
             onClick={() =>
               void workflow.generate(
                 targetWords,
@@ -99,6 +99,11 @@ export function StoryNovelWorkflowPanel({
           >
             生成新小说草稿
           </button>
+          {story.story_seed_status !== "confirmed" ? (
+            <span className="text-xs text-amber-700">
+              请先确认 Story Seed；确认不会自动调用小说生成。
+            </span>
+          ) : null}
           {current?.lifecycle_status === "draft" ? (
             <button
               type="button"
@@ -220,6 +225,7 @@ export function StoryNovelWorkflowPanel({
       </OperatorPanel>
       {current?.chapters.length ? (
         <StoryNovelChapterEditor
+          storyId={story.business_id}
           revision={current}
           busy={workflow.busy}
           onSave={(chapter, patch) => void workflow.saveChapter(chapter, patch)}

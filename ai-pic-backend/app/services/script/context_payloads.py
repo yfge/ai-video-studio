@@ -109,6 +109,9 @@ def build_episode_data(episode: Episode) -> Dict[str, Any]:
         "scene_count": scene_count,
         "scenes": scenes,
         "source_novel": build_source_novel_context(episode),
+        "narrative_memory": episode.memory_snapshot_evidence,
+        "audience_disclosure": episode.disclosure_policy,
+        "memory_snapshot_stale": bool(episode.memory_snapshot_stale),
         **marketing_meta,
     }
 
@@ -139,5 +142,8 @@ def build_story_data(
         "setting_location": story.setting_location,
         "previous_episode_summaries": previous_episode_summaries,
         "character_profiles": character_profiles,
+        "story_seed": story.story_seed,
+        "memory_ledger_version": story.memory_ledger_version,
+        "memory_ledger_hash": story.memory_ledger_hash,
         **marketing_meta,
     }

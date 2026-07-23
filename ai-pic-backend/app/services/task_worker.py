@@ -20,6 +20,10 @@ from app.services.task_worker_assets import (  # noqa: F401
 from app.services.task_worker_grid_storyboard import (  # noqa: F401
     grid_storyboard_sheet_generate_task,
 )
+from app.services.task_worker_narrative_memory import (  # noqa: F401
+    dramatic_state_suggest_task,
+    narrative_memory_extract_task,
+)
 
 # Re-export storyboard media tasks for compatibility imports.
 from app.services.task_worker_storyboard_media import (  # noqa: F401

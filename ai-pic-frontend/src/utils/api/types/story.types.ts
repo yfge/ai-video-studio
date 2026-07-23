@@ -1,4 +1,6 @@
 import type { ProductionCanvasResolvedContext } from "./production-canvas-context.types";
+import type { StoryCharacter } from "./story-character.types";
+import type { StorySeed } from "./story-seed.types";
 
 interface HookBeat {
   beat_type?: string;
@@ -19,33 +21,6 @@ export interface AdSnippet {
   hook: string;
   visual_summary?: string;
   call_to_action?: string;
-}
-
-export interface StoryCharacter {
-  id: number;
-  business_id: string;
-  story_id: number;
-  importance: number;
-  virtual_ip_id: number;
-  virtual_ip_business_id?: string | null;
-  virtual_ip_name?: string | null;
-  name?: string | null;
-  display_name?: string | null;
-  character_name?: string | null;
-  role_type?: string;
-  role?: string | null;
-  description?: string | null;
-  appearance?: string | null;
-  personality?: string;
-  background?: string;
-  motivation?: string;
-  character_arc?: string;
-  backstory?: string | null;
-  relationships?: Record<string, unknown>;
-  arc_summary?: string | null;
-  metadata?: Record<string, unknown> | null;
-  created_at: string;
-  updated_at: string;
 }
 
 // Story entity
@@ -83,6 +58,19 @@ export interface Story {
   created_at: string;
   updated_at: string;
   story_characters?: StoryCharacter[];
+  story_seed?: StorySeed | null;
+  story_seed_schema?: string;
+  story_seed_status?: string;
+  story_seed_version?: number;
+  story_seed_updated_at?: string | null;
+  memory_mode?: "off" | "story_scoped_memory_v1";
+  canon_branch_id?: string;
+  shared_memory_baseline?: Record<string, unknown> | null;
+  shared_memory_baseline_version?: number;
+  shared_memory_baseline_hash?: string | null;
+  memory_ledger_version?: number;
+  memory_ledger_hash?: string | null;
+  memory_review_status?: string;
 }
 
 // Episode entity
@@ -117,6 +105,12 @@ export interface Episode {
   source_chapter_refs?: Array<Record<string, unknown>> | null;
   created_at: string;
   updated_at: string;
+  memory_snapshot_evidence?: Record<string, unknown> | null;
+  memory_ledger_version?: number | null;
+  memory_ledger_hash?: string | null;
+  disclosure_policy?: Record<string, unknown> | null;
+  memory_snapshot_stale?: boolean;
+  memory_snapshot_stale_reason?: Record<string, unknown> | null;
 }
 
 // Story generation request

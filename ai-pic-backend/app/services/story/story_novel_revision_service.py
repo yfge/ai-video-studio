@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from app.models.story_novel_export import StoryNovelChapter, StoryNovelExport
 from app.models.user import User
@@ -16,12 +16,12 @@ from .story_novel_domain import (
     refresh_revision_content,
     sha256_text,
 )
-
-
-def _utc(value: datetime | None) -> datetime | None:
-    if value is None:
-        return None
-    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
+from .story_novel_memory_context import (
+    capture_chapter_source_hashes,
+    ensure_timestamp,
+    invalidate_chapter_source,
+    invalidate_reordered_chapters,
+)
 
 
 class StoryNovelRevisionService:
@@ -50,6 +50,14 @@ class StoryNovelRevisionService:
         task_id: int | None = None,
     ) -> StoryNovelExport:
         story = self.story(story_business_id)
+        if (
+            story.memory_mode == "story_scoped_memory_v1"
+            and story.story_seed
+            and story.story_seed_status != "confirmed"
+        ):
+            raise HTTPException(
+                status_code=409, detail="请先确认 Story Seed，再生成小说"
+            )
         if story.workflow_mode != "novel_adaptation_v1":
             story.workflow_mode = "novel_adaptation_v1"
         chapter_count = request.chapter_count or max(
@@ -118,7 +126,8 @@ class StoryNovelRevisionService:
         chapter = self.repo.chapter(revision.id, chapter_id)
         if not chapter:
             raise HTTPException(status_code=404, detail="章节不存在")
-        self._check_timestamp(chapter.updated_at, request.expected_updated_at)
+        ensure_timestamp(chapter.updated_at, request.expected_updated_at)
+        source_before = capture_chapter_source_hashes([chapter])
         for field in ("title", "content_text", "summary", "cliffhanger"):
             value = getattr(request, field, None)
             if value is not None:
@@ -127,6 +136,9 @@ class StoryNovelRevisionService:
         chapter.review_status = "ready"
         self._invalidate_from(revision, chapter.position + 1)
         refresh_revision_content(revision)
+        invalidate_chapter_source(
+            self.db, revision, chapter, source_before[chapter.business_id]
+        )
         self.db.commit()
         self.db.refresh(chapter)
         return chapter
@@ -134,7 +146,7 @@ class StoryNovelRevisionService:
     def reorder(self, revision_id: str, request) -> StoryNovelExport:
         revision = self.revision(revision_id)
         self._ensure_draft(revision)
-        self._check_timestamp(revision.updated_at, request.expected_updated_at)
+        ensure_timestamp(revision.updated_at, request.expected_updated_at)
         chapters = active_chapters(revision)
         existing = {row.business_id: row for row in chapters}
         ordered = request.ordered_chapter_business_ids
@@ -142,9 +154,11 @@ class StoryNovelRevisionService:
             raise HTTPException(status_code=400, detail="章节排序列表不完整或有重复")
         changed_at = len(chapters) + 1
         old = {row.business_id: row.position for row in chapters}
+        source_before = capture_chapter_source_hashes(chapters)
         for position, business_id in enumerate(ordered, start=1):
             changed_at = min(changed_at, old[business_id], position)
             existing[business_id].position = position
+        invalidate_reordered_chapters(self.db, revision, chapters, source_before)
         self._invalidate_from(revision, changed_at)
         refresh_revision_content(revision)
         self.db.commit()
@@ -231,8 +245,3 @@ class StoryNovelRevisionService:
             raise HTTPException(
                 status_code=409, detail="已审批小说不可编辑，请克隆新草稿"
             )
-
-    @staticmethod
-    def _check_timestamp(actual: datetime | None, expected: datetime) -> None:
-        if actual and abs((_utc(actual) - _utc(expected)).total_seconds()) > 0.001:
-            raise HTTPException(status_code=409, detail="内容已被其他窗口更新")

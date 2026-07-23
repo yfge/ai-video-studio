@@ -15,11 +15,13 @@ def chapter_prompt(
     chapter_plan: dict,
     previous: list[dict],
     target_words: int,
+    memory_context: dict[str, Any] | None = None,
 ) -> str:
     return f"""根据故事合同写一章通用小说正文。
 故事合同：{json_prompt_payload(snapshot)}
 本章计划：{json_prompt_payload(chapter_plan)}
 此前章节摘要：{json_prompt_payload(previous)}
+当前章开始前的叙事记忆快照：{json_prompt_payload(memory_context or {})}
 本章目标约 {target_words} 个中文字符。
 只输出严格 JSON：
 {{"title":"章节标题","content_text":"完整正文","summary":"200字内摘要","cliffhanger":"章末卡点"}}

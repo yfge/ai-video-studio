@@ -69,6 +69,17 @@ class StoryNovelRepository:
             query = query.filter(StoryNovelExport.user_id == user.id)
         return query.order_by(StoryNovelExport.revision_number.desc()).all()
 
+    def story_revisions(self, story_id: int) -> list[StoryNovelExport]:
+        return (
+            self.db.query(StoryNovelExport)
+            .filter(
+                StoryNovelExport.story_id == story_id,
+                StoryNovelExport.is_deleted.is_(False),
+            )
+            .options(selectinload(StoryNovelExport.chapters))
+            .all()
+        )
+
     def list_exports(
         self, story_id: int, user: User, limit: int
     ) -> list[StoryNovelExport]:

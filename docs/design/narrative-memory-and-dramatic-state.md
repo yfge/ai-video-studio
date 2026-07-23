@@ -1,7 +1,7 @@
 # 叙事记忆、角色成长与潜台词设计
 
-> Status: Draft for review
-> Updated: 2026-07-22
+> Status: Implemented (v1)
+> Updated: 2026-07-23
 > Applies to: new narrative-series workflows only
 > Related: `docs/design/story-novel-episode-script.md`,
 > `docs/design/story-episode-generation-quality.md`,
@@ -23,6 +23,7 @@ Agent memory，也不是把所有历史文本放进向量库，而是当前创�
 - Story 创建或开始生产时冻结每个角色的公共记忆基线；公共记忆后续升级不得静默污染在制 Story。
 - 记忆必须引用稳定的发生、获知和生效锚点；生成只能读取当前锚点之前已经生效的记忆。
 - “已经发生但不表现”属于客观事件与观众显隐状态；“潜台词”属于场景意图，二者不能塞进角色记忆代替。
+- Story 生成退回轻量、可编辑的结构化 `StorySeed`，不再承担分集、投流、拍摄和跨集连续性的完整生产规划。
 - 审批小说仍是新系列的叙事 SSOT，Timeline 仍是制作时间、clip 顺序、资产谱系和交付 SSOT。
 
 ## 2. Why
@@ -51,6 +52,7 @@ Agent memory，也不是把所有历史文本放进向量库，而是当前创�
 - 让任意一次生成都能记录并复现所使用的记忆快照。
 - 在源内容修改时确定性标记受影响的事件、记忆、快照和下游内容。
 - 给编辑提供可理解、可审核、可比较的 UI，而不是直接暴露原始 JSON。
+- 删除 Story、Novel、Episode 和 Script 之间重复的规划与连续性校验。
 
 ## 4. Non-goals
 
@@ -62,6 +64,7 @@ Agent memory，也不是把所有历史文本放进向量库，而是当前创�
 - 不做逐句、逐 token 的全文事实索引。
 - 不让 Timeline 成为叙事记忆的编辑入口。
 - 不把角色临时情绪全部永久化；只有经过筛选的状态变化进入长期记忆。
+- 不把 Story Seed 降成无约束自由文本；初始角色、世界边界和核心冲突仍需结构化。
 
 ## 5. Terms
 
@@ -107,6 +110,23 @@ Agent memory，也不是把所有历史文本放进向量库，而是当前创�
 某个角色在指定锚点之前可用的公共记忆基线、Story 私有记忆、信念和成长状态的
 不可变快照。
 
+### 5.10 StorySeed
+
+Story 创建时使用的轻量结构化大纲。它只定义后续创作必须共享的初始条件，不提前完成
+小说结构、分集商业节奏、场景潜台词或拍摄规划。
+
+最小字段：
+
+- `title`
+- `premise`
+- `outline`
+- `protagonists` 及其初始状态
+- `world_constraints`
+- `central_conflict`
+- `ending_direction`，可空
+- `target_audience`
+- `content_constraints`
+
 ## 6. Invariants
 
 以下规则是实现和验收的硬约束：
@@ -127,13 +147,14 @@ Agent memory，也不是把所有历史文本放进向量库，而是当前创�
 14. 重生成同一位置时必须读取该位置之前的快照，不能读取第一次生成产生的未来记忆。
 15. 公共记忆新版本只影响新 Story；在制 Story 必须人工查看 diff 后主动同步。
 16. 已经进入 Timeline 的 Script 不因记忆更新被静默替换。
+17. Story 创建只要求 `story_seed_v1`；商业节奏、可拍性和跨集连续性不得重新成为 Story 创建的阻断门槛。
 
 ## 7. Architecture
 
 ```mermaid
 flowchart TD
     Shared["角色公共记忆\n人工审批"] --> Baseline["Story 公共记忆基线\n冻结版本"]
-    Contract["Story 合同 / Canon Facts"] --> Context["当前生成上下文"]
+    Contract["Story Seed / 初始 Canon"] --> Context["当前生成上下文"]
     Baseline --> Context
     Private["当前 Story 私有记忆"] --> Context
     Dramatic["当前场景 Dramatic State"] --> Context
@@ -149,7 +170,7 @@ flowchart TD
 
 ### 7.1 Sources of truth
 
-- Story contract：当前 Story 的创作合同与基础 Canon。
+- Story Seed：当前 Story 的轻量结构化大纲与初始 Canon。
 - Approved novel revision：新系列的叙事母本。
 - Narrative Event/Character Memory ledger：从审批内容累积的长期叙事状态。
 - Memory Snapshot：一次具体生成所使用的不可变读取视图。
@@ -472,7 +493,7 @@ approved -> superseded
 
 ### 12.3 Approval boundary by artifact
 
-- Story contract：Story 确认/审批版本。
+- Story Seed：Story 大纲确认版本。
 - Novel：现有 canonical novel approval。
 - Adaptation plan：现有 plan approval/application。
 - Episode：approved adaptation plan 应用时冻结 Episode 来源和记忆快照。
@@ -483,20 +504,77 @@ approved -> superseded
 
 ### 13.1 Story generation
 
-输入：
+记忆机制承担内容产生后的连续性，因此 Story 不再充当完整短剧生产规划器。目标链路是：
+
+```text
+用户 Brief + 角色公共记忆基线
+-> Story Seed
+-> 小说章节
+-> 事件/角色记忆提取与审批
+-> 分集改编计划
+-> Episode
+-> Script
+```
+
+Story 生成输入：
 
 - Virtual IP 基础资料；
 - Story 创建时冻结的角色公共记忆基线；
-- 用户 brief 和 structured story contract。
+- 用户 brief；
+- 可选的时代、地点、题材、目标受众和内容限制。
 
-不得输入同一 Virtual IP 在其他 Story 的私有经历。Story 输出只创建合同和 Canon
-候选，不创建公共记忆。
+Story 只输出 `story_seed_v1`：
+
+```json
+{
+  "title": "故事标题",
+  "premise": "一句话故事前提",
+  "outline": "可编辑的整体大纲",
+  "protagonists": [
+    {
+      "virtual_ip_business_id": "vip_x",
+      "initial_state": "故事开始时的处境与目标"
+    }
+  ],
+  "world_constraints": ["不可违反的世界规则"],
+  "central_conflict": "贯穿故事的核心冲突",
+  "ending_direction": "结局方向，可空",
+  "target_audience": "目标受众",
+  "content_constraints": ["内容和合规边界"]
+}
+```
+
+Story 阶段保留的校验只有：
+
+- schema 与必要字段；
+- Virtual IP ownership 和稳定 business ID；
+- 公共记忆基线版本/hash；
+- 角色身份、世界规则和大纲之间的直接矛盾；
+- 阻断级内容与合规约束；
+- 最多一次有界 schema repair。
+
+以下字段和校验从 Story 阶段下沉：
+
+| 原 Story 生产字段  | 新归属                               |
+| ------------------ | ------------------------------------ |
+| 阶段期待、阶段高潮 | 小说结构或分集改编计划               |
+| 前三集主线         | 分集改编计划                         |
+| 投流钩子、卡点密度 | Episode 商业节奏规划                 |
+| 拍摄可行性         | Episode/Script 生产检查              |
+| 角色成长连续性     | Character Memory/Growth Snapshot     |
+| 信息差、谁知道什么 | Character Memory/Audience Disclosure |
+| 潜台词             | Script Dramatic State                |
+| 跨集连续性         | Narrative Event/Memory Snapshot      |
+
+不得输入同一 Virtual IP 在其他 Story 的私有经历。Story 输出只创建 Story Seed、
+公共记忆基线引用和初始 Canon 候选，不创建公共记忆。Story Seed 的确认也不得启动
+小说、Episode 或 Script 的自动付费生成。
 
 ### 13.2 Novel chapter generation
 
 每章生成输入：
 
-- frozen Story/IP/world/structured-contract snapshot；
+- frozen StorySeed/IP/world snapshot；
 - 当前章计划；
 - 最近章节摘要；
 - 当前章开始锚点之前的相关 Canon、角色记忆、成长状态和未闭合线索；
@@ -676,7 +754,7 @@ schemas/narrative_memory.py
 当前 Story 详情页继续保持：
 
 ```text
-1. 故事合同
+1. 故事大纲（Story Seed）
 2. 小说版本与章节编辑
 3. 分集改编计划
 4. 剧集生产状态
@@ -695,7 +773,27 @@ schemas/narrative_memory.py
 /stories/{story_business_id}/memory
 ```
 
-### 18.2 Story memory workspace
+### 18.2 Story creation and Story Seed UI
+
+新建 Story 页面只展示：
+
+- 标题和一句话创作 Brief；
+- 角色选择及公共记忆基线摘要；
+- 时代、地点和世界规则；
+- 故事前提、整体大纲、核心冲突和可选结局方向；
+- 目标受众和内容限制；
+- “生成大纲”和“保存大纲”操作。
+
+不再要求用户在 Story 创建阶段填写或审核前三集结构、阶段高潮、投流钩子、卡点密度
+和拍摄可行性。高级生产约束在相应的 Novel、Adaptation Plan、Episode 或 Script
+工作区出现。
+
+AI 生成结果先进入可编辑 Story Seed 草稿。页面显示角色公共记忆基线版本和冲突，
+但不展示其他 Story 的私有记忆。保存不调用模型；“生成/重新生成大纲”是显式付费
+操作。Story Seed 确认后才能进入小说生成，修改已确认大纲会把小说和下游状态标记
+`review_required`，不会自动重生成。
+
+### 18.3 Story memory workspace
 
 复用 Operator `main-inspector` 布局：
 
@@ -723,7 +821,7 @@ schemas/narrative_memory.py
 - 待审核/冲突/stale 数量；
 - “提取记忆候选”按钮及明确的模型调用说明。
 
-### 18.3 Anchor UI
+### 18.4 Anchor UI
 
 默认用人类可读路径展示：
 
@@ -737,7 +835,7 @@ schemas/narrative_memory.py
 离场事件用“发生在场景 A 之后、场景 B 之前”展示。源内容改变后显示红色
 `锚点待确认`，并提供“查看原位置 / 选择新位置 / 作废事件”。
 
-### 18.4 Candidate review UI
+### 18.5 Candidate review UI
 
 审核项必须并列展示：
 
@@ -760,7 +858,7 @@ schemas/narrative_memory.py
 批量批准只能用于无冲突、同一来源版本且锚点完整的候选。公共记忆提升永远不能批量
 自动批准。
 
-### 18.5 Novel workflow integration
+### 18.6 Novel workflow integration
 
 在现有章节卡片上增加非侵入状态：
 
@@ -776,7 +874,7 @@ schemas/narrative_memory.py
 审批小说为 canonical 前，阻断级记忆冲突必须解决或填写接受理由；普通候选不强制
 全部公共化，只要求 Story 私有 Canon 完整。
 
-### 18.6 Episode production UI
+### 18.7 Episode production UI
 
 Story 详情的剧集行不增加大量列。点击 Episode 或展开行时显示：
 
@@ -788,7 +886,7 @@ Story 详情的剧集行不增加大量列。点击 Episode 或展开行时显�
 
 若 stale，进入 Timeline 的按钮保持可用但显示明确风险；系统不自动替换生产内容。
 
-### 18.7 Script workspace and subtext
+### 18.8 Script workspace and subtext
 
 Script/scene Inspector 增加“场景意图与潜台词”：
 
@@ -806,7 +904,7 @@ Script/scene Inspector 增加“场景意图与潜台词”：
 Script 选择进入生产/创建 Timeline 前，UI 显示一次叙事检查结果。阻断问题包括知识
 泄漏、提前揭示和 `subtext_only` 直说。
 
-### 18.8 Virtual IP shared-memory UI
+### 18.9 Virtual IP shared-memory UI
 
 Virtual IP 详情新增“角色公共记忆”资产入口，但不把记忆混进现有基础资料编辑表单。
 
@@ -833,7 +931,7 @@ Virtual IP 详情新增“角色公共记忆”资产入口，但不把记忆混
 - 影响的新 Story 列表；
 - 明确提示“不会自动修改在制 Story”。
 
-### 18.9 Story baseline update UI
+### 18.10 Story baseline update UI
 
 公共记忆新版本发布后，Story 详情显示非阻断提示：
 
@@ -844,7 +942,7 @@ Virtual IP 详情新增“角色公共记忆”资产入口，但不把记忆混
 “查看差异”展示新增、修改、冲突和可能失效的 Story 内容。默认动作是“保持当前版本”。
 同步必须二次确认，并说明只更新基线和 stale 状态，不自动重生成。
 
-### 18.10 Required UI states
+### 18.11 Required UI states
 
 所有记忆界面必须覆盖：
 
@@ -862,7 +960,7 @@ Virtual IP 详情新增“角色公共记忆”资产入口，但不把记忆混
 颜色不能是唯一状态信号；状态 pill 同时包含文本和图标。时间线、tab、drawer、modal、
 表格和 diff 必须支持键盘操作、可见 focus、正确 heading/label 和 `aria-live` 任务状态。
 
-### 18.11 Cost and safety copy
+### 18.12 Cost and safety copy
 
 UI 必须区分：
 
@@ -886,6 +984,8 @@ UI 必须区分：
 ## 20. Compatibility
 
 - 新 narrative-series Story 可启用 `story_scoped_memory_v1`。
+- 新 Story 目标格式为 `story_seed_v1`；现有 `structured_story_contract` 继续只读兼容，
+  不要求历史 Story 重生成。
 - 历史 Story、`workflow_mode=direct` 和 single-video 默认 `memory_mode=off`。
 - 不自动回填历史内容；用户可显式为某个 Story 初始化基线并运行提取。
 - 缺少 memory snapshot 的旧 Episode/Script 继续使用现有上下文兼容路径。
@@ -913,6 +1013,9 @@ UI 必须区分：
 
 ### 22.1 Backend
 
+- `StorySeed` 只要求轻量初始条件，不再强制前三集、投流、阶段高潮或拍摄字段。
+- Story Seed 仍执行 schema、ownership、公共记忆基线、Canon 冲突和阻断合规校验。
+- Story Seed schema repair 最多一次，失败时不持久化启发式自由文本。
 - Story A 私有记忆不会进入 Story B snapshot。
 - 未人工审批的 promotion 不会产生 `character_shared`。
 - 当前锚点早于 `effective_from` 时不召回记忆。
@@ -926,6 +1029,9 @@ UI 必须区分：
 
 ### 22.2 Frontend
 
+- 新建 Story UI 不再展示完整生产合同，只展示 Story Seed 必需字段。
+- Story Seed 保存不调用模型，生成/重生成有明确的模型调用提示。
+- Story Seed 修改会显示下游 `review_required`，不会自动重生成。
 - Story 详情只显示摘要和入口，不因大量记忆显著拉长主生产页。
 - Story memory workspace 支持角色、状态、事件类型和显隐过滤。
 - 锚点路径、source version/hash 和 stale 原因可查看。
@@ -938,13 +1044,14 @@ UI 必须区分：
 
 ### 22.3 Browser acceptance scenarios
 
-1. 在 Story A 生成并审批角色私有记忆，打开 Story B，确认不可见且生成请求不包含它。
-2. 从 Story A 提交公共记忆候选，在 Virtual IP 页面编辑并批准；新建 Story C 可读取，
+1. 只填写 Story Seed 必需字段创建 Story，确认不再要求前三集、投流、阶段高潮和拍摄字段。
+2. 在 Story A 生成并审批角色私有记忆，打开 Story B，确认不可见且生成请求不包含它。
+3. 从 Story A 提交公共记忆候选，在 Virtual IP 页面编辑并批准；新建 Story C 可读取，
    在制 Story B 仍使用旧基线。
-3. 创建第 2 集发生、第 8 集获知的事件，确认第 3 集 Script 不泄露，第 8 集后可使用。
-4. 创建 offscreen 事件和 hidden disclosure，确认剧情产生后果但对白不提前揭晓。
-5. 设置 `subtext_only`，确认 Script 检查能阻止对白直接说破。
-6. 修改来源章节 hash，确认 Story memory、Episode snapshot 和相关 Script 显示 stale，
+4. 创建第 2 集发生、第 8 集获知的事件，确认第 3 集 Script 不泄露，第 8 集后可使用。
+5. 创建 offscreen 事件和 hidden disclosure，确认剧情产生后果但对白不提前揭晓。
+6. 设置 `subtext_only`，确认 Script 检查能阻止对白直接说破。
+7. 修改来源章节 hash，确认 Story memory、Episode snapshot 和相关 Script 显示 stale，
    Timeline 内容不被自动替换。
 
 ## 23. Acceptance criteria
@@ -952,6 +1059,8 @@ UI 必须区分：
 设计实现完成时必须满足：
 
 - 可证明 Story 间私有记忆隔离。
+- 可用轻量结构化 Story Seed 启动新故事，无需填写完整短剧生产合同。
+- 可证明被移出 Story 的商业节奏、可拍性和连续性校验在各自下游阶段生效。
 - 可证明角色公共记忆只能人工提升。
 - 可证明一次生成使用固定、可追溯的 snapshot。
 - 可证明角色知识受获知/生效锚点约束。
@@ -961,12 +1070,14 @@ UI 必须区分：
 - Story、Novel、Episode、Script 和 Virtual IP UI 都有清晰但不过载的入口与状态。
 - 不引入新的存储依赖，不自动产生付费模型调用，不改变 Timeline SSOT。
 
-## 24. Delivery slices after design approval
+## 24. Implemented delivery slices
 
-本节只描述建议实施顺序，不代表任务已经排期或完成。
+以下五个切片已在 v1 落地；后续扩展仍遵守本设计的不变量和兼容边界。
 
 ### Slice 1: contracts and story isolation
 
+- `story_seed_v1` schema、最小 Story gate 和现有合同兼容读取。
+- 新建 Story/Story Seed UI 简化和下游 `review_required`。
 - Anchor/Event/CharacterMemory schema and repository。
 - Story shared baseline freeze。
 - Deterministic snapshot builder。
@@ -1008,3 +1119,45 @@ UI 必须区分：
 
 即使升级，Story scope、character access、anchor gating、source version 和人工公共记忆
 审批仍是检索前置条件，不能由相似度绕过。
+
+## 26. V1 implementation record
+
+### 26.1 Backend
+
+- Alembic 新增 Narrative Anchor、Narrative Event、Character Memory、不可变 Snapshot、
+  Promotion 以及 Story/Episode 的快照证据和 stale 字段。
+- `StorySeedEnvelope` 已用于生产生成与最多一次 repair；生产质量门只保留 schema、
+  business ID ownership、直接世界规则冲突和阻断合规。
+- Story 私有事件/记忆支持候选写入、编辑、拆分、合并、审批、来源失效和 ledger
+  版本；角色记忆强制具有发生、获知和生效锚点。
+- Snapshot 按 Story、canon branch、角色和当前锚点确定性构建，生成上下文不会读取未来
+  记忆；Episode 和 Script 保存固定证据，不跟随上游静默漂移。
+- 公共记忆只由人工 Promotion 审批发布，并按 Virtual IP 与 canon branch 隔离；Story
+  基线默认冻结，人工同步只更新基线并标记下游 stale。
+- offscreen event、audience disclosure 和 Dramatic State 分开存储；Script gate 阻止
+  `must_not_reveal` 或 `subtext_only` 内容被直接说破。
+
+### 26.2 API and UI
+
+- 已落地第 16 节列出的 Story memory、Virtual IP public memory/promotion 和 Script
+  Dramatic State API。
+- 新建 Story 已简化为 Story Seed；本地保存与可能调用模型的生成操作明确分开。
+- Story 详情提供 Seed 编辑/确认、公共基线与记忆健康；独立记忆工作区提供事件、角色
+  记忆、成长和审核四个 tab，以及显式提取、编辑、拆分、合并、审批和提升入口。
+- Novel 章节、Episode 展开区、Script Inspector 和 Virtual IP 页面均显示本阶段需要的
+  记忆、stale、显隐或公共资产状态；Timeline 入口不会因 stale 被隐藏。
+
+### 26.3 Validation evidence
+
+- Story A/B 时间锚点、确定性 snapshot、来源失效、人工公共提升、canon branch 隔离、
+  offscreen disclosure 和潜台词 gate 均有后端单元测试；最终后端集合为
+  `2214 passed, 59 skipped`。
+- 前端 lint 为 0 error、production build 通过；453 个既有测试中 444 passed，剩余 9 个
+  失败集中在与本机制无关的 Production Canvas 基线。Story Seed 和 Novel 编辑焦点测试
+  均通过，仓库 docs/audit/diff 结构合同也通过。
+- 非付费浏览器验收记录位于
+  `artifacts/runs/narrative-memory-v1-20260723/summary.json`。首选 Chrome DevTools
+  传输不可用后按规则使用 Selenium/Safari，完成真实导航和 DOM 断言；Safari
+  WebDriver 在当前主机生成的 PNG 为全黑，因此这些 PNG 不作为可见截图证据。
+- 验收只创建本地 Story Seed 草稿，没有启动生成、提取、连续性检查或潜台词建议等
+  provider 调用。

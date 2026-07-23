@@ -5,9 +5,14 @@ from typing import Any, Dict
 from app.models.script import Story
 from app.prompts.manager import PromptManager
 from app.prompts.templates import PromptTemplate
+from app.repositories.narrative_memory_repository import NarrativeMemoryRepository
 from app.schemas.generation_requests import EpisodeGenerationRequest
+from app.services.narrative_memory.generation_context_service import (
+    NarrativeGenerationContextService,
+)
 from app.services.script.script_utils import build_character_profiles
 from app.utils.marketing_meta import merge_marketing_meta
+from sqlalchemy.orm import Session
 
 
 def build_story_data(story: Story) -> Dict[str, Any]:
@@ -37,6 +42,17 @@ def build_story_data(story: Story) -> Dict[str, Any]:
         ),
         **marketing_meta,
     }
+
+
+def attach_narrative_memory_context(
+    db: Session, story: Story, story_data: Dict[str, Any]
+) -> Dict[str, Any] | None:
+    context = NarrativeGenerationContextService(
+        NarrativeMemoryRepository(db)
+    ).latest_context(story)
+    if context:
+        story_data["narrative_memory"] = context
+    return context
 
 
 def build_preview_prompt(

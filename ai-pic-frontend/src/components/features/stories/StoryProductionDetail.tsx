@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   OperatorPanel,
   OperatorInspector,
@@ -12,14 +11,13 @@ import {
   operatorButtonClass,
   operatorTableClass,
   operatorTableHeadClass,
-  operatorTableRowClass,
 } from "@/components/shared";
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 import { StoryNovelExportPanel } from "@/components/features/story-detail/StoryNovelExportPanel";
 import { StoryNovelWorkflowPanel } from "@/components/features/story-detail/StoryNovelWorkflowPanel";
 import { StoryReadinessPanel } from "@/components/features/story-detail/StoryReadinessPanel";
+import { StoryMemoryHealthCard } from "@/components/features/story-detail/StoryMemoryHealthCard";
 import { useStoryDetail } from "@/hooks/useStoryDetail";
-import { episodeWorkspaceHref } from "@/utils/routes";
 import {
   formatStoryTime,
   hasStoryboard,
@@ -28,9 +26,10 @@ import {
   storyDisplayText,
 } from "./StoryProductionModel";
 // prettier-ignore
-import { CharacterChip, ReadyCell, StoryEnvironmentCoverage, StoryOutlineSection } from "./StoryProductionDetailParts";
+import { CharacterChip, StoryEnvironmentCoverage, StoryOutlineSection } from "./StoryProductionDetailParts";
 import { useEpisodeGenerationAnchor } from "./useEpisodeGenerationAnchor";
 import { StoryDetailEpisodeGeneration } from "./StoryDetailEpisodeGeneration";
+import { StoryEpisodeProductionRow } from "./StoryEpisodeProductionRow";
 export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
   const { showAlert } = useAlertModal();
   const state = useStoryDetail({ storyKey, showAlert });
@@ -165,29 +164,13 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
                     );
                     const storyboardReady = hasStoryboard(script);
                     return (
-                      <tr key={episode.id} className={operatorTableRowClass}>
-                        <td className="px-5 py-4 font-medium">
-                          第{episode.episode_number}集
-                        </td>
-                        <td className="px-4 py-4">{episode.title}</td>
-                        <ReadyCell ready={Boolean(script)} />
-                        <ReadyCell ready={timelineReady} />
-                        <ReadyCell ready={storyboardReady} />
-                        <td className="px-5 py-4 text-right">
-                          <Link
-                            href={episodeWorkspaceHref(
-                              episode.business_id || episode.id,
-                              { tab: "timeline", scriptId: script?.id },
-                            )}
-                            className={operatorButtonClass(
-                              "primary",
-                              "whitespace-nowrap",
-                            )}
-                          >
-                            进入时间轴
-                          </Link>
-                        </td>
-                      </tr>
+                      <StoryEpisodeProductionRow
+                        key={episode.id}
+                        episode={episode}
+                        script={script}
+                        timelineReady={timelineReady}
+                        storyboardReady={storyboardReady}
+                      />
                     );
                   })}
                 </tbody>
@@ -209,6 +192,11 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
               onQuickFix={runQuickFix}
             />
           </div>
+          {story.memory_mode === "story_scoped_memory_v1" ? (
+            <div className="mt-5">
+              <StoryMemoryHealthCard storyId={story.business_id} />
+            </div>
+          ) : null}
         </OperatorInspector>
       }
     />

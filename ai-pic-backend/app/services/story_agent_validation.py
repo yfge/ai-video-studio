@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 import logging
-from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
 
 from app.schemas.generation import StoryOutlineModel
+from app.schemas.story_seed import StorySeedEnvelope
 from app.services.story.story_outline_character_validation import (
     story_outline_validation_passed,
     validate_story_outline_characters,
 )
 from app.services.story.story_outline_quality import validate_story_outline_quality
-from app.services.story_quality_gate import evaluate_story_quality_gate
+from app.services.story_quality_gate import evaluate_story_seed_quality_gate
 
 logger = logging.getLogger(__name__)
 
@@ -44,23 +44,9 @@ class StoryOutlineValidation:
 
 
 def story_outline_schema(*, production_mode: bool) -> dict[str, Any]:
-    schema = StoryOutlineModel.model_json_schema()
-    if not production_mode:
-        return schema
-
-    schema = deepcopy(schema)
-    required = schema.setdefault("required", [])
-    if "structured_story_contract" not in required:
-        required.append("structured_story_contract")
-
-    schema.setdefault("properties", {})["structured_story_contract"] = {
-        "type": "object",
-        "description": "生产级短剧故事合同；production 生成必须完整返回。",
-        "required": list(_STORY_CONTRACT_FIELDS),
-        "additionalProperties": True,
-        "properties": _story_contract_schema_properties(),
-    }
-    return schema
+    if production_mode:
+        return StorySeedEnvelope.model_json_schema()
+    return StoryOutlineModel.model_json_schema()
 
 
 def validate_story_outline_candidate(
@@ -72,8 +58,15 @@ def validate_story_outline_candidate(
     production_mode: bool,
     log_suffix: str,
 ) -> StoryOutlineValidation:
-    StoryOutlineModel.model_validate(parsed)
-    char_validation = validate_story_outline_characters(parsed, characters)
+    if production_mode:
+        StorySeedEnvelope.model_validate(parsed)
+    else:
+        StoryOutlineModel.model_validate(parsed)
+    char_validation = (
+        _validate_story_seed_characters(parsed, characters)
+        if production_mode
+        else validate_story_outline_characters(parsed, characters)
+    )
     if char_validation["character_warnings"]:
         logger.warning(
             "Story character validation warnings%s",
@@ -81,8 +74,10 @@ def validate_story_outline_candidate(
             extra={"warnings": char_validation["character_warnings"]},
         )
 
-    quality_validation = validate_story_outline_quality(
-        parsed, hook_plan, content_restrictions
+    quality_validation = (
+        _story_seed_quality_validation(parsed, characters, content_restrictions)
+        if production_mode
+        else validate_story_outline_quality(parsed, hook_plan, content_restrictions)
     )
     if quality_validation["story_quality_warnings"]:
         logger.warning(
@@ -95,11 +90,14 @@ def validate_story_outline_candidate(
     quality_gate_issues: list[str] = []
     quality_gate_issue_details: list[str] = []
     if production_mode:
-        quality_gate = evaluate_story_quality_gate(
+        quality_gate = evaluate_story_seed_quality_gate(
             story=parsed,
-            hook_plan=hook_plan,
+            allowed_virtual_ip_business_ids=[
+                str(item["business_id"])
+                for item in characters
+                if item.get("business_id")
+            ],
             content_restrictions=content_restrictions,
-            require_story_contract=True,
         )
         quality_gate_issues = _quality_gate_issue_ids(quality_gate)
         quality_gate_issue_details = _quality_gate_issue_details(quality_gate)
@@ -151,7 +149,7 @@ def build_story_agent_result(
         "generation_mode": generation_mode,
         "production_mode": production_mode,
         "prompt_version": resolved_template,
-        "contract_version": "story_contract_v1",
+        "contract_version": "story_seed_v1" if production_mode else "legacy_outline",
         "reasoning": reasoning,
         "quality_gate": validation.quality_gate,
         **validation.char_validation,
@@ -173,6 +171,44 @@ def _story_contract_schema_properties() -> dict[str, Any]:
         "shootability": {"type": "string"},
         "compliance_risks": {"type": "array", "items": {"type": "string"}},
         "traffic_hooks": _string_array_schema(),
+    }
+
+
+def _validate_story_seed_characters(
+    parsed: dict[str, Any], characters: list[dict[str, Any]]
+) -> dict[str, Any]:
+    allowed = {
+        str(item.get("business_id")) for item in characters if item.get("business_id")
+    }
+    seed = parsed.get("story_seed") or {}
+    used = {
+        str(item.get("virtual_ip_business_id"))
+        for item in seed.get("protagonists") or []
+        if isinstance(item, dict) and item.get("virtual_ip_business_id")
+    }
+    unknown = sorted(used - allowed)
+    return {
+        "character_validation_passed": bool(used) and not unknown,
+        "character_validation_results": [],
+        "character_warnings": (
+            [f"Unknown Virtual IP business IDs: {unknown}"] if unknown else []
+        ),
+    }
+
+
+def _story_seed_quality_validation(parsed, characters, restrictions) -> dict[str, Any]:
+    gate = evaluate_story_seed_quality_gate(
+        story=parsed,
+        allowed_virtual_ip_business_ids=[
+            str(item["business_id"]) for item in characters if item.get("business_id")
+        ],
+        content_restrictions=restrictions,
+    )
+    warnings = [item.get("message", "") for item in gate.get("blocking_issues") or []]
+    return {
+        "story_quality_passed": bool(gate.get("passed")),
+        "story_quality_result": gate,
+        "story_quality_warnings": warnings,
     }
 
 
