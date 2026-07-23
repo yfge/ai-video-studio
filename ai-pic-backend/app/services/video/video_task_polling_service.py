@@ -13,6 +13,12 @@ from app.models.video_generation_task import (
 from app.repositories.video_generation_task_repository import (
     VideoGenerationTaskRepository,
 )
+from app.services.llm_invocation import complete_llm_invocation
+from app.services.media.invocation_assets import (
+    primary_video_persisted,
+    video_output_assets,
+)
+from app.services.media.invocation_references import safe_media_parameters
 from app.services.providers.base import AIModelType, AIResponse, AITaskType
 from app.services.video.video_generation_service import VideoGenerationService
 from app.services.video.video_task_generation_metadata import (
@@ -111,6 +117,12 @@ class VideoTaskPollingService:
             )
         item.error_message = error_message
         self.db.commit()
+        complete_llm_invocation(
+            item.llm_invocation_id,
+            status=status.value,
+            response_data=safe_media_parameters(response.data),
+            error=error_message,
+        )
         refresh_parent_task_status(self.db, self.repo, item.task_id)
 
     def _handle_success(
@@ -175,6 +187,17 @@ class VideoTaskPollingService:
         item.status = VideoGenerationTaskStatus.SUCCEEDED
         item.completed_at = now
         self.db.commit()
+        output_assets = video_output_assets(item.generation_metadata)
+        complete_llm_invocation(
+            item.llm_invocation_id,
+            status=(
+                "succeeded"
+                if primary_video_persisted(output_assets)
+                else "output_persist_failed"
+            ),
+            response_data=safe_media_parameters(result_payload),
+            output_assets=output_assets,
+        )
         if params.get("timeline_rework"):
             apply_timeline_rework_result(self.db, item, result_payload, params)
         elif item.script_id is not None and item.frame_index is not None:
@@ -215,4 +238,9 @@ class VideoTaskPollingService:
         item.completed_at = now
         item.error_message = "任务超时"
         self.db.commit()
+        complete_llm_invocation(
+            item.llm_invocation_id,
+            status="timeout",
+            error=item.error_message,
+        )
         refresh_parent_task_status(self.db, self.repo, item.task_id)

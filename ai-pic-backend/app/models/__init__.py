@@ -2,6 +2,7 @@ from app.core.database import Base
 
 from .episode_character import EpisodeCharacter
 from .image import Image
+from .llm_invocation import LLMInvocation
 from .narrative_memory import (
     CharacterMemory,
     CharacterMemoryPromotion,
@@ -36,6 +37,7 @@ __all__ = [
     "User",
     "UserAuditLog",
     "Image",
+    "LLMInvocation",
     "NarrativeAnchor",
     "NarrativeEvent",
     "CharacterMemory",

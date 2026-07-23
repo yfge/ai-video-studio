@@ -8,6 +8,16 @@ supporting multiple providers (Keling, Volcengine, MiniMax, etc.).
 from typing import Any, Dict, Optional
 
 from app.core.logging import get_logger
+from app.services.llm_invocation import complete_llm_invocation
+from app.services.media.invocation_assets import (
+    invocation_id_from_response,
+    primary_video_persisted,
+    video_output_assets,
+)
+from app.services.media.invocation_references import safe_media_parameters
+from app.services.video.video_task_generation_metadata import (
+    build_video_generation_metadata,
+)
 from app.services.video.video_upload_pipeline import upload_video_with_optional_trim
 from app.services.video.video_upload_utils import (
     get_oss_url_or_original,
@@ -66,6 +76,7 @@ class VideoGenerationService:
                 "error": "AI manager not initialized, cannot generate video",
             }
 
+        response = None
         try:
             # Default to returning last frame for video chaining
             if "return_last_frame" not in kwargs:
@@ -84,7 +95,7 @@ class VideoGenerationService:
             )
 
             if response.success:
-                return await self._process_successful_response(
+                result = await self._process_successful_response(
                     response=response,
                     prompt=prompt,
                     image_url=image_url,
@@ -93,6 +104,30 @@ class VideoGenerationService:
                     fps=fps,
                     resolution=resolution,
                 )
+                generation_metadata = build_video_generation_metadata(
+                    response.provider,
+                    response.model,
+                    str((response.data or {}).get("task_id") or "") or None,
+                    response.model_type.value,
+                    {
+                        "duration": duration,
+                        "fps": fps,
+                        "resolution": resolution,
+                    },
+                    result,
+                )
+                assets = video_output_assets(generation_metadata)
+                complete_llm_invocation(
+                    invocation_id_from_response(response),
+                    status=(
+                        "succeeded"
+                        if primary_video_persisted(assets)
+                        else "output_persist_failed"
+                    ),
+                    response_data=safe_media_parameters(result),
+                    output_assets=assets,
+                )
+                return result
 
             return {
                 "success": False,
@@ -103,6 +138,11 @@ class VideoGenerationService:
             }
 
         except Exception as e:
+            complete_llm_invocation(
+                invocation_id_from_response(response),
+                status="failed",
+                error=str(e),
+            )
             self.logger.error(f"Video generation failed: {e}")
             return {"success": False, "error": str(e)}
 

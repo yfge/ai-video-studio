@@ -6,6 +6,7 @@ from typing import Any
 
 from app.models.task import Task
 from app.models.video_generation_task import VideoGenerationTaskStatus
+from app.services.media.invocation_assets import invocation_id_from_response
 from app.services.video.video_task_generation_metadata import (
     build_video_generation_metadata,
 )
@@ -45,6 +46,7 @@ def persist_submitted_video_task(
         timeline_rework=timeline_rework_for_frame(opts, frame_index),
     )
     repo.create(
+        llm_invocation_id=invocation_id_from_response(response),
         task_id=task.id,
         script_id=script_id,
         frame_index=frame_index,
@@ -98,6 +100,7 @@ def persist_submitted_timeline_video_task(
     )
     params_payload.update(_duration_resolution_fields(response))
     repo.create(
+        llm_invocation_id=invocation_id_from_response(response),
         task_id=task_id,
         script_id=None,
         frame_index=None,

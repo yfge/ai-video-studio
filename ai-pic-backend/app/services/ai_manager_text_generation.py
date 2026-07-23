@@ -26,6 +26,7 @@ async def generate_text_with_fallback(
     temperature: float,
     json_schema: dict | None,
     stream: bool,
+    call_scene: str,
     provider_kwargs: dict[str, Any],
     providers: dict[str, BaseProvider],
     max_retries: int,
@@ -44,6 +45,8 @@ async def generate_text_with_fallback(
     log_request: Callable[..., None],
     log_prompt: Callable[[str | None], None],
     log_response: Callable[..., None],
+    begin_invocation: Callable[..., Any],
+    finish_invocation: Callable[..., None],
 ) -> AIResponse:
     """Generate text with provider fallback and default model resolution."""
     available_providers = get_available_providers(
@@ -115,6 +118,19 @@ async def generate_text_with_fallback(
             get_models_for_type,
         )
         last_model_used = provider_model
+        invocation = begin_invocation(
+            call_scene=call_scene,
+            provider=provider_name,
+            model=provider_model,
+            attempt_index=attempt_index + 1,
+            prompt=prompt,
+            system_prompt=system_prompt,
+            request_parameters={
+                **params,
+                "json_schema": json_schema,
+                "provider_kwargs": provider_kwargs,
+            },
+        )
 
         try:
             response = await provider.generate_text(
@@ -135,12 +151,14 @@ async def generate_text_with_fallback(
                 model=provider_model,
                 response=response,
             )
+            finish_invocation(invocation, response=response)
             if not response.success and response.error:
                 last_error = response.error
                 last_provider = provider_name
             if response.success or not enable_fallback:
                 return response
         except Exception as exc:
+            finish_invocation(invocation, error=str(exc))
             last_error = str(exc)
             last_provider = provider_name
             if not enable_fallback:

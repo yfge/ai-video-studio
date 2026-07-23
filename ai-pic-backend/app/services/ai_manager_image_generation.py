@@ -6,10 +6,11 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from app.services import ai_manager_failure_responses as failure_responses
-from app.services import ai_manager_image_assets as image_assets
+from app.services import ai_manager_image_invocation as image_invocation
 from app.services import ai_manager_image_style as image_style
 from app.services import ai_manager_model_resolution as model_resolution
 from app.services.ai_manager_logging import AI_MANAGER_PROVIDER
+from app.services.media.invocation_references import collect_input_references
 from app.services.providers.base import (
     AIModelType,
     AIResponse,
@@ -30,6 +31,7 @@ async def generate_image_with_fallback(
     style: str,
     style_preset_id: str | None,
     style_spec: Any | None,
+    call_scene: str,
     provider_kwargs: dict[str, Any],
     providers: dict[str, BaseProvider],
     max_retries: int,
@@ -51,6 +53,7 @@ async def generate_image_with_fallback(
     log_response: Callable[..., None],
 ) -> AIResponse:
     """Generate images with style resolution, provider fallback, and OSS upload."""
+    original_prompt = prompt
     style_state = image_style.resolve_text_to_image_style(
         prompt=prompt,
         legacy_style=style,
@@ -90,8 +93,10 @@ async def generate_image_with_fallback(
     last_error: str | None = None
     last_provider: str | None = None
     last_model: str | None = None
+    references = collect_input_references(provider_kwargs=provider_kwargs)
+    input_references: list[dict[str, Any]] | None = None
 
-    for _ in range(max_retries):
+    for attempt_index in range(1, max_retries + 1):
         provider_name = select_provider(available_providers, prefer_provider)
         if not provider_name:
             break
@@ -104,6 +109,31 @@ async def generate_image_with_fallback(
             get_models_for_type,
         )
         last_model_used = provider_model
+        if input_references is None:
+            input_references = await image_invocation.persist_inputs(
+                references,
+                provider=provider_name,
+                model=provider_model,
+                logger=logger,
+            )
+        invocation = image_invocation.begin_attempt(
+            invocation_type="text_to_image",
+            call_scene=call_scene,
+            provider=provider_name,
+            model=provider_model,
+            attempt_index=attempt_index,
+            original_prompt=original_prompt,
+            effective_prompt=str(provider_kwargs.get("prompt_override") or prompt),
+            input_references=input_references,
+            request_parameters={
+                "width": width,
+                "height": height,
+                "style": _provider_style(provider_name, style, openai_style_override),
+                "style_preset_id": style_preset_id,
+                "style_spec": resolved_style_spec,
+                "provider_kwargs": provider_kwargs,
+            },
+        )
 
         try:
             response = await provider.generate_image(
@@ -133,10 +163,18 @@ async def generate_image_with_fallback(
                 last_error = response.error
                 last_provider = provider_name
                 last_model = provider_model
+            await image_invocation.finish_attempt(
+                invocation,
+                response,
+                provider=provider_name,
+                model=provider_model,
+                prefix="ai-generated/text-to-image",
+                logger=logger,
+            )
             if response.success or not enable_fallback:
-                await _convert_success_images_to_oss(response, logger)
                 return response
         except Exception as exc:
+            image_invocation.fail_attempt(invocation, str(exc))
             last_error = str(exc)
             last_provider = provider_name
             last_model = provider_model
@@ -181,14 +219,3 @@ def _provider_style(
     if provider_name != "openai":
         return style
     return normalize_openai_image_style(openai_style_override or style)
-
-
-async def _convert_success_images_to_oss(response: AIResponse, logger: Any) -> None:
-    if not response.success or not response.data or "images" not in response.data:
-        return
-    converted_images = await image_assets.convert_base64_images_to_oss(
-        response.data["images"],
-        prefix="ai-generated/text-to-image",
-        logger=logger,
-    )
-    response.data["images"] = converted_images

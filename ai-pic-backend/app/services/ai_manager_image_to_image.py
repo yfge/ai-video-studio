@@ -8,9 +8,11 @@ from typing import Any
 from app.services import ai_manager_failure_responses as failure_responses
 from app.services import ai_manager_image_assets as image_assets
 from app.services import ai_manager_image_fallback as image_fallback
+from app.services import ai_manager_image_invocation as image_invocation
 from app.services import ai_manager_image_style as image_style
 from app.services import ai_manager_model_resolution as model_resolution
 from app.services.ai_manager_logging import AI_MANAGER_PROVIDER
+from app.services.media.invocation_references import collect_input_references
 from app.services.providers.base import (
     AIModelType,
     AIResponse,
@@ -29,6 +31,7 @@ async def image_to_image_with_fallback(
     count: int | None,
     style_preset_id: str | None,
     style_spec: Any | None,
+    call_scene: str,
     provider_kwargs: dict[str, Any],
     providers: dict[str, BaseProvider],
     max_retries: int,
@@ -52,6 +55,7 @@ async def image_to_image_with_fallback(
     log_response: Callable[..., None],
 ) -> AIResponse:
     """Generate image variants with reference preload and text-to-image fallback."""
+    original_prompt = prompt or ""
     legacy_style = str(provider_kwargs.get("style") or "realistic")
     style_state = image_style.resolve_image_to_image_style(
         prompt=prompt,
@@ -101,8 +105,13 @@ async def image_to_image_with_fallback(
     last_error: str | None = None
     last_provider: str | None = None
     last_model: str | None = None
+    references = collect_input_references(
+        image_url=image_url,
+        provider_kwargs=provider_kwargs,
+    )
+    input_references: list[dict[str, Any]] | None = None
 
-    for _ in range(max_retries):
+    for attempt_index in range(1, max_retries + 1):
         provider_name = select_provider(available_providers, prefer_provider)
         if not provider_name:
             break
@@ -113,6 +122,29 @@ async def image_to_image_with_fallback(
             provider,
             model,
             get_models_for_type,
+        )
+        if input_references is None:
+            input_references = await image_invocation.persist_inputs(
+                references,
+                provider=provider_name,
+                model=effective_model,
+                logger=logger,
+            )
+        invocation = image_invocation.begin_attempt(
+            invocation_type="image_to_image",
+            call_scene=call_scene,
+            provider=provider_name,
+            model=effective_model,
+            attempt_index=attempt_index,
+            original_prompt=original_prompt,
+            effective_prompt=prompt or "",
+            input_references=input_references,
+            request_parameters={
+                "count": count or 1,
+                "style_preset_id": style_preset_id,
+                "style_spec": resolved_style_spec,
+                "provider_kwargs": provider_kwargs,
+            },
         )
 
         try:
@@ -138,10 +170,18 @@ async def image_to_image_with_fallback(
                 last_error = (response.error or "").strip() or "未知错误"
                 last_provider = provider_name
                 last_model = effective_model
+            await image_invocation.finish_attempt(
+                invocation,
+                response,
+                provider=provider_name,
+                model=effective_model,
+                prefix="ai-generated/image-to-image",
+                logger=logger,
+            )
             if response.success or not enable_fallback:
-                await _convert_success_images_to_oss(response, logger)
                 return response
         except Exception as exc:
+            image_invocation.fail_attempt(invocation, str(exc))
             last_error = str(exc).strip() or repr(exc)
             last_provider = provider_name
             last_model = effective_model
@@ -169,6 +209,7 @@ async def image_to_image_with_fallback(
             legacy_style=legacy_style,
             style_preset_id=style_preset_id,
             style_spec=style_spec,
+            call_scene=call_scene,
             logger=logger,
         )
         if fallback_result.response:
@@ -196,14 +237,3 @@ async def image_to_image_with_fallback(
         task_type=AITaskType.SCENE_GENERATION,
         model_type=AIModelType.IMAGE_TO_IMAGE,
     )
-
-
-async def _convert_success_images_to_oss(response: AIResponse, logger: Any) -> None:
-    if not response.success or not response.data or "images" not in response.data:
-        return
-    converted_images = await image_assets.convert_base64_images_to_oss(
-        response.data["images"],
-        prefix="ai-generated/image-to-image",
-        logger=logger,
-    )
-    response.data["images"] = converted_images

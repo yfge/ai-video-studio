@@ -9,6 +9,7 @@ from app.repositories.task_repository import TaskRepository
 from app.repositories.video_generation_task_repository import (
     VideoGenerationTaskRepository,
 )
+from app.services import ai_manager_video_invocation as video_invocation
 from app.services.video.video_task_dispatcher import VideoTaskDispatcher
 from app.services.video.video_task_submission_helpers import (
     resolve_target_duration_seconds,
@@ -149,6 +150,10 @@ class VideoTaskSubmissionService:
                 reference_images=reference_images,
                 duration=request_duration_seconds,
                 opts=opts,
+                call_scene=(
+                    "app.services.video.video_task_submission_service."
+                    "VideoTaskSubmissionService._submit_frame"
+                ),
             )
         except Exception as exc:
             error_message = f"视频任务提交异常: {exc}"
@@ -160,6 +165,7 @@ class VideoTaskSubmissionService:
 
         provider_task_id = (response.data or {}).get("task_id")
         if not provider_task_id:
+            video_invocation.fail_submitted_response(response, "未返回任务ID")
             self._record_failure(task, script_id, frame_index, "未返回任务ID")
             return False, f"frame {frame_index}: 未返回任务ID"
 

@@ -7,6 +7,8 @@ from typing import Any
 
 from app.services import ai_manager_failure_responses as failure_responses
 from app.services import ai_manager_model_resolution as model_resolution
+from app.services import ai_manager_video_invocation as video_invocation
+from app.services.media.invocation_references import collect_input_references
 from app.services.providers.base import (
     AIModelType,
     AIResponse,
@@ -25,10 +27,12 @@ async def generate_video_with_fallback(
     duration: int,
     fps: int,
     resolution: str,
+    call_scene: str,
     provider_kwargs: dict[str, Any],
     providers: dict[str, BaseProvider],
     max_retries: int,
     enable_fallback: bool,
+    logger: Any,
     resolve_prefer_provider_and_model: Callable[
         [str | None, str | None],
         tuple[str | None, str | None],
@@ -57,6 +61,12 @@ async def generate_video_with_fallback(
     last_model_used = original_model
     last_error: str | None = None
     last_provider: str | None = None
+    references = collect_input_references(
+        image_url=image_url,
+        end_image_url=provider_kwargs.get("end_image_url"),
+        provider_kwargs=provider_kwargs,
+    )
+    input_references: list[dict[str, Any]] | None = None
 
     if not available_providers:
         return failure_responses.manager_failure_response(
@@ -79,13 +89,14 @@ async def generate_video_with_fallback(
     )
     log_prompt(prompt if not image_url else f"<image_url>: {truncate(image_url, 256)}")
 
-    for _ in range(max_retries):
+    for attempt_index in range(1, max_retries + 1):
         provider_name = select_provider(available_providers, prefer_provider)
         if not provider_name:
             break
 
         provider = providers[provider_name]
         update_request_count(provider_name)
+        invocation = None
 
         try:
             provider_model = await model_resolution.resolve_video_model(
@@ -95,6 +106,28 @@ async def generate_video_with_fallback(
                 get_models_for_type,
             )
             last_model_used = provider_model
+            if input_references is None:
+                input_references = await video_invocation.persist_inputs(
+                    references,
+                    provider=provider_name,
+                    model=provider_model,
+                    logger=logger,
+                )
+            invocation = video_invocation.begin_attempt(
+                invocation_type=model_type.value,
+                call_scene=call_scene,
+                provider=provider_name,
+                model=provider_model,
+                attempt_index=attempt_index,
+                prompt=prompt,
+                input_references=input_references,
+                request_parameters={
+                    "duration": duration,
+                    "fps": fps,
+                    "resolution": resolution,
+                    "provider_kwargs": provider_kwargs,
+                },
+            )
             response = await _call_provider_generate_video(
                 provider,
                 provider_name=provider_name,
@@ -113,12 +146,14 @@ async def generate_video_with_fallback(
                 model=provider_model,
                 response=response,
             )
+            video_invocation.finish_attempt(invocation, response)
             if not response.success and response.error:
                 last_error = response.error
                 last_provider = provider_name
             if response.success or not enable_fallback:
                 return response
         except Exception as exc:
+            video_invocation.fail_attempt(invocation, str(exc))
             last_error = str(exc)
             last_provider = provider_name
             if not enable_fallback:

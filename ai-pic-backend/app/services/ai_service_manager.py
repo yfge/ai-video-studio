@@ -24,6 +24,11 @@ from app.services.ai_manager_logging import (
     log_response,
     truncate,
 )
+from app.services.llm_invocation import (
+    begin_llm_invocation,
+    finish_llm_invocation,
+    infer_call_scene,
+)
 
 from .providers.base import (
     AIModelType,
@@ -289,6 +294,7 @@ class AIServiceManager:
         temperature: float = 0.7,
         json_schema: dict | None = None,
         stream: bool = True,
+        call_scene: str | None = None,
         **kwargs,
     ) -> AIResponse:
         """统一文本生成接口"""
@@ -301,6 +307,7 @@ class AIServiceManager:
             temperature=temperature,
             json_schema=json_schema,
             stream=stream,
+            call_scene=call_scene or infer_call_scene(),
             provider_kwargs=kwargs,
             providers=self.providers,
             max_retries=self.config.max_retries,
@@ -313,6 +320,8 @@ class AIServiceManager:
             log_request=self._log_request,
             log_prompt=self._log_prompt,
             log_response=self._log_response,
+            begin_invocation=begin_llm_invocation,
+            finish_invocation=finish_llm_invocation,
         )
 
     async def generate_image(
@@ -325,6 +334,7 @@ class AIServiceManager:
         style: str = "realistic",
         style_preset_id: str | None = None,
         style_spec: Any | None = None,
+        call_scene: str | None = None,
         **kwargs,
     ) -> AIResponse:
         """统一图像生成接口"""
@@ -337,6 +347,7 @@ class AIServiceManager:
             style=style,
             style_preset_id=style_preset_id,
             style_spec=style_spec,
+            call_scene=call_scene or infer_call_scene(),
             provider_kwargs=kwargs,
             providers=self.providers,
             max_retries=self.config.max_retries,
@@ -361,6 +372,7 @@ class AIServiceManager:
         count: int | None = None,
         style_preset_id: str | None = None,
         style_spec: Any | None = None,
+        call_scene: str | None = None,
         **kwargs,
     ) -> AIResponse:
         """统一图生图接口"""
@@ -372,6 +384,7 @@ class AIServiceManager:
             count=count,
             style_preset_id=style_preset_id,
             style_spec=style_spec,
+            call_scene=call_scene or infer_call_scene(),
             provider_kwargs=kwargs,
             providers=self.providers,
             max_retries=self.config.max_retries,
@@ -398,6 +411,7 @@ class AIServiceManager:
         duration: int = 5,
         fps: int = 24,
         resolution: str = "1280x720",
+        call_scene: str | None = None,
         **kwargs,
     ) -> AIResponse:
         """统一视频生成接口"""
@@ -409,10 +423,12 @@ class AIServiceManager:
             duration=duration,
             fps=fps,
             resolution=resolution,
+            call_scene=call_scene or infer_call_scene(),
             provider_kwargs=kwargs,
             providers=self.providers,
             max_retries=self.config.max_retries,
             enable_fallback=self.config.enable_fallback,
+            logger=self.logger,
             resolve_prefer_provider_and_model=self._resolve_prefer_provider_and_model,
             get_available_providers=self.get_available_providers,
             select_provider=self._select_provider,

@@ -21,6 +21,9 @@ class VideoGenerationTask(SoftDeleteBusinessMixin, Base):
     __tablename__ = "video_generation_tasks"
 
     id = Column(Integer, primary_key=True, index=True)
+    llm_invocation_id = Column(
+        Integer, ForeignKey("llm_invocations.id"), nullable=True, index=True
+    )
     task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True, index=True)
     script_id = Column(Integer, ForeignKey("scripts.id"), nullable=True, index=True)
     frame_index = Column(Integer, nullable=True, index=True)

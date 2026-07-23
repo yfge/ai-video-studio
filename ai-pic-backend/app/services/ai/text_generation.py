@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+from types import SimpleNamespace
 from typing import Optional
 
 import httpx
-from app.core.config import settings
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
+from app.services.llm_invocation import (
+    begin_llm_invocation,
+    finish_llm_invocation,
+)
 
 
 class TextGenerationMixin:
@@ -37,9 +41,8 @@ class TextGenerationMixin:
         self, prompt: str, task_type: str, *, story_format: Optional[str] = None
     ) -> Optional[str]:
         """使用OpenAI GPT生成文本"""
-        if not self.openai_api_key:
+        if not self.ai_manager:
             return None
-        base_url = settings.OPENAI_BASE_URL or "https://api.openai.com/v1"
 
         try:
             if task_type == "story_novel":
@@ -58,29 +61,18 @@ class TextGenerationMixin:
                     {"story_format": story_format},
                 )
 
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{base_url.rstrip('/')}/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {self.openai_api_key}",
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "model": "gpt-4",
-                        "messages": [
-                            {
-                                "role": "system",
-                                "content": system_message,
-                            },
-                            {"role": "user", "content": prompt},
-                        ],
-                        "temperature": 0.7,
-                    },
-                    timeout=120.0,
-                )
-                response.raise_for_status()
-                result = response.json()
-                return result["choices"][0]["message"]["content"]
+            response = await self.ai_manager.generate_text(
+                prompt=prompt,
+                system_prompt=system_message,
+                model="gpt-4",
+                prefer_provider="openai",
+                temperature=0.7,
+                stream=False,
+                call_scene=f"legacy.{task_type}.openai",
+            )
+            if response.success and isinstance(response.data, str):
+                return response.data
+            return None
         except Exception as exc:
             print(f"OpenAI GPT生成失败: {exc}")
             return None
@@ -103,6 +95,15 @@ class TextGenerationMixin:
             "Content-Type": "application/json",
         }
 
+        invocation = begin_llm_invocation(
+            call_scene=f"legacy.{task_type}.custom_service",
+            provider="custom",
+            model="custom",
+            attempt_index=1,
+            prompt=prompt,
+            system_prompt=None,
+            request_parameters=payload["parameters"],
+        )
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
@@ -113,8 +114,22 @@ class TextGenerationMixin:
                 )
                 response.raise_for_status()
                 result = response.json()
-                return result.get("text")
+                text = result.get("text")
+                finish_llm_invocation(
+                    invocation,
+                    response=SimpleNamespace(
+                        success=bool(text),
+                        data=text,
+                        error=None if text else "Custom service returned no text",
+                        provider="custom",
+                        model=result.get("model") or "custom",
+                        usage=result.get("usage") or {},
+                        metadata={"raw": result},
+                    ),
+                )
+                return text
         except Exception as exc:
+            finish_llm_invocation(invocation, error=str(exc))
             print(f"自定义文本生成服务失败: {exc}")
             return None
 

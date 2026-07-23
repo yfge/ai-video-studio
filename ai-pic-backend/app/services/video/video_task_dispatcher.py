@@ -102,7 +102,7 @@ class VideoTaskDispatcher:
         retry_limit = self.ai_manager.config.max_retries
         if self.ai_manager.config.enable_fallback:
             retry_limit = max(retry_limit, len(available))
-        for _ in range(retry_limit):
+        for attempt_index in range(1, retry_limit + 1):
             result = await self._submit_once(
                 available,
                 prefer_provider,
@@ -114,6 +114,7 @@ class VideoTaskDispatcher:
                 duration,
                 fps,
                 resolution,
+                invocation_attempt_index=attempt_index,
                 **kwargs,
             )
             if not result:

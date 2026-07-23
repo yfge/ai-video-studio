@@ -38,6 +38,7 @@ def submit_provider_task(
     duration: int,
     opts: Dict[str, Any],
     target_duration_seconds: float | None = None,
+    call_scene: str | None = None,
 ) -> Any:
     payload = {
         "prompt": prompt,
@@ -58,6 +59,7 @@ def submit_provider_task(
         "service_tier": opts.get("service_tier"),
         "execution_expires_after": opts.get("execution_expires_after"),
         "return_last_frame": opts.get("return_last_frame"),
+        "call_scene": call_scene,
     }
 
     # anyio.run() only supports positional args, so wrap the kwarg call.

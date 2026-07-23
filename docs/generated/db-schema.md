@@ -10,6 +10,7 @@ Snapshot summary derived from current SQLAlchemy models and Alembic history.
 - `scripts`
 - `tasks`
 - `video_generation_tasks`
+- `llm_invocations`
 - `story_novel_exports`
 - `story_novel_chapters`
 - `story_treatments`
@@ -35,6 +36,22 @@ Snapshot summary derived from current SQLAlchemy models and Alembic history.
 - Timeline revisions and lifecycle state: `a4f5c6d7e8f9_add_timeline_revisions_and_lifecycle.py`
 - Timeline clip asset lineage: `c5e6f7a8b9c0_add_timeline_clip_assets.py`
 - Story novel adaptation chain: `e6f7a8b9c0d1_add_story_novel_adaptation_chain.py`
+- Per-attempt LLM audit records: `b6c7d8e9f0a1_add_llm_invocations.py`
+
+## LLM invocation audit
+
+- `llm_invocations` stores each text, image, and video provider attempt with its
+  invocation type, complete original/effective prompt, system prompt, normalized
+  input references, complete text response or normalized media response,
+  OSS-backed output asset descriptors, provider task ID, provider/model,
+  normalized input/cache/output token counts, request parameters, response
+  usage/metadata, call scene, attempt number, status, and latency.
+- Provider fallback attempts are separate rows. Recording starts before the
+  provider call so interrupted calls remain visible with `processing` status.
+- Async video submissions remain `submitted` until their linked
+  `video_generation_tasks.llm_invocation_id` reaches a terminal polling result;
+  the same invocation row is then completed with the final OSS video,
+  thumbnail, and last-frame descriptors.
 
 ## Narrative lineage
 

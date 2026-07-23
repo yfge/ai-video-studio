@@ -20,6 +20,8 @@ def _model(model_id: str) -> ModelInfo:
 @pytest.mark.asyncio
 async def test_text_fallback_uses_fallback_provider_model() -> None:
     calls: list[tuple[str, str | None]] = []
+    started: list[dict[str, Any]] = []
+    finished: list[tuple[dict[str, Any], dict[str, Any]]] = []
 
     class _Provider:
         def __init__(self, name: str, model_id: str, *, succeeds: bool) -> None:
@@ -41,6 +43,11 @@ async def test_text_fallback_uses_fallback_provider_model() -> None:
                 model=model,
                 task_type=AITaskType.STORY_GENERATION,
                 model_type=AIModelType.TEXT_GENERATION,
+                usage={
+                    "prompt_tokens": 10,
+                    "completion_tokens": 4,
+                    "prompt_tokens_details": {"cached_tokens": 3},
+                },
             )
 
     providers = {
@@ -51,6 +58,13 @@ async def test_text_fallback_uses_fallback_provider_model() -> None:
     async def _get_models(provider: Any, _model_type: Any) -> list[ModelInfo]:
         return provider.available_models
 
+    def _begin(**payload: Any) -> dict[str, Any]:
+        started.append(payload)
+        return payload
+
+    def _finish(handle: dict[str, Any], **payload: Any) -> None:
+        finished.append((handle, payload))
+
     result = await generate_text_with_fallback(
         prompt="Return JSON",
         model="deepseek-v4-flash",
@@ -60,6 +74,7 @@ async def test_text_fallback_uses_fallback_provider_model() -> None:
         temperature=0.2,
         json_schema={"type": "object"},
         stream=False,
+        call_scene="tests.story_generation",
         provider_kwargs={},
         providers=providers,
         max_retries=2,
@@ -72,6 +87,8 @@ async def test_text_fallback_uses_fallback_provider_model() -> None:
         log_request=lambda **_: None,
         log_prompt=lambda _prompt: None,
         log_response=lambda **_: None,
+        begin_invocation=_begin,
+        finish_invocation=_finish,
     )
 
     assert result.success is True
@@ -81,3 +98,8 @@ async def test_text_fallback_uses_fallback_provider_model() -> None:
         ("deepseek", "deepseek-v4-flash"),
         ("openai", "gpt-4o"),
     ]
+    assert [item["attempt_index"] for item in started] == [1, 2]
+    assert [item["provider"] for item in started] == ["deepseek", "openai"]
+    assert all(item["prompt"] == "Return JSON" for item in started)
+    assert all(item["call_scene"] == "tests.story_generation" for item in started)
+    assert [payload["response"].success for _, payload in finished] == [False, True]

@@ -9,6 +9,7 @@ from app.repositories.task_repository import TaskRepository
 from app.repositories.video_generation_task_repository import (
     VideoGenerationTaskRepository,
 )
+from app.services import ai_manager_video_invocation as video_invocation
 from app.services.video.video_task_dispatcher import VideoTaskDispatcher
 from app.services.video.video_task_submission_failure import (
     TimelineVideoSubmissionAttempt,
@@ -72,6 +73,10 @@ class TimelineClipVideoReworkSubmissionService:
                 duration=request_duration_seconds,
                 opts=opts,
                 target_duration_seconds=target_duration_seconds,
+                call_scene=(
+                    "app.services.timeline_clip_video_rework_submission."
+                    "TimelineClipVideoReworkSubmissionService.submit"
+                ),
             )
         except Exception as exc:
             error_message = f"视频任务提交异常: {exc}"
@@ -85,6 +90,7 @@ class TimelineClipVideoReworkSubmissionService:
         provider_task_id = self._string_value((response.data or {}).get("task_id"))
         if not provider_task_id:
             error_message = "未返回任务ID"
+            video_invocation.fail_submitted_response(response, error_message)
             self._record_failure(attempt, error_message, response)
             self._fail_parent(task, error_message)
         model_type = self._response_model_type(response) or model_type

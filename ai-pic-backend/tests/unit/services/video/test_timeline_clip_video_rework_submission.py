@@ -35,12 +35,14 @@ def test_grid_rework_submission_records_reference_only_request_as_i2v(
         duration,
         opts,
         target_duration_seconds,
+        call_scene,
     ):
         captured.update(
             start_url=start_url,
             end_url=end_url,
             reference_images=reference_images,
             target_duration_seconds=target_duration_seconds,
+            call_scene=call_scene,
         )
         return AIResponse(
             success=True,
@@ -79,6 +81,9 @@ def test_grid_rework_submission_records_reference_only_request_as_i2v(
     assert captured["start_url"] is None
     assert captured["reference_images"] == ["https://example.com/storyboard-grid.png"]
     assert captured["target_duration_seconds"] == 4
+    assert captured["call_scene"].endswith(
+        "TimelineClipVideoReworkSubmissionService.submit"
+    )
     assert video_task.model_type == "image_to_video"
     assert video_task.generation_metadata["model_type"] == "image_to_video"
     assert params["reference_images"] == ["https://example.com/storyboard-grid.png"]
@@ -115,12 +120,14 @@ def test_clip_storyboard_rework_submission_records_reference_only_request_as_i2v
         duration,
         opts,
         target_duration_seconds,
+        call_scene,
     ):
         captured.update(
             start_url=start_url,
             end_url=end_url,
             reference_images=reference_images,
             target_duration_seconds=target_duration_seconds,
+            call_scene=call_scene,
         )
         return AIResponse(
             success=True,
@@ -152,6 +159,9 @@ def test_clip_storyboard_rework_submission_records_reference_only_request_as_i2v
     assert captured["start_url"] is None
     assert captured["reference_images"] == ["https://example.com/clip-storyboard.png"]
     assert captured["target_duration_seconds"] == 4
+    assert captured["call_scene"].endswith(
+        "TimelineClipVideoReworkSubmissionService.submit"
+    )
     assert video_task.model_type == "image_to_video"
     assert video_task.generation_metadata["model_type"] == "image_to_video"
     assert params["reference_images"] == ["https://example.com/clip-storyboard.png"]

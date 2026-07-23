@@ -61,6 +61,7 @@ async def fallback_image_to_image_as_text_to_image(
     style_preset_id: str | None,
     style_spec: Any | None,
     logger: Any,
+    call_scene: str = "app.services.ai_manager_image_fallback",
 ) -> ImageFallbackResult:
     """Fallback image-to-image to text-to-image while preserving trace metadata."""
     try:
@@ -81,6 +82,7 @@ async def fallback_image_to_image_as_text_to_image(
             style=legacy_style,
             style_preset_id=style_preset_id,
             style_spec=style_spec,
+            call_scene=call_scene,
             n=count or 1,
         )
         if text_resp and text_resp.success:
