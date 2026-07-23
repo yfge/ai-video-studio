@@ -1,7 +1,7 @@
 from typing import List, Literal, Optional
 
 from app.schemas.generation import AdSnippet, HookPlan
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class StoryGenerationRequest(BaseModel):
@@ -186,14 +186,29 @@ class StoryNovelExportRequest(BaseModel):
     style: Literal["zhihu", "prose"] = Field(
         "zhihu", description="输出风格：zhihu（兼容导出）/ prose（章节小说版本）"
     )
-    target_words: int = Field(
-        20000, ge=10000, le=30000, description="目标字数（1-3万字）"
+    target_words: Optional[int] = Field(
+        None,
+        description="知乎体目标字数；prose 由 StorySeed 大纲规划并忽略此字段",
     )
     chapter_count: Optional[int] = Field(
-        None, ge=3, le=24, description="章节数（可选，默认按目标字数自动估算）"
+        None,
+        description="知乎体章节数；prose 由 StorySeed 大纲规划并忽略此字段",
     )
 
     model: Optional[str] = Field(
         None, description="指定文本生成模型，如 openai:gpt-4o-mini"
     )
     temperature: Optional[float] = Field(0.7, ge=0.0, le=1.5, description="创造性温度")
+
+    @model_validator(mode="after")
+    def normalize_style_specific_limits(self):
+        if self.style == "prose":
+            self.target_words = None
+            self.chapter_count = None
+            return self
+        self.target_words = self.target_words or 20000
+        if not 10000 <= self.target_words <= 30000:
+            raise ValueError("zhihu target_words must be between 10000 and 30000")
+        if self.chapter_count is not None and not 3 <= self.chapter_count <= 24:
+            raise ValueError("zhihu chapter_count must be between 3 and 24")
+        return self

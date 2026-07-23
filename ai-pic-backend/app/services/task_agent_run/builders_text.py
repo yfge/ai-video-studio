@@ -52,4 +52,22 @@ def build_story_novel_export_agent_run(db, task, *, user_id: int) -> Dict[str, A
         payload["chapter_count"] = getattr(export_row, "chapter_count", None)
         payload["content_hash"] = getattr(export_row, "content_hash", None)
         payload["lifecycle_status"] = getattr(export_row, "lifecycle_status", None)
+        plan = getattr(export_row, "generation_plan", None) or {}
+        ledger = getattr(export_row, "continuity_ledger", None) or {}
+        payload["generation_plan_status"] = plan.get("status")
+        payload["chapter_context_evidence"] = [
+            {
+                "position": int(position),
+                "body_hash": entry.get("body_hash"),
+                "source_hash": entry.get("source_hash"),
+                "context_hash": entry.get("context_hash"),
+                "context_evidence": entry.get("context_evidence"),
+                "event_ids": entry.get("event_ids") or [],
+                "memory_ids": entry.get("memory_ids") or [],
+                "extraction_status": entry.get("extraction_status"),
+            }
+            for position, entry in sorted(
+                (ledger.get("chapters") or {}).items(), key=lambda item: int(item[0])
+            )
+        ]
     return payload

@@ -48,19 +48,40 @@ An Episode never follows the Story canonical pointer after it is created.
 
 ## State and mutation rules
 
-1. Prose generation creates the draft revision before dispatch and commits each chapter independently.
-2. Resume skips existing chapter positions and generates only missing checkpoints.
-3. Only `draft` content is editable. An approved revision must be cloned before editing.
-4. Saving or moving chapter N marks affected successors `review_required`, marks continuity `review_required`, and marks an existing adaptation plan `stale`.
-5. Saves and reorder requests carry `expected_updated_at`; plan saves carry `expected_version`. Conflicts return 409.
-6. Continuity checks are explicit paid operations. Saving never invokes a model.
-7. Unaccepted blocking continuity issues prevent approval. A user may accept a blocker only with a recorded reason.
-8. Approving a revision makes it canonical and supersedes the prior canonical revision; old Episode references do not change.
-9. An adaptation plan is editable only while draft. Applying an approved plan is idempotent and returns the existing Episode set after the first application.
+1. Prose generation creates the draft revision before dispatch, enters
+   `generation_plan.status=planning`, and asks the planning model to turn the
+   frozen StorySeed outline into a finite, contiguous chapter list.
+2. The outline alone determines chapter count and planned total characters.
+   There is no application-level chapter or total-length cap. Every chapter has
+   a 3000–5000 non-whitespace-character target.
+3. One task generates chapters in order and commits each chapter independently.
+   Resume skips a complete body only when its context hash still matches; if
+   extraction is missing, resume extracts facts/memory without rewriting prose.
+4. Only `draft` content is editable. An approved revision must be cloned before editing.
+5. Saving or moving chapter N marks affected successors `review_required`, marks continuity `review_required`, and marks an existing adaptation plan `stale`.
+6. Saves and reorder requests carry `expected_updated_at`; plan saves carry `expected_version`. Conflicts return 409.
+7. Saving never invokes a model. It invalidates that chapter's extraction,
+   successor context, continuity, and adaptation state.
+8. After every generated chapter, Narrative Event and Character Memory
+   candidates are extracted and recorded with their source chapter/hash. They
+   are revision-local Canon for later chapters only; approval promotes the
+   still-valid candidates to Story Canon in one human boundary.
+9. Continuity checks are explicit paid operations: overlapping adjacent
+   full-text windows run first, followed by one global synthesis over every
+   chapter summary/hash, the plan, facts, character states, and open threads.
+10. Unaccepted blocking continuity issues prevent approval. A user may accept a blocker only with a recorded reason.
+11. Approving a revision makes it canonical and supersedes the prior canonical revision; old Episode references do not change.
+12. An adaptation plan is editable only while draft. Applying an approved plan is idempotent and returns the existing Episode set after the first application.
 
 ## Model context boundaries
 
-Prose generation reads only the frozen StorySeed/IP/world snapshot, previous generated chapter summaries, and the Story-scoped memory context allowed by the narrative-memory design. It never reads Episode, removing the former `Episode → Novel → Episode` loop.
+Prose generation reads only the frozen StorySeed/IP/world snapshot, the current
+chapter plan, approved Story Canon, current-revision candidates from valid
+earlier chapter hashes, the rolling plot ledger, recent summaries, and the
+previous chapter tail. The serialized context is bounded to approximately 32K
+characters and records included IDs/hashes plus every truncation reason. It
+never concatenates the complete earlier novel and never reads Episode, removing
+the former `Episode → Novel → Episode` loop.
 
 Script request schemas do not gain operator parameters. The Episode context builder automatically includes only its mapped source chapter summaries, business IDs, hashes, adaptation goal, novel hash, and plan version. The same evidence is copied into Script metadata and the Task agent run; full unrelated chapters are excluded.
 
@@ -68,7 +89,8 @@ Script request schemas do not gain operator parameters. The Episode context buil
 
 All new identifiers are business IDs.
 
-- `POST /stories/business/{story}/novel/generate-async` with `style=prose`
+- `POST /stories/business/{story}/novel/generate-async` with `style=prose`;
+  `target_words` and `chapter_count` are accepted from old clients but ignored
 - `GET /stories/business/{story}/novel/revisions`
 - `GET /stories/novel/revisions/{revision}`
 - `POST /stories/novel/revisions/{revision}/resume-async`

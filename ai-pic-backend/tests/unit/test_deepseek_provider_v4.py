@@ -11,6 +11,7 @@ from app.services.providers.deepseek_models import (
     DEEPSEEK_V4_FLASH_MODEL,
     DEEPSEEK_V4_PRO_MODEL,
     get_static_models,
+    normalize_model,
 )
 from app.services.providers.deepseek_provider import DeepSeekProvider
 from app.services.providers.deepseek_request import build_chat_request
@@ -63,6 +64,24 @@ def test_static_models_include_deepseek_v4_and_legacy_aliases():
         models[DEEPSEEK_LEGACY_CHAT_MODEL].metadata["routes_to"]
         == DEEPSEEK_V4_FLASH_MODEL
     )
+
+
+def test_legacy_chat_routes_to_v4_flash_without_the_8192_output_cap():
+    assert normalize_model(DEEPSEEK_LEGACY_CHAT_MODEL) == DEEPSEEK_V4_FLASH_MODEL
+    model, payload, _stream = build_chat_request(
+        prompt="hi",
+        model=DEEPSEEK_LEGACY_CHAT_MODEL,
+        max_tokens=None,
+        temperature=0.3,
+        top_p=0.5,
+        frequency_penalty=0.1,
+        presence_penalty=0.2,
+        system_prompt=None,
+        extra_kwargs={},
+    )
+    assert model == DEEPSEEK_V4_FLASH_MODEL
+    assert payload["model"] == DEEPSEEK_V4_FLASH_MODEL
+    assert "max_tokens" not in payload
 
 
 def test_build_chat_request_normalizes_v4_alias_and_skips_sampling_in_thinking():

@@ -54,6 +54,32 @@ export interface StoryNovelAdaptationPlan {
   applied_episode_ids?: number[];
 }
 
+export interface StoryNovelGenerationPlan {
+  status: "planning" | "ready" | "failed";
+  chapter_count?: number;
+  target_chars?: number;
+  chapters: Array<{
+    position: number;
+    title: string;
+    goal: string;
+    target_chars: number;
+  }>;
+}
+
+export interface StoryNovelContinuityLedger {
+  state_status?: "empty" | "ready" | "stale";
+  chapters?: Record<
+    string,
+    {
+      status?: "body_ready" | "ready" | "stale";
+      extraction_status?: "pending" | "ready" | "stale";
+      char_count?: number;
+      body_hash?: string;
+      source_hash?: string;
+    }
+  >;
+}
+
 export interface StoryNovelRevision {
   id: number;
   business_id: string;
@@ -68,6 +94,8 @@ export interface StoryNovelRevision {
   continuity_status: ContinuityStatus;
   adaptation_plan_status: AdaptationPlanStatus;
   content_hash?: string | null;
+  generation_plan?: StoryNovelGenerationPlan | null;
+  continuity_ledger?: StoryNovelContinuityLedger | null;
   continuity_report?: { summary?: string; issues?: ContinuityIssue[] } | null;
   adaptation_plan?: StoryNovelAdaptationPlan | null;
   approved_at?: string | null;

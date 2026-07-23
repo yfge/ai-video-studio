@@ -1,26 +1,21 @@
 from __future__ import annotations
 
-import anyio
 import pytest
 from app.models.script import Story
 from app.models.story_structure import StoryStepOutline, StoryTreatment
-from app.models.task import Task, TaskType
 from app.models.user import User
 from app.schemas.generation_requests import StoryNovelExportRequest
-from app.schemas.story_novel_export import (
-    StoryNovelChapterUpdateRequest,
-    StoryNovelRevisionResponse,
-)
+from app.schemas.story_novel_export import StoryNovelChapterUpdateRequest
 from app.services.episode.novel_workflow_guard import (
     ensure_direct_episode_generation_allowed,
 )
 from app.services.script.novel_source_context import build_source_novel_context
-from app.services.story import story_novel_task_processor as processor
 from app.services.story.story_novel_adaptation_service import (
     StoryNovelAdaptationService,
 )
 from app.services.story.story_novel_export_payload import build_story_novel_payload
 from app.services.story.story_novel_revision_service import StoryNovelRevisionService
+from app.services.narrative_memory.source_hash import novel_chapter_source_hash
 from fastapi import HTTPException
 
 
@@ -43,6 +38,22 @@ def _user_story(db_session, *, workflow_mode="novel_adaptation_v1"):
         synopsis="秘密引发三次升级冲突",
         workflow_mode=workflow_mode,
         duration_minutes=9,
+        story_seed={
+            "schema": "story_seed_v1",
+            "title": "链路测试",
+            "premise": "主角必须守住秘密",
+            "outline": "秘密暴露、冲突升级，主角最终承担代价并完成选择。",
+            "protagonists": [
+                {
+                    "virtual_ip_business_id": "vip-protagonist",
+                    "initial_state": "谨慎而孤立",
+                }
+            ],
+            "world_constraints": ["秘密一旦公开便不可撤回"],
+            "central_conflict": "守密与信任冲突",
+            "content_constraints": [],
+        },
+        story_seed_status="confirmed",
     )
     db_session.add(story)
     db_session.commit()
@@ -53,8 +64,29 @@ def _draft_with_chapters(db_session, user, story):
     service = StoryNovelRevisionService(db_session, user)
     revision = service.create_draft(
         story.business_id,
-        StoryNovelExportRequest(style="prose", target_words=10000, chapter_count=3),
+        StoryNovelExportRequest(style="prose"),
     )
+    revision.generation_plan = {
+        "version": 1,
+        "status": "ready",
+        "chapter_count": 3,
+        "target_chars": 9000,
+        "chapters": [
+            {
+                "position": position,
+                "title": f"第{position}章",
+                "goal": "推进冲突",
+                "key_events": ["秘密变化"],
+                "character_focus": [],
+                "open_threads": [],
+                "end_state": "冲突升级",
+                "target_chars": 3000,
+            }
+            for position in range(1, 4)
+        ],
+    }
+    revision.chapter_count = 3
+    revision.target_words = 9000
     db_session.commit()
     chapters = []
     for position in range(1, 4):
@@ -63,12 +95,37 @@ def _draft_with_chapters(db_session, user, story):
                 revision,
                 position=position,
                 title=f"第{position}章",
-                content_text=f"正文{position}",
+                content_text=f"正文{position}" + "文" * 3000,
                 summary=f"摘要{position}",
                 cliffhanger=f"卡点{position}",
             )
         )
+    _mark_revision_ready(revision)
+    db_session.commit()
     return service, revision, chapters
+
+
+def _mark_revision_ready(revision):
+    rows = {}
+    coverage = []
+    for chapter in revision.chapters:
+        rows[str(chapter.position)] = {
+            "status": "ready",
+            "body_hash": chapter.content_hash,
+            "source_hash": novel_chapter_source_hash(chapter),
+            "extraction_status": "ready",
+            "event_ids": [],
+            "memory_ids": [],
+        }
+        coverage.append(
+            {
+                "business_id": chapter.business_id,
+                "content_hash": chapter.content_hash,
+                "position": chapter.position,
+            }
+        )
+    revision.continuity_ledger = {"chapters": rows}
+    revision.continuity_report = {"coverage": coverage, "issues": []}
 
 
 def test_prose_payload_can_exclude_episode_cycle(db_session):
@@ -101,7 +158,7 @@ def test_edit_invalidates_downstream_and_approved_revision_is_immutable(db_sessi
         revision.business_id,
         chapters[0].business_id,
         StoryNovelChapterUpdateRequest(
-            content_text="修改后的第一章",
+            content_text="修改后的第一章" + "改" * 3000,
             expected_updated_at=chapters[0].updated_at,
         ),
     )
@@ -113,6 +170,7 @@ def test_edit_invalidates_downstream_and_approved_revision_is_immutable(db_sessi
 
     for chapter in chapters:
         chapter.review_status = "ready"
+    _mark_revision_ready(revision)
     revision.continuity_status = "passed"
     db_session.commit()
     service.approve(revision.business_id)
@@ -179,48 +237,3 @@ def test_direct_episode_generation_guard_is_stable(db_session):
 
     story.workflow_mode = "direct"
     ensure_direct_episode_generation_allowed(story)
-
-
-def test_chapter_checkpoint_resume_only_generates_missing_rows(db_session, monkeypatch):
-    user, story = _user_story(db_session)
-    service = StoryNovelRevisionService(db_session, user)
-    revision = service.create_draft(
-        story.business_id,
-        StoryNovelExportRequest(style="prose", target_words=10000, chapter_count=3),
-    )
-    task = Task(
-        title="章节 checkpoint",
-        task_type=TaskType.TEXT_GENERATION,
-        user_id=user.id,
-    )
-    db_session.add(task)
-    db_session.commit()
-    calls = 0
-
-    async def fail_second(*_args, **_kwargs):
-        nonlocal calls
-        calls += 1
-        if calls == 2:
-            raise RuntimeError("provider interrupted")
-        return '{"title":"章节","content_text":"正文","summary":"摘要"}'
-
-    monkeypatch.setattr(processor, "_generate_text", fail_second)
-    with pytest.raises(RuntimeError, match="provider interrupted"):
-        anyio.run(processor._generate_missing_chapters, service, revision, task)
-    assert [row.position for row in revision.chapters] == [1]
-
-    resumed_calls = 0
-
-    async def complete_remaining(*_args, **_kwargs):
-        nonlocal resumed_calls
-        resumed_calls += 1
-        return '{"title":"章节","content_text":"补齐正文","summary":"补齐摘要"}'
-
-    monkeypatch.setattr(processor, "_generate_text", complete_remaining)
-    anyio.run(processor._generate_missing_chapters, service, revision, task)
-    assert resumed_calls == 2
-    assert [row.position for row in revision.chapters] == [1, 2, 3]
-    assert (
-        StoryNovelRevisionResponse.model_validate(revision).chapters[0].business_id
-        == revision.chapters[0].business_id
-    )

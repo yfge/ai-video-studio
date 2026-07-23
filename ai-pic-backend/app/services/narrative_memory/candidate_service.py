@@ -140,6 +140,38 @@ class CandidateService:
         self.repo.refresh(entity)
         return kind, entity
 
+    def approve_source_candidates(
+        self,
+        story: Story,
+        *,
+        valid_sources: dict[str, str],
+        user_id: int,
+        commit: bool = True,
+    ) -> list[str]:
+        """Promote only candidates whose chapter ID and source hash are current."""
+        promoted = []
+        candidates = [
+            *self.repo.list_events(story.id),
+            *self.repo.list_private_memories(story.id),
+        ]
+        for entity in candidates:
+            if (
+                entity.status != "candidate"
+                or valid_sources.get(entity.source_artifact_business_id)
+                != entity.source_hash
+            ):
+                continue
+            entity.status = "approved"
+            entity.approved_by = user_id
+            entity.approved_at = datetime.utcnow()
+            entity.version = int(entity.version or 1) + 1
+            promoted.append(entity.business_id)
+        if promoted:
+            self._advance_ledger(story)
+        if commit:
+            self.repo.commit()
+        return promoted
+
     def _candidate(self, story: Story, business_id: str):
         event = self.repo.get_event(story.id, business_id)
         if event:

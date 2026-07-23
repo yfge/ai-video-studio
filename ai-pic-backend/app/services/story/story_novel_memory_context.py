@@ -52,3 +52,29 @@ def invalidate_reordered_chapters(db, revision, chapters, source_before) -> None
         invalidate_chapter_source(
             db, revision, chapter, source_before[chapter.business_id]
         )
+
+
+def mark_revision_ledger_stale(
+    revision,
+    *,
+    from_position: int,
+    edited_chapter=None,
+) -> None:
+    ledger = dict(revision.continuity_ledger or {})
+    chapters = dict(ledger.get("chapters") or {})
+    for key, raw in list(chapters.items()):
+        if int(key) < from_position:
+            continue
+        entry = dict(raw)
+        entry["status"] = "stale"
+        entry["extraction_status"] = "stale"
+        if edited_chapter is not None and int(key) == edited_chapter.position:
+            entry["status"] = "body_ready"
+            entry["body_hash"] = edited_chapter.content_hash
+            entry["source_hash"] = novel_chapter_source_hash(edited_chapter)
+            entry["event_ids"] = []
+            entry["memory_ids"] = []
+        chapters[key] = entry
+    ledger["chapters"] = chapters
+    ledger["state_status"] = "stale"
+    revision.continuity_ledger = ledger

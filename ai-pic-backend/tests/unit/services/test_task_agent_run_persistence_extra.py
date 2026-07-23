@@ -154,6 +154,23 @@ def test_persist_task_agent_run_story_novel_export(db_session):
         model="deepseek:deepseek-chat",
         temperature=0.7,
         file_relative_path="exports/novels/x.txt",
+        generation_plan={"status": "ready", "chapters": []},
+        continuity_ledger={
+            "chapters": {
+                "1": {
+                    "body_hash": "body-hash",
+                    "source_hash": "source-hash",
+                    "context_hash": "context-hash",
+                    "context_evidence": {
+                        "event_ids": ["event-1"],
+                        "memory_ids": ["memory-1"],
+                    },
+                    "event_ids": ["event-1"],
+                    "memory_ids": ["memory-1"],
+                    "extraction_status": "ready",
+                }
+            }
+        },
     )
     db_session.add(export_row)
     db_session.commit()
@@ -167,3 +184,6 @@ def test_persist_task_agent_run_story_novel_export(db_session):
     assert run["provider_used"] == "deepseek"
     assert run["model_used"] == "deepseek-chat"
     assert run["result_ref"]["export_id"] == export_row.id
+    assert run["generation_plan_status"] == "ready"
+    assert run["chapter_context_evidence"][0]["context_hash"] == "context-hash"
+    assert run["chapter_context_evidence"][0]["event_ids"] == ["event-1"]

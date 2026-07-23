@@ -14,13 +14,14 @@ from fastapi import HTTPException
 from .story_novel_ai_prompts import (
     SYSTEM_PROMPT,
     adaptation_prompt,
-    chapter_prompt,
-    continuity_prompt,
 )
-from .story_novel_domain import active_chapters, compact_chapter_context
+from .story_novel_chapter_service import generate_or_resume_chapter
+from .story_novel_continuity_service import run_layered_continuity
+from .story_novel_domain import active_chapters
 from .story_novel_export_ai import generate_story_novel_text
 from .story_novel_legacy_task import run_legacy_export
-from .story_novel_memory_context import chapter_memory_context
+from .story_novel_memory_context import mark_revision_ledger_stale
+from .story_novel_planning_service import ensure_generation_plan
 from .story_novel_revision_service import StoryNovelRevisionService
 
 
@@ -42,99 +43,37 @@ async def _generate_text(revision, prompt: str, *, max_tokens: int | None) -> st
     )
 
 
-def _chapter_result(text: str, fallback_title: str) -> dict[str, str | None]:
-    parsed = extract_json_block(text) or {}
-    content = str(parsed.get("content_text") or parsed.get("content") or text).strip()
-    if not content:
-        raise HTTPException(status_code=500, detail="章节生成结果为空")
-    return {
-        "title": str(parsed.get("title") or fallback_title),
-        "content_text": content,
-        "summary": str(parsed.get("summary") or content[:300]),
-        "cliffhanger": (
-            str(parsed.get("cliffhanger")) if parsed.get("cliffhanger") else None
-        ),
-    }
-
-
 async def _generate_missing_chapters(service, revision, task, *, only_position=None):
-    plan = revision.generation_plan or {}
-    plan_rows = plan.get("chapters") or []
-    existing = {row.position: row for row in active_chapters(revision)}
-    target = int(revision.chapter_count or len(plan_rows) or 3)
-    per_chapter = max(800, int(revision.target_words / target))
-    for position in range(1, target + 1):
-        if only_position is None and position in existing:
-            continue
-        if only_position is not None and position != only_position:
-            continue
-        row_plan = next(
-            (row for row in plan_rows if int(row.get("position") or 0) == position),
-            {"position": position, "title": f"第{position}章"},
-        )
-        task.description = f"正在生成第 {position}/{target} 章…"
-        service.db.commit()
-        text = await _generate_text(
-            revision,
-            chapter_prompt(
-                snapshot=revision.story_snapshot or {},
-                chapter_plan=row_plan,
-                previous=compact_chapter_context(revision, position),
-                target_words=per_chapter,
-                memory_context=chapter_memory_context(service.db, revision, position),
-            ),
-            max_tokens=min(16000, max(2500, per_chapter * 2)),
-        )
-        result = _chapter_result(text, str(row_plan.get("title") or f"第{position}章"))
-        service.checkpoint_chapter(revision, position=position, **result)
+    plan = await ensure_generation_plan(service, revision, task, _generate_text)
+    plan_rows = plan["chapters"]
     if only_position is not None:
+        mark_revision_ledger_stale(revision, from_position=only_position)
         for row in service.repo.chapters_from_position(revision.id, only_position + 1):
             row.review_status = "review_required"
         revision.continuity_status = "review_required"
         if revision.adaptation_plan_status != "empty":
             revision.adaptation_plan_status = "stale"
         service.db.commit()
+    for row_plan in plan_rows:
+        position = int(row_plan["position"])
+        if only_position is not None and position != only_position:
+            continue
+        await generate_or_resume_chapter(
+            service,
+            revision,
+            task,
+            row_plan,
+            _generate_text,
+            force=only_position is not None,
+        )
+    ledger = dict(revision.continuity_ledger or {})
+    ledger["state_status"] = "ready"
+    revision.continuity_ledger = ledger
+    service.db.commit()
 
 
 async def _run_continuity(service, revision, task):
-    if revision.lifecycle_status != "draft":
-        raise HTTPException(status_code=409, detail="仅草稿可执行连续性检查")
-    chapters = [
-        {
-            "business_id": row.business_id,
-            "position": row.position,
-            "title": row.title,
-            "content": row.content_text,
-        }
-        for row in active_chapters(revision)
-    ]
-    revision.continuity_status = "checking"
-    service.db.commit()
-    text = await _generate_text(
-        revision,
-        continuity_prompt(snapshot=revision.story_snapshot or {}, chapters=chapters),
-        max_tokens=5000,
-    )
-    report = extract_json_block(text)
-    if not report or not isinstance(report.get("issues", []), list):
-        raise HTTPException(status_code=500, detail="连续性检查返回格式无效")
-    issues = []
-    for index, raw in enumerate(report.get("issues") or [], start=1):
-        item = dict(raw) if isinstance(raw, dict) else {"message": str(raw)}
-        item["id"] = str(item.get("id") or f"issue-{index}")
-        item["severity"] = (
-            "blocking" if item.get("severity") == "blocking" else "warning"
-        )
-        issues.append(item)
-    report["issues"] = issues
-    revision.continuity_report = report
-    revision.continuity_status = (
-        "failed" if any(row["severity"] == "blocking" for row in issues) else "passed"
-    )
-    if revision.continuity_status == "passed":
-        for row in active_chapters(revision):
-            row.review_status = "ready"
-    service.db.commit()
+    await run_layered_continuity(service, revision, task, _generate_text)
 
 
 async def _generate_adaptation(service, revision):

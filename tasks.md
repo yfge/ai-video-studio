@@ -52,6 +52,13 @@
   `docs/design/story-novel-episode-script.md`，执行计划见
   `docs/exec-plans/active/story-novel-adaptation-chain.md`。无付费浏览器验收见
   `artifacts/runs/story-novel-v1-20260722T170000/summary.json`。
+- P0：长篇小说改为 StorySeed 大纲动态规划、单任务逐章 3000–5000 字符生成；
+  每章 checkpoint 后抽取 facts/角色记忆并作为修订版内 Canon。实现计划见
+  `docs/exec-plans/completed/outline-driven-longform-novel.md`。DeepSeek V4
+  Flash 真实验收已生成 48 章/198691 字符，断点恢复、提取覆盖、浏览器路径和
+  GPT-5.6 全局审读证据见
+  `artifacts/runs/story-novel-longform-real-20260723/`；该样本文本因 65 个
+  blocking 连续性问题保持 draft，未提升 Story Canon。
 - P0：无限画布已有交互、保存恢复、动态节点、类型化端口与边、按图输入解析、
   Run Node、Run Downstream、stale descendants、故事板/视频候选评审和显式
   `timeline.place` 回填。当前缺口是 clip-storyboard v2 的当前环境

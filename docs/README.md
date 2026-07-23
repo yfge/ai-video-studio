@@ -21,6 +21,9 @@ This directory holds design notes, API references, and testing guides. Keep this
   interaction, and shared prompt contract improvements.
 - `docs/exec-plans/active/story-novel-adaptation-chain.md` — checkpointed
   Story → Novel → Episode → Script workflow for new narrative series.
+- `docs/exec-plans/completed/outline-driven-longform-novel.md` — dynamic
+  StorySeed planning, 3K–5K chapter checkpoints, bounded memory context,
+  extraction-only resume, and real-model acceptance.
 - `docs/exec-plans/completed/` — completed execution plans and archived implementation outlines.
 
 ## Agent System Of Record

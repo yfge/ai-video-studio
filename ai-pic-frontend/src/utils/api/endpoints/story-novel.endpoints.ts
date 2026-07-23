@@ -11,7 +11,7 @@ import type {
 
 export interface StoryNovelExportRequest {
   style: "zhihu" | "prose";
-  target_words: number;
+  target_words?: number;
   chapter_count?: number;
 }
 

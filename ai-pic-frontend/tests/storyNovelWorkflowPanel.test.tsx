@@ -80,6 +80,61 @@ describe("StoryNovelWorkflowPanel", () => {
       反派: "暴露弱点",
     });
   });
+
+  it("starts prose generation without legacy word or chapter targets", async () => {
+    const originalFetch = globalThis.fetch;
+    const requests: Array<{ url: string; init?: RequestInit }> = [];
+    globalThis.fetch = async (input, init) => {
+      const url = String(input);
+      requests.push({ url, init });
+      if (init?.method === "POST" && url.includes("/novel/generate-async")) {
+        return response({
+          task_id: 88,
+          status: "pending",
+          revision_business_id: "new-revision",
+        });
+      }
+      return response({ items: [], canonical_business_id: null });
+    };
+    try {
+      const utils = render(
+        <StoryNovelWorkflowPanel
+          story={story}
+          onEpisodesApplied={async () => undefined}
+        />,
+        { container: dom.window.document.body },
+      );
+      await waitFor(() =>
+        assert.ok(
+          utils.getByRole("button", {
+            name: "根据故事大纲生成长篇小说",
+          }),
+        ),
+      );
+      assert.equal(utils.queryByLabelText("目标字数"), null);
+      assert.equal(utils.queryByLabelText("章节数"), null);
+      fireEvent.click(
+        utils.getByRole("button", { name: "根据故事大纲生成长篇小说" }),
+      );
+      await waitFor(() =>
+        assert.ok(
+          requests.some(
+            (item) =>
+              item.init?.method === "POST" &&
+              item.url.includes("/novel/generate-async"),
+          ),
+        ),
+      );
+      const request = requests.find((item) =>
+        item.url.includes("/novel/generate-async"),
+      );
+      assert.deepEqual(JSON.parse(String(request?.init?.body)), {
+        style: "prose",
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });
 
 const story: Story = {
@@ -88,6 +143,7 @@ const story: Story = {
   title: "链路故事",
   genre: "drama",
   workflow_mode: "novel_adaptation_v1",
+  story_seed_status: "confirmed",
   status: "draft",
   is_public: false,
   created_at: "2026-07-22T00:00:00Z",

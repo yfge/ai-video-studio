@@ -67,7 +67,11 @@ def story_generate_task(
     )
 
 
-@celery_app.task(name="tasks.story_novel_generate")
+@celery_app.task(
+    name="tasks.story_novel_generate",
+    soft_time_limit=0,
+    time_limit=0,
+)
 def story_novel_generate_task(
     task_id: int, payload: Dict[str, Any], user_id: int
 ) -> None:

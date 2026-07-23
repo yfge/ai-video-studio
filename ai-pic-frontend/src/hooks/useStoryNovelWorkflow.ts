@@ -72,7 +72,7 @@ export function useStoryNovelWorkflow(
       if (response.data.status === "failed") {
         setError(response.data.error_message || "小说任务失败");
       }
-      if (response.data.status === "completed") await load();
+      await load();
     };
     void refresh();
     const timer = window.setInterval(refresh, 3000);
@@ -186,12 +186,10 @@ export function useStoryNovelWorkflow(
     progress,
     busy,
     error,
-    generate: (targetWords: number, chapterCount?: number) =>
+    generate: () =>
       startTask(
         generateStoryZhihuNovelAsync(story.business_id, {
           style: "prose",
-          target_words: targetWords,
-          chapter_count: chapterCount,
         }),
       ),
     resume: () =>

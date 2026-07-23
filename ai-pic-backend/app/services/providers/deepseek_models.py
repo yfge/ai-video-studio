@@ -98,6 +98,7 @@ def normalize_model(model: Optional[str]) -> str:
     if not raw:
         return DEEPSEEK_DEFAULT_MODEL
     aliases = {
+        DEEPSEEK_LEGACY_CHAT_MODEL: DEEPSEEK_V4_FLASH_MODEL,
         "deepseek-v4": DEEPSEEK_V4_PRO_MODEL,
         "deepseek-v4-preview": DEEPSEEK_V4_PRO_MODEL,
         "deepseek-v4-pro-preview": DEEPSEEK_V4_PRO_MODEL,

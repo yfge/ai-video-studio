@@ -6,6 +6,7 @@ from app.repositories.narrative_promotion_repository import NarrativePromotionRe
 from app.schemas.narrative_memory import CharacterMemoryCandidateCreate
 from app.services.narrative_memory.baseline_service import BaselineService
 from app.services.narrative_memory.dramatic_state_service import DramaticStateService
+from app.services.narrative_memory.extraction_service import NarrativeExtractionService
 from pydantic import ValidationError as PydanticValidationError
 from tests.unit.services.test_narrative_memory_system import _world
 
@@ -25,6 +26,23 @@ def test_story_private_memory_requires_occurrence_anchor():
                 "source_hash": "hash-a",
             }
         )
+
+
+def test_extraction_prompt_bounds_per_chapter_candidate_volume():
+    prompt = NarrativeExtractionService._prompt(
+        "正文",
+        [{"name": "主角"}],
+        [
+            SimpleNamespace(
+                business_id="anchor-a", source_artifact_business_id="chapter-a"
+            )
+        ],
+    )
+    assert "events 最多 8 条" in prompt
+    assert "memories 总计最多 6 条" in prompt
+    assert "允许 events 或 memories 为空数组" in prompt
+    assert '"event_type":"action|reveal|relationship|state_change|world_fact"' in prompt
+    assert '"presentation":"on_screen|offscreen|withheld"' in prompt
 
 
 def test_shared_memory_is_filtered_by_canon_branch(db_session):

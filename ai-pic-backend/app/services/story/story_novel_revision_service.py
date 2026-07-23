@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime
-
 from app.models.story_novel_export import StoryNovelChapter, StoryNovelExport
 from app.models.user import User
 from app.repositories.story_novel_repository import StoryNovelRepository
@@ -12,15 +10,16 @@ from sqlalchemy.orm import Session
 from .story_novel_domain import (
     active_chapters,
     build_story_snapshot,
-    default_generation_plan,
     refresh_revision_content,
     sha256_text,
 )
+from .story_novel_approval_service import approve_revision
 from .story_novel_memory_context import (
     capture_chapter_source_hashes,
     ensure_timestamp,
     invalidate_chapter_source,
     invalidate_reordered_chapters,
+    mark_revision_ledger_stale,
 )
 
 
@@ -50,27 +49,20 @@ class StoryNovelRevisionService:
         task_id: int | None = None,
     ) -> StoryNovelExport:
         story = self.story(story_business_id)
-        if (
-            story.memory_mode == "story_scoped_memory_v1"
-            and story.story_seed
-            and story.story_seed_status != "confirmed"
-        ):
+        if not story.story_seed or story.story_seed_status != "confirmed":
             raise HTTPException(
                 status_code=409, detail="请先确认 Story Seed，再生成小说"
             )
         if story.workflow_mode != "novel_adaptation_v1":
             story.workflow_mode = "novel_adaptation_v1"
-        chapter_count = request.chapter_count or max(
-            3, min(24, round(request.target_words / 1800))
-        )
         revision = StoryNovelExport(
             story_id=story.id,
             story_business_id=story.business_id,
             task_id=task_id,
             user_id=self.user.id,
             style="prose",
-            target_words=request.target_words,
-            chapter_count=chapter_count,
+            target_words=0,
+            chapter_count=None,
             total_words=0,
             model=request.model,
             temperature=request.temperature,
@@ -80,7 +72,12 @@ class StoryNovelRevisionService:
             continuity_status="unchecked",
             adaptation_plan_status="empty",
             story_snapshot=build_story_snapshot(story),
-            generation_plan=default_generation_plan(story, chapter_count),
+            generation_plan={"version": 1, "status": "planning", "chapters": []},
+            continuity_ledger={
+                "schema": "story_novel_continuity.v2",
+                "state_status": "empty",
+                "chapters": {},
+            },
         )
         self.db.add(revision)
         self.db.flush()
@@ -134,6 +131,9 @@ class StoryNovelRevisionService:
                 setattr(chapter, field, value)
         chapter.content_hash = sha256_text(chapter.content_text)
         chapter.review_status = "ready"
+        mark_revision_ledger_stale(
+            revision, from_position=chapter.position, edited_chapter=chapter
+        )
         self._invalidate_from(revision, chapter.position + 1)
         refresh_revision_content(revision)
         invalidate_chapter_source(
@@ -159,6 +159,7 @@ class StoryNovelRevisionService:
             changed_at = min(changed_at, old[business_id], position)
             existing[business_id].position = position
         invalidate_reordered_chapters(self.db, revision, chapters, source_before)
+        mark_revision_ledger_stale(revision, from_position=changed_at)
         self._invalidate_from(revision, changed_at)
         refresh_revision_content(revision)
         self.db.commit()
@@ -168,15 +169,13 @@ class StoryNovelRevisionService:
         source = self.revision(revision_id)
         story = source.story
         request = StoryNovelExportRequest(
-            style="prose",
-            target_words=source.target_words,
-            chapter_count=source.chapter_count,
-            model=source.model,
-            temperature=source.temperature,
+            style="prose", model=source.model, temperature=source.temperature
         )
         clone = self.create_draft(story.business_id, request)
         clone.story_snapshot = build_story_snapshot(story)
         clone.generation_plan = source.generation_plan
+        clone.target_words = source.target_words
+        clone.chapter_count = source.chapter_count
         for row in active_chapters(source):
             self.checkpoint_chapter(
                 clone,
@@ -213,24 +212,7 @@ class StoryNovelRevisionService:
     def approve(self, revision_id: str) -> StoryNovelExport:
         revision = self.revision(revision_id)
         self._ensure_draft(revision)
-        chapters = active_chapters(revision)
-        if len(chapters) != int(revision.chapter_count or 0) or any(
-            row.review_status != "ready" for row in chapters
-        ):
-            raise HTTPException(status_code=409, detail="仍有待复核章节")
-        if revision.continuity_status != "passed":
-            raise HTTPException(status_code=409, detail="连续性检查尚未通过")
-        story = revision.story
-        if story.canonical_novel_export_id:
-            previous = self.db.get(StoryNovelExport, story.canonical_novel_export_id)
-            if previous and previous.id != revision.id:
-                previous.lifecycle_status = "superseded"
-        revision.lifecycle_status = "approved"
-        revision.approved_at = datetime.utcnow()
-        revision.approved_by = self.user.id
-        story.canonical_novel_export_id = revision.id
-        self.db.commit()
-        return revision
+        return approve_revision(self, revision)
 
     def _invalidate_from(self, revision: StoryNovelExport, position: int) -> None:
         for row in self.repo.chapters_from_position(revision.id, position):
