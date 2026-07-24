@@ -14,6 +14,8 @@
 - 模型计划解析可读取 Canon，在消费里程碑的同章内规范化 knowledge outcome。
 - 仅当角色、当前章来源事件和逐字包含 Canon fact ID 的候选唯一时，替换为精确
   outcome value；不猜测来源事件，不处理歧义候选。
+- 当模型只返回通用 fact ID 时，使用冻结 `thread_payoffs.evidence_key_event`
+  与 required event 的一一对应关系编译 Canon knowledge outcome；只接受唯一绑定。
 - 原始 `validate_generation_plan` 无变化。
 
 ## Validation
@@ -23,13 +25,15 @@
   char-wangming.knowledge contains '钟声频率偏移原因为地轴微动'`。
 - #1367 模型实际给同一角色、同一 `ev-ch19-4` 的 fact ID：
   `知识-钟声频率偏移原因为地轴微动`。
-- focused：8 passed。
+- Task 6638 再次 fail closed，0 章；#1369 改用通用
+  `fact-ev-ch19-4-1`，冻结 payoff 合同精确绑定同一 `ev-ch19-4`。
+- focused：16 passed。
 - `pytest tests/unit/test_story_novel_*.py -q --no-cov`：
-  403 passed，1 skipped。
+  405 passed，1 skipped。
 - 精确 isort/black、repo docs/contracts diff、`git diff --check`：passed。
-- `./docker/build_prod_images.sh`：passed（dirty build tag `7a9e40a3`）；
-  backend manifest `38b15db5b165dc389ea5dcae8444040227bbd2363dc10bf1412b24c0a2c2d20e`，
-  frontend manifest `2df8f6471b433ac3e1dc2c109b5c34036119841596c6c7c2bca1534da1937550`。
+- `./docker/build_prod_images.sh`：passed（dirty build tag `7aa6d94b`）；
+  backend manifest `f4829d66b38c182e2520e6b6675a4348793e4a4db418635b5000419981ff6734`，
+  frontend manifest `4eda35689e960b8ac4522de7d82d329826f33c688a16f2d66b17d6cc92044e62`。
 
 ## Next Steps
 
@@ -38,4 +42,5 @@
 
 ## Linked Commits
 
-- Pending
+- `7aa6d94b`
+- Pending follow-up

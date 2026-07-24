@@ -92,3 +92,54 @@ def test_ambiguous_milestone_knowledge_alias_remains_invalid():
         "知识-fact-exact",
         "确认-fact-exact",
     ]
+
+
+def test_payoff_contract_binds_generic_model_fact_to_canon_outcome():
+    chapter = _chapter(
+        [
+            {
+                "character_id": "char-a",
+                "fact_id": "fact-event-1-1",
+                "source_event_id": "event-1",
+            }
+        ]
+    )
+    normalized = normalize_plan_payload(
+        {"chapters": [chapter]},
+        _canon(),
+        thread_payoffs=[
+            {
+                "thread_id": "thread-a",
+                "payoff_position": 1,
+                "evidence_key_event": "角色确认事实",
+            }
+        ],
+    )["chapters"][0]
+
+    assert normalized["knowledge_grants"] == [
+        {
+            "character_id": "char-a",
+            "fact_id": "fact-exact",
+            "source_event_id": "event-1",
+        }
+    ]
+    validate_generation_plan(_canon(), [normalized])
+
+
+def test_multiple_payoff_events_do_not_guess_a_milestone_source():
+    chapter = _chapter([])
+    chapter["key_events"].append("另一项证据")
+    chapter["required_event_ids"].append("event-2")
+    payoffs = [
+        {
+            "payoff_position": 1,
+            "evidence_key_event": key_event,
+        }
+        for key_event in chapter["key_events"]
+    ]
+
+    normalized = normalize_plan_payload(
+        {"chapters": [chapter]}, _canon(), thread_payoffs=payoffs
+    )["chapters"][0]
+
+    assert normalized["knowledge_grants"] == []

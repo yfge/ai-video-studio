@@ -25,7 +25,9 @@ def parse_plan(
     prior_chapters=None,
     require_complete=True,
 ) -> tuple[dict | None, str | None]:
-    payload = normalize_plan_payload(extract_json_block(text), canon)
+    payload = normalize_plan_payload(
+        extract_json_block(text), canon, thread_payoffs=thread_payoffs
+    )
     try:
         if not payload:
             raise ValueError("missing JSON object")

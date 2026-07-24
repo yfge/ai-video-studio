@@ -8,20 +8,24 @@ from .story_novel_initial_state import (
     canonical_initial_subjects,
 )
 from .story_novel_location_rules import entity_kinds
+from .story_novel_milestone_knowledge_normalizer import normalize_milestone_knowledge
 
 
-def normalize_plan_payload(payload, canon: dict | None = None):
+def normalize_plan_payload(
+    payload, canon: dict | None = None, thread_payoffs: list[dict] | None = None
+):
     """Normalize provider field aliases before Pydantic validation."""
     if not isinstance(payload, dict) or not isinstance(payload.get("chapters"), list):
         return payload
     normalized = dict(payload)
     normalized["chapters"] = [
-        _normalize_chapter_aliases(chapter, canon) for chapter in payload["chapters"]
+        _normalize_chapter_aliases(chapter, canon, thread_payoffs)
+        for chapter in payload["chapters"]
     ]
     return normalized
 
 
-def _normalize_chapter_aliases(chapter, canon):
+def _normalize_chapter_aliases(chapter, canon, thread_payoffs):
     if not isinstance(chapter, dict):
         return chapter
     row = dict(chapter)
@@ -40,43 +44,8 @@ def _normalize_chapter_aliases(chapter, canon):
                 movement["means"] = reason
         movements.append(movement)
     row["location_transitions"] = movements
-    row["knowledge_grants"] = _normalize_milestone_knowledge(row, canon)
+    row["knowledge_grants"] = normalize_milestone_knowledge(row, canon, thread_payoffs)
     return row
-
-
-def _normalize_milestone_knowledge(chapter: dict, canon: dict | None) -> list:
-    grants = [dict(item) for item in chapter.get("knowledge_grants") or []]
-    milestones = {
-        item["id"]: item
-        for item in (canon or {}).get("milestones") or []
-        if item.get("id")
-    }
-    required = set(chapter.get("required_event_ids") or [])
-    for milestone_id in chapter.get("milestones_consumed") or []:
-        for outcome in (milestones.get(milestone_id) or {}).get("outcomes") or []:
-            if (
-                outcome.get("field") != "knowledge"
-                or outcome.get("operator") != "contains"
-            ):
-                continue
-            character_id, fact_id = outcome.get("subject_id"), outcome.get("value")
-            if not isinstance(fact_id, str) or any(
-                item.get("character_id") == character_id
-                and item.get("fact_id") == fact_id
-                for item in grants
-            ):
-                continue
-            candidates = [
-                item
-                for item in grants
-                if item.get("character_id") == character_id
-                and item.get("source_event_id") in required
-                and isinstance(item.get("fact_id"), str)
-                and fact_id in item["fact_id"]
-            ]
-            if len(candidates) == 1:
-                candidates[0]["fact_id"] = fact_id
-    return grants
 
 
 def normalize_redundant_location_state(canon: dict, chapters: list[dict]) -> list[dict]:
