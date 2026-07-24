@@ -96,6 +96,7 @@ def test_quote_only_repair_freezes_typed_state_and_excludes_future_catalog():
     assert "SECRET_STATE_BEFORE" not in prompts[1]
     assert "opened_thread_ids 必须逐项原样返回" in prompts[0]
     assert "只判断当前章合同" in prompts[0]
+    assert parameters[0]["max_tokens"] == 16000
     assert parameters[1]["max_tokens"] == 3000
 
 

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 
+from pydantic import ValidationError
+
 from app.schemas.story_novel_longform import StoryNovelStateDelta
 from app.services.story.story_novel_evidence_alignment import (
     normalize_extracted_evidence,
@@ -30,9 +32,8 @@ from app.services.story.story_novel_state_extraction_prompt import (
     build_state_extraction_prompt,
 )
 from app.utils.json_utils import extract_json_block
-from pydantic import ValidationError
 
-STATE_EXTRACTION_MAX_TOKENS = 6000
+STATE_EXTRACTION_MAX_TOKENS = 16000
 
 
 class StateExtractionError(ValueError):
