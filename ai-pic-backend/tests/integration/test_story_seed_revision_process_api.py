@@ -5,7 +5,8 @@ from app.models.script import Story
 from app.models.task import Task, TaskStatus
 from app.services.story import story_novel_task_processor as processor
 from tests.integration.story_novel_process_support import outline
-from tests.integration.story_novel_process_support import process_api as process_api
+
+pytest_plugins = ["tests.integration.story_novel_process_support"]
 
 
 def test_structure_worker_persists_draft_then_confirmation_freezes_revision_snapshot(
@@ -14,11 +15,15 @@ def test_structure_worker_persists_draft_then_confirmation_freezes_revision_snap
     client = process_api.client
     structure = client.post(
         f"/api/v1/stories/business/{process_api.story_business_id}"
-        "/story-seed/structure-async"
+        "/story-seed/structure-async",
+        json={"chapter_count": 2, "model": "codex:gpt-5.6"},
     )
     assert structure.status_code == 200, structure.text
     task_id = structure.json()["data"]["task_id"]
     assert process_api.queued[0]["name"] == "tasks.story_novel_generate"
+    queued_payload = process_api.queued[0]["args"][1]
+    assert queued_payload["chapter_count"] == 2
+    assert queued_payload["model"] == "codex:gpt-5.6"
 
     blocked = client.put(
         f"/api/v1/stories/business/{process_api.story_business_id}/story-seed",
@@ -37,7 +42,8 @@ def test_structure_worker_persists_draft_then_confirmation_freezes_revision_snap
     )
     assert create_blocked.status_code == 409
 
-    async def fixed_structure(_carrier, _prompt, **_kwargs):
+    async def fixed_structure(carrier, _prompt, **_kwargs):
+        assert carrier.model == "codex:gpt-5.6"
         return json.dumps(
             {"structured_outline": outline("draft")},
             ensure_ascii=False,
@@ -57,6 +63,13 @@ def test_structure_worker_persists_draft_then_confirmation_freezes_revision_snap
         assert story.story_seed_status == "draft"
         assert story.story_seed_version == 2
         assert story.story_seed["structured_outline"]["status"] == "draft"
+        assert story.story_seed["structured_outline"]["requested_chapter_count"] == 2
+        assert (
+            story.story_seed["structured_outline"]["planning_model"] == "codex:gpt-5.6"
+        )
+        parameters = json.loads(task.parameters)
+        assert parameters["chapter_count"] == 2
+        assert parameters["model"] == "codex:gpt-5.6"
 
     confirmed = client.put(
         f"/api/v1/stories/business/{process_api.story_business_id}/story-seed",

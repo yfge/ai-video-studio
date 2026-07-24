@@ -1,6 +1,5 @@
 from functools import partial
 from types import SimpleNamespace
-from typing import Any
 
 import anyio
 from app.core.database import SessionLocal
@@ -140,9 +139,7 @@ async def _generate_adaptation(service, revision):
     service.db.commit()
 
 
-def process_story_novel_task(
-    task_id: int, payload: dict[str, Any], user_id: int
-) -> None:
+def process_story_novel_task(task_id: int, payload: dict, user_id: int) -> None:
     db = SessionLocal()
     repo = StoryNovelRepository(db)
     task = None
@@ -190,7 +187,8 @@ def _structure_seed(repo, db, task, payload, user) -> None:
     story = repo.accessible_story(str(payload.get("story_business_id") or ""), user)
     if not story:
         raise HTTPException(status_code=404, detail="故事不存在")
-    model = story.ai_model or f"deepseek:{DEEPSEEK_DEFAULT_MODEL}"
+    model = str(payload.get("model") or story.ai_model or "").strip()
+    model = model or f"deepseek:{DEEPSEEK_DEFAULT_MODEL}"
     carrier = SimpleNamespace(model=model, temperature=0.7)
     anyio.run(
         partial(
@@ -201,6 +199,7 @@ def _structure_seed(repo, db, task, payload, user) -> None:
             carrier,
             _generate_text,
             expected_version=int(payload["story_seed_version"]),
+            requested_chapter_count=payload.get("chapter_count"),
         )
     )
 

@@ -100,7 +100,7 @@ def queue_novel_operation(db, user, revision, operation: str, **payload):
     return {"success": True, "data": {"task_id": task.id, "status": task.status}}
 
 
-def queue_story_seed_structure(db, user, story):
+def queue_story_seed_structure(db, user, story, request):
     service = StoryNovelRevisionService(db, user)
     story = StoryNovelRepository(db).accessible_story_by_id(
         story.id, user, for_update=True
@@ -114,7 +114,11 @@ def queue_story_seed_structure(db, user, story):
         task_type=TaskType.TEXT_GENERATION,
         prompt="structure_story_seed",
         parameters=json.dumps(
-            {"story_seed_version": int(story.story_seed_version or 1)},
+            {
+                "story_seed_version": int(story.story_seed_version or 1),
+                "chapter_count": request.chapter_count,
+                "model": request.model,
+            },
             ensure_ascii=False,
         ),
         user_id=user.id,
@@ -131,6 +135,8 @@ def queue_story_seed_structure(db, user, story):
                 "operation": "structure_story_seed",
                 "story_business_id": story.business_id,
                 "story_seed_version": int(story.story_seed_version or 1),
+                "chapter_count": request.chapter_count,
+                "model": request.model,
             },
             user.id,
         ],

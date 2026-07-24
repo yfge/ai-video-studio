@@ -7,6 +7,7 @@ import type {
   StoryNovelCreateRevisionPayload,
   StoryNovelRevision,
   StoryNovelUpdateLengthSpecPayload,
+  StorySeedStructurePayload,
   StorySeedStructuredOutline,
 } from "../types";
 
@@ -18,12 +19,13 @@ export function listNovelLengthProfiles(): Promise<
 
 export function structureStorySeedAsync(
   storyBusinessId: string,
+  payload: StorySeedStructurePayload,
 ): Promise<ApiResponse<NovelTaskResponse>> {
   return httpClient(
     `/api/v1/stories/business/${encodeURIComponent(
       storyBusinessId,
     )}/story-seed/structure-async`,
-    { method: "POST" },
+    { method: "POST", body: JSON.stringify(payload) },
   );
 }
 

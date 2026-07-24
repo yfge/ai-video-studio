@@ -1,4 +1,8 @@
-import { operatorButtonClass, operatorInputClass } from "@/components/shared";
+import {
+  ModelSelector,
+  operatorButtonClass,
+  operatorInputClass,
+} from "@/components/shared";
 import type {
   StoryNovelCreateRevisionPayload,
   StoryNovelRevision,
@@ -72,17 +76,16 @@ function LengthProfileInputs({
           <option value="custom">自定义</option>
         </select>
       </label>
-      <label className="text-xs font-medium text-gray-600">
-        生成模型（可选）
-        <input
-          aria-label="生成模型（可选）"
-          value={state.model}
-          disabled={locked}
-          onChange={(event) => state.setModel(event.target.value)}
-          className={operatorInputClass("mt-1 w-full")}
-          placeholder="使用服务端默认模型"
-        />
-      </label>
+      <ModelSelector
+        value={state.model}
+        onChange={state.setModel}
+        label="正文生成模型（可选）"
+        helperText="用于当前小说版本的 Canon、正文和连续性调用。"
+        autoLabel="使用服务端默认模型"
+        modelType="text"
+        disabled={locked}
+        cacheKey="story-novel-prose-models"
+      />
     </div>
   );
 }

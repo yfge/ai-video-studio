@@ -15,7 +15,7 @@ describe("StoryNovelLengthPanel acceptance", () => {
 
   it("covers preset defaults, chapter overrides, bulk actions, clearing, and totals", async () => {
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = async () => profileResponse();
+    globalThis.fetch = async (input) => frontendResponse(input);
     try {
       const utils = render(
         <StoryNovelLengthPanel
@@ -75,7 +75,7 @@ describe("StoryNovelLengthPanel acceptance", () => {
   it("submits custom defaults, a per-chapter override, and the model in the API payload", async () => {
     const originalFetch = globalThis.fetch;
     const creates: StoryNovelCreateRevisionPayload[] = [];
-    globalThis.fetch = async () => profileResponse();
+    globalThis.fetch = async (input) => frontendResponse(input);
     try {
       const utils = render(
         <StoryNovelLengthPanel
@@ -114,8 +114,15 @@ describe("StoryNovelLengthPanel acceptance", () => {
       fireEvent.input(utils.getAllByLabelText("目标")[1], {
         target: { value: "4600" },
       });
-      fireEvent.input(utils.getByLabelText("生成模型（可选）"), {
-        target: { value: "  gpt-5.6  " },
+      await waitFor(() =>
+        assert.equal(
+          (utils.getByLabelText("正文生成模型（可选）") as HTMLSelectElement)
+            .disabled,
+          false,
+        ),
+      );
+      fireEvent.change(utils.getByLabelText("正文生成模型（可选）"), {
+        target: { value: "codex:gpt-5.6" },
       });
 
       assertTotals(utils.container, "8,800", "6,400–10,400");
@@ -136,7 +143,7 @@ describe("StoryNovelLengthPanel acceptance", () => {
             max_chars: 5200,
           },
         },
-        model: "gpt-5.6",
+        model: "codex:gpt-5.6",
       });
     } finally {
       globalThis.fetch = originalFetch;
@@ -195,6 +202,29 @@ function profileResponse() {
     }),
     { headers: { "content-type": "application/json" } },
   );
+}
+
+function frontendResponse(input: string | URL | Request) {
+  return String(input).includes("/ai/models/available")
+    ? new Response(
+        JSON.stringify({
+          success: true,
+          data: {
+            models: [
+              {
+                model_id: "codex:gpt-5.6",
+                id: "gpt-5.6",
+                name: "GPT-5.6",
+                provider: "codex",
+                type: "text_generation",
+                capabilities: ["text_generation"],
+              },
+            ],
+          },
+        }),
+        { headers: { "content-type": "application/json" } },
+      )
+    : profileResponse();
 }
 
 const story = {

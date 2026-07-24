@@ -31,9 +31,14 @@ async def structure_story_seed(
     generate_text,
     *,
     expected_version: int,
+    requested_chapter_count: int | None = None,
 ) -> StorySeedModel:
     seed = dict(story.story_seed or {})
-    expected_positions = explicit_outline_positions({"story_seed": seed})
+    expected_positions = (
+        list(range(1, requested_chapter_count + 1))
+        if requested_chapter_count
+        else explicit_outline_positions({"story_seed": seed})
+    )
     prompt_seed = {
         key: value for key, value in seed.items() if key != "structured_outline"
     }
@@ -42,7 +47,9 @@ async def structure_story_seed(
     )
     task.description = "正在把文字大纲转换为结构化章节…"
     db.commit()
-    text = await generate_text(carrier, prompt, max_tokens=_planning_tokens(seed))
+    text = await generate_text(
+        carrier, prompt, max_tokens=_planning_tokens(seed, expected_positions)
+    )
     ending_direction = str(seed.get("ending_direction") or "")
     outline, error = _parse(text, expected_positions, ending_direction)
     if not outline:
@@ -62,7 +69,9 @@ async def structure_story_seed(
                 + "\n\n上一次结果无效或被截断，只允许完整修复并重输一次。"
                 + f"\n校验错误：{error}\n上一次输出：{text[:12000]}"
             )
-        text = await generate_text(carrier, repair, max_tokens=_planning_tokens(seed))
+        text = await generate_text(
+            carrier, repair, max_tokens=_planning_tokens(seed, expected_positions)
+        )
         if shape and conflicts:
             try:
                 outline = apply_seed_thread_repairs(shape, text, conflicts)
@@ -89,6 +98,9 @@ async def structure_story_seed(
                     ((seed.get("structured_outline") or {}).get("version") or 0)
                 )
                 + 1,
+                "requested_chapter_count": len(outline.chapters),
+                "planning_model": str(getattr(carrier, "model", "") or "").strip()
+                or None,
             },
         }
     )
@@ -154,6 +166,6 @@ def _targeted_conflicts(
         return []
 
 
-def _planning_tokens(seed: dict) -> int:
-    expected = explicit_outline_positions({"story_seed": seed})
+def _planning_tokens(seed: dict, expected: list[int] | None = None) -> int:
+    expected = expected or explicit_outline_positions({"story_seed": seed})
     return max(6000, (len(expected) or 12) * 700)

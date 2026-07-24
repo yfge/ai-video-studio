@@ -102,6 +102,7 @@ export function ModelSelector({
       ) : null}
       <div className="grid gap-2 sm:grid-cols-2">
         <select
+          aria-label={`${label || "模型"}提供商`}
           value={provider}
           onChange={(event) => {
             const next = event.target.value;
@@ -122,6 +123,7 @@ export function ModelSelector({
           ))}
         </select>
         <select
+          aria-label={label || "模型"}
           value={value ?? ""}
           onChange={(event) => onChange(event.target.value)}
           disabled={disabled || loading || modelsByProvider.length === 0}

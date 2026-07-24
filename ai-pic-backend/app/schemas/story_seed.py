@@ -29,6 +29,8 @@ class StorySeedThreadPayoff(BaseModel):
 class StorySeedStructuredOutline(BaseModel):
     status: Literal["draft", "confirmed", "frozen"] = "draft"
     version: int = Field(..., strict=True, ge=1)
+    requested_chapter_count: Optional[int] = Field(None, strict=True, ge=1)
+    planning_model: Optional[str] = Field(None, min_length=1, max_length=128)
     chapters: List[StorySeedStructuredChapter] = Field(..., min_length=1)
     thread_schedule_version: int = Field(0, strict=True, ge=0, le=1)
     thread_payoffs: List[StorySeedThreadPayoff] = Field(default_factory=list)
@@ -77,6 +79,11 @@ class StorySeedModel(BaseModel):
 
 class StorySeedEnvelope(BaseModel):
     story_seed: StorySeedModel
+
+
+class StorySeedStructureRequest(BaseModel):
+    chapter_count: Optional[int] = Field(None, strict=True, ge=1)
+    model: Optional[str] = Field(None, min_length=1, max_length=128)
 
 
 class StorySeedStructuredUpdateRequest(BaseModel):

@@ -6,7 +6,7 @@ import {
   structureStorySeedAsync,
   taskAPI,
 } from "@/utils/api/endpoints";
-import type { Story } from "@/utils/api/types";
+import type { Story, StorySeedStructurePayload } from "@/utils/api/types";
 
 const TERMINAL = new Set(["completed", "failed", "cancelled"]);
 
@@ -52,10 +52,10 @@ export function useStorySeedStructureTask(
     };
   }, [active, onStory, story.business_id, taskId]);
 
-  const start = async () => {
+  const start = async (payload: StorySeedStructurePayload) => {
     setRequesting(true);
     setError("");
-    const response = await structureStorySeedAsync(story.business_id);
+    const response = await structureStorySeedAsync(story.business_id, payload);
     setRequesting(false);
     if (!response.success || !response.data) {
       setError(response.error || "创建结构化大纲任务失败");

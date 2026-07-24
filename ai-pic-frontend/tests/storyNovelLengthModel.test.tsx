@@ -28,23 +28,32 @@ describe("StoryNovelLengthPanel model", () => {
   it("hydrates and saves the current revision model", async () => {
     const originalFetch = globalThis.fetch;
     const updates: StoryNovelUpdateLengthSpecPayload[] = [];
-    globalThis.fetch = async () =>
-      new Response(
-        JSON.stringify({
-          success: true,
-          data: {
-            items: [
-              {
-                profile_id: "standard_serial",
-                name: "标准连载",
-                min_chars: 3000,
-                target_chars: 4000,
-                max_chars: 5000,
-              },
-            ],
-          },
-        }),
-        { headers: { "content-type": "application/json" } },
+    globalThis.fetch = async (input) =>
+      response(
+        String(input).includes("/ai/models/available")
+          ? {
+              models: [
+                {
+                  model_id: "deepseek:deepseek-v4-flash",
+                  id: "deepseek-v4-flash",
+                  name: "DeepSeek V4 Flash",
+                  provider: "deepseek",
+                  type: "text_generation",
+                  capabilities: ["text_generation"],
+                },
+              ],
+            }
+          : {
+              items: [
+                {
+                  profile_id: "standard_serial",
+                  name: "标准连载",
+                  min_chars: 3000,
+                  target_chars: 4000,
+                  max_chars: 5000,
+                },
+              ],
+            },
       );
     try {
       const utils = render(
@@ -61,11 +70,16 @@ describe("StoryNovelLengthPanel model", () => {
         />,
         { container: dom.window.document.body },
       );
-      const modelInput = await waitFor(() =>
-        utils.getByDisplayValue("deepseek:deepseek-v4-flash"),
-      );
+      const modelInput = await waitFor(() => {
+        const field = utils.getByLabelText("正文生成模型（可选）");
+        assert.equal(
+          (field as HTMLSelectElement).value,
+          "deepseek:deepseek-v4-flash",
+        );
+        return field;
+      });
       assert.equal(
-        (modelInput as HTMLInputElement).value,
+        (modelInput as HTMLSelectElement).value,
         "deepseek:deepseek-v4-flash",
       );
       fireEvent.click(utils.getByRole("button", { name: "保存到当前版本" }));
@@ -77,6 +91,12 @@ describe("StoryNovelLengthPanel model", () => {
     }
   });
 });
+
+function response(data: unknown) {
+  return new Response(JSON.stringify({ success: true, data }), {
+    headers: { "content-type": "application/json" },
+  });
+}
 
 const story = {
   business_id: "story-1",

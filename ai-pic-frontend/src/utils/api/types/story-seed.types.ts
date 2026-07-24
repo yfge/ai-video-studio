@@ -22,9 +22,16 @@ export interface StorySeedThreadPayoff {
 export interface StorySeedStructuredOutline {
   status: "draft" | "confirmed" | "frozen";
   version: number;
+  requested_chapter_count?: number | null;
+  planning_model?: string | null;
   chapters: StorySeedStructuredChapter[];
   thread_schedule_version: number;
   thread_payoffs: StorySeedThreadPayoff[];
+}
+
+export interface StorySeedStructurePayload {
+  chapter_count: number;
+  model?: string;
 }
 
 interface StorySeedBase {

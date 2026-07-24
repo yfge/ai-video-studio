@@ -24,6 +24,11 @@ import {
   StorySeedPlanningStatus,
   StorySeedSaveActions,
 } from "./StorySeedSectionControls";
+import {
+  StorySeedPlanningInputs,
+  suggestedStructureChapterCount,
+  suggestedStructureModel,
+} from "./StorySeedPlanningInputs";
 
 export function StorySeedSection({
   story,
@@ -42,6 +47,12 @@ export function StorySeedSection({
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
+  const [planningChapterCount, setPlanningChapterCount] = useState(
+    suggestedStructureChapterCount(initial),
+  );
+  const [planningModel, setPlanningModel] = useState(
+    suggestedStructureModel(initial, story.ai_model),
+  );
   const completedTask = useRef<number | null>(null);
   const acceptPlannedStory = useCallback((next: Story) => {
     if (next.story_seed) setSeed(next.story_seed);
@@ -51,7 +62,9 @@ export function StorySeedSection({
   useEffect(() => {
     setSeed(initial);
     setStatus(story.story_seed_status === "confirmed" ? "confirmed" : "draft");
-  }, [initial, story.story_seed_status]);
+    setPlanningChapterCount(suggestedStructureChapterCount(initial));
+    setPlanningModel(suggestedStructureModel(initial, story.ai_model));
+  }, [initial, story.ai_model, story.story_seed_status]);
   useEffect(() => {
     if (
       planning.taskId &&
@@ -108,6 +121,11 @@ export function StorySeedSection({
     seed.schema === "story_seed_v2" ? seed.structured_outline : null;
   const validation = structured ? validateStructuredOutline(structured) : null;
   const controlsLocked = locked || planning.active;
+  const startPlanning = () =>
+    planning.start({
+      chapter_count: planningChapterCount,
+      ...(planningModel.trim() ? { model: planningModel.trim() } : {}),
+    });
   const toggleEditing = () => {
     if (controlsLocked) return;
     if (status === "confirmed" && seed.schema === "story_seed_v2") {
@@ -184,21 +202,31 @@ export function StorySeedSection({
               }
             }}
           />
-        ) : (
+        ) : null}
+        {!structured || structured.thread_schedule_version !== 1 || editing ? (
+          <StorySeedPlanningInputs
+            chapterCount={planningChapterCount}
+            model={planningModel}
+            disabled={controlsLocked || planning.requesting}
+            onChapterCount={setPlanningChapterCount}
+            onModel={setPlanningModel}
+          />
+        ) : null}
+        {!structured ? (
           <button
             type="button"
             disabled={controlsLocked || planning.requesting}
-            onClick={() => void planning.start()}
+            onClick={() => void startPlanning()}
             className={operatorButtonClass("primary")}
           >
             AI 生成结构化章节计划
           </button>
-        )}
+        ) : null}
         {structured && (structured.thread_schedule_version !== 1 || editing) ? (
           <button
             type="button"
             disabled={controlsLocked || planning.requesting}
-            onClick={() => void planning.start()}
+            onClick={() => void startPlanning()}
             className={operatorButtonClass("primary")}
           >
             AI 重新生成结构化章节计划
