@@ -27,6 +27,8 @@ def merge_frozen_chapters(
     frozen_spec: dict | None,
     canon: dict,
     thread_payoffs: list[dict] | None = None,
+    *,
+    validate: bool = True,
 ) -> list[dict]:
     if not frozen_spec:
         return compile_timeline_bindings(canon, chapters)
@@ -53,7 +55,8 @@ def merge_frozen_chapters(
         )
         merged.append(row)
     compiled = compile_timeline_bindings(canon, merged)
-    validate_generation_plan(canon, compiled)
+    if validate:
+        validate_generation_plan(canon, compiled)
     return compiled
 
 

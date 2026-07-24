@@ -90,16 +90,28 @@ def _drop_owner_placement_movements(movements, transitions, subjects, kinds):
     kept = []
     for movement in movements:
         subject_id = movement["subject_id"]
+        current = subjects.get(subject_id) or {}
+        target = movement.get("to_location_id")
+        if current.get("location") == target:
+            continue
+        new_owner_id = owners.get(subject_id)
+        new_owner_move = next(
+            (
+                item
+                for item in movements
+                if item.get("subject_id") == new_owner_id
+                and item.get("to_location_id") == target
+            ),
+            None,
+        )
+        if kinds.get(subject_id) == "object" and new_owner_move:
+            continue
         if movement.get("from_location_id") is not None:
             if _carried_by_owner_movement(
                 movement, movements, transitions, subjects, kinds
             ):
                 continue
             kept.append(movement)
-            continue
-        current = subjects.get(subject_id) or {}
-        target = movement.get("to_location_id")
-        if current.get("location") == target:
             continue
         owner_id = owners.get(subject_id)
         owner = subjects.get(owner_id) if owner_id else None

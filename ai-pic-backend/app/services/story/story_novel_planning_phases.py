@@ -2,10 +2,7 @@ from __future__ import annotations
 
 from typing import Awaitable, Callable
 
-from app.schemas.story_novel_longform import StoryNovelGenerationPlan
-from app.utils.json_utils import extract_json_block
 from fastapi import HTTPException
-from pydantic import ValidationError
 
 from .story_novel_ai_prompts import canon_prompt, planning_prompt
 from .story_novel_canon_repair import canon_repair_prompt as _canon_repair_prompt
@@ -13,15 +10,19 @@ from .story_novel_canon_service import (
     CANON_GATE_VERSION,
     normalize_canon,
     parse_model_canon,
-    validate_generation_plan,
 )
 from .story_novel_length_service import generation_plan_hash
-from .story_novel_outline_merge import merge_frozen_chapters
-from .story_novel_plan_normalizer import (
-    normalize_plan_payload,
-    normalize_redundant_location_state,
-)
+from .story_novel_plan_parser import parse_plan
 from .story_novel_plan_repair import plan_repair_prompt as _plan_repair_prompt
+from .story_novel_planning_batches import (
+    batch_contract,
+    batch_frozen_spec,
+    batch_thread_payoffs,
+    chapter_batches,
+    checkpoint_plan_batch,
+    planning_batch_prompt,
+    reusable_plan_draft,
+)
 from .story_novel_task_guard import ensure_task_not_cancelled
 from .story_novel_thread_schedule import compile_thread_payoffs
 from .story_novel_thread_schedule_checkpoint import (
@@ -100,35 +101,59 @@ async def plan_chapters(
     if thread_payoffs is not None and frozen_spec is not None:
         ensure_task_not_cancelled(service.db, task)
         checkpoint_thread_payoffs(service, revision, task, frozen_spec, thread_payoffs)
-    prompt = planning_prompt(
-        planning_contract=contract,
-        canon=canon,
-        thread_payoffs=thread_payoffs,
+    chapters = reusable_plan_draft(
+        dict(revision.generation_plan or {}), canon, expected_positions
     )
-    max_tokens = max(16000, len(expected_positions or []) * 1400)
-    text = await generate_text(revision, prompt, max_tokens=max_tokens)
-    ensure_task_not_cancelled(service.db, task)
-    parsed, error = _parse_plan(
-        text, expected_positions, canon, frozen_spec, thread_payoffs
-    )
-    if not parsed:
-        repair = _plan_repair_prompt(
-            prompt,
-            text,
-            error,
-            expected_positions,
+    for positions in chapter_batches(expected_positions):
+        if positions and positions[-1] <= len(chapters):
+            continue
+        batch_spec = batch_frozen_spec(frozen_spec, positions)
+        batch_payoffs = batch_thread_payoffs(thread_payoffs, positions)
+        prompt = planning_prompt(
+            planning_contract=batch_contract(contract, positions),
             canon=canon,
-            frozen_spec=frozen_spec,
-            thread_payoffs=thread_payoffs,
+            thread_payoffs=batch_payoffs,
         )
-        text = await generate_text(revision, repair, max_tokens=max_tokens)
+        prompt = planning_batch_prompt(prompt, positions, canon, chapters)
+        max_tokens = max(16000, len(positions or expected_positions or []) * 1400)
+        text = await generate_text(revision, prompt, max_tokens=max_tokens)
         ensure_task_not_cancelled(service.db, task)
-        parsed, error = _parse_plan(
-            text, expected_positions, canon, frozen_spec, thread_payoffs
+        parsed, error = parse_plan(
+            text,
+            positions or expected_positions,
+            canon,
+            batch_spec,
+            batch_payoffs,
+            prior_chapters=chapters,
+            require_complete=not positions or positions[-1] == expected_positions[-1],
         )
-    if not parsed:
-        fail_plan(service, revision, "chapters", error)
-    return parsed["chapters"]
+        if not parsed:
+            repair = _plan_repair_prompt(
+                prompt,
+                text,
+                error,
+                positions or expected_positions,
+                canon=canon,
+                frozen_spec=batch_spec,
+                thread_payoffs=batch_payoffs,
+            )
+            text = await generate_text(revision, repair, max_tokens=max_tokens)
+            ensure_task_not_cancelled(service.db, task)
+            parsed, error = parse_plan(
+                text,
+                positions or expected_positions,
+                canon,
+                batch_spec,
+                batch_payoffs,
+                prior_chapters=chapters,
+                require_complete=not positions
+                or positions[-1] == expected_positions[-1],
+            )
+        if not parsed:
+            fail_plan(service, revision, "chapters", error)
+        chapters.extend(parsed["chapters"])
+        checkpoint_plan_batch(service, revision, task, canon, chapters)
+    return chapters
 
 
 def complete_plan(service, revision, task, frozen_spec, canon, chapters) -> dict:
@@ -149,6 +174,8 @@ def complete_plan(service, revision, task, frozen_spec, canon, chapters) -> dict
         "chapters": chapters,
     }
     plan["plan_hash"] = generation_plan_hash(plan)
+    plan.pop("chapter_plan_draft", None)
+    plan.pop("chapter_plan_draft_canon_hash", None)
     revision.generation_plan = plan
     revision.chapter_count = len(chapters)
     revision.target_words = plan["target_chars"]
@@ -177,33 +204,4 @@ def _parse_canon(
 
 
 _parse_canon_with_diagnostics = parse_model_canon
-
-
-def _parse_plan(
-    text, expected_positions, canon, frozen_spec, thread_payoffs=None
-) -> tuple[dict | None, str | None]:
-    payload = normalize_plan_payload(extract_json_block(text))
-    try:
-        if not payload:
-            raise ValueError("missing JSON object")
-        parsed = StoryNovelGenerationPlan.model_validate(payload)
-        positions = [item.position for item in parsed.chapters]
-        if expected_positions and positions != expected_positions:
-            raise ValueError(
-                "explicit outline chapter coverage mismatch: "
-                f"expected 1-{expected_positions[-1]}, got {len(positions)} chapters"
-            )
-        machine_rows = normalize_redundant_location_state(
-            canon, parsed.model_dump()["chapters"]
-        )
-        rows = merge_frozen_chapters(
-            machine_rows,
-            frozen_spec,
-            canon,
-            thread_payoffs,
-        )
-        if not frozen_spec:
-            validate_generation_plan(canon, rows)
-        return {"chapters": rows}, None
-    except (ValidationError, ValueError) as exc:
-        return None, str(exc)
+_parse_plan = parse_plan

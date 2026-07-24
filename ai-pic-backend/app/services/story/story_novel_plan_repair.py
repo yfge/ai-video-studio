@@ -24,7 +24,7 @@ def plan_repair_prompt(
     thread_payoffs: list[dict] | None = None,
 ) -> str:
     coverage = (
-        f"\n大纲显式列出第1章至第{expected_positions[-1]}章；"
+        f"\n本批次显式列出第{expected_positions[0]}章至第{expected_positions[-1]}章；"
         "修复结果必须逐章完整覆盖，不能合并、省略或新增。"
         if expected_positions
         else ""

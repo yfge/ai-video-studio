@@ -2,7 +2,7 @@ import json
 
 import anyio
 import pytest
-from app.services.story import story_novel_planning_phases, story_novel_planning_service
+from app.services.story import story_novel_plan_parser, story_novel_planning_service
 from app.services.story.story_novel_outline_merge import merge_frozen_chapters
 from fastapi import HTTPException
 from tests.unit.test_story_novel_longform import _canon, _plan_row, _setup
@@ -128,9 +128,7 @@ def test_merge_failure_persists_failed_planning_checkpoint(db_session, monkeypat
     def reject_merge(*_args, **_kwargs):
         raise ValueError("冻结大纲伏笔数量与规划不一致")
 
-    monkeypatch.setattr(
-        story_novel_planning_phases, "merge_frozen_chapters", reject_merge
-    )
+    monkeypatch.setattr(story_novel_plan_parser, "merge_frozen_chapters", reject_merge)
 
     with pytest.raises(HTTPException):
         anyio.run(

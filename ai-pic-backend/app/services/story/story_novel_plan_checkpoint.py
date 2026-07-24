@@ -77,9 +77,10 @@ def begin_planning(service, revision, task, current: dict, frozen_spec) -> bool:
         invalidate_revision_candidates(service.db, revision)
         mark_revision_ledger_stale(revision, from_position=1)
         service._invalidate_from(revision, 1)
-    requires_canon_recompile = current.get(
-        "status"
-    ) == "failed" and "地点引用无效" in str(current.get("error") or "")
+    error = str(current.get("error") or "")
+    requires_canon_recompile = current.get("status") == "failed" and any(
+        marker in error for marker in ("地点引用无效", "状态提前包含未来里程碑结果")
+    )
     ready_replan = bool(
         current.get("status") == "ready" and current.get("phase") == "ready"
     )

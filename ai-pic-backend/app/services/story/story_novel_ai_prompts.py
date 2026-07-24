@@ -84,6 +84,7 @@ milestones 只收录不可逆且只能发生一次的揭露、选择、激活、
 若物件最终被交入档案、仓库或设施，必须把该物理存放点注册为 location 实体，并让物件最终 location 指向它。
 每个 outcome 必须在此前为假，并在 milestone 所在章结束后新变为真；不同 milestone 不得声明完全相同的 typed outcome。
 若多个候选 milestone 得到完全相同的 outcome，只保留 planned_position 最早、真正使它首次成立的那一条；更晚的“仍然成立”不是 milestone。
+物件会跟随 owner_id 对应角色移动；若持有者按大纲在 milestone 之前已抵达目标地点，禁止把该地点写成 milestone 的 location outcome，应只保留届时才首次成立的 status、owner_id 或 knowledge outcome。
 归档或公开时若 owner_id 本来就是 null，不得把 owner_id eq null 重复写成 outcome；只记录真正改变的 location、status 或权限状态。
 initial_state 必须让所有未来 milestone outcomes 都不成立；例如未来才移交给 char-b 的 object owner_id 在 position=0 必须是来源角色或 null，未来才揭露的 fact-id 不得出现在知识数组。
 JSON 的空值必须写字面量 null，数组必须写真实 JSON 数组，禁止写成字符串 "null"、"[]" 或 JSON 字符串。
