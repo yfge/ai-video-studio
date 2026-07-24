@@ -5,6 +5,7 @@ import pytest
 
 from app.services.story.story_novel_state_extraction import (
     StateExtractionError,
+    _validation_result,
     extract_chapter_state,
 )
 
@@ -96,6 +97,8 @@ def test_quote_only_repair_freezes_typed_state_and_excludes_future_catalog():
     assert "SECRET_STATE_BEFORE" not in prompts[1]
     assert "opened_thread_ids 必须逐项原样返回" in prompts[0]
     assert "只判断当前章合同" in prompts[0]
+    assert "只记录本章结束时仍明确成立的持久状态" in prompts[0]
+    assert "物件会随角色移动" in prompts[0]
     assert parameters[0]["max_tokens"] == 16000
     assert parameters[1]["max_tokens"] == 3000
 
@@ -140,6 +143,33 @@ def test_quote_only_repair_rejects_attempted_state_change():
 
     with pytest.raises(StateExtractionError, match="只能返回 evidence"):
         anyio.run(run)
+
+
+def test_location_field_is_repaired_as_typed_delta_contract_not_quote_only():
+    delta = {
+        **_initial_delta(),
+        "state_transitions": [
+            {
+                "subject_id": "char-a",
+                "field": "location",
+                "from_value": "loc-a",
+                "to_value": "loc-b",
+                "reason": "下船",
+            }
+        ],
+        "timeline_evidence": {},
+    }
+
+    _normalized, error, issues = _validation_result(
+        json.dumps(delta, ensure_ascii=False),
+        chapter_plan={},
+        content_text=BODY,
+        current_timeline=[],
+        future_event_catalog=[],
+    )
+
+    assert "location 不能写入 state_transitions: char-a" in error
+    assert any(item["code"] == "canon_violation" for item in issues)
 
 
 def test_quote_only_repair_uses_exact_candidate_for_rewritten_lead():

@@ -38,5 +38,7 @@ current_immutable_timeline 的每个 ID 都必须在 timeline_evidence 中提供
 timeline_evidence[timeline-id] 的事件部分必须逐字复用 evidence[chapter_plan.timeline_event_bindings[timeline-id]] 的完整正文片段；不得借用同章其他事件，不得复制 chapter_plan 的 label、key_events 或其他计划措辞作为正文证据。
 未来事件目录只用于审计；不得把目录内容改写进正文、occurred_event_ids 或当前状态。
 location_transitions 的 to_location_id 必须是 Canon location ID；from_location_id 只有在章节计划明确让 Canon object 同章从不存在变为存在并首次落点时可为 null，人物和普通移动必须给出真实 Canon 起点。
+state_transitions 只记录本章结束时仍明确成立的持久状态，不得把临时启动、预热、使用或中途经过的状态推断为章末状态；正文没有明确建立持久新值时必须省略。
+location、knowledge、possessions 永远不能写入 state_transitions。地点只写 location_transitions；owner_id 对应角色持有的物件会随角色移动，不得再为该物件重复写地点移动。
 只输出严格 JSON：
 {{"occurred_event_ids":["event-id"],"premature_future_event_ids":[],"future_event_audit":{{"future-event-id":"not_present"}},"state_transitions":[{{"subject_id":"entity-id","field":"status","from_value":"旧值","to_value":"新值","reason":"正文原因"}}],"knowledge_grants":[{{"character_id":"character-id","fact_id":"fact-id","source_event_id":"event-id"}}],"location_transitions":[{{"subject_id":"entity-id","from_location_id":"location-id","to_location_id":"location-id","means":"移动过程"}}],"milestones_consumed":["milestone-id"],"opened_thread_ids":["thread-id"],"resolved_thread_ids":["thread-id"],"world_rule_violations":[],"evidence":{{"event-id":"正文短句"}},"timeline_evidence":{{"time-id":"含固定日期与对应事件的正文短句"}}}}"""

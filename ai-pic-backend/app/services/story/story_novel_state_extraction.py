@@ -214,6 +214,7 @@ def _validation_result(
             if future_event_catalog is not None
             else []
         ),
+        *_typed_delta_contract_violations(normalized),
         *evidence_violations(content_text, normalized),
         *timeline_evidence_violations(
             content_text,
@@ -225,6 +226,20 @@ def _validation_result(
     if issues:
         return normalized, "；".join(item["message"] for item in issues), issues
     return normalized, None, []
+
+
+def _typed_delta_contract_violations(delta: dict) -> list[dict]:
+    return [
+        {
+            "code": "canon_violation",
+            "message": (
+                f"{item.get('field')} 不能写入 state_transitions: "
+                f"{item.get('subject_id')}"
+            ),
+        }
+        for item in delta.get("state_transitions") or []
+        if item.get("field") in {"knowledge", "location", "possessions"}
+    ]
 
 
 def _only_audit_output_issues(issues: list[dict]) -> bool:

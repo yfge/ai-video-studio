@@ -20,6 +20,8 @@ _EVIDENCE_ONLY_MESSAGES = (
 )
 _ELLIPSIS = re.compile(r"(?:…+|\.{3,})")
 _DROPPABLE_LEADING_CHARACTERS = frozenset("他她它其将把")
+_ACTOR_TOKEN = re.compile(r"[0-9A-Za-z\u4e00-\u9fff·]{2,20}")
+_SENTENCE_BOUNDARIES = "。！？!?；;\n"
 
 
 def evidence_repair_diagnostics(
@@ -115,13 +117,46 @@ def _source_candidate(content_text: str, fragment: str) -> dict | None:
 def _unique_trimmed_candidate(content_text: str, fragment: str) -> str:
     """Offer one exact suffix without guessing a named actor or dialogue speaker."""
     stripped = fragment.strip()
+    if not stripped:
+        return ""
+    if stripped[0] in _DROPPABLE_LEADING_CHARACTERS and not any(
+        mark in stripped for mark in '“”"'
+    ):
+        candidate = _unique_source_span(content_text, stripped[1:].lstrip())
+        if candidate:
+            return candidate
+    quote_at = min(
+        (stripped.find(mark) for mark in '“"' if mark in stripped),
+        default=len(stripped),
+    )
+    for start in range(1, quote_at):
+        actor = stripped[:start].strip()
+        if not _ACTOR_TOKEN.fullmatch(actor):
+            continue
+        candidate = _unique_source_span(content_text, stripped[start:].lstrip())
+        if not candidate:
+            continue
+        offset = content_text.find(candidate)
+        boundary = max(
+            content_text.rfind(mark, 0, offset) for mark in _SENTENCE_BOUNDARIES
+        )
+        if content_text[boundary + 1 : offset].count(actor) == 1:
+            return candidate
+    return ""
+
+
+def _unique_source_span(content_text: str, candidate: str) -> str:
     if (
-        not stripped
-        or stripped[0] not in _DROPPABLE_LEADING_CHARACTERS
-        or any(mark in stripped for mark in '“”"')
+        not candidate
+        or not re.match(r"[0-9A-Za-z\u4e00-\u9fff]", candidate)
+        or len(re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]+", "", candidate)) < 12
     ):
         return ""
-    candidate = stripped[1:].lstrip()
-    if len(re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]+", "", candidate)) < 12:
+    aligned = align_source_evidence(content_text, candidate)
+    semantic = re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]+", "", aligned)
+    source = re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]+", "", content_text)
+    if source.count(semantic) != 1 or not source_contains_evidence(
+        content_text, aligned
+    ):
         return ""
-    return candidate if content_text.count(candidate) == 1 else ""
+    return aligned

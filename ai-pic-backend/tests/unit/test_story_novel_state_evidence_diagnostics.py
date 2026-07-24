@@ -92,6 +92,33 @@ def test_evidence_diagnostics_offer_unique_exact_suffix_for_rewritten_lead():
     }
 
 
+def test_evidence_diagnostics_bind_rewritten_action_to_same_sentence_actor():
+    body = (
+        "老拐把液压锁扣卡进锚栓，确认不松动，然后直起腰，"
+        "从工装内袋里掏出终端，划开屏幕递到王明眼前。"
+    )
+    diagnostics = _evidence_repair_diagnostics(
+        body,
+        {"evidence": {"event-2": "老拐从工装内袋里掏出终端，划开屏幕递到王明眼前。"}},
+        [{"message": "事件缺少可核对的正文证据: event-2"}],
+    )
+
+    candidate = diagnostics[0]["fragments"][0]["source_candidate"]
+    assert candidate["text"] == "从工装内袋里掏出终端，划开屏幕递到王明眼前。"
+    assert body[candidate["exact_offset"] :].startswith(candidate["text"])
+
+
+def test_evidence_diagnostics_do_not_strip_a_wrong_action_actor():
+    body = "王五检查完锚栓，然后拿起终端，划开屏幕递到王明眼前。"
+    diagnostics = _evidence_repair_diagnostics(
+        body,
+        {"evidence": {"event-2": "老拐拿起终端，划开屏幕递到王明眼前。"}},
+        [{"message": "事件缺少可核对的正文证据: event-2"}],
+    )
+
+    assert "source_candidate" not in diagnostics[0]["fragments"][0]
+
+
 def test_only_source_evidence_errors_skip_body_repair():
     assert _only_evidence_issues(
         [
