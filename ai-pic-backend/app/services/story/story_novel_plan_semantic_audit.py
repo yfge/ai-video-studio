@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from copy import deepcopy
 
+from pydantic import ValidationError
+
 from app.schemas.story_novel_longform import (
     StoryNovelKnowledgeGrant,
     StoryNovelLocationTransition,
     StoryNovelStateTransition,
 )
 from app.utils.json_utils import extract_json_block
-from pydantic import ValidationError
 
 from .story_novel_canon_service import canonical_json, content_hash
 from .story_novel_plan_validator import validate_generation_plan
@@ -56,8 +57,7 @@ async def audit_and_patch_plan_batch(
         validate_generation_plan(canon, candidate)
     else:
         validated_prefix_context(canon, candidate)
-    final_text = first_text
-    final = first
+    final_text, final = first_text, first
     if patch_count:
         final_text = await generate_text(
             revision,
@@ -66,7 +66,11 @@ async def audit_and_patch_plan_batch(
             temperature=0.0,
         )
         final = _parse_audit(final_text, canon, patched)
-        if _missing_effect_count(final):
+        if any(
+            event["missing_effects"][field]
+            for event in final
+            for field in _EFFECT_FIELDS
+        ):
             raise ValueError("章节计划语义审计返修后仍存在 typed effect 漏项")
     result_hash = content_hash(extract_json_block(final_text))
     for chapter in patched:
@@ -84,14 +88,13 @@ async def audit_and_patch_plan_batch(
 
 def _audit_prompt(contract, canon, prior_chapters, batch_chapters) -> str:
     positions = [int(item["position"]) for item in batch_chapters]
-    characters = [
-        {"id": item["id"], "name": item["name"]}
+    canon_entities = [
+        {"id": item["id"], "kind": item["kind"], "name": item["name"]}
         for item in canon.get("entities") or []
-        if item.get("kind") == "character"
     ]
     payload = {
-        "positions": positions,
-        "characters": characters,
+        "state_before_batch": validated_prefix_context(canon, prior_chapters)["state"],
+        "canon_entities": canon_entities,
         "canon_milestones": canon.get("milestones") or [],
         "prior_chapters": [
             {
@@ -128,8 +131,8 @@ def _audit_prompt(contract, canon, prior_chapters, batch_chapters) -> str:
         "\n非 Canon milestone 的新知识 fact_id 固定为 "
         "fact-{source_event_id}-{从1开始的事实序号}；同一事实对多个角色复用同一 fact_id。"
         "Canon milestone knowledge outcome 必须逐字使用 outcome.value。"
-        "\n同时列出 key_event 必然要求但计划遗漏的 state_transitions、"
-        "location_transitions 与 milestones_consumed；只返回遗漏项，已有正确项不得重复。"
+        "\n同时列出 key_event 必然要求但计划遗漏的 state_transitions、location_transitions 与 "
+        "milestones_consumed；地点转移只允许明确跨越两个不同的已有 location ID，地点内部移动必须为空且不得创建子地点；只返回遗漏项。"
         "\n输出必须逐项、同序、精确覆盖本批全部 event_id，不得缺失、额外或重复。"
         "\n只输出严格 JSON："
         '{"events":[{"position":1,"event_id":"evt-1","missing_effects":'
@@ -201,7 +204,9 @@ def _parse_audit(text: str, canon: dict, chapters: list[dict]) -> list[dict]:
                 raise ValueError(f"语义审计状态主体无效: {event_id}")
             if any(
                 item["subject_id"] not in known
-                or item["to_location_id"] not in locations
+                or {item["from_location_id"], item["to_location_id"]}
+                - locations
+                - {None}
                 for item in movements
             ):
                 raise ValueError(f"语义审计地点引用无效: {event_id}")
@@ -238,12 +243,6 @@ def _apply_missing_effects(chapters: list[dict], audit: list[dict]):
                     target.append(value)
                     count += 1
     return patched, count
-
-
-def _missing_effect_count(audit: list[dict]) -> int:
-    return sum(
-        len(values) for event in audit for values in event["missing_effects"].values()
-    )
 
 
 def _chapter_contract_hash(chapter: dict) -> str:

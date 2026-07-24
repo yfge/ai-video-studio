@@ -2,8 +2,10 @@ import json
 
 import anyio
 import pytest
+
 from app.services.story.story_novel_plan_semantic_audit import (
     _apply_missing_effects,
+    _audit_prompt,
     _parse_audit,
     audit_and_patch_plan_batch,
 )
@@ -130,6 +132,44 @@ def test_semantic_audit_rejects_duplicate_event_id():
 
     with pytest.raises(ValueError, match="事件覆盖不完整"):
         _parse_audit(json.dumps(payload), _canon(), [_chapter()])
+
+
+def test_semantic_audit_prompt_binds_location_ids_and_rejects_subdivisions():
+    canon = _canon()
+    canon["entities"].append(
+        {"id": "salt-mirror-island", "kind": "location", "name": "盐镜岛"}
+    )
+    canon["initial_state"]["char-wangming"]["location"] = "salt-mirror-island"
+
+    prompt = _audit_prompt({}, canon, [], [_chapter()])
+
+    assert '"id":"salt-mirror-island","kind":"location"' in prompt
+    assert '"state_before_batch":{"char-laoguai"' in prompt
+    assert '"location":"salt-mirror-island"' in prompt
+    assert "地点内部移动必须为空且不得创建子地点" in prompt
+
+
+@pytest.mark.parametrize("field", ("from_location_id", "to_location_id"))
+def test_semantic_audit_rejects_invented_location_id(field):
+    payload = _audit()
+    payload["events"][0]["missing_effects"]["location_transitions"] = [
+        {
+            "subject_id": "char-wangming",
+            "from_location_id": "salt-mirror-island",
+            "to_location_id": "salt-mirror-island",
+            "means": "步行",
+        }
+    ]
+    payload["events"][0]["missing_effects"]["location_transitions"][0][
+        field
+    ] = "salt-mirror-west-coast"
+    canon = _canon()
+    canon["entities"].append(
+        {"id": "salt-mirror-island", "kind": "location", "name": "盐镜岛"}
+    )
+
+    with pytest.raises(ValueError, match="地点引用无效"):
+        _parse_audit(json.dumps(payload), canon, [_chapter()])
 
 
 def test_semantic_audit_rechecks_patched_plan_before_accepting():
