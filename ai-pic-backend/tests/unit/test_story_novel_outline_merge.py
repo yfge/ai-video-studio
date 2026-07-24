@@ -71,6 +71,18 @@ def test_merge_rejects_reordered_machine_events_before_ids_can_be_misbound():
         merge_frozen_chapters(generated, frozen, _canon())
 
 
+def test_merge_accepts_quote_typography_and_restores_frozen_event_text():
+    generated = [_plan_row(1)]
+    generated[0]["key_events"] = ["老拐拼出外部势力代号'暗潮'"]
+    frozen = {"chapters": [_plan_row(1)]}
+    frozen["chapters"][0]["key_events"] = ["老拐拼出外部势力代号‘暗潮’"]
+
+    merged = merge_frozen_chapters(generated, frozen, _canon(), validate=False)
+
+    assert merged[0]["key_events"] == ["老拐拼出外部势力代号‘暗潮’"]
+    assert merged[0]["required_event_ids"] == ["event-1"]
+
+
 def test_merge_rejects_machine_threads_with_different_payoff_chapters():
     generated = [_plan_row(1), _plan_row(2), _plan_row(3)]
     generated[0]["open_threads"] = ["thread-observer", "thread-audit-number"]

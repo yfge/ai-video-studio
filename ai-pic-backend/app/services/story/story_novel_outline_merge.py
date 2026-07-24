@@ -20,6 +20,7 @@ _OUTLINE_KEYS = (
     "length_source",
     "length",
 )
+_QUOTE_VARIANTS = str.maketrans({"‘": "'", "’": "'", "“": '"', "”": '"'})
 
 
 def merge_frozen_chapters(
@@ -65,10 +66,16 @@ def _require_authoritative_event_order(machine: dict, source: dict) -> None:
         return
     generated = list(machine.get("key_events") or [])
     frozen = list(source.get("key_events") or [])
-    if generated != frozen:
+    if [_event_key(item) for item in generated] != [
+        _event_key(item) for item in frozen
+    ]:
         raise ValueError(
             f"第 {int(source['position'])} 章 key_events 必须逐字、同序复制冻结大纲"
         )
+
+
+def _event_key(value: str) -> str:
+    return value.translate(_QUOTE_VARIANTS)
 
 
 def _thread_id_map(chapters: list[dict], sources: list[dict]) -> dict[str, list[str]]:
