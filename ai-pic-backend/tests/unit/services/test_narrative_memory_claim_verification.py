@@ -220,28 +220,28 @@ def test_knowledge_bindings_map_canon_ids_to_persisted_story_characters():
     assert payload.memories[0].candidate_evidence["typed_character_id"] == "li-yan"
 
 
-def test_knowledge_bindings_fail_closed_when_story_character_is_missing():
-    with pytest.raises(ServiceError, match="无法唯一映射 StoryCharacter"):
-        knowledge_character_bindings(
-            {
-                "entities": [
-                    {"id": "li-yan", "kind": "character", "name": "黎雁"},
-                    {"id": "pei-heng", "kind": "character", "name": "裴衡"},
-                ]
-            },
-            {
-                "knowledge_grants": [
-                    {
-                        "character_id": "li-yan",
-                        "fact_id": "fact-a",
-                        "source_event_id": "event-a",
-                    },
-                    {
-                        "character_id": "pei-heng",
-                        "fact_id": "fact-b",
-                        "source_event_id": "event-b",
-                    },
-                ]
-            },
-            [{"character_business_id": "uuid-li", "name": "黎雁"}],
-        )
+def test_knowledge_bindings_skip_canon_npc_without_story_character():
+    bindings = knowledge_character_bindings(
+        {
+            "entities": [
+                {"id": "li-yan", "kind": "character", "name": "黎雁"},
+                {"id": "harbor-supervisor", "kind": "character", "name": "港务监理"},
+            ]
+        },
+        {
+            "knowledge_grants": [
+                {
+                    "character_id": "li-yan",
+                    "fact_id": "fact-a",
+                    "source_event_id": "event-a",
+                },
+                {
+                    "character_id": "harbor-supervisor",
+                    "fact_id": "fact-b",
+                    "source_event_id": "event-b",
+                },
+            ]
+        },
+        [{"character_business_id": "uuid-li", "name": "黎雁"}],
+    )
+    assert set(bindings) == {"uuid-li"}

@@ -16,6 +16,7 @@ def knowledge_character_bindings(
         if item.get("kind") == "character"
     }
     bindings = {}
+    required_keys = set()
     for grant in delta.get("knowledge_grants") or []:
         canonical_id = grant.get("character_id")
         entity = entities.get(canonical_id) or {}
@@ -33,6 +34,9 @@ def knowledge_character_bindings(
                 for name in names
             )
         ]
+        if not matches:
+            continue
+        required_keys.add(_grant_key(grant))
         if len(matches) != 1:
             continue
         existing = bindings.get(matches[0])
@@ -53,7 +57,7 @@ def knowledge_character_bindings(
                 "source_event_id": grant.get("source_event_id"),
             }
         )
-    if knowledge_grant_keys(delta) != bound_knowledge_grant_keys(bindings):
+    if required_keys != bound_knowledge_grant_keys(bindings):
         raise ServiceError(
             "记忆候选提取失败：typed knowledge grant 无法唯一映射 StoryCharacter"
         )
