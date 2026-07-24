@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from app.services.narrative_memory.source_hash import novel_chapter_source_hash
 from fastapi import HTTPException
+
+from app.services.narrative_memory.source_hash import novel_chapter_source_hash
 
 from .story_novel_chapter_gate import chapter_length_range
 from .story_novel_memory_context import (
@@ -200,8 +201,12 @@ def finalize_state(service, revision, position: int, entry: dict) -> None:
     save_ledger_entry(revision, position, entry)
     sync_plan_chapter_runtime(revision, position, entry)
     ledger = dict(revision.continuity_ledger or {})
-    ledger.update(current_state=state_after, state_status="generating")
-    if int(ledger.get("recovery_from_position") or 0) == position:
+    recovery = int(ledger.get("recovery_from_position") or 0)
+    ledger.update(
+        current_state=state_after,
+        state_status="failed" if recovery > position else "generating",
+    )
+    if recovery == position:
         ledger.pop("recovery_from_position", None)
     revision.continuity_ledger = ledger
     service.db.commit()

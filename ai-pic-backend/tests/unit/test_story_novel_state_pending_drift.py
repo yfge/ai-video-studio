@@ -1,12 +1,14 @@
 import anyio
 import pytest
+from fastapi import HTTPException
+
 from app.services.narrative_memory.source_hash import novel_chapter_source_hash
+from app.services.story import story_novel_chapter_checkpoint as checkpoint
 from app.services.story.story_novel_chapter_service import generate_or_resume_chapter
 from app.services.story.story_novel_generation_context import build_chapter_context
 from app.services.story.story_novel_state_pending_preflight import (
     pending_checkpoint_reusable,
 )
-from fastapi import HTTPException
 from tests.unit.test_story_novel_state_pending_resume import (
     INVALID_QUOTE,
     _audit,
@@ -137,3 +139,40 @@ def test_pending_preflight_fails_closed_for_malformed_persisted_plan(
         context_pack,
         row,
     )
+
+
+def test_ready_prefix_keeps_later_pending_recovery_failed(monkeypatch):
+    revision = type(
+        "Revision",
+        (),
+        {
+            "continuity_ledger": {
+                "state_status": "failed",
+                "recovery_from_position": 2,
+            }
+        },
+    )()
+    service = type(
+        "Service",
+        (),
+        {"db": type("Database", (), {"commit": lambda _self: None})()},
+    )()
+    monkeypatch.setattr(checkpoint, "state_before_position", lambda *_args: {})
+    monkeypatch.setattr(
+        checkpoint,
+        "replay_checkpoint_state",
+        lambda *_args: {"occurred_event_ids": ["event-1"]},
+    )
+    monkeypatch.setattr(
+        "app.services.story.story_novel_chapter_service.save_ledger_entry",
+        lambda *_args: None,
+    )
+    monkeypatch.setattr(
+        "app.services.story.story_novel_chapter_service.sync_plan_chapter_runtime",
+        lambda *_args: None,
+    )
+
+    checkpoint.finalize_state(service, revision, 1, {})
+
+    assert revision.continuity_ledger["state_status"] == "failed"
+    assert revision.continuity_ledger["recovery_from_position"] == 2
