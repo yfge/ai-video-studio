@@ -5,6 +5,14 @@ from typing import Optional
 from app.services.ai_service import ai_service
 from fastapi import HTTPException
 
+_TRUNCATED_FINISH_REASONS = {
+    "content_filter",
+    "length",
+    "max_output_tokens",
+    "max_tokens",
+    "token_limit",
+}
+
 
 async def generate_story_novel_text(
     *,
@@ -26,6 +34,18 @@ async def generate_story_novel_text(
             stream=False,
         )
         if resp and resp.success and isinstance(resp.data, str) and resp.data.strip():
+            finish_reason = str(
+                (getattr(resp, "metadata", None) or {}).get("finish_reason") or ""
+            ).strip()
+            if finish_reason.lower() in _TRUNCATED_FINISH_REASONS:
+                raise HTTPException(
+                    status_code=502,
+                    detail=(
+                        "AI生成输出被截断，未写入小说 checkpoint: "
+                        f"provider={resp.provider} model={resp.model} "
+                        f"finish_reason={finish_reason}"
+                    ),
+                )
             return resp.data.strip()
         raise HTTPException(
             status_code=500,

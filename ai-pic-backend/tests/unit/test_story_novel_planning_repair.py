@@ -52,7 +52,7 @@ def test_unknown_location_plan_failure_recompiles_canon(db_session):
     assert result["status"] == "ready"
 
 
-def test_replanning_invalidates_old_runtime_before_the_provider_call(db_session):
+def test_invalid_ready_plan_preserves_old_runtime_before_provider(db_session):
     _user, _story, service, revision, task, *_ = _setup(db_session)
     canon = normalize_canon(_canon())
     invalid_row = _plan_row(1)
@@ -114,23 +114,19 @@ def test_replanning_invalidates_old_runtime_before_the_provider_call(db_session)
         "chapters": {"1": {"status": "ready"}},
     }
     db_session.commit()
-    calls = 0
 
     async def generate(*_args, **_kwargs):
-        nonlocal calls
-        calls += 1
-        assert "current_state" not in revision.continuity_ledger
-        assert revision.continuity_ledger["chapters"]["1"]["status"] == "stale"
-        assert chapter.review_status == "review_required"
-        assert event.status == "stale"
-        assert event.invalidation["reason_code"] == "generation_plan_recompiled"
-        return json.dumps({"chapters": [_plan_row(1)]}, ensure_ascii=False)
+        raise AssertionError("invalid ready plan with body must fail before provider")
 
-    result = anyio.run(ensure_generation_plan, service, revision, task, generate)
+    with pytest.raises(HTTPException, match="已有正文未改写"):
+        anyio.run(ensure_generation_plan, service, revision, task, generate)
 
-    assert calls == 1
-    assert result["status"] == "ready"
-    assert revision.continuity_ledger["stale_from_position"] == 1
+    assert revision.generation_plan == current
+    assert revision.continuity_ledger["state_status"] == "ready"
+    assert revision.continuity_ledger["chapters"]["1"]["status"] == "ready"
+    assert chapter.review_status == "ready"
+    assert event.status == "candidate"
+    assert event.invalidation is None
 
 
 def test_plan_repair_keeps_the_complete_previous_output():

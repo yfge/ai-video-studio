@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Awaitable, Callable
 
+from fastapi import HTTPException
+
 from .story_novel_plan_checkpoint import (
     begin_planning,
     frozen_generation_spec,
@@ -46,6 +48,18 @@ async def ensure_generation_plan(
     frozen_spec = frozen_generation_spec(current)
     if reusable_generation_plan(current, frozen_spec):
         return current
+    if (
+        current.get("status") == "ready"
+        and current.get("phase") == "ready"
+        and any(str(row.content_text or "").strip() for row in revision.chapters or [])
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "当前 ready 计划的 hash 或门禁版本异常；已有正文未改写，"
+                "请创建新小说版本后显式重新规划"
+            ),
+        )
     resumed = begin_planning(service, revision, task, current, frozen_spec)
     snapshot = revision.story_snapshot or {}
     expected_positions = explicit_outline_positions(snapshot)
