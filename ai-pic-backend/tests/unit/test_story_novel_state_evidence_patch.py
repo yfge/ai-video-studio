@@ -98,7 +98,7 @@ def test_quote_only_repair_freezes_typed_state_and_excludes_future_catalog():
     assert "只记录本章结束时仍明确成立的持久状态" in prompts[0]
     assert "物件会随角色移动" in prompts[0]
     assert parameters[0]["max_tokens"] == 16000
-    assert parameters[1]["max_tokens"] == 3000
+    assert parameters[1]["max_tokens"] == 16000
 
 
 def test_quote_only_repair_rejects_attempted_state_change():

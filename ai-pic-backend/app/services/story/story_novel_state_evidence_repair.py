@@ -7,7 +7,7 @@ import json
 
 from app.utils.json_utils import extract_json_block
 
-STATE_EVIDENCE_REPAIR_MAX_TOKENS = 3000
+STATE_EVIDENCE_REPAIR_MAX_TOKENS = 16000
 
 
 async def repair_state_evidence(
