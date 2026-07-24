@@ -5,6 +5,7 @@ import json
 from app.core.celery_app import celery_app
 from app.models.task import Task, TaskType
 from app.repositories.story_novel_repository import StoryNovelRepository
+from app.services.providers.deepseek_models import DEEPSEEK_DEFAULT_MODEL
 from app.services.story.story_novel_revision_service import StoryNovelRevisionService
 from fastapi import HTTPException
 
@@ -108,6 +109,8 @@ def queue_story_seed_structure(db, user, story, request):
     if not story:
         raise HTTPException(status_code=404, detail="故事不存在")
     service._ensure_story_idle(story)
+    model = str(request.model or story.ai_model or "").strip()
+    model = model or f"deepseek:{DEEPSEEK_DEFAULT_MODEL}"
     task = Task(
         title=f"结构化大纲 - {story.title}",
         description="等待规划…",
@@ -117,7 +120,7 @@ def queue_story_seed_structure(db, user, story, request):
             {
                 "story_seed_version": int(story.story_seed_version or 1),
                 "chapter_count": request.chapter_count,
-                "model": request.model,
+                "model": model,
             },
             ensure_ascii=False,
         ),
@@ -136,7 +139,7 @@ def queue_story_seed_structure(db, user, story, request):
                 "story_business_id": story.business_id,
                 "story_seed_version": int(story.story_seed_version or 1),
                 "chapter_count": request.chapter_count,
-                "model": request.model,
+                "model": model,
             },
             user.id,
         ],

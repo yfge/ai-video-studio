@@ -25,9 +25,7 @@ def validate_generation_plan(canon: dict, chapters: list[dict]) -> None:
 def _validate_generation_plan_strict(canon: dict, chapters: list[dict]) -> None:
     if not chapters:
         raise ValueError("章节计划为空")
-    counts = Counter(
-        item for row in chapters for item in row.get("milestones_consumed") or []
-    )
+    counts = Counter(i for c in chapters for i in c.get("milestones_consumed") or [])
     once_only = {
         item["id"]
         for item in canon.get("milestones") or []
@@ -171,7 +169,8 @@ def _apply_knowledge(
 ) -> None:
     for grant in chapter.get("knowledge_grants") or []:
         character_id = grant["character_id"]
-        _require_subject(character_id, context["entity_ids"], position)
+        if context["entity_kinds"].get(character_id) != "character":
+            raise ValueError(f"第 {position} 章知识只能授予角色: {character_id}")
         if grant["source_event_id"] not in required:
             raise ValueError(
                 f"第 {position} 章知识来源不是本章事件: {grant['fact_id']}"

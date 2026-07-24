@@ -67,7 +67,7 @@ class _Db:
         self.refreshed = value
 
 
-def test_model_only_update_preserves_canon_planning_checkpoint():
+def test_model_only_update_versions_plan_and_preserves_canon_checkpoint():
     revision = _revision()
     before = copy.deepcopy(revision.generation_plan)
     db = _Db()
@@ -90,9 +90,11 @@ def test_model_only_update_preserves_canon_planning_checkpoint():
 
     assert result is revision
     assert revision.model == "deepseek:deepseek-v4-flash"
-    assert revision.generation_plan == before
-    assert revision.generation_plan["version"] == 4
+    assert revision.generation_plan != before
+    assert revision.generation_plan["version"] == 5
+    assert revision.generation_plan["model"] == "deepseek:deepseek-v4-flash"
     assert revision.generation_plan["canon_hash"] == "a" * 64
-    assert revision.continuity_status == "unchecked"
+    assert revision.generation_plan["canon"] == before["canon"]
+    assert revision.continuity_status == "review_required"
     assert db.committed is True
     assert db.refreshed is revision

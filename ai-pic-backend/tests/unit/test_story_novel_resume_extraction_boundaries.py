@@ -9,6 +9,7 @@ from app.services.narrative_memory.source_hash import novel_chapter_source_hash
 from app.services.story.story_novel_chapter_service import generate_or_resume_chapter
 from app.services.story.story_novel_domain import sha256_text
 from app.services.story.story_novel_state_service import initial_story_state, state_hash
+from fastapi import HTTPException
 from tests.unit.test_story_novel_canon_state import _body, _delta, _v2_revision
 from tests.unit.test_story_novel_chapter_state_gate import (
     _coastal_body,
@@ -29,7 +30,9 @@ def _allow_empty_candidate_set(monkeypatch):
     )
 
 
-def test_v2_resume_replays_typed_delta_before_reusing_body(db_session, monkeypatch):
+def test_v2_resume_rejects_inconsistent_ready_state_without_rewriting_body(
+    db_session, monkeypatch
+):
     _allow_empty_candidate_set(monkeypatch)
     _user, _story, service, revision, task, *_ = _setup(db_session)
     row = _plan_row()
@@ -65,13 +68,13 @@ def test_v2_resume_replays_typed_delta_before_reusing_body(db_session, monkeypat
         body_calls += 1
         return _body()
 
-    anyio.run(generate_or_resume_chapter, service, revision, task, row, regenerate)
+    with pytest.raises(HTTPException, match="ready checkpoint"):
+        anyio.run(generate_or_resume_chapter, service, revision, task, row, regenerate)
 
-    assert body_calls == 1
-    repaired = revision.continuity_ledger["chapters"]["1"]
-    assert repaired["status"] == "ready"
-    assert repaired["state_after"] != inconsistent_after
-    assert repaired["state_after_hash"] == state_hash(repaired["state_after"])
+    assert body_calls == 0
+    preserved = revision.continuity_ledger["chapters"]["1"]
+    assert preserved["status"] == "ready"
+    assert preserved["state_after"] == inconsistent_after
 
 
 @pytest.mark.parametrize("checkpoint_status", ["body_ready", "ready"])
@@ -133,6 +136,14 @@ def test_resume_rechecks_pending_body(db_session, monkeypatch, checkpoint_status
         "NarrativeExtractionService.extract",
         extract_rewritten,
     )
+    if checkpoint_status == "ready":
+        with pytest.raises(HTTPException, match="ready checkpoint"):
+            anyio.run(
+                generate_or_resume_chapter, service, revision, task, row, regenerate
+            )
+        assert calls == []
+        assert revision.chapters[0].content_hash == invalid_body_hash
+        return
     resumed = anyio.run(
         generate_or_resume_chapter, service, revision, task, row, regenerate
     )

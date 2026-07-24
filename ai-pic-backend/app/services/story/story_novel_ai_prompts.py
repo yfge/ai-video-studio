@@ -37,8 +37,9 @@ def structured_outline_prompt(
 StorySeed：{json_prompt_payload(story_seed)}
 {coverage}
 每章必须有 title、goal、至少一个 key_event、character_focus、open_threads 和 end_state。
-open_threads 只允许列出本章结束时仍未解决、需要更晚章节回答的新线索；已经在本章
-key_events 中回答的问题不得写入 open_threads。open_threads 可以为空，不得为每章强造卡点；
+open_threads 只允许列出本章首次提出、且需要更晚章节回答的新线索；同一 ID 在全书只能
+出现一次，后续章节不得重复携带仍未解决的旧 ID。已经在本章 key_events 中回答的问题
+不得写入 open_threads。open_threads 可以为空，不得为每章强造卡点；
 每个 ID 只表达一个原子问题，禁止用分号、顿号或“以及”合并多条线索。
 稳定 thread_id 必须全书唯一，终章不得新开线索。
 先在内部建立全书伏笔表，再输出 thread_payoffs：每个 open_threads ID 必须且只能在
@@ -61,6 +62,8 @@ def canon_prompt(*, planning_contract: dict[str, Any]) -> str:
 所有 ID 使用简短稳定英文标识；同一人物、地点、物件、规则或里程碑只能有一个 ID。
 entities 只允许 character、location、object、organization；规则和里程碑只写入各自专用数组。
 entities.attributes 只允许年龄、职业、类型等不会随剧情改变的静态元数据；location、owner_id、status、identity、knowledge、permissions、injuries、destroyed_at 等可变或未来字段一律写入 initial_state 的事件前值，禁止提前写入 attributes。
+world_rules 只能逐字复制 StorySeed.world_constraints 中不含章号或未来剧情的独立静态约束；
+不得从 structured_outline、结局、未来事件、里程碑或角色弧推导世界规则。
 location 必须覆盖大纲中每个物理停靠点，以及“本章出发、后章才抵达”时人物真实所在的车厢、缆车或路线区段；跨章旅途不得临时发明未注册地点 ID。
 initial_state 按实体 ID 记录地点、身份、关系、知识、伤势、能力、权限、所有者或物理状态。
 initial_state.location 只能引用 kind=location 的实体；物件所有者必须写 owner_id，禁止把角色 ID 写入 location。

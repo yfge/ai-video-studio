@@ -136,6 +136,8 @@ class CandidateService:
         require_version(entity, expected_version)
         if entity.status not in {"candidate", "stale"}:
             raise ConflictError("候选已被审核")
+        if approved and entity.source_artifact_type == "novel_chapter":
+            raise ConflictError("小说章节候选只能随整部小说审批后批量提升")
         entity.status = "approved" if approved else "rejected"
         entity.approved_by = user_id if approved else None
         entity.approved_at = datetime.utcnow() if approved else None

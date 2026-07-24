@@ -133,6 +133,14 @@ async def _resume_checkpoint(
         and not force
     )
     if not reusable:
+        if existing is not None and entry.get("status") == "ready" and not force:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"第 {position} 章 ready checkpoint 与当前计划或上下文不一致；"
+                    "正文未改写，请显式重新生成该章"
+                ),
+            )
         if existing is not None or entry:
             _stale_unusable_checkpoint(service, revision, position, existing)
         return None

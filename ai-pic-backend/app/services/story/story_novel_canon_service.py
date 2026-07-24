@@ -11,6 +11,7 @@ from app.schemas.story_novel_longform import StoryNovelCanon
 from app.utils.json_utils import extract_json_block
 from pydantic import ValidationError
 
+from .story_novel_constraint_visibility import is_future_policy_constraint
 from .story_novel_initial_state import canonical_initial_subjects
 from .story_novel_milestone_state import validate_milestone_outcome_contract
 from .story_novel_plan_quality import plan_quality_diagnostics
@@ -92,6 +93,7 @@ def parse_model_canon(
             raise ValueError("Canon JSON 必须是 object")
         payload.setdefault("gate_version", CANON_GATE_VERSION)
         if planning_contract is not None:
+            payload["world_rules"] = _sourced_world_rules(planning_contract)
             payload, diagnostics = filter_model_timeline_sources(
                 payload, planning_contract
             )
@@ -102,6 +104,21 @@ def parse_model_canon(
         )
     except (ValidationError, ValueError, TypeError) as exc:
         return None, str(exc), diagnostics
+
+
+def _sourced_world_rules(planning_contract: dict) -> list[dict]:
+    constraints = (planning_contract.get("story_seed") or {}).get(
+        "world_constraints"
+    ) or []
+    return [
+        {
+            "id": f"rule-source-{index}",
+            "statement": str(value).strip(),
+            "exceptions": [],
+        }
+        for index, value in enumerate(constraints, start=1)
+        if str(value).strip() and not is_future_policy_constraint(str(value))
+    ]
 
 
 def normalize_canon(value: dict, *, required_gate_version: int = 0) -> dict:

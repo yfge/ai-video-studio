@@ -13,6 +13,12 @@ FUTURE_POLICY_MARKERS = (
 )
 
 
+def is_future_policy_constraint(value: str) -> bool:
+    return any(marker in value for marker in FUTURE_POLICY_MARKERS) or bool(
+        re.search(r"第\s*\d+\s*章", value)
+    )
+
+
 def visible_content_constraints(
     snapshot: dict,
     canon: dict,
@@ -34,7 +40,6 @@ def visible_content_constraints(
         item
         for item in constraints
         if not any(name in item for name in hidden_names)
-        and not any(marker in item for marker in FUTURE_POLICY_MARKERS)
-        and not re.search(r"第\s*\d+\s*章", item)
+        and not is_future_policy_constraint(item)
     ]
     return visible, len(constraints) - len(visible)

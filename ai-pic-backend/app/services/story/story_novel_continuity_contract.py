@@ -69,10 +69,30 @@ def normalize_continuity_report(
         issues.append(item)
     result = {"summary": str(report.get("summary") or ""), "issues": issues}
     if include_editorial:
+        reported_blockers = _normalize_strings(report.get("blocking_issues"))
+        known_blockers = {
+            str(item.get("message") or "")
+            for item in issues
+            if item["severity"] == "blocking"
+        }
+        for message in reported_blockers:
+            if message not in known_blockers:
+                issues.append(
+                    {
+                        "id": f"{prefix}-reported-blocker-{len(issues) + 1}",
+                        "severity": "blocking",
+                        "chapter_business_ids": [],
+                        "message": message,
+                    }
+                )
         result["overall_score"] = _normalize_overall_score(report.get("overall_score"))
         result["quality_scores"] = _normalize_scores(report.get("quality_scores"))
         result["major_strengths"] = _normalize_strings(report.get("major_strengths"))
-        result["blocking_issues"] = _normalize_strings(report.get("blocking_issues"))
+        result["blocking_issues"] = [
+            str(item.get("message") or "")
+            for item in issues
+            if item["severity"] == "blocking"
+        ]
         result["revision_priorities"] = _normalize_priorities(
             report.get("revision_priorities")
         )

@@ -98,11 +98,14 @@ def test_future_audit_values_are_redacted_from_body_repair(db_session, monkeypat
         audit_calls += 1
         if audit_calls == 1:
             delta = json.loads(
-                _delta_with_current_timeline(premature=["future-death-event-2"])
+                _delta_with_current_timeline(
+                    premature=["future-death-event-2"],
+                    future_event_id="future-death-event-2",
+                )
             )
             delta["evidence"]["event-1"] = "CURRENT_EVENT_EVIDENCE_MISSING"
             return json.dumps(delta, ensure_ascii=False)
-        return _delta_with_current_timeline()
+        return _delta_with_current_timeline(future_event_id="future-death-event-2")
 
     async def extracted(*_args, **_kwargs):
         return {"events": [], "memories": []}
@@ -166,7 +169,7 @@ def test_semantic_future_violation_discards_prior_and_redacts_body_repair(
         nonlocal body_calls
         prompts.append(prompt)
         if "从实际小说正文提取" in prompt:
-            return _delta_with_current_timeline()
+            return _delta_with_current_timeline(future_event_id="event-r17-confirmed")
         body_calls += 1
         if body_calls == 1:
             payload = json.loads(_body_with_current_timeline())
@@ -215,8 +218,18 @@ def _body_with_current_timeline() -> str:
     return json.dumps(payload, ensure_ascii=False)
 
 
-def _delta_with_current_timeline(*, premature: list[str] | None = None) -> str:
+def _delta_with_current_timeline(
+    *,
+    premature: list[str] | None = None,
+    future_event_id: str | None = None,
+) -> str:
     payload = json.loads(_delta(premature=premature))
     event_quote = payload["evidence"]["event-1"]
+    if future_event_id:
+        payload["future_event_audit"] = {
+            future_event_id: (
+                "premature" if future_event_id in (premature or []) else "not_present"
+            )
+        }
     payload["timeline_evidence"] = {"time-1": f"第一日，{event_quote}"}
     return json.dumps(payload, ensure_ascii=False)

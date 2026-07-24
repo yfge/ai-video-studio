@@ -33,7 +33,7 @@ REVIEW_BATCH_SIZE = 6
 
 def _windows(chapters: list) -> list[list]:
     return [
-        chapters[index : index + REVIEW_BATCH_SIZE]
+        chapters[max(0, index - 1) : index + REVIEW_BATCH_SIZE]
         for index in range(0, len(chapters), REVIEW_BATCH_SIZE)
     ]
 

@@ -2,6 +2,7 @@ import json
 from types import SimpleNamespace
 
 import pytest
+from app.api.v1.endpoints.stories import novel_task_queue
 from app.schemas.story_seed import StorySeedStructureRequest
 from app.services.story import story_novel_task_processor as processor
 from app.services.story.story_seed_service import StorySeedService
@@ -50,6 +51,54 @@ def test_structure_seed_uses_selected_planning_model(
 def test_structure_request_has_no_application_chapter_cap():
     request = StorySeedStructureRequest(chapter_count=480, model="codex:gpt-5.6")
     assert request.chapter_count == 480
+
+
+def test_structure_queue_freezes_story_default_model(monkeypatch):
+    captured = {}
+    story = SimpleNamespace(
+        id=9,
+        title="冻结模型",
+        business_id="story-9",
+        story_seed_version=3,
+        ai_model="codex:gpt-5.6",
+    )
+    monkeypatch.setattr(
+        novel_task_queue,
+        "StoryNovelRepository",
+        lambda _db: SimpleNamespace(
+            accessible_story_by_id=lambda *_args, **_kwargs: story
+        ),
+    )
+    monkeypatch.setattr(
+        novel_task_queue,
+        "StoryNovelRevisionService",
+        lambda *_args: SimpleNamespace(_ensure_story_idle=lambda _story: None),
+    )
+    monkeypatch.setattr(
+        novel_task_queue,
+        "Task",
+        lambda **kwargs: SimpleNamespace(id=17, status="PENDING", **kwargs),
+    )
+    monkeypatch.setattr(
+        novel_task_queue.celery_app,
+        "send_task",
+        lambda _name, args: captured.update(payload=args[1]),
+    )
+    db = SimpleNamespace(
+        add=lambda task: captured.update(task=task),
+        commit=lambda: None,
+        refresh=lambda _task: None,
+    )
+
+    novel_task_queue.queue_story_seed_structure(
+        db,
+        SimpleNamespace(id=1),
+        story,
+        StorySeedStructureRequest(chapter_count=48),
+    )
+
+    assert json.loads(captured["task"].parameters)["model"] == "codex:gpt-5.6"
+    assert captured["payload"]["model"] == "codex:gpt-5.6"
 
 
 @pytest.mark.asyncio

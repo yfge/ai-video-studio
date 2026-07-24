@@ -66,10 +66,10 @@ def test_dryland_vocabulary_does_not_merge_forbidden_terms(canon):
     assert prose_canon_violations(canon, {}, content) == []
 
 
-def test_negated_restatement_and_rule_exceptions_do_not_false_positive(canon):
+def test_negated_restatement_is_safe_but_exceptions_do_not_skip_rule(canon):
     assert prose_canon_violations(canon, {}, "这里不存在海岸，也不是海港。") == []
     canon["world_rules"][0]["exceptions"] = ["历史档案可提及海岸"]
-    assert prose_canon_violations(canon, {}, "档案写着东海岸。") == []
+    assert prose_canon_violations(canon, {}, "档案写着东海岸。")
 
 
 def test_forbidden_landscape_term_in_a_simile_is_not_a_world_fact(canon):

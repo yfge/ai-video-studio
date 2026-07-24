@@ -9,6 +9,7 @@ from app.services.story.story_novel_domain import sha256_text
 from app.services.story.story_novel_prose_canon_gate import (
     revision_prose_canon_violations,
 )
+from fastapi import HTTPException
 from tests.unit.test_story_novel_canon_state import _body, _delta, _v2_revision
 from tests.unit.test_story_novel_chapter_state_gate import (
     _coastal_body,
@@ -21,7 +22,7 @@ async def _empty_extraction(*_args, **_kwargs):
     return {"events": [], "memories": []}
 
 
-def test_invalid_resume_checkpoint_is_stale_before_provider_failure(
+def test_invalid_ready_resume_checkpoint_is_preserved_before_provider(
     db_session, monkeypatch
 ):
     user, story, service, revision, task, *_ = _setup(db_session)
@@ -50,7 +51,11 @@ def test_invalid_resume_checkpoint_is_stale_before_provider_failure(
     )
 
     async def initial(_revision, prompt, **_kwargs):
-        return _delta() if "从实际小说正文提取" in prompt else _body()
+        if "从实际小说正文提取" not in prompt:
+            return _body()
+        delta = json.loads(_delta())
+        delta["future_event_audit"] = {"event-2": "not_present"}
+        return json.dumps(delta, ensure_ascii=False)
 
     chapter = anyio.run(
         generate_or_resume_chapter,
@@ -141,16 +146,9 @@ def test_invalid_resume_checkpoint_is_stale_before_provider_failure(
     async def provider_failure(*_args, **_kwargs):
         nonlocal provider_calls
         provider_calls += 1
-        rows = revision.continuity_ledger["chapters"]
-        assert rows["1"]["status"] == rows["2"]["status"] == "stale"
-        assert rows["1"]["extraction_status"] == "stale"
-        assert rows["1"]["event_ids"] == []
-        assert "current_state" not in revision.continuity_ledger
-        assert chapter.review_status == future.review_status == "review_required"
-        assert event.status == "stale"
-        raise RuntimeError("provider unavailable")
+        raise AssertionError("普通 Resume 不得重写 ready 正文")
 
-    with pytest.raises(RuntimeError, match="provider unavailable"):
+    with pytest.raises(HTTPException, match="ready checkpoint"):
         anyio.run(
             generate_or_resume_chapter,
             service,
@@ -166,15 +164,11 @@ def test_invalid_resume_checkpoint_is_stale_before_provider_failure(
     db_session.refresh(future)
     db_session.refresh(event)
     rows = revision.continuity_ledger["chapters"]
-    assert provider_calls == 1
-    assert rows["1"]["status"] == rows["2"]["status"] == "stale"
-    assert rows["1"]["extraction_status"] == "stale"
-    assert "current_state" not in revision.continuity_ledger
-    assert revision.continuity_status == "review_required"
-    assert chapter.review_status == future.review_status == "review_required"
-    assert event.status == "stale"
-    assert event.invalidation["reason_code"] == "resume_checkpoint_invalid"
+    assert provider_calls == 0
+    assert rows["1"]["status"] == rows["2"]["status"] == "ready"
+    assert rows["1"]["extraction_status"] == "ready"
+    assert event.status == "candidate"
     assert [
         (row["generation_status"], row["extraction_status"])
         for row in revision.generation_plan["chapters"]
-    ] == [("stale", "stale"), ("stale", "stale")]
+    ] == [("ready", "ready"), ("ready", "ready")]

@@ -51,6 +51,7 @@ _UNCERTAINTY_MARKERS = (
     "否认",
 )
 _INVALID_FUTURE_ID_PREFIX = "premature_future_event_ids 引用了目录外事件: "
+_INCOMPLETE_FUTURE_AUDIT_PREFIX = "future_event_audit 未完整覆盖未来事件目录: "
 
 
 def paired_future_events(chapter: dict) -> list[dict]:
@@ -86,17 +87,35 @@ def future_audit_id_violations(catalog: list[dict], delta: dict) -> list[dict]:
     invalid = sorted(
         set(delta.get("premature_future_event_ids") or []).difference(allowed)
     )
-    return [
+    violations = [
         {
             "code": "canon_violation",
             "message": f"{_INVALID_FUTURE_ID_PREFIX}{event_id}",
         }
         for event_id in invalid
     ]
+    audit = delta.get("future_event_audit") or {}
+    audited = set(audit)
+    premature = set(delta.get("premature_future_event_ids") or [])
+    marked = {event_id for event_id, value in audit.items() if value == "premature"}
+    if audited != allowed or marked != premature:
+        violations.append(
+            {
+                "code": "canon_violation",
+                "message": (
+                    f"{_INCOMPLETE_FUTURE_AUDIT_PREFIX}"
+                    f"expected={sorted(allowed)}, audited={sorted(audited)}, "
+                    f"premature={sorted(premature)}, marked={sorted(marked)}"
+                ),
+            }
+        )
+    return violations
 
 
 def is_future_audit_id_issue(issue: dict) -> bool:
-    return str(issue.get("message") or "").startswith(_INVALID_FUTURE_ID_PREFIX)
+    return str(issue.get("message") or "").startswith(
+        (_INVALID_FUTURE_ID_PREFIX, _INCOMPLETE_FUTURE_AUDIT_PREFIX)
+    )
 
 
 def future_claim_violations(

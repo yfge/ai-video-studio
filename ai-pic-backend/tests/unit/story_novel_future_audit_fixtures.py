@@ -10,6 +10,7 @@ def typed_audit_payload(quote: str, premature: list[str]) -> str:
         {
             "occurred_event_ids": ["event-1"],
             "premature_future_event_ids": premature,
+            "future_event_audit": {"event-2": "not_present"},
             "state_transitions": [],
             "knowledge_grants": [],
             "location_transitions": [],
@@ -40,5 +41,6 @@ def body_with_current_timeline() -> str:
 def delta_with_current_timeline() -> str:
     payload = json.loads(_delta())
     event_quote = payload["evidence"]["event-1"]
+    payload["future_event_audit"] = {"event-2": "not_present"}
     payload["timeline_evidence"] = {"time-1": f"第一日，{event_quote}"}
     return json.dumps(payload, ensure_ascii=False)

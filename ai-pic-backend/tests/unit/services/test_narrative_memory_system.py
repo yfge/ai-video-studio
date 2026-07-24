@@ -146,6 +146,7 @@ def test_approval_freeze_and_source_change_propagate_stale(db_session):
     memory = _private_memory(
         repo, story, characters[0], virtual_ip, anchor, status="candidate"
     )
+    memory.source_artifact_type = "episode"
     repo.commit()
     CandidateService(repo).review(
         story,
@@ -218,7 +219,7 @@ def test_offscreen_event_is_persisted_but_hidden_from_audience(db_session):
                     "occurred_at_anchor_business_id": anchor.business_id,
                     "presentation": "offscreen",
                     "audience_disclosure": "hidden",
-                    "source_artifact_type": "novel_chapter",
+                    "source_artifact_type": "episode",
                     "source_artifact_business_id": "chapter-offscreen",
                     "source_hash": "hash-chapter-offscreen",
                 }

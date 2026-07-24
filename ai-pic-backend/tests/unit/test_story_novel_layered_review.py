@@ -90,7 +90,7 @@ def test_layered_review_hard_metric_blocks_model_warning_only_report(
     assert stored_hash == content_hash(stored)
 
 
-def test_review_batches_are_non_overlapping_groups_of_six_with_hash_coverage():
+def test_review_batches_overlap_six_chapter_boundaries_with_hash_coverage():
     chapters = [
         SimpleNamespace(
             business_id=f"chapter-{position}",
@@ -103,10 +103,10 @@ def test_review_batches_are_non_overlapping_groups_of_six_with_hash_coverage():
     ]
     batches = _windows(chapters)
     assert len(batches) == 8
-    assert [[row.position for row in batch] for batch in batches] == [
-        list(range(start, start + 6)) for start in range(1, 49, 6)
-    ]
-    assert [len(batch) for batch in _windows(chapters[:8])] == [6, 2]
+    assert [row.position for row in batches[0]] == list(range(1, 7))
+    assert [row.position for row in batches[1]] == list(range(6, 13))
+    assert [row.position for row in batches[-1]] == list(range(42, 49))
+    assert [len(batch) for batch in _windows(chapters[:8])] == [6, 3]
 
     class DB:
         def commit(self):
@@ -145,11 +145,5 @@ def test_review_batches_are_non_overlapping_groups_of_six_with_hash_coverage():
     )
     refs = [ref for batch in compiled["review_batches"] for ref in batch["chapters"]]
     assert calls == [5000] * 8
-    assert refs == [
-        {
-            "business_id": row.business_id,
-            "content_hash": row.content_hash,
-            "position": row.position,
-        }
-        for row in chapters
-    ]
+    assert {ref["business_id"] for ref in refs} == {row.business_id for row in chapters}
+    assert [ref["position"] for ref in refs].count(6) == 2

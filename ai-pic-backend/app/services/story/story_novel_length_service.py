@@ -35,6 +35,7 @@ def build_length_plan(
         "phase": "spec_ready",
         "story_seed_version": int(story.story_seed_version or 1),
         "outline_hash": outline_hash,
+        "model": request.model,
         "length_profile": profile,
         "chapter_length_overrides": {
             str(position): value.model_dump() for position, value in overrides.items()
@@ -66,6 +67,12 @@ def apply_length_spec(revision, request) -> dict:
     overrides = _normalize_overrides(request.chapter_length_overrides, positions)
     frozen_rows = _apply_ranges(frozen_rows, profile, overrides)
     model = request.model if "model" in request.model_fields_set else revision.model
+    model_changed = model != revision.model
+    if model_changed and any(row.content_text for row in revision.chapters or []):
+        raise HTTPException(
+            status_code=409,
+            detail="已有章节后不得修改正文模型，请创建新小说版本",
+        )
     validate_model_capacity(model, max(row["max_chars"] for row in frozen_rows))
     revision.model = model
     serialized_overrides = {
@@ -74,11 +81,13 @@ def apply_length_spec(revision, request) -> dict:
     if (
         current.get("length_profile") == profile
         and (current.get("chapter_length_overrides") or {}) == serialized_overrides
+        and not model_changed
     ):
         return current
     plan = {
         **current,
         "version": expected + 1,
+        "model": model,
         "length_profile": profile,
         "chapter_length_overrides": serialized_overrides,
         "planned_min_chars": sum(row["min_chars"] for row in frozen_rows),

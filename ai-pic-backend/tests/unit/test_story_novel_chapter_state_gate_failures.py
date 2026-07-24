@@ -1,3 +1,5 @@
+import json
+
 import anyio
 import pytest
 from app.services.story.story_novel_canon_service import normalize_canon
@@ -24,11 +26,11 @@ def test_gate_failed_prefix_blocks_later_chapter_generation(db_session, monkeypa
     db_session.commit()
 
     async def fail_first(_revision, prompt, **_kwargs):
-        return (
-            _delta(world_rule_violations=["rule-violation"])
-            if "从实际小说正文提取" in prompt
-            else _body()
-        )
+        if "从实际小说正文提取" not in prompt:
+            return _body()
+        delta = json.loads(_delta(world_rule_violations=["rule-violation"]))
+        delta["future_event_audit"] = {"event-2": "not_present"}
+        return json.dumps(delta, ensure_ascii=False)
 
     async def must_not_extract(*_args, **_kwargs):
         raise AssertionError("Narrative extraction must wait for the hard gate")

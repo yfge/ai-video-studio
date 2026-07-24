@@ -54,8 +54,6 @@ def _world_rule_violations(canon: dict, content_text: str) -> list[dict]:
     violations = []
     seen = set()
     for rule in canon.get("world_rules") or []:
-        if rule.get("exceptions"):
-            continue
         statement = str(rule.get("statement") or "")
         for term in sorted(_forbidden_terms(statement)):
             if (

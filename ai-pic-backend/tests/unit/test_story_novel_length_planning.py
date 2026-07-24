@@ -6,20 +6,14 @@ import pytest
 from app.schemas.story_novel_export import (
     NovelLengthRange,
     StoryNovelCreateRevisionRequest,
-    StoryNovelGenerateRevisionRequest,
     StoryNovelLengthSpecUpdateRequest,
 )
 from app.schemas.story_seed import StorySeedModel, StorySeedStructuredOutline
 from app.services.story.story_novel_chapter_gate import chapter_output_tokens
-from app.services.story.story_novel_chapter_service import sync_plan_chapter_runtime
 from app.services.story.story_novel_length_service import (
     apply_length_spec,
     build_length_plan,
     generation_plan_hash,
-)
-from app.services.story.story_novel_task_guard import (
-    NovelTaskCancelled,
-    ensure_task_not_cancelled,
 )
 from app.services.story.story_outline_positions import explicit_outline_positions
 from app.services.story.story_seed_service import ensure_confirmable_seed
@@ -175,6 +169,30 @@ def test_length_update_preserves_frozen_outline_and_extraction_facts():
     assert revision.continuity_report["status"] == "stale"
 
 
+def test_prose_model_cannot_change_after_chapter_body_exists():
+    story = _story(1)
+    plan = build_length_plan(story, StoryNovelCreateRevisionRequest())
+    revision = SimpleNamespace(
+        generation_plan=plan,
+        story_snapshot={
+            "story_seed": story.story_seed,
+            "story_seed_version": story.story_seed_version,
+        },
+        model="deepseek:deepseek-v4-flash",
+        chapters=[SimpleNamespace(content_text="已有正文")],
+    )
+
+    with pytest.raises(HTTPException, match="不得修改正文模型"):
+        apply_length_spec(
+            revision,
+            StoryNovelLengthSpecUpdateRequest(
+                length_profile_id="standard_serial",
+                expected_plan_version=4,
+                model="deepseek:deepseek-v4-pro",
+            ),
+        )
+
+
 def test_ranges_are_strict_and_model_budget_is_not_fixed_16k():
     with pytest.raises(ValidationError):
         NovelLengthRange(min_chars=1.5, target_chars=2, max_chars=3)
@@ -221,40 +239,3 @@ def test_confirmed_seed_requires_final_chapter_to_cover_ending():
     with pytest.raises(HTTPException) as exc:
         ensure_confirmable_seed(StorySeedModel.model_validate(bad))
     assert "ending_direction" in str(exc.value.detail)
-
-
-def test_runtime_fields_mirror_into_version_four_plan():
-    revision = SimpleNamespace(
-        generation_plan={
-            "version": 4,
-            "chapters": [{"position": 1, "title": "第一章"}],
-        }
-    )
-    sync_plan_chapter_runtime(
-        revision,
-        1,
-        {
-            "status": "ready",
-            "char_count": 3210,
-            "context_hash": "context",
-            "body_hash": "body",
-            "source_hash": "source",
-            "extraction_status": "ready",
-            "event_ids": ["fact-1"],
-            "memory_ids": ["memory-1"],
-        },
-    )
-    row = revision.generation_plan["chapters"][0]
-    assert row["actual_chars"] == 3210
-    assert row["fact_ids"] == ["fact-1"]
-    assert row["memory_ids"] == ["memory-1"]
-
-
-def test_lightweight_task_guard_and_generate_compatibility():
-    ensure_task_not_cancelled(None, SimpleNamespace(status="pending"))
-    with pytest.raises(NovelTaskCancelled):
-        ensure_task_not_cancelled(None, SimpleNamespace(status="cancelled"))
-    request = StoryNovelGenerateRevisionRequest(target_words=200000, chapter_count=48)
-    assert request.compatibility_warnings() == [
-        "prose 已忽略旧字段: target_words, chapter_count"
-    ]

@@ -159,6 +159,9 @@ class StoryNovelPlotDelta(BaseModel):
 class StoryNovelStateDelta(BaseModel):
     occurred_event_ids: list[str] = Field(default_factory=list)
     premature_future_event_ids: list[str] = Field(default_factory=list)
+    future_event_audit: dict[str, Literal["not_present", "premature"]] = Field(
+        default_factory=dict
+    )
     state_transitions: list[StoryNovelStateTransition] = Field(default_factory=list)
     knowledge_grants: list[StoryNovelKnowledgeGrant] = Field(default_factory=list)
     location_transitions: list[StoryNovelLocationTransition] = Field(

@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 from app.schemas.story_novel_export import StoryNovelCreateRevisionRequest
+from app.services.story.story_novel_ai_prompts import structured_outline_prompt
 from app.services.story.story_novel_length_service import build_length_plan
 from app.services.story.story_novel_thread_schedule_checkpoint import (
     reusable_thread_payoffs,
@@ -181,3 +182,10 @@ def test_thread_contract_rejects_compound_thread_ids():
 
     with pytest.raises(ValueError, match="只表达一个原子问题"):
         validate_seed_thread_contract(outline, require_version=True)
+
+
+def test_structure_prompt_forbids_carrying_open_thread_ids_forward():
+    prompt = structured_outline_prompt(story_seed={}, expected_positions=[1, 2])
+
+    assert "同一 ID 在全书只能" in prompt
+    assert "后续章节不得重复携带" in prompt
