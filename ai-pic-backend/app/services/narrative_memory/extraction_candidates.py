@@ -13,9 +13,70 @@ from app.schemas.narrative_memory import (
 from .extraction_bindings import knowledge_character_bindings
 from .extraction_memory_candidates import build_memory_candidates
 
-__all__ = ["build_candidate_payload", "knowledge_character_bindings"]
+__all__ = [
+    "build_candidate_payload",
+    "candidate_contract_validator",
+    "knowledge_character_bindings",
+]
 
 CLAIM_VERIFICATION_VERSION = 3
+
+
+def candidate_contract_validator(
+    strict: bool,
+    expected_events: dict[str, str],
+    character_bindings: dict[str, dict] | None,
+):
+    if not strict:
+        return None
+    expected_grants = {
+        (
+            grant.get("character_id"),
+            grant.get("fact_id"),
+            grant.get("source_event_id"),
+        )
+        for binding in (character_bindings or {}).values()
+        for grant in binding.get("grants") or []
+    }
+
+    def validate(payload: dict):
+        errors = []
+        try:
+            _require_typed_event_coverage(
+                list(payload.get("events") or []), expected_events
+            )
+        except ServiceError as exc:
+            errors.append(
+                {
+                    "loc": ["events"],
+                    "msg": str(exc),
+                    "type": "value_error.typed_event_coverage",
+                }
+            )
+        memories = list(payload.get("memories") or [])
+        supplied_grants = [
+            (
+                item.get("typed_character_id"),
+                item.get("typed_fact_id"),
+                item.get("typed_source_event_id"),
+            )
+            for item in memories
+        ]
+        if (
+            len(memories) != len(expected_grants)
+            or len(set(supplied_grants)) != len(supplied_grants)
+            or set(supplied_grants) != expected_grants
+        ):
+            errors.append(
+                {
+                    "loc": ["memories"],
+                    "msg": "记忆候选提取失败：角色知识未逐项覆盖 typed grant",
+                    "type": "value_error.typed_memory_coverage",
+                }
+            )
+        return errors or None
+
+    return validate
 
 
 def build_candidate_payload(

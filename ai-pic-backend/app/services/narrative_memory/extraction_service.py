@@ -14,6 +14,7 @@ from app.services.narrative_memory.evidence_repair import (
 )
 from app.services.narrative_memory.extraction_candidates import (
     build_candidate_payload,
+    candidate_contract_validator,
     knowledge_character_bindings,
 )
 from app.services.narrative_memory.extraction_evidence import (
@@ -85,6 +86,9 @@ class NarrativeExtractionService:
             schema=NarrativeExtractionEnvelope.model_json_schema(),
             system_prompt="你是严格的叙事事实与角色认知提取器，只返回 JSON。",
             pydantic_model=NarrativeExtractionEnvelope,
+            extra_validator=candidate_contract_validator(
+                strict, event_evidence, memory_bindings
+            ),
             max_repairs=1,
         )
         normalized = result.get("normalized")
@@ -242,6 +246,4 @@ class NarrativeExtractionService:
             source_hash=novel_chapter_source_hash(chapter),
         )
 
-    @staticmethod
-    def _prompt(source_text, characters, anchors, contract=None) -> str:
-        return build_extraction_prompt(source_text, characters, anchors, contract)
+    _prompt = staticmethod(build_extraction_prompt)
