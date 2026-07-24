@@ -76,6 +76,22 @@ def test_evidence_diagnostics_do_not_reassign_another_speakers_quote():
     assert "source_candidate" not in diagnostics[0]["fragments"][0]
 
 
+def test_evidence_diagnostics_offer_unique_exact_suffix_for_rewritten_lead():
+    exact = "把一根标尺用力插在陡坎边缘的裂缝里"
+    body = f"老拐直起身，{exact}，确认锚定牢固。"
+    diagnostics = _evidence_repair_diagnostics(
+        body,
+        {"evidence": {"event-2": f"将一根标尺用力插在陡坎边缘的裂缝里"}},
+        [{"message": "事件缺少可核对的正文证据: event-2"}],
+    )
+
+    candidate = diagnostics[0]["fragments"][0]["source_candidate"]
+    assert candidate == {
+        "text": "一根标尺用力插在陡坎边缘的裂缝里",
+        "exact_offset": body.index("一根标尺"),
+    }
+
+
 def test_only_source_evidence_errors_skip_body_repair():
     assert _only_evidence_issues(
         [

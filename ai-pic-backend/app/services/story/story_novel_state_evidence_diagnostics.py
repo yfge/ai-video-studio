@@ -19,6 +19,7 @@ _EVIDENCE_ONLY_MESSAGES = (
     "时间线证据固定日期晚于或缺少对应事件:",
 )
 _ELLIPSIS = re.compile(r"(?:…+|\.{3,})")
+_DROPPABLE_LEADING_CHARACTERS = frozenset("他她它其将把")
 
 
 def evidence_repair_diagnostics(
@@ -104,6 +105,23 @@ def _exact_offsets(content_text: str, fragment: str) -> list[int]:
 def _source_candidate(content_text: str, fragment: str) -> dict | None:
     text = align_source_evidence(content_text, fragment)
     if text == fragment or not source_contains_evidence(content_text, text):
-        return None
+        text = _unique_trimmed_candidate(content_text, fragment)
+        if not text:
+            return None
     offset = content_text.find(text)
     return {"text": text, "exact_offset": offset} if offset >= 0 else None
+
+
+def _unique_trimmed_candidate(content_text: str, fragment: str) -> str:
+    """Offer one exact suffix without guessing a named actor or dialogue speaker."""
+    stripped = fragment.strip()
+    if (
+        not stripped
+        or stripped[0] not in _DROPPABLE_LEADING_CHARACTERS
+        or any(mark in stripped for mark in '“”"')
+    ):
+        return ""
+    candidate = stripped[1:].lstrip()
+    if len(re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]+", "", candidate)) < 12:
+        return ""
+    return candidate if content_text.count(candidate) == 1 else ""

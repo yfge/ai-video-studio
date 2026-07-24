@@ -2,6 +2,7 @@ import json
 
 import anyio
 import pytest
+
 from app.services.story.story_novel_state_extraction import (
     StateExtractionError,
     extract_chapter_state,
@@ -138,3 +139,67 @@ def test_quote_only_repair_rejects_attempted_state_change():
 
     with pytest.raises(StateExtractionError, match="只能返回 evidence"):
         anyio.run(run)
+
+
+def test_quote_only_repair_uses_exact_candidate_for_rewritten_lead():
+    body = (
+        "老拐直起身，把一根标尺用力插在陡坎边缘的裂缝里，"
+        "用膝盖顶了顶基座，确认锚定牢固。"
+        "王明将首批标尺的基准坐标输入测绘系统。"
+    )
+    invalid = {
+        **_initial_delta(),
+        "state_transitions": [],
+        "evidence": {
+            "event-2-1": (
+                "老拐直起身……将一根标尺用力插在陡坎边缘的裂缝里"
+                "……王明将首批标尺的基准坐标输入测绘系统"
+            )
+        },
+        "timeline_evidence": {},
+    }
+    calls = 0
+
+    async def generate(_revision, prompt, **_kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return json.dumps(invalid, ensure_ascii=False)
+        assert '"text":"一根标尺用力插在陡坎边缘的裂缝里"' in prompt
+        return json.dumps(
+            {
+                "evidence": {
+                    "event-2-1": (
+                        "老拐直起身，把一根标尺用力插在陡坎边缘的裂缝里，"
+                        "用膝盖顶了顶基座，确认锚定牢固。"
+                        "……王明将首批标尺的基准坐标输入测绘系统。"
+                    )
+                },
+                "timeline_evidence": {},
+            },
+            ensure_ascii=False,
+        )
+
+    async def run():
+        return await extract_chapter_state(
+            object(),
+            chapter_plan={
+                "position": 2,
+                "title": "标尺入礁",
+                "key_events": ["布设首批标尺"],
+                "required_event_ids": ["event-2-1"],
+                "canon_refs": [],
+                "timeline_event_bindings": {},
+            },
+            state_before={},
+            content_text=body,
+            future_event_catalog=[],
+            current_timeline=[],
+            generate_text=generate,
+        )
+
+    result, repair_count = anyio.run(run)
+
+    assert repair_count == 1
+    assert calls == 2
+    assert result["occurred_event_ids"] == ["event-2-1"]
