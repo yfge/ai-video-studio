@@ -2,7 +2,6 @@ import json
 
 import anyio
 import pytest
-
 from app.services.story.story_novel_plan_semantic_audit import (
     _apply_missing_effects,
     _audit_prompt,
@@ -147,6 +146,12 @@ def test_semantic_audit_prompt_binds_location_ids_and_rejects_subdivisions():
     assert '"state_before_batch":{"char-laoguai"' in prompt
     assert '"location":"salt-mirror-island"' in prompt
     assert "地点内部移动必须为空且不得创建子地点" in prompt
+    assert '"event_id":"evt-ch8-1","key_event":"王明确认频率逐年偏移"' in prompt
+    assert (
+        '"event_id":"evt-ch8-2","key_event":"老拐指出钟声受中央钟塔控制并怀疑人为干预"'
+        in prompt
+    )
+    assert '"event_id":"evt-1"' not in prompt
 
 
 @pytest.mark.parametrize("field", ("from_location_id", "to_location_id"))
