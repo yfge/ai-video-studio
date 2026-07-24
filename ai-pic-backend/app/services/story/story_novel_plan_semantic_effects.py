@@ -1,11 +1,11 @@
-"""Deterministic movement checks for semantic-audit suggestions."""
+"""Deterministic checks for semantic-audit suggestions."""
 
 from copy import deepcopy
 
 from .story_novel_plan_validator import _validate_chapter, _validation_context
 
 
-def filter_redundant_audit_movements(audit, canon, prior_chapters, chapters):
+def filter_redundant_audit_effects(audit, canon, prior_chapters, chapters):
     context = _validation_context(canon)
     for chapter in prior_chapters:
         _validate_chapter(chapter, context)
@@ -17,12 +17,23 @@ def filter_redundant_audit_movements(audit, canon, prior_chapters, chapters):
         state_after[position] = deepcopy(context["state"])
     for event in audit:
         position = event["position"]
+        chapter = by_position[position]
+        effects = event["missing_effects"]
+        for field in (
+            "knowledge_grants",
+            "state_transitions",
+            "milestones_consumed",
+        ):
+            existing_values = chapter.get(field) or []
+            effects[field] = [
+                value for value in effects[field] if value not in existing_values
+            ]
         existing = {
             (item["subject_id"], item.get("from_location_id"), item["to_location_id"])
-            for item in by_position[position].get("location_transitions") or []
+            for item in chapter.get("location_transitions") or []
         }
         kept = []
-        for movement in event["missing_effects"]["location_transitions"]:
+        for movement in effects["location_transitions"]:
             key = (
                 movement["subject_id"],
                 movement.get("from_location_id"),
@@ -33,5 +44,5 @@ def filter_redundant_audit_movements(audit, canon, prior_chapters, chapters):
                 continue
             kept.append(movement)
             subject["location"] = movement["to_location_id"]
-        event["missing_effects"]["location_transitions"] = kept
+        effects["location_transitions"] = kept
     return audit

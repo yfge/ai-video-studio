@@ -219,7 +219,12 @@ def test_semantic_audit_rechecks_patched_plan_before_accepting():
 
 
 def test_semantic_audit_fails_if_second_pass_still_reports_missing_effects():
-    responses = iter((_audit(_six_grants()), _audit(_six_grants())))
+    extra = {
+        "character_id": "char-wangming",
+        "fact_id": "fact-evt-ch8-1-9",
+        "source_event_id": "evt-ch8-1",
+    }
+    responses = iter((_audit(_six_grants()), _audit([*_six_grants(), extra])))
 
     async def generate(_revision, _prompt, **_kwargs):
         return json.dumps(next(responses), ensure_ascii=False)

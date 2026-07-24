@@ -21,7 +21,7 @@ def _canon():
     }
 
 
-def _chapter(position, event_id, movements=None):
+def _chapter(position, event_id, movements=None, milestones=None):
     return {
         "position": position,
         "title": f"第{position}章",
@@ -35,10 +35,11 @@ def _chapter(position, event_id, movements=None):
         "state_transitions": [],
         "knowledge_grants": [],
         "location_transitions": list(movements or []),
-        "milestones_consumed": [],
+        "milestones_consumed": list(milestones or []),
         "forbidden_event_ids": [],
         "payoffs_due": [],
         "canon_refs": ["char-a", "loc-a", "loc-b"],
+        "timeline_event_bindings": {},
     }
 
 
@@ -111,3 +112,39 @@ def test_semantic_audit_keeps_executable_missing_movement():
 
     result = anyio.run(run)
     assert result[0]["location_transitions"] == [_movement()]
+
+
+def test_semantic_reaudit_drops_exact_existing_milestone():
+    canon = _canon()
+    canon["milestones"] = [
+        {
+            "id": "mile-1",
+            "label": "抵达",
+            "outcomes": [],
+            "repeatable": False,
+            "planned_position": 1,
+        }
+    ]
+    calls = 0
+
+    async def generate(_revision, _prompt, **_kwargs):
+        nonlocal calls
+        calls += 1
+        payload = _audit(1, "ev-1")
+        payload["events"][0]["missing_effects"]["milestones_consumed"] = ["mile-1"]
+        return json.dumps(payload, ensure_ascii=False)
+
+    async def run():
+        return await audit_and_patch_plan_batch(
+            object(),
+            contract={"story_seed": {"schema": "story_seed_v2"}},
+            canon=canon,
+            prior_chapters=[],
+            batch_chapters=[_chapter(1, "ev-1", milestones=["mile-1"])],
+            require_complete=True,
+            generate_text=generate,
+        )
+
+    result = anyio.run(run)
+    assert calls == 1
+    assert result[0]["milestones_consumed"] == ["mile-1"]
