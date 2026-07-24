@@ -15,6 +15,11 @@ from .story_novel_canon_service import (
 from .story_novel_length_service import generation_plan_hash
 from .story_novel_plan_parser import parse_plan
 from .story_novel_plan_repair import plan_repair_prompt as _plan_repair_prompt
+from .story_novel_plan_semantic_audit import (
+    PLAN_SEMANTIC_AUDIT_VERSION,
+    audit_and_patch_plan_batch,
+    requires_plan_semantic_audit,
+)
 from .story_novel_planning_batches import (
     batch_contract,
     batch_frozen_spec,
@@ -153,7 +158,24 @@ async def plan_chapters(
             )
         if not parsed:
             fail_plan(service, revision, "chapters", error)
-        chapters.extend(parsed["chapters"])
+        rows = parsed["chapters"]
+        if requires_plan_semantic_audit(contract):
+            try:
+                rows = await audit_and_patch_plan_batch(
+                    revision,
+                    contract=batch_contract(contract, positions),
+                    canon=canon,
+                    prior_chapters=chapters,
+                    batch_chapters=rows,
+                    require_complete=(
+                        not positions or positions[-1] == expected_positions[-1]
+                    ),
+                    generate_text=generate_text,
+                )
+            except ValueError as exc:
+                fail_plan(service, revision, "chapters", str(exc))
+            ensure_task_not_cancelled(service.db, task)
+        chapters.extend(rows)
         checkpoint_plan_batch(service, revision, task, canon, chapters)
     return chapters
 
@@ -169,6 +191,11 @@ def complete_plan(service, revision, task, frozen_spec, canon, chapters) -> dict
         "canon_hash": canon["canon_hash"],
         "canon_gate_version": CANON_GATE_VERSION,
         "canon_model_filter_version": CANON_MODEL_FILTER_VERSION,
+        "plan_semantic_audit_version": (
+            PLAN_SEMANTIC_AUDIT_VERSION
+            if chapters and all(item.get("semantic_audit") for item in chapters)
+            else None
+        ),
         "canon_timeline_filter": (revision.generation_plan or {}).get(
             "canon_timeline_filter"
         ),

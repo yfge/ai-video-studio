@@ -95,6 +95,8 @@ def plan_repair_prompt(
         "最终累计集合必须为空。"
         + "\n正文会产生的长期事实必须给实际知情角色编入 knowledge_grants；"
         + "包括公开期限、身份、权限、物件状态与因果结论，不能留给运行时补猜。"
+        + "非 Canon milestone outcome 的新知识 fact_id 必须按 source_event_id "
+        "写为 fact-{source_event_id}-{从1开始的事实序号}；同一事实对多个角色复用同一 fact_id。"
         + "\nnull、数组与对象必须使用真实 JSON 类型；movement 的 to 必须是非空 "
         "Canon location ID；from 仅在 Canon object 同章从不存在变为存在且首次落点时可为 null，"
         "人物与普通移动必须给出真实 Canon 起点；角色已在该地点或只是首次出场时删除 movement。"

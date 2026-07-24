@@ -42,16 +42,36 @@ def _batch_positions(prompt: str) -> list[int]:
     return [int(value) for value in match.group(1).split(",")]
 
 
+def _audit_response(positions):
+    return {
+        "events": [
+            {
+                "position": position,
+                "event_id": f"event-{position}",
+                "missing_effects": {
+                    "knowledge_grants": [],
+                    "state_transitions": [],
+                    "location_transitions": [],
+                    "milestones_consumed": [],
+                },
+            }
+            for position in positions
+        ]
+    }
+
+
 def test_48_chapter_contract_is_generated_in_bounded_batches(db_session):
     _user, _story, service, revision, task, *_ = _setup(db_session)
     _prepare_48_chapter_revision(db_session, revision)
     calls = []
 
-    async def generate(_revision, prompt, *, max_tokens):
+    async def generate(_revision, prompt, *, max_tokens, **_kwargs):
         calls.append((prompt, max_tokens))
         if "编译唯一 Canon" in prompt:
             return json.dumps(_canon(), ensure_ascii=False)
         positions = _batch_positions(prompt)
+        if "独立审计章节计划" in prompt:
+            return json.dumps(_audit_response(positions), ensure_ascii=False)
         return json.dumps(
             {"chapters": [_plan_row(position) for position in positions]},
             ensure_ascii=False,
@@ -61,10 +81,12 @@ def test_48_chapter_contract_is_generated_in_bounded_batches(db_session):
 
     assert plan["chapter_count"] == 48
     assert [row["position"] for row in plan["chapters"]] == list(range(1, 49))
-    assert len(calls) == 7
+    assert len(calls) == 13
     assert {max_tokens for _, max_tokens in calls} == {16000}
     assert all(len(_batch_positions(prompt)) <= 8 for prompt, _ in calls[1:])
     assert '"position":9' not in calls[1][0]
+    assert '"position":9' not in calls[2][0]
+    assert plan["plan_semantic_audit_version"] == 1
     assert "chapter_plan_draft" not in plan
 
 
@@ -73,11 +95,13 @@ def test_resume_reuses_validated_chapter_plan_batches(db_session):
     _prepare_48_chapter_revision(db_session, revision)
     calls = []
 
-    async def fail_third_batch(_revision, prompt, *, max_tokens):
+    async def fail_third_batch(_revision, prompt, *, max_tokens, **_kwargs):
         calls.append(prompt)
         if "编译唯一 Canon" in prompt:
             return json.dumps(_canon(), ensure_ascii=False)
         positions = _batch_positions(prompt)
+        if "独立审计章节计划" in prompt:
+            return json.dumps(_audit_response(positions), ensure_ascii=False)
         if positions[0] == 17:
             return '{"chapters":[]}'
         return json.dumps(
@@ -95,9 +119,11 @@ def test_resume_reuses_validated_chapter_plan_batches(db_session):
 
     resumed_prompts = []
 
-    async def resume(_revision, prompt, *, max_tokens):
+    async def resume(_revision, prompt, *, max_tokens, **_kwargs):
         resumed_prompts.append(prompt)
         positions = _batch_positions(prompt)
+        if "独立审计章节计划" in prompt:
+            return json.dumps(_audit_response(positions), ensure_ascii=False)
         return json.dumps(
             {"chapters": [_plan_row(position) for position in positions]},
             ensure_ascii=False,

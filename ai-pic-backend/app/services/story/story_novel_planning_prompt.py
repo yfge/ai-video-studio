@@ -68,6 +68,7 @@ preconditions、state_transitions 和 outcomes 必须保留真实 JSON 类型：
 冻结 structured_outline 中每章 open_threads 已是稳定 ID；必须逐项、按原顺序、原样复制，数量也必须一致，禁止翻译或另造近义 ID。只列本章新打开的线索，绝不能重复携带此前章节累计集合。
 payoffs_due 只能引用此前章节已经打开的 ID；一旦 key_events 已解决某条线索，必须在该章 payoffs_due 精确填入其 ID。同一 key_event 确实同时回答多条语义相关线索时可以共享，单章最多回收 3 条；禁止把未规划回收位置的线索集中堆到终章。终章不得新开线索，最后一章后的系统累计集合必须为空。
 凡 key_events 会让任何角色获知新的长期事实（包括公开宣布的期限、身份、权限、物件状态或因果结论），都必须为实际知情角色逐项编入 knowledge_grants；运行时不接受计划外“自然得知”。
+非 Canon milestone outcome 的新知识 fact_id 必须按 source_event_id 稳定派生为 fact-{{source_event_id}}-{{从1开始的事实序号}}；同一事实对多个角色复用同一 fact_id。计划完成后系统会逐事件独立语义审计，遗漏 typed effect 将在正文前失败。
 只输出严格 JSON：
 {{"chapters":[{{"position":1,"title":"标题","goal":"情节目标","key_events":["关键事件"],"character_focus":["角色重点"],"open_threads":["thread-id"],"end_state":"章末状态","target_chars":4000,
 "preconditions":[{{"subject_id":"entity-id","field":"status","operator":"eq|ne|contains|not_contains","value":"值"}}],
