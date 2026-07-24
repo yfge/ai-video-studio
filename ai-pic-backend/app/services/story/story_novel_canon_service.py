@@ -11,6 +11,7 @@ from app.schemas.story_novel_longform import StoryNovelCanon
 from app.utils.json_utils import extract_json_block
 from pydantic import ValidationError
 
+from .story_novel_canon_milestone_filter import filter_model_milestone_outcomes
 from .story_novel_constraint_visibility import is_future_policy_constraint
 from .story_novel_initial_state import canonical_initial_subjects
 from .story_novel_milestone_state import validate_milestone_outcome_contract
@@ -94,9 +95,13 @@ def parse_model_canon(
         payload.setdefault("gate_version", CANON_GATE_VERSION)
         if planning_contract is not None:
             payload["world_rules"] = _sourced_world_rules(planning_contract)
-            payload, diagnostics = filter_model_timeline_sources(
+            payload, timeline_diagnostics = filter_model_timeline_sources(
                 payload, planning_contract
             )
+            payload, milestone_diagnostics = filter_model_milestone_outcomes(
+                payload, planning_contract
+            )
+            diagnostics = [*timeline_diagnostics, *milestone_diagnostics]
         return (
             normalize_canon(payload, required_gate_version=CANON_GATE_VERSION),
             None,

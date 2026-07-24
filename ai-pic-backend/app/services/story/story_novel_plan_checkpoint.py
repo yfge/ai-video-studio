@@ -2,6 +2,7 @@
 
 from pydantic import ValidationError
 
+from .story_novel_canon_milestone_filter import CANON_MODEL_FILTER_VERSION
 from .story_novel_canon_service import (
     CANON_GATE_VERSION,
     normalize_canon,
@@ -43,6 +44,12 @@ def validated_canon_checkpoint(current: dict) -> dict | None:
 
 
 def reusable_generation_plan(current: dict, frozen_spec: dict | None) -> bool:
+    if (
+        current.get("schema") == "story_novel_generation_plan.v2"
+        and int(current.get("canon_model_filter_version") or 0)
+        < CANON_MODEL_FILTER_VERSION
+    ):
+        return False
     ready = (
         current.get("status") == "ready"
         and current.get("phase") == "ready"
@@ -81,6 +88,12 @@ def begin_planning(service, revision, task, current: dict, frozen_spec) -> bool:
     requires_canon_recompile = current.get("status") == "failed" and any(
         marker in error for marker in ("地点引用无效", "状态提前包含未来里程碑结果")
     )
+    requires_canon_recompile |= current.get("phase") in {
+        "chapters",
+        "ready",
+    } and int(
+        current.get("canon_model_filter_version") or 0
+    ) < (CANON_MODEL_FILTER_VERSION)
     ready_replan = bool(
         current.get("status") == "ready" and current.get("phase") == "ready"
     )
@@ -111,6 +124,7 @@ def begin_planning(service, revision, task, current: dict, frozen_spec) -> bool:
                     "canon",
                     "canon_hash",
                     "canon_gate_version",
+                    "canon_model_filter_version",
                     "error",
                     "plan_hash",
                 }

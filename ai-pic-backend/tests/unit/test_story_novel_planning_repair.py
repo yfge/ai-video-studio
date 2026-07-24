@@ -4,6 +4,9 @@ import anyio
 import pytest
 from app.repositories.narrative_memory_repository import NarrativeMemoryRepository
 from app.services.narrative_memory.source_hash import novel_chapter_source_hash
+from app.services.story.story_novel_canon_milestone_filter import (
+    CANON_MODEL_FILTER_VERSION,
+)
 from app.services.story.story_novel_canon_service import (
     CANON_GATE_VERSION,
     normalize_canon,
@@ -63,6 +66,7 @@ def test_replanning_invalidates_old_runtime_before_the_provider_call(db_session)
         "canon": canon,
         "canon_hash": canon["canon_hash"],
         "canon_gate_version": CANON_GATE_VERSION,
+        "canon_model_filter_version": CANON_MODEL_FILTER_VERSION,
         "chapters": [invalid_row],
     }
     current["plan_hash"] = generation_plan_hash(current)

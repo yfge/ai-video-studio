@@ -1,6 +1,9 @@
 import json
 
 import anyio
+from app.services.story.story_novel_canon_milestone_filter import (
+    CANON_MODEL_FILTER_VERSION,
+)
 from app.services.story.story_novel_canon_service import (
     CANON_GATE_VERSION,
     normalize_canon,
@@ -23,6 +26,7 @@ def test_ready_platform_plan_does_not_recompile_canon_on_resume(db_session):
         "canon": canon,
         "canon_hash": canon["canon_hash"],
         "canon_gate_version": CANON_GATE_VERSION,
+        "canon_model_filter_version": CANON_MODEL_FILTER_VERSION,
         "chapters": [_plan_row(1)],
     }
     plan["plan_hash"] = generation_plan_hash(plan)
@@ -55,6 +59,7 @@ def test_ready_v2_without_timeline_binding_replans_chapters_and_reuses_canon(
         "canon": canon,
         "canon_hash": canon["canon_hash"],
         "canon_gate_version": CANON_GATE_VERSION,
+        "canon_model_filter_version": CANON_MODEL_FILTER_VERSION,
         "chapters": [old_row],
     }
     current["plan_hash"] = generation_plan_hash(current)
@@ -91,6 +96,7 @@ def test_old_v2_without_frozen_outline_replans_but_legacy_v1_remains_reusable(
         "canon": canon,
         "canon_hash": canon["canon_hash"],
         "canon_gate_version": CANON_GATE_VERSION,
+        "canon_model_filter_version": CANON_MODEL_FILTER_VERSION,
         "chapters": [old_row],
     }
     current["plan_hash"] = generation_plan_hash(current)
@@ -197,6 +203,7 @@ def test_failed_plan_reuses_a_hash_valid_gated_canon(db_session):
         "canon": canon,
         "canon_hash": canon["canon_hash"],
         "canon_gate_version": CANON_GATE_VERSION,
+        "canon_model_filter_version": CANON_MODEL_FILTER_VERSION,
         "chapters": [_plan_row(1)],
     }
     revision.generation_plan = current

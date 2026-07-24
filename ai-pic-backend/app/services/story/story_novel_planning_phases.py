@@ -5,6 +5,7 @@ from typing import Awaitable, Callable
 from fastapi import HTTPException
 
 from .story_novel_ai_prompts import canon_prompt, planning_prompt
+from .story_novel_canon_milestone_filter import CANON_MODEL_FILTER_VERSION
 from .story_novel_canon_repair import canon_repair_prompt as _canon_repair_prompt
 from .story_novel_canon_service import (
     CANON_GATE_VERSION,
@@ -65,6 +66,7 @@ def checkpoint_canon(
         "canon": canon,
         "canon_hash": canon["canon_hash"],
         "canon_gate_version": CANON_GATE_VERSION,
+        "canon_model_filter_version": CANON_MODEL_FILTER_VERSION,
     }
     if timeline_filter is not None:
         updates["canon_timeline_filter"] = {
@@ -166,6 +168,7 @@ def complete_plan(service, revision, task, frozen_spec, canon, chapters) -> dict
         "canon": canon,
         "canon_hash": canon["canon_hash"],
         "canon_gate_version": CANON_GATE_VERSION,
+        "canon_model_filter_version": CANON_MODEL_FILTER_VERSION,
         "canon_timeline_filter": (revision.generation_plan or {}).get(
             "canon_timeline_filter"
         ),
