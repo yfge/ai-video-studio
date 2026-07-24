@@ -94,6 +94,8 @@ def build_plan_semantic_audit_prompt(
         "\n凡事件会让角色确认、获知、宣布、发现、判断或长期记住新事实，"
         "必须列出遗漏的 knowledge_grants；说话者本人和必然听见的在场者都不能漏。"
         "“怀疑”不得升级成“确认”。普通动作、气氛和既有事实不要生成长期知识。"
+        "仅有联系、请求、询问、呼叫或发送动作，且未逐字写出所传达的具体新事实时，"
+        "不得推断任一方获得 knowledge_grant。"
         "\n非 Canon milestone 的新知识 fact_id 固定为 "
         "fact-{source_event_id}-{从1开始的事实序号}；同一事实对多个角色复用同一 fact_id。"
         "fact_id 内的 event_id 必须与该行 event_id 逐字相同，禁止引用同章其他事件。"

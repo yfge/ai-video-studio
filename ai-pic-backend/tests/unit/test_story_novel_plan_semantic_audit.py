@@ -161,6 +161,7 @@ def test_semantic_audit_prompt_binds_location_ids_and_rejects_subdivisions():
     assert '"event_id":"evt-ch8-2"' in prompt
     assert '"key_event":"老拐指出钟声受中央钟塔控制并怀疑人为干预"' in prompt
     assert '"event_id":"evt-1"' not in prompt
+    assert "未逐字写出所传达的具体新事实时" in prompt
 
 
 @pytest.mark.parametrize("field", ("from_location_id", "to_location_id"))
