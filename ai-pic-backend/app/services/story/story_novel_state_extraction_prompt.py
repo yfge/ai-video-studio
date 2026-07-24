@@ -35,6 +35,7 @@ future_event_audit 必须逐项覆盖目录内每个 events.event_id，值只能
 不得遗漏、增加或重复 ID，且所有 premature 项必须与 premature_future_event_ids 完全一致。
 chapter_plan.open_threads 是本章应新打开的稳定 ID；正文若明确提出对应疑问、未知来源或可追查异常，opened_thread_ids 必须逐项原样返回这些 ID，不得因为 ID 未逐字出现在正文而省略。chapter_plan.payoffs_due 同理：正文明确回答后才写入 resolved_thread_ids。只判断当前章合同，不得携带未来章线索。
 current_immutable_timeline 的每个 ID 都必须在 timeline_evidence 中提供正文逐字证据；每条证据必须同时包含该项 story_time 中的原样固定日期和 label 对应事件，必要时按正文先后用“……”连接逐字片段，不得只抄日期或无关事件。
+timeline_evidence 的 key 必须严格等于 current_immutable_timeline 中属于本章 canon_refs 的 immutable ID；集合为空时必须返回空对象，禁止自创时间线 ID。
 timeline_evidence[timeline-id] 的事件部分必须逐字复用 evidence[chapter_plan.timeline_event_bindings[timeline-id]] 的完整正文片段；不得借用同章其他事件，不得复制 chapter_plan 的 label、key_events 或其他计划措辞作为正文证据。
 未来事件目录只用于审计；不得把目录内容改写进正文、occurred_event_ids 或当前状态。
 location_transitions 的 to_location_id 必须是 Canon location ID；from_location_id 只有在章节计划明确让 Canon object 同章从不存在变为存在并首次落点时可为 null，人物和普通移动必须给出真实 Canon 起点。

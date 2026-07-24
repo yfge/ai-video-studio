@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import json
 
-from pydantic import ValidationError
-
 from app.schemas.story_novel_longform import StoryNovelStateDelta
 from app.services.story.story_novel_evidence_alignment import (
     normalize_extracted_evidence,
@@ -24,14 +22,12 @@ from app.services.story.story_novel_state_evidence_diagnostics import (
 from app.services.story.story_novel_state_evidence_diagnostics import (
     only_evidence_issues as _only_evidence_issues,
 )
-from app.services.story.story_novel_state_evidence_repair import (
-    quote_maps_match_ids,
-    repair_state_evidence,
-)
+from app.services.story.story_novel_state_evidence_repair import repair_state_evidence
 from app.services.story.story_novel_state_extraction_prompt import (
     build_state_extraction_prompt,
 )
 from app.utils.json_utils import extract_json_block
+from pydantic import ValidationError
 
 STATE_EXTRACTION_MAX_TOKENS = 16000
 
@@ -80,11 +76,6 @@ async def extract_chapter_state(
         normalized
         and _only_evidence_issues(issues)
         and not normalized.get("premature_future_event_ids")
-        and quote_maps_match_ids(
-            normalized,
-            chapter_plan,
-            current_timeline or [],
-        )
     ):
         try:
             text = await repair_state_evidence(
