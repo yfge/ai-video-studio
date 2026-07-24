@@ -18,6 +18,8 @@ def build_plan_semantic_audit_prompt(
     canon: dict,
     prior_chapters: list[dict],
     batch_chapters: list[dict],
+    *,
+    verification: bool = False,
 ) -> str:
     positions = [int(item["position"]) for item in batch_chapters]
     event_contract = [
@@ -25,6 +27,11 @@ def build_plan_semantic_audit_prompt(
             "position": int(chapter["position"]),
             "event_id": event_id,
             "key_event": (chapter.get("key_events") or [])[index],
+            "existing_knowledge_grants": [
+                grant
+                for grant in chapter.get("knowledge_grants") or []
+                if grant.get("source_event_id") == event_id
+            ],
         }
         for chapter in batch_chapters
         for index, event_id in enumerate(chapter.get("required_event_ids") or [])
@@ -40,6 +47,7 @@ def build_plan_semantic_audit_prompt(
         ]
     }
     payload = {
+        "verification_mode": verification,
         "event_contract": event_contract,
         "output_skeleton": output_skeleton,
         "state_before_batch": validated_prefix_context(canon, prior_chapters)["state"],
@@ -79,15 +87,26 @@ def build_plan_semantic_audit_prompt(
         f"\npositions={positions}；逐项审查 event_contract 中每个事件。"
         "\n必须逐字复制 input.output_skeleton 的 position、event_id、数量和顺序；"
         "只能填写各 missing_effects 数组，禁止合并为每章一项或自造 event_id。"
+        "\nmissing 只表示 input.chapters 对应数组里尚不存在的精确 typed effect；"
+        "相同 character_id+source_event_id 已有 grant 时，不得为同一命题再造 fact；"
+        "相同 subject/from/to 的 movement 已存在时，即使 means 措辞不同也不得重报；"
+        "角色已在 to_location_id 时不得要求重复移动。"
         "\n凡事件会让角色确认、获知、宣布、发现、判断或长期记住新事实，"
         "必须列出遗漏的 knowledge_grants；说话者本人和必然听见的在场者都不能漏。"
         "“怀疑”不得升级成“确认”。普通动作、气氛和既有事实不要生成长期知识。"
         "\n非 Canon milestone 的新知识 fact_id 固定为 "
         "fact-{source_event_id}-{从1开始的事实序号}；同一事实对多个角色复用同一 fact_id。"
+        "fact_id 内的 event_id 必须与该行 event_id 逐字相同，禁止引用同章其他事件。"
         "Canon milestone knowledge outcome 必须逐字使用 outcome.value。"
         "\n同时列出 key_event 必然要求但计划遗漏的 state_transitions、"
         "location_transitions 与 milestones_consumed；地点转移只允许明确跨越两个"
         "不同的已有 location ID，地点内部移动必须为空且不得创建子地点；只返回遗漏项。"
         "\n只输出填充后的 input.output_skeleton 严格 JSON，不得缺失、额外或重复。"
-        f"\n输入：{canonical_json(payload)}"
+        + (
+            "\n这是补丁后的最终复核；必须先逐项核对 existing_knowledge_grants "
+            "和 chapters 中全部现有 typed effects，再报告遗漏。"
+            if verification
+            else ""
+        )
+        + f"\n输入：{canonical_json(payload)}"
     )

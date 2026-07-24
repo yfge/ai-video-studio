@@ -58,7 +58,13 @@ async def audit_and_patch_plan_batch(
     if patch_count:
         final_text = await generate_text(
             revision,
-            _audit_prompt(contract, canon, prior_chapters, patched),
+            _audit_prompt(
+                contract,
+                canon,
+                prior_chapters,
+                patched,
+                verification=True,
+            ),
             max_tokens=PLAN_SEMANTIC_AUDIT_MAX_TOKENS,
             temperature=0.0,
         )
@@ -114,6 +120,14 @@ def _parse_audit(text: str, canon: dict, chapters: list[dict]) -> list[dict]:
         if item.get("kind") == "location"
     }
     milestones = {item["id"] for item in canon.get("milestones") or []}
+    canon_facts = {
+        outcome.get("value")
+        for milestone in canon.get("milestones") or []
+        for outcome in milestone.get("outcomes") or []
+        if outcome.get("field") == "knowledge"
+        and outcome.get("operator") == "contains"
+        and isinstance(outcome.get("value"), str)
+    }
     normalized = []
     try:
         for item in events:
@@ -137,6 +151,7 @@ def _parse_audit(text: str, canon: dict, chapters: list[dict]) -> list[dict]:
             if any(
                 grant["character_id"] not in characters
                 or grant["source_event_id"] != event_id
+                or not _valid_fact_id(grant["fact_id"], event_id, canon_facts)
                 for grant in grants
             ):
                 raise ValueError(f"语义审计知识引用无效: {event_id}")
@@ -167,6 +182,14 @@ def _parse_audit(text: str, canon: dict, chapters: list[dict]) -> list[dict]:
     except (KeyError, TypeError, ValidationError) as exc:
         raise ValueError(f"章节计划语义审计结构无效: {exc}") from exc
     return normalized
+
+
+def _valid_fact_id(fact_id: str, event_id: str, canon_facts: set[str]) -> bool:
+    if fact_id in canon_facts:
+        return True
+    prefix = f"fact-{event_id}-"
+    suffix = fact_id[len(prefix) :] if fact_id.startswith(prefix) else ""
+    return suffix.isdigit() and int(suffix) > 0
 
 
 def _apply_missing_effects(chapters: list[dict], audit: list[dict]):

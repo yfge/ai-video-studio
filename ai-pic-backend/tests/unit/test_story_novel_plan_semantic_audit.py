@@ -133,6 +133,16 @@ def test_semantic_audit_rejects_duplicate_event_id():
         _parse_audit(json.dumps(payload), _canon(), [_chapter()])
 
 
+def test_semantic_audit_rejects_fact_id_bound_to_another_event():
+    payload = _audit(_six_grants())
+    payload["events"][1]["missing_effects"]["knowledge_grants"][0][
+        "fact_id"
+    ] = "fact-evt-ch8-1-9"
+
+    with pytest.raises(ValueError, match="知识引用无效"):
+        _parse_audit(json.dumps(payload), _canon(), [_chapter()])
+
+
 def test_semantic_audit_prompt_binds_location_ids_and_rejects_subdivisions():
     canon = _canon()
     canon["entities"].append(
@@ -146,11 +156,10 @@ def test_semantic_audit_prompt_binds_location_ids_and_rejects_subdivisions():
     assert '"state_before_batch":{"char-laoguai"' in prompt
     assert '"location":"salt-mirror-island"' in prompt
     assert "地点内部移动必须为空且不得创建子地点" in prompt
-    assert '"event_id":"evt-ch8-1","key_event":"王明确认频率逐年偏移"' in prompt
-    assert (
-        '"event_id":"evt-ch8-2","key_event":"老拐指出钟声受中央钟塔控制并怀疑人为干预"'
-        in prompt
-    )
+    assert '"event_id":"evt-ch8-1"' in prompt
+    assert '"key_event":"王明确认频率逐年偏移"' in prompt
+    assert '"event_id":"evt-ch8-2"' in prompt
+    assert '"key_event":"老拐指出钟声受中央钟塔控制并怀疑人为干预"' in prompt
     assert '"event_id":"evt-1"' not in prompt
 
 
@@ -180,8 +189,10 @@ def test_semantic_audit_rejects_invented_location_id(field):
 def test_semantic_audit_rechecks_patched_plan_before_accepting():
     responses = iter((_audit(_six_grants()), _audit()))
     max_tokens = []
+    prompts = []
 
-    async def generate(_revision, _prompt, **kwargs):
+    async def generate(_revision, prompt, **kwargs):
+        prompts.append(prompt)
         max_tokens.append(kwargs["max_tokens"])
         return json.dumps(next(responses), ensure_ascii=False)
 
@@ -202,6 +213,8 @@ def test_semantic_audit_rechecks_patched_plan_before_accepting():
     assert patched[0]["semantic_audit"]["status"] == "passed"
     assert patched[0]["semantic_audit"]["patched_effect_count"] == 6
     assert max_tokens == [16000, 16000]
+    assert '"verification_mode":true' in prompts[1]
+    assert '"existing_knowledge_grants":[{"character_id":"char-wangming"' in prompts[1]
 
 
 def test_semantic_audit_fails_if_second_pass_still_reports_missing_effects():
