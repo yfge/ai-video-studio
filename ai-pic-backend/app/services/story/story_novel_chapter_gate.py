@@ -230,6 +230,7 @@ async def extract_and_validate_chapter_state(
             revision, int(chapter_plan["position"])
         ),
         current_timeline=current_timeline,
+        canon=canon,
         generate_text=generate_text,
     )
     report, state_after = validate_state_delta(

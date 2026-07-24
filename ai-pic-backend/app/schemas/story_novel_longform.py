@@ -172,6 +172,7 @@ class StoryNovelStateDelta(BaseModel):
     resolved_thread_ids: list[str] = Field(default_factory=list)
     world_rule_violations: list[str] = Field(default_factory=list)
     evidence: dict[str, str] = Field(default_factory=dict)
+    knowledge_evidence: dict[str, str] = Field(default_factory=dict)
     timeline_evidence: dict[str, str] = Field(default_factory=dict)
 
 

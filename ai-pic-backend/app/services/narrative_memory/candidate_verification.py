@@ -7,6 +7,7 @@ import re
 from app.services.narrative_memory.extraction_candidates import (
     CLAIM_VERIFICATION_VERSION,
 )
+from app.services.narrative_memory.knowledge_evidence import knowledge_evidence_key
 from app.services.narrative_memory.source_evidence import source_contains_evidence
 from app.services.narrative_memory.source_hash import novel_chapter_source_hash
 
@@ -58,13 +59,21 @@ def verified_novel_candidate(
         evidence.get("typed_source_event_id"),
     )
     allowed_grants = {_grant_key(item) for item in delta.get("knowledge_grants") or []}
-    event_quote = (delta.get("evidence") or {}).get(grant_key[2]) or ""
+    grant_quote = (delta.get("knowledge_evidence") or {}).get(
+        knowledge_evidence_key(
+            {
+                "character_id": grant_key[0],
+                "fact_id": grant_key[1],
+                "source_event_id": grant_key[2],
+            }
+        )
+    )
     return bool(
         entity.content == quote
         and evidence.get("typed_state_binding_verified") is True
         and grant_key in allowed_grants
         and grant_key[2] in (delta.get("occurred_event_ids") or [])
-        and _semantic(quote) == _semantic(event_quote)
+        and _semantic(quote) == _semantic(grant_quote or "")
     )
 
 
@@ -76,7 +85,11 @@ def complete_novel_candidate_set(entry: dict, events: list, memories: list) -> b
         for item in events
         for event_id in (item.candidate_evidence or {}).get("typed_event_ids") or []
     }
-    expected_grants = {_grant_key(item) for item in delta.get("knowledge_grants") or []}
+    expected_grants = (
+        {tuple(item) for item in entry.get("memory_grant_keys") or []}
+        if "memory_grant_keys" in entry
+        else {_grant_key(item) for item in delta.get("knowledge_grants") or []}
+    )
     covered_grants = {
         (
             evidence.get("typed_character_id"),

@@ -23,7 +23,7 @@ def test_prompt_boundary_revalidates_claim_quote_and_ledger_id():
             "source_quote_verified": True,
             "claim_verified": True,
             "claim_mode": "extractive",
-            "verification_version": 3,
+            "verification_version": 4,
             "participant_binding_verified": True,
             "typed_event_ids": ["event-current"],
         },
@@ -72,7 +72,7 @@ def test_prompt_boundary_revalidates_typed_memory_grant():
             "source_quote_verified": True,
             "claim_verified": True,
             "claim_mode": "typed_state_bound",
-            "verification_version": 3,
+            "verification_version": 4,
             "typed_state_binding_verified": True,
             "typed_character_id": "canon-li-yan",
             "typed_fact_id": "fact-key-received",
@@ -94,6 +94,9 @@ def test_prompt_boundary_revalidates_typed_memory_grant():
                 }
             ],
             "evidence": {"event-current": quote},
+            "knowledge_evidence": {
+                "canon-li-yan|fact-key-received|event-current": quote
+            },
         },
     }
 

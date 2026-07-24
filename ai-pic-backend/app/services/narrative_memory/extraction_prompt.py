@@ -17,7 +17,7 @@ def build_extraction_prompt(source_text, characters, anchors, contract=None) -> 
 角色没有获得新的长期认知时不要为其创建 memory；允许 events 或 memories 为空数组。
 若 typed extraction contract 非空，events 必须逐项覆盖 event_evidence：每条只填一个对应 typed_event_ids，evidence 必须逐字等于该 ID 的 event_evidence；不得用正文中的其他真实动作替代。
 此时 events 数量必须精确等于 event_evidence 数量，不得添加 typed_event_ids 为空、重复、未知或绑定多个 ID 的额外事件。
-memories 必须逐项覆盖 required_memory_grants：每条只绑定一个 typed_character_id + typed_fact_id + typed_source_event_id，evidence 必须逐字等于对应 source event 的 event_evidence。该证据必须是一个不含省略拼接的连续获知句，明确写出目标角色和“得知/获悉/确认/听见/看见/收到”或“告诉/告知/通知/透露/说明/宣布”等获知关系；不得用角色在别处出现的姓名拼接他人对话。
+memories 必须逐项覆盖 required_memory_grants：每条只绑定一个 typed_character_id + typed_fact_id + typed_source_event_id，evidence 必须逐字等于对应 grant 自己的 evidence，而不是整段 source event 的 event_evidence。该证据必须是一个不含省略拼接的连续获知句，明确写出目标角色和“得知/获悉/确认/听见/看见/收到”或“告诉/告知/通知/透露/说明/宣布”等获知关系；不得用角色在别处出现的姓名拼接他人对话。
 此时 memories 数量必须精确等于 required_memory_grants 数量；required_memory_grants 为空时必须输出空 memories，禁止添加未绑定的普通印象。
 只输出严格 JSON，字段和值必须遵守以下合同，不得自创别名或枚举：
 每一条 event/memory 都必须提供 evidence：逐字复制来源正文中直接支持该候选的连续短句；跨句时可用“……”连接两个或更多按原顺序出现的片段，不得改写或用无关句充当证据。不得擅自在引语前添加“某人说：”；只有来源正文以同一引语结构明确归因时才能复制说话人。

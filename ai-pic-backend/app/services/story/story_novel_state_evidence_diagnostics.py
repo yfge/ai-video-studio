@@ -17,6 +17,10 @@ _EVIDENCE_ONLY_MESSAGES = (
     "时间线证据未对应绑定事件:",
     "时间线证据缺少固定日期 ",
     "时间线证据固定日期晚于或缺少对应事件:",
+    "角色获知证据必须逐项等于 knowledge_grants",
+    "角色获知缺少可核对的正文证据:",
+    "角色获知证据未绑定来源事件:",
+    "角色获知证据未明确对应角色获知关系:",
 )
 _ELLIPSIS = re.compile(r"(?:…+|\.{3,})")
 _DROPPABLE_LEADING_CHARACTERS = frozenset("他她它其将把")
@@ -35,6 +39,7 @@ def evidence_repair_diagnostics(
             "timeline_evidence",
             "正文时间证据必须逐项等于当前章节 immutable timeline",
         ),
+        ("knowledge_evidence", "角色获知证据必须逐项等于 knowledge_grants"),
     ):
         for item_id, quote in (delta.get(field) or {}).items():
             relevant = [

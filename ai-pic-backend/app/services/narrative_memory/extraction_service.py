@@ -15,7 +15,6 @@ from app.services.narrative_memory.evidence_repair import (
 from app.services.narrative_memory.extraction_candidates import (
     build_candidate_payload,
     candidate_contract_validator,
-    knowledge_character_bindings,
 )
 from app.services.narrative_memory.extraction_evidence import (
     extraction_evidence_errors,
@@ -23,6 +22,9 @@ from app.services.narrative_memory.extraction_evidence import (
 )
 from app.services.narrative_memory.extraction_prompt import build_extraction_prompt
 from app.services.narrative_memory.novel_chapter_gate import require_gated_novel_chapter
+from app.services.narrative_memory.novel_extraction_contract import (
+    novel_candidate_contract,
+)
 from app.services.narrative_memory.source_hash import (
     artifact_hash,
     novel_chapter_source_hash,
@@ -56,9 +58,9 @@ class NarrativeExtractionService:
             for item in self.repo.list_story_characters(story.id)
             if item.virtual_ip
         ]
-        strict, memory_bindings, event_evidence = self._candidate_contract(
-            story, request, characters
-        )
+        contract = self._candidate_contract(story, request, characters)
+        strict, memory_bindings, event_evidence = contract[:3]
+        memory_grant_keys = contract[3] if len(contract) > 3 else []
         self.repo.commit()
         manager = ai_service.ai_manager
         if not manager:
@@ -129,42 +131,10 @@ class NarrativeExtractionService:
         )
         if before_ingest is not None:
             before_ingest()
-        return CandidateService(self.repo).ingest(story, payload, user, commit=commit)
-
-    def _candidate_contract(self, story, request, characters):
-        if request.source_scope != "novel_chapter" or not hasattr(
-            self.repo, "novel_chapter"
-        ):
-            return False, None, {}
-        chapter = self.repo.novel_chapter(
-            story, request.source_artifact_business_id or ""
-        )
-        if (
-            not chapter
-            or (chapter.novel_export.generation_plan or {}).get("schema")
-            != "story_novel_generation_plan.v2"
-        ):
-            return False, None, {}
-        entry = (
-            (chapter.novel_export.continuity_ledger or {}).get("chapters") or {}
-        ).get(str(chapter.position)) or {}
-        delta = entry.get("state_delta") or {}
-        event_ids = list(delta.get("occurred_event_ids") or [])
-        event_evidence = {
-            event_id: str((delta.get("evidence") or {}).get(event_id) or "")
-            for event_id in event_ids
-        }
-        if any(not quote for quote in event_evidence.values()):
-            raise ServiceError("记忆候选提取失败：typed event 缺少逐字来源证据")
-        return (
-            True,
-            knowledge_character_bindings(
-                (chapter.novel_export.generation_plan or {}).get("canon") or {},
-                delta,
-                characters,
-            ),
-            event_evidence,
-        )
+        result = CandidateService(self.repo).ingest(story, payload, user, commit=commit)
+        if isinstance(result, dict):
+            result["memory_grant_keys"] = memory_grant_keys
+        return result
 
     def _source(self, story, scope: str, source_artifact_business_id: str | None):
         if scope == "novel_chapter":
@@ -247,3 +217,6 @@ class NarrativeExtractionService:
         )
 
     _prompt = staticmethod(build_extraction_prompt)
+
+    def _candidate_contract(self, story, request, characters):
+        return novel_candidate_contract(self.repo, story, request, characters)

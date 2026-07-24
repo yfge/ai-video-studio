@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import json
 
+from app.services.narrative_memory.knowledge_evidence import knowledge_evidence_key
 from app.utils.json_utils import extract_json_block
 
 STATE_EVIDENCE_REPAIR_MAX_TOKENS = 16000
@@ -21,7 +22,7 @@ async def repair_state_evidence(
     error: str | None,
     generate_text,
 ) -> str:
-    """Return the frozen delta with only its two evidence maps replaced."""
+    """Return the frozen delta with only its source-evidence maps replaced."""
     response = await generate_text(
         revision,
         _prompt(
@@ -39,6 +40,7 @@ async def repair_state_evidence(
     _validate_patch(patch, delta, chapter_plan, current_timeline)
     merged = copy.deepcopy(delta)
     merged["evidence"] = patch["evidence"]
+    merged["knowledge_evidence"] = patch.get("knowledge_evidence", {})
     merged["timeline_evidence"] = patch["timeline_evidence"]
     return json.dumps(merged, ensure_ascii=False, separators=(",", ":"))
 
@@ -49,11 +51,21 @@ def _validate_patch(
     chapter_plan: dict,
     current_timeline: list[dict],
 ) -> None:
-    if not isinstance(patch, dict) or set(patch) != {
+    if not isinstance(patch, dict):
+        raise ValueError("状态证据返修必须返回 JSON object")
+    expected_knowledge = {
+        knowledge_evidence_key(item) for item in delta.get("knowledge_grants") or []
+    }
+    required_fields = {
         "evidence",
         "timeline_evidence",
-    }:
-        raise ValueError("状态证据返修只能返回 evidence 与 timeline_evidence")
+    }
+    if expected_knowledge:
+        required_fields.add("knowledge_evidence")
+    if set(patch) not in (required_fields, required_fields | {"knowledge_evidence"}):
+        raise ValueError(
+            "状态证据返修只能返回 evidence、knowledge_evidence 与 timeline_evidence"
+        )
     event_ids = set(delta.get("occurred_event_ids") or []) | set(
         delta.get("premature_future_event_ids") or []
     )
@@ -65,9 +77,10 @@ def _validate_patch(
     }
     for field, expected in (
         ("evidence", event_ids),
+        ("knowledge_evidence", expected_knowledge),
         ("timeline_evidence", timeline_ids),
     ):
-        value = patch.get(field)
+        value = patch.get(field, {})
         if not isinstance(value, dict) or set(value) != expected:
             raise ValueError(f"状态证据返修的 {field} ID 集合无效")
         if any(
@@ -92,6 +105,7 @@ def _prompt(
             "title",
             "key_events",
             "required_event_ids",
+            "knowledge_grants",
             "canon_refs",
             "timeline_event_bindings",
         )
@@ -102,6 +116,7 @@ def _prompt(
             "occurred_event_ids",
             "premature_future_event_ids",
             "evidence",
+            "knowledge_evidence",
             "timeline_evidence",
         )
     }
@@ -118,7 +133,7 @@ def _prompt(
         "现在只修复当前章逐字证据，不得修改任何事件 ID 或状态。\n"
         f"输入：{json.dumps(payload, ensure_ascii=False, separators=(',', ':'))}\n"
         "evidence 必须逐字复制正文；跨句只能用‘……’连接按正文顺序出现的片段。"
-        "两个 evidence map 的 key 必须严格等于冻结 ID 集合；"
+        "三个 evidence map 的 key 必须严格等于冻结 ID 集合；"
         "current_immutable_timeline 为空时 timeline_evidence 必须是空对象。"
         "诊断中的 source_candidate 是从正文计算出的最长连续逐字候选；"
         "若它能证明对应事件，直接复制其 text，不得保留候选之外的说话人前缀。"
@@ -126,7 +141,10 @@ def _prompt(
         "evidence[current_chapter_contract.timeline_event_bindings[timeline-id]] "
         "的完整片段；不得借用同章其他事件。不得添加说话人、代词或概括，"
         "不得使用计划措辞代替正文。"
+        "knowledge_evidence 的每个 value 必须是 evidence[对应 source event] "
+        "中的一个完整连续片段，明确写出目标角色及其获知关系；不得用省略号拼接。"
         "只输出严格 JSON："
         '{"evidence":{"event-id":"正文逐字片段"},'
+        '"knowledge_evidence":{"character-id|fact-id|event-id":"连续获知句"},'
         '"timeline_evidence":{"time-id":"日期……同一事件逐字片段"}}'
     )

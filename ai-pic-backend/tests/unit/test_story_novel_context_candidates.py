@@ -55,6 +55,9 @@ def test_context_contains_only_prior_valid_revision_candidates(db_session):
         "opened_thread_ids": [],
         "resolved_thread_ids": [],
         "evidence": {"event-1": event_quote},
+        "knowledge_evidence": {
+            f"{character.business_id}|fact-crack|event-1": memory_quote
+        },
     }
     state_after = apply_state_delta(state_before, state_delta)
     revision.generation_plan = {

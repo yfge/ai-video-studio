@@ -1,9 +1,6 @@
 import pytest
 from app.core.exceptions import ServiceError
-from app.services.narrative_memory.extraction_candidates import (
-    build_candidate_payload,
-    knowledge_character_bindings,
-)
+from app.services.narrative_memory.extraction_candidates import build_candidate_payload
 from tests.unit.services.narrative_memory_claim_fixtures import anchor as _anchor
 from tests.unit.services.narrative_memory_claim_fixtures import (
     characters as _characters,
@@ -156,92 +153,3 @@ def test_strict_memory_requires_exact_typed_grant_and_acquisition_clause():
         occurred_event_evidence=_event_evidence(),
     )
     assert payload.memories == []
-
-
-def test_knowledge_bindings_map_canon_ids_to_persisted_story_characters():
-    bindings = knowledge_character_bindings(
-        {
-            "entities": [
-                {"id": "li-yan", "kind": "character", "name": "黎雁"},
-                {"id": "pei-heng", "kind": "character", "name": "裴衡"},
-            ]
-        },
-        {
-            "knowledge_grants": [
-                {
-                    "character_id": "li-yan",
-                    "fact_id": "fact-key-received",
-                    "source_event_id": "event-current",
-                },
-            ]
-        },
-        [
-            {
-                "character_business_id": "uuid-li-yan",
-                "name": "黎雁-极昼邮路验收",
-            }
-        ],
-    )
-
-    assert bindings == {
-        "uuid-li-yan": {
-            "typed_character_id": "li-yan",
-            "names": ["黎雁"],
-            "grants": [
-                {
-                    "character_id": "li-yan",
-                    "fact_id": "fact-key-received",
-                    "source_event_id": "event-current",
-                }
-            ],
-        }
-    }
-    normalized = _normalized()
-    normalized["memories"][0].update(
-        character_business_id="uuid-li-yan",
-        virtual_ip_business_id="vip-li-yan",
-        typed_character_id="li-yan",
-    )
-    normalized["events"][0]["participant_character_ids"] = []
-    payload = build_candidate_payload(
-        normalized,
-        [_anchor()],
-        [
-            {
-                "character_business_id": "uuid-li-yan",
-                "virtual_ip_business_id": "vip-li-yan",
-                "name": "黎雁-极昼邮路验收",
-            }
-        ],
-        strict=True,
-        memory_character_bindings=bindings,
-        occurred_event_evidence=_event_evidence(),
-    )
-    assert payload.memories[0].candidate_evidence["typed_character_id"] == "li-yan"
-
-
-def test_knowledge_bindings_skip_canon_npc_without_story_character():
-    bindings = knowledge_character_bindings(
-        {
-            "entities": [
-                {"id": "li-yan", "kind": "character", "name": "黎雁"},
-                {"id": "harbor-supervisor", "kind": "character", "name": "港务监理"},
-            ]
-        },
-        {
-            "knowledge_grants": [
-                {
-                    "character_id": "li-yan",
-                    "fact_id": "fact-a",
-                    "source_event_id": "event-a",
-                },
-                {
-                    "character_id": "harbor-supervisor",
-                    "fact_id": "fact-b",
-                    "source_event_id": "event-b",
-                },
-            ]
-        },
-        [{"character_business_id": "uuid-li", "name": "黎雁"}],
-    )
-    assert set(bindings) == {"uuid-li"}

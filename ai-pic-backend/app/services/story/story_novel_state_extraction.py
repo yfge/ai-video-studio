@@ -5,6 +5,9 @@ from __future__ import annotations
 import json
 
 from app.schemas.story_novel_longform import StoryNovelStateDelta
+from app.services.narrative_memory.knowledge_evidence import (
+    knowledge_evidence_violations,
+)
 from app.services.story.story_novel_evidence_alignment import (
     normalize_extracted_evidence,
 )
@@ -15,6 +18,9 @@ from app.services.story.story_novel_evidence_rules import (
 from app.services.story.story_novel_future_claims import (
     future_audit_id_violations,
     is_future_audit_id_issue,
+)
+from app.services.story.story_novel_state_delta_contract import (
+    typed_delta_contract_violations,
 )
 from app.services.story.story_novel_state_evidence_diagnostics import (
     evidence_repair_diagnostics as _evidence_repair_diagnostics,
@@ -47,6 +53,7 @@ async def extract_chapter_state(
     content_text: str,
     future_event_catalog: list[dict],
     current_timeline: list[dict] | None = None,
+    canon: dict | None = None,
     generate_text,
 ) -> tuple[dict, int]:
     prompt = build_state_extraction_prompt(
@@ -68,6 +75,7 @@ async def extract_chapter_state(
         content_text=content_text,
         current_timeline=current_timeline or [],
         future_event_catalog=future_event_catalog,
+        canon=canon,
     )
     if normalized and not issues:
         return normalized, 0
@@ -92,7 +100,7 @@ async def extract_chapter_state(
             raise StateExtractionError(
                 f"章节状态证据返修失败: {exc}",
                 repair_count=1,
-                evidence_only=True,
+                evidence_only=not _knowledge_evidence_issues(issues),
             ) from exc
         normalized, error, issues = _validation_result(
             text,
@@ -100,12 +108,13 @@ async def extract_chapter_state(
             content_text=content_text,
             current_timeline=current_timeline or [],
             future_event_catalog=future_event_catalog,
+            canon=canon,
         )
         if not normalized or issues:
             raise StateExtractionError(
                 f"章节状态提取失败: {error}",
                 repair_count=1,
-                evidence_only=True,
+                evidence_only=not _knowledge_evidence_issues(issues),
             )
         return normalized, 1
     repair = (
@@ -144,6 +153,7 @@ async def extract_chapter_state(
         content_text=content_text,
         current_timeline=current_timeline or [],
         future_event_catalog=future_event_catalog,
+        canon=canon,
     )
     if not normalized or issues:
         raise StateExtractionError(
@@ -193,23 +203,29 @@ def _validation_result(
     content_text: str,
     current_timeline: list[dict],
     future_event_catalog: list[dict] | None = None,
+    canon: dict | None = None,
 ) -> tuple[dict | None, str | None, list[dict]]:
     normalized, error = _parse(text)
     if not normalized:
         return None, error, []
-    canon = {"timeline": current_timeline}
-    normalize_extracted_evidence(content_text, canon, chapter_plan, normalized)
+    compiled_canon = {**(canon or {}), "timeline": current_timeline}
+    normalize_extracted_evidence(content_text, compiled_canon, chapter_plan, normalized)
     issues = [
         *(
             future_audit_id_violations(future_event_catalog, normalized)
             if future_event_catalog is not None
             else []
         ),
-        *_typed_delta_contract_violations(normalized),
+        *typed_delta_contract_violations(normalized),
         *evidence_violations(content_text, normalized),
+        *(
+            knowledge_evidence_violations(content_text, normalized, compiled_canon)
+            if canon is not None
+            else []
+        ),
         *timeline_evidence_violations(
             content_text,
-            canon,
+            compiled_canon,
             chapter_plan,
             normalized,
         ),
@@ -219,22 +235,12 @@ def _validation_result(
     return normalized, None, []
 
 
-def _typed_delta_contract_violations(delta: dict) -> list[dict]:
-    return [
-        {
-            "code": "canon_violation",
-            "message": (
-                f"{item.get('field')} 不能写入 state_transitions: "
-                f"{item.get('subject_id')}"
-            ),
-        }
-        for item in delta.get("state_transitions") or []
-        if item.get("field") in {"knowledge", "location", "possessions"}
-    ]
-
-
 def _only_audit_output_issues(issues: list[dict]) -> bool:
     return bool(issues) and all(
         _only_evidence_issues([issue]) or is_future_audit_id_issue(issue)
         for issue in issues
     )
+
+
+def _knowledge_evidence_issues(issues: list[dict]) -> bool:
+    return any(str(item.get("message") or "").startswith("角色获知") for item in issues)

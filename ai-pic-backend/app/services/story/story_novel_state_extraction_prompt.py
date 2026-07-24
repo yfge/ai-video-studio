@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 
+from app.services.narrative_memory.knowledge_evidence import knowledge_evidence_key
+
 
 def build_state_extraction_prompt(
     chapter_plan: dict,
@@ -14,6 +16,10 @@ def build_state_extraction_prompt(
 ) -> str:
     payload = {
         "chapter_plan": chapter_plan,
+        "required_knowledge_evidence_keys": [
+            knowledge_evidence_key(item)
+            for item in chapter_plan.get("knowledge_grants") or []
+        ],
         "state_before": state_before,
         "content_text": content_text,
         "current_immutable_timeline": current_timeline,
@@ -41,5 +47,7 @@ timeline_evidence[timeline-id] 的事件部分必须逐字复用 evidence[chapte
 location_transitions 的 to_location_id 必须是 Canon location ID；from_location_id 只有在章节计划明确让 Canon object 同章从不存在变为存在并首次落点时可为 null，人物和普通移动必须给出真实 Canon 起点。
 state_transitions 只记录本章结束时仍明确成立的持久状态，不得把临时启动、预热、使用或中途经过的状态推断为章末状态；正文没有明确建立持久新值时必须省略。
 location、knowledge、possessions 永远不能写入 state_transitions。地点只写 location_transitions；owner_id 对应角色持有的物件会随角色移动，不得再为该物件重复写地点移动。
+knowledge_evidence 必须逐项覆盖 required_knowledge_evidence_keys。每个 key 对应同一条 knowledge_grant，value 必须是正文中一条连续、不含省略拼接的获知句：明确写出该 Canon 角色姓名，且只出现一次“得知/获悉/确认/听见/看见/收到”或“告诉/告知/通知/透露/说明/宣布”等获知关系。
+每条 knowledge_evidence 必须同时作为对应 source_event_id 的 evidence 中一个完整“……”片段；不得用角色在别处出现的姓名拼接他人对话，不得以事件概括代替角色实际获知。
 只输出严格 JSON：
-{{"occurred_event_ids":["event-id"],"premature_future_event_ids":[],"future_event_audit":{{"future-event-id":"not_present"}},"state_transitions":[{{"subject_id":"entity-id","field":"status","from_value":"旧值","to_value":"新值","reason":"正文原因"}}],"knowledge_grants":[{{"character_id":"character-id","fact_id":"fact-id","source_event_id":"event-id"}}],"location_transitions":[{{"subject_id":"entity-id","from_location_id":"location-id","to_location_id":"location-id","means":"移动过程"}}],"milestones_consumed":["milestone-id"],"opened_thread_ids":["thread-id"],"resolved_thread_ids":["thread-id"],"world_rule_violations":[],"evidence":{{"event-id":"正文短句"}},"timeline_evidence":{{"time-id":"含固定日期与对应事件的正文短句"}}}}"""
+{{"occurred_event_ids":["event-id"],"premature_future_event_ids":[],"future_event_audit":{{"future-event-id":"not_present"}},"state_transitions":[{{"subject_id":"entity-id","field":"status","from_value":"旧值","to_value":"新值","reason":"正文原因"}}],"knowledge_grants":[{{"character_id":"character-id","fact_id":"fact-id","source_event_id":"event-id"}}],"location_transitions":[{{"subject_id":"entity-id","from_location_id":"location-id","to_location_id":"location-id","means":"移动过程"}}],"milestones_consumed":["milestone-id"],"opened_thread_ids":["thread-id"],"resolved_thread_ids":["thread-id"],"world_rule_violations":[],"evidence":{{"event-id":"正文事件片段……角色获知片段"}},"knowledge_evidence":{{"character-id|fact-id|event-id":"角色姓名确认事实的连续正文短句"}},"timeline_evidence":{{"time-id":"含固定日期与对应事件的正文短句"}}}}"""

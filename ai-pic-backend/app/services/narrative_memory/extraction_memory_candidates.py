@@ -6,6 +6,9 @@ import re
 
 from app.core.exceptions import ServiceError
 from app.schemas.narrative_memory import CharacterMemoryCandidateCreate
+from app.services.narrative_memory.knowledge_evidence import (
+    explicit_knowledge_acquisition,
+)
 
 
 def build_memory_candidates(
@@ -15,7 +18,6 @@ def build_memory_candidates(
     *,
     strict: bool,
     character_bindings: dict[str, dict],
-    expected_events: dict[str, str],
     verification_version: int,
 ) -> list[CharacterMemoryCandidateCreate]:
     memories = [
@@ -25,7 +27,6 @@ def build_memory_candidates(
             characters,
             strict=strict,
             character_bindings=character_bindings,
-            expected_events=expected_events,
             verification_version=verification_version,
         )
         for raw in raw_memories
@@ -42,7 +43,6 @@ def _memory_candidate(
     *,
     strict: bool,
     character_bindings: dict[str, dict],
-    expected_events: dict[str, str],
     verification_version: int,
 ) -> CharacterMemoryCandidateCreate:
     item = dict(raw)
@@ -73,16 +73,18 @@ def _memory_candidate(
     )
     binding = character_bindings.get(item["character_business_id"])
     if strict:
-        allowed_keys = {
-            _grant_key(grant) for grant in (binding or {}).get("grants") or []
+        allowed_grants = {
+            _grant_key(grant): grant for grant in (binding or {}).get("grants") or []
         }
-        expected_quote = expected_events.get(typed_grant["source_event_id"] or "")
+        expected_quote = (allowed_grants.get(_grant_key(typed_grant)) or {}).get(
+            "evidence"
+        )
         if (
             not binding
-            or _grant_key(typed_grant) not in allowed_keys
+            or _grant_key(typed_grant) not in allowed_grants
             or not expected_quote
             or _semantic(source_quote) != _semantic(expected_quote)
-            or not _explicit_knowledge_acquisition(source_quote, binding["names"])
+            or not explicit_knowledge_acquisition(source_quote, binding["names"])
         ):
             raise ServiceError("记忆候选提取失败：角色知识未绑定对应 typed grant")
         item.update(
@@ -138,36 +140,6 @@ def _require_typed_memory_coverage(
     }
     if expected != supplied or len(memories) != len(supplied):
         raise ServiceError("记忆候选提取失败：角色知识未逐项覆盖 typed grant")
-
-
-def _explicit_knowledge_acquisition(source_quote: str, names: list[str]) -> bool:
-    if re.search(r"(?:…+|\.{3,}|[,，])", source_quote):
-        return False
-    clauses = [
-        _semantic(item)
-        for item in re.split(r"[。！？!?；;]+", source_quote)
-        if _semantic(item)
-    ]
-    if len(clauses) != 1:
-        return False
-    name_pattern = "|".join(re.escape(name) for name in names if name)
-    if not name_pattern:
-        return False
-    acquire = r"(?:得知|获悉|知道|明白|发现|确认|意识到|听见|听到|看见|目睹|读到|收到|记住|了解)"
-    transfer = r"(?:告诉|告知|通知|透露|说明|宣布|交代)"
-    if len(re.findall(rf"{acquire}|{transfer}", clauses[0])) != 1:
-        return False
-    return bool(
-        re.search(rf"(?:{name_pattern}).{{0,4}}{acquire}", clauses[0])
-        or re.search(
-            rf"{transfer}(?:了|给|向|对)?.{{0,4}}(?:{name_pattern})",
-            clauses[0],
-        )
-        or re.search(
-            rf"(?:向|对)(?:{name_pattern}).{{0,4}}{transfer}",
-            clauses[0],
-        )
-    )
 
 
 def _anchor(anchors: dict, business_id: str, strict: bool):

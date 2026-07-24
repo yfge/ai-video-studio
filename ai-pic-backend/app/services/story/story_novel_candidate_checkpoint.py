@@ -86,12 +86,18 @@ async def ensure_chapter_extraction(service, revision, chapter, task=None) -> di
             lock_checkpoint()
         events = list(extracted.get("events") or [])
         memories = list(extracted.get("memories") or [])
+        memory_grant_keys = extracted.get("memory_grant_keys")
         if not candidate_batch_matches_source(chapter, events, memories):
             raise ConflictError("候选提取结果不属于当前章节 checkpoint")
+        candidate_entry = (
+            {**entry, "memory_grant_keys": memory_grant_keys}
+            if memory_grant_keys is not None
+            else entry
+        )
         if (revision.generation_plan or {}).get(
             "schema"
         ) == "story_novel_generation_plan.v2" and not complete_novel_candidate_set(
-            entry, events, memories
+            candidate_entry, events, memories
         ):
             raise ConflictError("候选集合未完整覆盖章节事件与角色获知关系")
         replacement_ids = {item.business_id for item in [*events, *memories]}
@@ -106,6 +112,11 @@ async def ensure_chapter_extraction(service, revision, chapter, task=None) -> di
                 "extraction_status": "ready",
                 "event_ids": [item.business_id for item in events],
                 "memory_ids": [item.business_id for item in memories],
+                **(
+                    {"memory_grant_keys": memory_grant_keys}
+                    if memory_grant_keys is not None
+                    else {}
+                ),
             }
         )
         save_ledger_entry(revision, position, entry)

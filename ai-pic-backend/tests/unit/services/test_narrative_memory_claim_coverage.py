@@ -113,6 +113,7 @@ def test_strict_memories_cover_each_typed_grant_for_same_character():
             "character_id": "canon-li-yan",
             "fact_id": "fact-window-deadline",
             "source_event_id": "event-second",
+            "evidence": second_quote,
         }
     )
 

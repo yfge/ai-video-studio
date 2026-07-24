@@ -9,6 +9,9 @@ from app.schemas.narrative_memory import (
     CandidateDeltaCreate,
     NarrativeEventCandidateCreate,
 )
+from app.services.narrative_memory.knowledge_evidence import (
+    explicit_knowledge_acquisition,
+)
 
 from .extraction_bindings import knowledge_character_bindings
 from .extraction_memory_candidates import build_memory_candidates
@@ -19,7 +22,7 @@ __all__ = [
     "knowledge_character_bindings",
 ]
 
-CLAIM_VERIFICATION_VERSION = 3
+CLAIM_VERIFICATION_VERSION = 4
 
 
 def candidate_contract_validator(
@@ -30,10 +33,9 @@ def candidate_contract_validator(
     if not strict:
         return None
     expected_grants = {
-        (
-            grant.get("character_id"),
-            grant.get("fact_id"),
-            grant.get("source_event_id"),
+        _grant_key(grant): (
+            str(grant.get("evidence") or ""),
+            binding.get("names") or [],
         )
         for binding in (character_bindings or {}).values()
         for grant in binding.get("grants") or []
@@ -65,7 +67,7 @@ def candidate_contract_validator(
         if (
             len(memories) != len(expected_grants)
             or len(set(supplied_grants)) != len(supplied_grants)
-            or set(supplied_grants) != expected_grants
+            or set(supplied_grants) != set(expected_grants)
         ):
             errors.append(
                 {
@@ -74,6 +76,28 @@ def candidate_contract_validator(
                     "type": "value_error.typed_memory_coverage",
                 }
             )
+        for index, item in enumerate(memories):
+            expected_quote, names = expected_grants.get(
+                (
+                    item.get("typed_character_id"),
+                    item.get("typed_fact_id"),
+                    item.get("typed_source_event_id"),
+                ),
+                ("", []),
+            )
+            if expected_quote and (
+                _semantic(str(item.get("evidence") or "")) != _semantic(expected_quote)
+                or not explicit_knowledge_acquisition(
+                    str(item.get("evidence") or ""), names
+                )
+            ):
+                errors.append(
+                    {
+                        "loc": ["memories", index, "evidence"],
+                        "msg": "角色知识证据未绑定对应 typed grant",
+                        "type": "value_error.typed_memory_evidence",
+                    }
+                )
         return errors or None
 
     return validate
@@ -116,7 +140,6 @@ def build_candidate_payload(
         character_by_id,
         strict=strict,
         character_bindings=memory_character_bindings or {},
-        expected_events=expected_events,
         verification_version=CLAIM_VERIFICATION_VERSION,
     )
     return CandidateDeltaCreate(events=events, memories=memories)
@@ -214,3 +237,11 @@ def _require_typed_event_coverage(
 
 def _semantic(value: str) -> str:
     return re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]+", "", value)
+
+
+def _grant_key(item: dict) -> tuple[str | None, str | None, str | None]:
+    return (
+        item.get("character_id"),
+        item.get("fact_id"),
+        item.get("source_event_id"),
+    )

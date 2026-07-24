@@ -36,6 +36,7 @@ def memory_bindings():
                     "character_id": "canon-li-yan",
                     "fact_id": "fact-key-received",
                     "source_event_id": "event-current",
+                    "evidence": "黎雁确认零号风钥移交完成",
                 }
             ],
         }
