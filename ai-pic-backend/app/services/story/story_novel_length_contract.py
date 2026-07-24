@@ -18,6 +18,7 @@ _KNOWN_OUTPUT_LIMITS = {
     "doubao-pro-4k": 4096,
     "abab6.5s-chat": 8192,
 }
+_MIN_NOVEL_OUTPUT_TOKENS = 16000
 
 
 def non_whitespace_chars(value: str) -> int:
@@ -33,7 +34,10 @@ def chapter_length_range(chapter_plan: dict) -> tuple[int, int, int]:
 
 
 def chapter_output_tokens(chapter_plan: dict) -> int:
-    return dynamic_output_tokens(chapter_length_range(chapter_plan)[2])
+    return max(
+        _MIN_NOVEL_OUTPUT_TOKENS,
+        dynamic_output_tokens(chapter_length_range(chapter_plan)[2]),
+    )
 
 
 def list_length_profiles() -> list[dict]:
@@ -57,7 +61,7 @@ def dynamic_output_tokens(max_chars: int) -> int:
 def validate_model_capacity(model: str | None, max_chars: int) -> None:
     model_id = (model or "").split(":", 1)[-1]
     limit = _KNOWN_OUTPUT_LIMITS.get(model_id)
-    required = dynamic_output_tokens(max_chars)
+    required = max(_MIN_NOVEL_OUTPUT_TOKENS, dynamic_output_tokens(max_chars))
     if limit is not None and limit < required:
         raise HTTPException(
             status_code=422,

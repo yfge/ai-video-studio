@@ -198,6 +198,12 @@ def test_ranges_are_strict_and_model_budget_is_not_fixed_16k():
         NovelLengthRange(min_chars=1.5, target_chars=2, max_chars=3)
     assert (
         chapter_output_tokens(
+            {"min_chars": 3000, "target_chars": 4000, "max_chars": 5000}
+        )
+        == 16000
+    )
+    assert (
+        chapter_output_tokens(
             {"min_chars": 10000, "target_chars": 15000, "max_chars": 20000}
         )
         > 16000
