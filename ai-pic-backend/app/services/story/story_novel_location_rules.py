@@ -18,6 +18,7 @@ TERMINAL_OBJECT_STATUS_LITERALS = (
     "exhausted",
     "melted",
     "spent",
+    "不存在",
     "已消耗",
     "已熔毁",
     "已销毁",

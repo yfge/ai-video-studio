@@ -11,6 +11,7 @@ from .story_novel_initial_state import (
     apply_subject_transition,
     canonical_initial_subjects,
 )
+from .story_novel_location_rules import TERMINAL_OBJECT_STATUS_LITERALS
 
 
 def validate_milestone_outcome_contract(canon: dict) -> None:
@@ -76,17 +77,7 @@ def _terminal_object_errors(
     outcomes: list[dict],
     entities: dict[str, dict],
 ) -> list[str]:
-    terminal_statuses = {
-        "consumed",
-        "destroyed",
-        "exhausted",
-        "melted",
-        "spent",
-        "不存在",
-        "已消耗",
-        "已熔毁",
-        "已销毁",
-    }
+    terminal_statuses = set(TERMINAL_OBJECT_STATUS_LITERALS)
     destroyed_ids = {
         item["subject_id"]
         for item in outcomes

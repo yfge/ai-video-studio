@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import re
 
-CANON_MODEL_FILTER_VERSION = 2
+from .story_novel_location_rules import TERMINAL_OBJECT_STATUS_LITERALS
+
+CANON_MODEL_FILTER_VERSION = 3
 
 
 def filter_model_milestone_outcomes(
@@ -34,8 +36,17 @@ def filter_model_milestone_outcomes(
                     "location_id": str(outcome.get("value") or ""),
                 }
             )
+        item["outcomes"] = kept
+        for subject_id in _complete_terminal_owner_clear(item, entities):
+            diagnostics.append(
+                {
+                    "id": str(item.get("id") or "<missing-id>"),
+                    "section": "milestone",
+                    "reason": "terminal_owner_clear_completed",
+                    "subject_id": subject_id,
+                }
+            )
         if kept:
-            item["outcomes"] = kept
             milestones.append(item)
         else:
             diagnostics.append(
@@ -46,6 +57,37 @@ def filter_model_milestone_outcomes(
                 }
             )
     return {**payload, "milestones": milestones}, diagnostics
+
+
+def _complete_terminal_owner_clear(item: dict, entities: dict[str, dict]) -> list[str]:
+    if item.get("repeatable") is not False or item.get("planned_position") is None:
+        return []
+    outcomes = item["outcomes"]
+    owner_subjects = {
+        outcome.get("subject_id")
+        for outcome in outcomes
+        if outcome.get("field") == "owner_id"
+    }
+    terminal_statuses = set(TERMINAL_OBJECT_STATUS_LITERALS)
+    terminal_subjects = {
+        outcome.get("subject_id")
+        for outcome in outcomes
+        if outcome.get("field") == "status"
+        and outcome.get("operator") == "eq"
+        and str(outcome.get("value") or "").strip().lower() in terminal_statuses
+        and (entities.get(outcome.get("subject_id")) or {}).get("kind") == "object"
+    }
+    completed = sorted(terminal_subjects - owner_subjects)
+    outcomes.extend(
+        {
+            "subject_id": subject_id,
+            "field": "owner_id",
+            "operator": "eq",
+            "value": None,
+        }
+        for subject_id in completed
+    )
+    return completed
 
 
 def _location_outcome_diagnostic(outcome, milestone, entities, chapters):
