@@ -118,13 +118,13 @@ def reusable_plan_draft(
         validated_prefix_context(canon, rows)
     except (KeyError, TypeError, ValueError):
         return []
-    return rows
+    return copy.deepcopy(rows)
 
 
 def checkpoint_plan_batch(service, revision, task, canon, chapters) -> None:
     revision.generation_plan = {
         **dict(revision.generation_plan or {}),
-        "chapter_plan_draft": chapters,
+        "chapter_plan_draft": copy.deepcopy(chapters),
         "chapter_plan_draft_canon_hash": canon["canon_hash"],
     }
     task.description = f"章节合同已验证 {len(chapters)} 章，继续规划…"

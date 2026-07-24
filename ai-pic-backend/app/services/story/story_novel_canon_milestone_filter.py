@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-CANON_MODEL_FILTER_VERSION = 1
+CANON_MODEL_FILTER_VERSION = 2
 
 
 def filter_model_milestone_outcomes(
@@ -21,18 +21,15 @@ def filter_model_milestone_outcomes(
         item = dict(raw)
         kept = []
         for outcome in item.get("outcomes") or []:
-            source_position = _earlier_location_source(
-                outcome, item, entities, chapters
-            )
-            if source_position is None:
+            diagnostic = _location_outcome_diagnostic(outcome, item, entities, chapters)
+            if diagnostic is None:
                 kept.append(outcome)
                 continue
             diagnostics.append(
                 {
                     "id": str(item.get("id") or "<missing-id>"),
                     "section": "milestone",
-                    "reason": "location_already_sourced_earlier",
-                    "source_chapter_position": source_position,
+                    **diagnostic,
                     "subject_id": str(outcome.get("subject_id") or ""),
                     "location_id": str(outcome.get("value") or ""),
                 }
@@ -51,7 +48,7 @@ def filter_model_milestone_outcomes(
     return {**payload, "milestones": milestones}, diagnostics
 
 
-def _earlier_location_source(outcome, milestone, entities, chapters) -> int | None:
+def _location_outcome_diagnostic(outcome, milestone, entities, chapters):
     subject = entities.get(outcome.get("subject_id")) or {}
     location = entities.get(outcome.get("value")) or {}
     if (
@@ -64,9 +61,11 @@ def _earlier_location_source(outcome, milestone, entities, chapters) -> int | No
     planned = int(milestone.get("planned_position") or 0)
     subject_terms = _entity_terms(subject)
     location_terms = _entity_terms(location)
+    sourced_at_milestone = False
+    earlier_source = None
     for chapter in chapters:
         position = int(chapter.get("position") or 0)
-        if not position or position >= planned:
+        if not position or position > planned:
             continue
         text = _normalized_text(
             " ".join(
@@ -81,7 +80,20 @@ def _earlier_location_source(outcome, milestone, entities, chapters) -> int | No
         if any(term in text for term in subject_terms) and any(
             term in text for term in location_terms
         ):
-            return position
+            if position == planned:
+                sourced_at_milestone = True
+            elif earlier_source is None:
+                earlier_source = position
+    if not sourced_at_milestone:
+        return {
+            "reason": "location_not_sourced_at_milestone",
+            "planned_chapter_position": planned,
+        }
+    if earlier_source is not None:
+        return {
+            "reason": "location_already_sourced_earlier",
+            "source_chapter_position": earlier_source,
+        }
     return None
 
 

@@ -3,6 +3,7 @@ import re
 
 import anyio
 import pytest
+from app.services.story.story_novel_planning_batches import reusable_plan_draft
 from app.services.story.story_novel_planning_service import ensure_generation_plan
 from fastapi import HTTPException
 from tests.unit.test_story_novel_longform import _canon, _plan_row, _setup
@@ -86,9 +87,11 @@ def test_resume_reuses_validated_chapter_plan_batches(db_session):
 
     with pytest.raises(HTTPException):
         anyio.run(ensure_generation_plan, service, revision, task, fail_third_batch)
-    assert [
-        row["position"] for row in revision.generation_plan["chapter_plan_draft"]
-    ] == list(range(1, 17))
+    revision_id = revision.id
+    db_session.expire_all()
+    revision = db_session.get(type(revision), revision_id)
+    persisted = revision.generation_plan["chapter_plan_draft"]
+    assert [row["position"] for row in persisted] == list(range(1, 17))
 
     resumed_prompts = []
 
@@ -105,3 +108,17 @@ def test_resume_reuses_validated_chapter_plan_batches(db_session):
     assert plan["chapter_count"] == 48
     assert _batch_positions(resumed_prompts[0]) == list(range(17, 25))
     assert all("编译唯一 Canon" not in prompt for prompt in resumed_prompts)
+
+
+def test_reusable_plan_draft_is_detached_from_checkpoint():
+    canon = _canon()
+    canon["canon_hash"] = "canon-hash"
+    current = {
+        "chapter_plan_draft": [_plan_row(1)],
+        "chapter_plan_draft_canon_hash": canon["canon_hash"],
+    }
+
+    reusable = reusable_plan_draft(current, canon, list(range(1, 3)))
+    reusable.append(_plan_row(2))
+
+    assert [row["position"] for row in current["chapter_plan_draft"]] == [1]
