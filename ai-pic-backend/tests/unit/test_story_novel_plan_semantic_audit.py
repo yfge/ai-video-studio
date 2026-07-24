@@ -215,6 +215,7 @@ def test_semantic_audit_rechecks_patched_plan_before_accepting():
     assert patched[0]["semantic_audit"]["patched_effect_count"] == 6
     assert max_tokens == [16000, 16000]
     assert '"verification_mode":true' in prompts[1]
+    assert '"verification_targets":[{"event_id":"evt-ch8-1"' in prompts[1]
     assert '"existing_knowledge_grants":[{"character_id":"char-wangming"' in prompts[1]
 
 

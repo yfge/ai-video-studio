@@ -20,6 +20,7 @@ def build_plan_semantic_audit_prompt(
     batch_chapters: list[dict],
     *,
     verification: bool = False,
+    verification_targets: list[dict] | None = None,
 ) -> str:
     positions = [int(item["position"]) for item in batch_chapters]
     event_contract = [
@@ -48,6 +49,7 @@ def build_plan_semantic_audit_prompt(
     }
     payload = {
         "verification_mode": verification,
+        "verification_targets": verification_targets or [],
         "event_contract": event_contract,
         "output_skeleton": output_skeleton,
         "state_before_batch": validated_prefix_context(canon, prior_chapters)["state"],
@@ -105,8 +107,9 @@ def build_plan_semantic_audit_prompt(
         "不同的已有 location ID，地点内部移动必须为空且不得创建子地点；只返回遗漏项。"
         "\n只输出填充后的 input.output_skeleton 严格 JSON，不得缺失、额外或重复。"
         + (
-            "\n这是补丁后的最终复核；必须先逐项核对 existing_knowledge_grants "
-            "和 chapters 中全部现有 typed effects，再报告遗漏。"
+            "\n这是补丁后的最终复核；只验证 verification_targets 中首轮报告的"
+            " effects 已写入 chapters。禁止提出首轮未报告的新候选 effect；"
+            "逐项核对现有 typed effects 后，已写入的 target 必须返回空数组。"
             if verification
             else ""
         )

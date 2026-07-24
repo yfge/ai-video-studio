@@ -14,15 +14,27 @@
   和 consumed milestones。
 - 地点建议继续使用已有移动与确定性状态去重。
 - 不同值、不同主体或不同来源的 effect 保持原样，继续触发复核门禁。
+- 最终复核显式携带首轮 `verification_targets`，只验证首轮补丁已写入，
+  禁止在第二遍发明首轮未报告的新候选 effect。
 
 ## Validation
 
 - Task 6643 fail closed，0 章。
 - Invocation 1384 唯一非空项是第 19 章已经存在的
   `mile-clock-drift-revealed`。
+- Task 6644 / Invocation 1387 在最终复核中新造首轮未报告的
+  `ev-ch17-1` knowledge grant，证明复核职责需要收窄。
 - `pytest tests/unit/test_story_novel_plan_semantic_audit.py
   tests/unit/test_story_novel_plan_semantic_audit_movements.py -q --no-cov`：
   13 passed。
+- `pytest tests/unit/test_story_novel_*.py -q --no-cov`：409 passed，1 skipped。
+- 精确 `isort`、`black`、repo docs、repo contracts diff 与
+  `git diff --check` 均通过；三个 Python 文件分别为 224、117、245 行。
+- `./docker/build_prod_images.sh` 通过：
+  - backend manifest
+    `sha256:92b12f0154f7b6d88d1079ae3f3999afd015df444409d776accfa0a2e5871232`
+  - frontend manifest
+    `sha256:dd9447d0b612f492ef347740432d1c82c36e42df6480a120f0c383507dd2b34e`
 - `pytest tests/unit/test_story_novel_*.py -q --no-cov`：
   409 passed，1 skipped。
 - 精确 isort/black、repo docs/contracts diff、`git diff --check`：passed。

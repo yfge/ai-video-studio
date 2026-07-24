@@ -70,6 +70,7 @@ async def audit_and_patch_plan_batch(
                 prior_chapters,
                 patched,
                 verification=True,
+                verification_targets=first,
             ),
             max_tokens=PLAN_SEMANTIC_AUDIT_MAX_TOKENS,
             temperature=0.0,
