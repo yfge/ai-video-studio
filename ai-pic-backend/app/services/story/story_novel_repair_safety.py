@@ -42,7 +42,10 @@ def repair_guidance(
         "state_reversion": "保持当前状态，不得回滚人物、物件、关系或权限",
         "duplicate_milestone": "不得重复已经完成的一次性里程碑",
         "illegal_knowledge": "角色只能通过当前章合同允许的来源获得知识",
-        "unexplained_location": "地点变化必须符合当前章合同并写出移动过程",
+        "unexplained_location": (
+            "只允许当前章 location_transitions 中的地点移动；"
+            "清单为空时删除全部移动并保持 current_state 地点"
+        ),
     }
     guidance = []
     seen = set()

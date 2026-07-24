@@ -157,6 +157,27 @@ def test_repair_guidance_keeps_only_current_chapter_details():
     )
 
 
+def test_unplanned_location_repair_stays_inside_current_contract():
+    guidance = repair_guidance(
+        [
+            {
+                "code": "unexplained_location",
+                "message": "正文出现未规划移动: ('char-a', 'loc-a', 'loc-future')",
+            }
+        ]
+    )
+
+    assert guidance == [
+        {
+            "code": "unexplained_location",
+            "message": (
+                "只允许当前章 location_transitions 中的地点移动；"
+                "清单为空时删除全部移动并保持 current_state 地点"
+            ),
+        }
+    ]
+
+
 def test_repair_selection_is_strictly_monotonic():
     first = _evaluation("safe", ["missing-date", "missing-event"])
     subset = _evaluation("better", ["missing-date"])
