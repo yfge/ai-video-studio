@@ -17,7 +17,10 @@ def build_source_novel_context(episode) -> dict[str, Any] | None:
     return {
         "revision_business_id": revision_id,
         "revision_content_hash": metadata.get("source_novel_content_hash"),
+        "generation_plan_version": params.get("generation_plan_version"),
+        "generation_plan_hash": params.get("generation_plan_hash"),
         "adaptation_plan_version": params.get("adaptation_plan_version"),
+        "adaptation_plan_hash": params.get("adaptation_plan_hash"),
         "adaptation_goal": metadata.get("adaptation_goal"),
         "source_anchors": [
             {
@@ -25,7 +28,9 @@ def build_source_novel_context(episode) -> dict[str, Any] | None:
                 "position": row.get("position"),
                 "title": row.get("title"),
                 "summary": row.get("summary"),
+                "body_hash": row.get("body_hash") or row.get("content_hash"),
                 "content_hash": row.get("content_hash"),
+                "source_hash": row.get("source_hash"),
             }
             for row in refs
             if isinstance(row, dict)

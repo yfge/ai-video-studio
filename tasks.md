@@ -52,13 +52,29 @@
   `docs/design/story-novel-episode-script.md`，执行计划见
   `docs/exec-plans/active/story-novel-adaptation-chain.md`。无付费浏览器验收见
   `artifacts/runs/story-novel-v1-20260722T170000/summary.json`。
-- P0：长篇小说改为 StorySeed 大纲动态规划、单任务逐章 3000–5000 字符生成；
+- P0（进行中）：把长篇小说升级为经用户确认的 `story_seed_v2` 结构化章节大纲，
+  并把平台长度预设、自定义默认范围和逐章覆盖收归 Novel Revision；章节列表唯一决定
+  章数，`generation_plan` v4 自动汇总 min/target/max。StorySeed service 已兼容
+  endpoint-dumped dict 并重新做 schema 校验；异步结构化任务使用 Story 已配置模型，
+  未配置时固定使用 DeepSeek 默认。设计真源见
+  `docs/design/story-novel-episode-script.md`，执行计划见
+  `docs/exec-plans/active/structured-outline-platform-lengths.md`。
+- P0（已完成基线）：长篇小说已支持 StorySeed 文字大纲动态规划、单任务逐章
+  3000–5000 字符生成；
   每章 checkpoint 后抽取 facts/角色记忆并作为修订版内 Canon。实现计划见
   `docs/exec-plans/completed/outline-driven-longform-novel.md`。DeepSeek V4
   Flash 真实验收已生成 48 章/198691 字符，断点恢复、提取覆盖、浏览器路径和
   GPT-5.6 全局审读证据见
   `artifacts/runs/story-novel-longform-real-20260723/`；该样本文本因 65 个
-  blocking 连续性问题保持 draft，未提升 Story Canon。
+  blocking 连续性问题保持 draft，未提升 Story Canon。该统一长度门禁样本不能替代
+  新计划的平台规格、逐章覆盖、双 Revision 隔离和无 blocker 审批验收。
+- P0（进行中）：在现有长篇链路上增加生成前唯一 Canon、实际正文 typed state
+  gate、人工确认 Canon 修复、最早失效章续写和分层质量报告；严格 Canon 使用
+  `gate_version=1` 和 milestone typed outcomes，并在 chapter 0、plan replay 和
+  actual body 三层拦截 future outcomes。设计真源见
+  `docs/design/story-novel-episode-script.md` 与
+  `docs/design/narrative-memory-and-dramatic-state.md`，执行计划见
+  `docs/exec-plans/active/canon-gated-longform-quality-loop.md`。
 - P0：无限画布已有交互、保存恢复、动态节点、类型化端口与边、按图输入解析、
   Run Node、Run Downstream、stale descendants、故事板/视频候选评审和显式
   `timeline.place` 回填。当前缺口是 clip-storyboard v2 的当前环境
@@ -74,6 +90,61 @@
   `clip_storyboard_sheet` 按从左到右、从上到下的完整时序驱动该 clip rework。
   `clip_storyboard_panel` 和 `storyboard_grid_panel` 仅保留 legacy read path。
 - P2：已用一个窄垂类连续生产 10 条 30 秒本地 2D 卡通样片，记录成本、耗时、失败点和人工修正次数。
+
+## P0: Structured Outline And Platform Lengths
+
+:link: `docs/exec-plans/active/structured-outline-platform-lengths.md`
+
+Owner：当前小说生成链路实现流。状态：代码与阶段性 UI 证据已落地，完整验收未完成。
+
+- [x] StorySeed v2、结构化章节编辑、确认与失效边界、平台长度预设/自定义范围、
+      逐章覆盖、generation plan v4 和 Revision API/UI 已实现。
+- [x] StorySeed service 接受 endpoint dump dictionary 后重新 schema validate；
+      结构化任务沿用 Story model，未配置时使用
+      `deepseek:<DEEPSEEK_DEFAULT_MODEL>`。
+- [x] 最新 StorySeed/Canon/plan/body/resume 定向回归组通过 39 tests。
+- [x] Chrome extension fallback 的真实 UI 已确认 Story
+      `702dcae4a23c4533ae11f0d2e2a69eda` 的 48 章 StorySeed v2，并创建
+      standard-serial Revision `53dee6c31d8d4f0eada05bb0e45eb0b3`；Chrome
+      DevTools `127.0.0.1:9222/json/version` 为 HTTP Not Found，不能宣称 DevTools
+      验证。
+- [ ] 完成逐章 override、两个不同配置 Revision 的隔离、完整 console/network 和
+      end-to-end 生成浏览器证据。
+- [ ] 完成 profile override 的真实长篇、当前 Revision-only Canon promotion 和
+      blocker-free approval 验收。
+
+## P0: Canon-gated Long-form Quality
+
+:link: `docs/exec-plans/active/canon-gated-longform-quality-loop.md`
+
+Owner：当前小说生成链路实现流。状态：进行中。
+
+- [x] 拆分 Canon 编译、章节合同、实际正文 state extraction/gate、v3 ledger、
+      v3 continuity 和 Canon edit 服务，避免扩张现有热点文件。
+- [x] Canon `gate_version=1`、milestone typed outcomes、chapter-0/plan
+      replay/actual-body 三层 future-outcome gate 和 knowledge-grant-only 规则已落地。
+- [x] 失败/旧 gate/Canon hash 不匹配的规划 checkpoint 不复用；只有 hash-valid
+      gated Canon 可用于章节规划返修，失败章节计划不能复用。
+- [x] 新增 Canon 乐观锁编辑、状态进度、质量指标和修复组 UI。
+- [x] 最新 milestone/outcome/plan/body/resume、StorySeed boundary/model 定向
+      测试通过（39 passed）。
+- [ ] 完成剩余 API/审批/失效边界覆盖与 frontend focused tests。
+- [ ] 完成 backend quick/full、frontend lint/test、repo docs/contracts、
+      pre-commit 和生产镜像构建。
+- [x] Chrome DevTools 9222 不可用的原因已记录，并通过 Chrome extension fallback
+      使用真实 Story UI 完成 v2 确认、Revision 创建和任务启动阶段。
+- [ ] 完成 gate failure、Canon repair、range resume、continuity、approval 的后续
+      UI 与 console/network 证据。
+- [ ] 用全新 48 章 StorySeed 完成真实模型生成、至少一次断点恢复和 GPT-5.6
+      分批/全书审读；七项确定性指标必须为零，未达到 75/100 或仍有 blocker 时
+      不得审批。
+
+当前阶段证据：Story `702dcae4a23c4533ae11f0d2e2a69eda`、Revision
+`53dee6c31d8d4f0eada05bb0e45eb0b3`、任务 `#6513`–`#6519` 和 invocation
+`#372`–`#384`。其中 `#6519` 仍在 `planning/chapters`，正文为 0/48；
+provider invocation succeeded 不等于确定性规划或小说验收通过。验收仍以 active exec
+plan 和 `artifacts/runs/story-novel-canon-quality-real-<timestamp>/` 为准；不得用
+旧 66/100 样本、阶段性 provider 调用或人工接受理由代替。
 
 ## 已完成基线
 

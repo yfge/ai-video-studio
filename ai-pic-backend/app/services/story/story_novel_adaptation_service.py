@@ -1,20 +1,23 @@
 from __future__ import annotations
 
-from typing import Any
-
 from app.models.script import Episode
 from app.models.story_structure import StoryStepOutline, StoryTreatment
 from app.models.user import User
 from app.repositories.narrative_memory_repository import NarrativeMemoryRepository
 from app.repositories.story_novel_repository import StoryNovelRepository
-from app.schemas.story_novel_export import AdaptationPlanEpisode
 from app.services.narrative_memory.generation_context_service import (
     NarrativeGenerationContextService,
 )
+from app.services.narrative_memory.source_hash import artifact_hash
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from .story_novel_domain import active_chapters, sha256_text
+from .story_novel_downstream_gate import (
+    chapter_source_evidence,
+    freeze_adaptation_plan,
+    require_adaptation_plan,
+    require_canonical_revision,
+)
 from .story_novel_revision_service import StoryNovelRevisionService
 
 
@@ -34,12 +37,11 @@ class StoryNovelAdaptationService:
         if current and request.expected_version != current_version:
             raise HTTPException(status_code=409, detail="改编计划已被其他窗口更新")
         episodes = [item.model_dump() for item in request.episodes]
-        self._validate_episode_rows(revision, episodes)
-        revision.adaptation_plan = {
-            "version": current_version + (1 if current else 0),
-            "novel_content_hash": revision.content_hash,
-            "episodes": episodes,
-        }
+        revision.adaptation_plan = freeze_adaptation_plan(
+            revision,
+            version=current_version + (1 if current else 0),
+            rows=episodes,
+        )
         revision.adaptation_plan_status = "draft"
         self.db.commit()
         return revision
@@ -49,13 +51,21 @@ class StoryNovelAdaptationService:
         plan = dict(revision.adaptation_plan or {})
         if int(plan.get("version") or 0) != expected_version:
             raise HTTPException(status_code=409, detail="改编计划已被其他窗口更新")
-        self._validate_episode_rows(revision, plan.get("episodes") or [])
         if plan.get("novel_content_hash") != revision.content_hash:
             revision.adaptation_plan_status = "stale"
             self.db.commit()
             raise HTTPException(
-                status_code=409, detail="小说内容已变化，改编计划已过期"
+                status_code=409,
+                detail={
+                    "code": "ADAPTATION_PLAN_STALE",
+                    "message": "小说内容已变化，改编计划已过期",
+                },
             )
+        revision.adaptation_plan = freeze_adaptation_plan(
+            revision,
+            version=expected_version,
+            rows=plan.get("episodes") or [],
+        )
         revision.adaptation_plan_status = "approved"
         self.db.commit()
         return revision
@@ -66,17 +76,14 @@ class StoryNovelAdaptationService:
         )
         if not revision:
             raise HTTPException(status_code=404, detail="小说版本不存在")
-        self._ensure_approved_canonical(revision)
-        plan = dict(revision.adaptation_plan or {})
+        plan, chapter_rows = require_adaptation_plan(revision)
         applied_ids = [int(value) for value in plan.get("applied_episode_ids") or []]
         if revision.adaptation_plan_status == "applied" and applied_ids:
             return self.repo.episodes_by_ids(applied_ids)
-        if revision.adaptation_plan_status != "approved":
-            raise HTTPException(status_code=409, detail="改编计划尚未审批或已过期")
         rows = plan.get("episodes") or []
-        self._validate_episode_rows(revision, rows)
         story = revision.story
-        chapters = {row.business_id: row for row in active_chapters(revision)}
+        chapters = {row.business_id: row for row in chapter_rows}
+        lineage = self._lineage(revision, plan)
         treatment = StoryTreatment(
             story_id=story.id,
             revision_number=self.repo.next_treatment_revision_number(story.id),
@@ -87,11 +94,7 @@ class StoryNovelAdaptationService:
             act_structure={"episodes": rows},
             created_by=self.user.id,
             approved_by=self.user.id,
-            extra_metadata={
-                "source_novel_business_id": revision.business_id,
-                "source_novel_content_hash": revision.content_hash,
-                "adaptation_plan_version": plan.get("version", 1),
-            },
+            extra_metadata=lineage,
         )
         self.db.add(treatment)
         self.db.flush()
@@ -123,12 +126,12 @@ class StoryNovelAdaptationService:
                 source_chapter_refs=refs,
                 generation_params={
                     "source": "novel_adaptation_v1",
-                    "adaptation_plan_version": plan.get("version", 1),
+                    **lineage,
                 },
                 extra_metadata={
                     "adaptation_goal": row["adaptation_goal"],
                     "cliffhanger": row.get("cliffhanger"),
-                    "source_novel_content_hash": revision.content_hash,
+                    **lineage,
                 },
             )
             self.db.add(episode)
@@ -158,12 +161,18 @@ class StoryNovelAdaptationService:
                         dramatic_question=row["adaptation_goal"],
                         status="approved",
                         created_by=self.user.id,
-                        extra_metadata={"source_chapter_refs": refs},
+                        extra_metadata={
+                            "source_chapter_refs": refs,
+                            **lineage,
+                        },
                     )
                 )
         plan["applied_episode_ids"] = [episode.id for episode in episodes]
-        plan["application_hash"] = sha256_text(
-            str(plan.get("version")) + revision.content_hash
+        plan["application_hash"] = artifact_hash(
+            {
+                "adaptation_plan_hash": plan["plan_hash"],
+                "applied_episode_ids": plan["applied_episode_ids"],
+            }
         )
         revision.adaptation_plan = plan
         revision.adaptation_plan_status = "applied"
@@ -174,36 +183,20 @@ class StoryNovelAdaptationService:
 
     def _approved_canonical(self, revision_id: str):
         revision = self.revisions.revision(revision_id)
-        self._ensure_approved_canonical(revision)
+        require_canonical_revision(revision)
         return revision
 
     @staticmethod
-    def _ensure_approved_canonical(revision) -> None:
-        if revision.lifecycle_status != "approved":
-            raise HTTPException(status_code=409, detail="小说版本尚未审批")
-        if revision.story.canonical_novel_export_id != revision.id:
-            raise HTTPException(status_code=409, detail="仅当前 canonical 小说可改编")
+    def _chapter_ref(chapter):
+        return chapter_source_evidence(chapter)
 
     @staticmethod
-    def _chapter_ref(chapter) -> dict[str, Any]:
+    def _lineage(revision, plan) -> dict:
         return {
-            "business_id": chapter.business_id,
-            "position": chapter.position,
-            "title": chapter.title,
-            "summary": chapter.summary or chapter.content_text[:500],
-            "content_hash": chapter.content_hash,
+            "source_novel_business_id": revision.business_id,
+            "source_novel_content_hash": revision.content_hash,
+            "generation_plan_version": plan["generation_plan_version"],
+            "generation_plan_hash": plan["generation_plan_hash"],
+            "adaptation_plan_version": plan["version"],
+            "adaptation_plan_hash": plan["plan_hash"],
         }
-
-    @staticmethod
-    def _validate_episode_rows(revision, rows: list[dict[str, Any]]) -> None:
-        if not rows:
-            raise HTTPException(status_code=400, detail="改编计划不能为空")
-        chapter_ids = {row.business_id for row in active_chapters(revision)}
-        numbers: list[int] = []
-        for raw in rows:
-            item = AdaptationPlanEpisode.model_validate(raw)
-            numbers.append(item.episode_number)
-            if not set(item.source_chapter_business_ids).issubset(chapter_ids):
-                raise HTTPException(status_code=400, detail="改编计划包含无效章节引用")
-        if sorted(numbers) != list(range(1, len(rows) + 1)):
-            raise HTTPException(status_code=400, detail="集数必须从 1 连续编号")

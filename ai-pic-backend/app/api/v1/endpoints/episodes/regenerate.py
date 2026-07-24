@@ -12,7 +12,11 @@ from app.core.middleware import get_current_active_user
 from app.models.script import Episode
 from app.models.task import Task, TaskType
 from app.models.user import User
+from app.repositories.episode_repository import list_previous_episodes
 from app.services.ai_service import ai_service  # noqa: F401
+from app.services.episode.novel_workflow_guard import (
+    ensure_direct_episode_regeneration_allowed,
+)
 from app.services.task_worker import episode_generate_task
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -30,16 +34,11 @@ def _collect_previous_episodes(
     if current_episode_number <= 1:
         return []
 
-    previous = (
-        db.query(Episode)
-        .filter(
-            Episode.story_id == story_id,
-            Episode.episode_number < current_episode_number,
-            Episode.is_deleted.is_(False),
-        )
-        .order_by(Episode.episode_number.desc())
-        .limit(limit)
-        .all()
+    previous = list_previous_episodes(
+        db,
+        story_id=story_id,
+        current_episode_number=current_episode_number,
+        limit=limit,
     )
 
     return [
@@ -114,7 +113,7 @@ async def regenerate_episode_async(
     """
     episode = get_episode_by_identifier(db, episode_id, None, current_user)
     story = get_story_by_identifier(db, episode.story_id, None, current_user)
-
+    ensure_direct_episode_regeneration_allowed(story)
     # Collect previous episodes for context
     previous_episodes = _collect_previous_episodes(db, story.id, episode.episode_number)
 
@@ -167,7 +166,7 @@ async def regenerate_episode_by_business_id_async(
     """
     episode = get_episode_by_identifier(db, None, episode_business_id, current_user)
     story = get_story_by_identifier(db, episode.story_id, None, current_user)
-
+    ensure_direct_episode_regeneration_allowed(story)
     # Collect previous episodes for context
     previous_episodes = _collect_previous_episodes(db, story.id, episode.episode_number)
 

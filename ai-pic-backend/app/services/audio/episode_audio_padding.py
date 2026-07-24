@@ -61,9 +61,10 @@ def _tail_padding_beat(
         "scene_id": last.get("scene_id"),
         "scene_number": last.get("scene_number"),
         "beat_id": f"tail_pad_{index}",
-        "beat_type": "action",
+        "beat_type": "pause",
         "speaker_name": None,
-        "text": _tail_padding_action(index),
+        "text": None,
+        "characters_involved": last.get("characters_involved") or [],
         "start_ms": start_ms,
         "end_ms": end_ms,
         "padding": True,
@@ -80,13 +81,3 @@ def _episode_target_duration_ms(episode: Any) -> int | None:
     if minutes <= 0:
         return None
     return int(round(minutes * 60 * 1000))
-
-
-def _tail_padding_action(index: int) -> str:
-    actions = (
-        "AP手机倒计时继续跳动，投影原始文件删除进度条缓慢推进。",
-        "小陈连续敲键盘维持日志锁定，蓝色锁图标被红光压住。",
-        "张总把签字纪要压在桌上，会议室只剩键盘声和倒计时。",
-        "AP盯着屏幕不眨眼，备份硬盘指示灯一下一下闪烁。",
-    )
-    return actions[(index - 1) % len(actions)]

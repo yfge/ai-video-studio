@@ -58,4 +58,11 @@ def _is_story_seed(result: dict, payload: Any) -> bool:
 
 def _validate(payload: dict, result: dict) -> Dict[str, Any]:
     model = StorySeedEnvelope if _is_story_seed(result, payload) else StoryOutlineModel
-    return model.model_validate(payload).model_dump(by_alias=True)
+    normalized = model.model_validate(payload).model_dump(by_alias=True)
+    if model is StorySeedEnvelope:
+        seed = normalized["story_seed"]
+        if seed.get("schema") == "story_seed_v1":
+            for key in ("outline_text", "structured_outline"):
+                if seed.get(key) is None:
+                    seed.pop(key, None)
+    return normalized

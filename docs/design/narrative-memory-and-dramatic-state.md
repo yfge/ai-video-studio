@@ -6,6 +6,10 @@
 > Related: `docs/design/story-novel-episode-script.md`,
 > `docs/design/story-episode-generation-quality.md`,
 > `docs/design/production-canvas.md`
+>
+> The memory mechanism remains implemented v1. Its compatible StorySeed v2
+> integration is tracked separately in
+> `docs/exec-plans/active/structured-outline-platform-lengths.md`.
 
 ## 1. Decision
 
@@ -23,7 +27,8 @@ Agent memory，也不是把所有历史文本放进向量库，而是当前创�
 - Story 创建或开始生产时冻结每个角色的公共记忆基线；公共记忆后续升级不得静默污染在制 Story。
 - 记忆必须引用稳定的发生、获知和生效锚点；生成只能读取当前锚点之前已经生效的记忆。
 - “已经发生但不表现”属于客观事件与观众显隐状态；“潜台词”属于场景意图，二者不能塞进角色记忆代替。
-- Story 生成退回轻量、可编辑的结构化 `StorySeed`，不再承担分集、投流、拍摄和跨集连续性的完整生产规划。
+- Story 生成使用轻量、可编辑的结构化 `StorySeed`；v2 可以确认小说章节结构，
+  但不保存平台字数、生成模型、任务状态、正文或分集/拍摄规划。
 - 审批小说仍是新系列的叙事 SSOT，Timeline 仍是制作时间、clip 顺序、资产谱系和交付 SSOT。
 
 ## 2. Why
@@ -112,14 +117,16 @@ Agent memory，也不是把所有历史文本放进向量库，而是当前创�
 
 ### 5.10 StorySeed
 
-Story 创建时使用的轻量结构化大纲。它只定义后续创作必须共享的初始条件，不提前完成
-小说结构、分集商业节奏、场景潜台词或拍摄规划。
+Story 创建时使用的轻量结构化大纲。`story_seed_v2` 在初始条件之外保存经用户确认的
+章节标题、目标、关键事件、角色重点、跨章线索和章末状态；这些字段定义故事结构，
+不包含平台长度规格、生成模型、任务状态、正文、分集商业节奏、场景潜台词或拍摄规划。
 
-最小字段：
+核心字段：
 
 - `title`
 - `premise`
-- `outline`
+- `outline_text`
+- versioned `structured_outline`
 - `protagonists` 及其初始状态
 - `world_constraints`
 - `central_conflict`
@@ -147,7 +154,8 @@ Story 创建时使用的轻量结构化大纲。它只定义后续创作必须�
 14. 重生成同一位置时必须读取该位置之前的快照，不能读取第一次生成产生的未来记忆。
 15. 公共记忆新版本只影响新 Story；在制 Story 必须人工查看 diff 后主动同步。
 16. 已经进入 Timeline 的 Script 不因记忆更新被静默替换。
-17. Story 创建只要求 `story_seed_v1`；商业节奏、可拍性和跨集连续性不得重新成为 Story 创建的阻断门槛。
+17. Story 可以从 `story_seed_v1` 或普通文字大纲开始；prose 生成前必须显式升级并确认
+    `story_seed_v2`。平台规格、商业节奏、可拍性和跨集连续性不得成为 Story 创建门槛。
 
 ## 7. Architecture
 
@@ -523,13 +531,30 @@ Story 生成输入：
 - 用户 brief；
 - 可选的时代、地点、题材、目标受众和内容限制。
 
-Story 只输出 `story_seed_v1`：
+新 Story 的目标格式为 `story_seed_v2`；创建流程也允许先保存 v1/plain-text 草稿，
+再通过显式模型操作生成可编辑的 v2 章节草稿：
 
 ```json
 {
+  "schema": "story_seed_v2",
   "title": "故事标题",
   "premise": "一句话故事前提",
-  "outline": "可编辑的整体大纲",
+  "outline_text": "可编辑的整体大纲",
+  "structured_outline": {
+    "status": "draft",
+    "version": 1,
+    "chapters": [
+      {
+        "position": 1,
+        "title": "第一章",
+        "goal": "本章情节目标",
+        "key_events": ["关键事件"],
+        "character_focus": ["vip_x"],
+        "open_threads": [],
+        "end_state": "章末状态"
+      }
+    ]
+  },
   "protagonists": [
     {
       "virtual_ip_business_id": "vip_x",
@@ -550,14 +575,21 @@ Story 阶段保留的校验只有：
 - Virtual IP ownership 和稳定 business ID；
 - 公共记忆基线版本/hash；
 - 角色身份、世界规则和大纲之间的直接矛盾；
+- 结构化章节非空、连续、必填字段完整及结局方向覆盖；
 - 阻断级内容与合规约束；
 - 最多一次有界 schema repair。
+
+StorySeed service 即使接收 endpoint `model_dump(by_alias=True)` 产生的 dictionary，
+也必须先执行 `StorySeedModel.model_validate`，再处理版本、活动任务、确认和下游失效。
+显式结构化任务优先使用 Story 已配置模型；未配置时固定解析为
+`deepseek:<DEEPSEEK_DEFAULT_MODEL>`，不能隐式继承其他 worker 的模型默认值。
 
 以下字段和校验从 Story 阶段下沉：
 
 | 原 Story 生产字段  | 新归属                               |
 | ------------------ | ------------------------------------ |
-| 阶段期待、阶段高潮 | 小说结构或分集改编计划               |
+| 小说章节结构       | StorySeed structured outline         |
+| 分集阶段高潮       | 分集改编计划                         |
 | 前三集主线         | 分集改编计划                         |
 | 投流钩子、卡点密度 | Episode 商业节奏规划                 |
 | 拍摄可行性         | Episode/Script 生产检查              |
@@ -575,7 +607,7 @@ Story 阶段保留的校验只有：
 每章生成输入：
 
 - frozen StorySeed/IP/world snapshot；
-- 当前章计划；
+- 当前 Revision 冻结的章节计划和已解析长度范围；
 - 最近章节摘要；
 - 当前章开始锚点之前的相关 Canon、角色记忆、成长状态和未闭合线索；
 - 公开/隐藏信息限制。
@@ -585,6 +617,24 @@ Story 阶段保留的校验只有：
 的生成上下文，视为“修订版内 Canon”。它们不得进入其他小说版本、Episode 或
 Script。整部小说审批是人工批准边界：只批量提升当前修订版有效章节 hash 对应的
 候选，旧版本、未来章节、stale 或 hash 不匹配的候选都不能提升。
+
+对 `story_novel_generation_plan.v2` 新修订版，“章节生成后”明确指正文通过 typed
+state gate 之后。系统从实际正文独立提取状态增量，校验人物/物件状态、地点移动、
+知识来源、权限、世界规则、一次性里程碑和伏笔，再运行现有 Narrative
+Event/Character Memory 提取。`gate_failed/review_required` 正文保留为证据，但不得
+写入 `current_state`、不得产生候选、不得成为修订版内 Canon，也不得生成下一章。
+
+严格 Canon 使用 `gate_version=1`，并在 generation plan 中镜像
+`canon_gate_version=1`。每个有计划章节且不可重复的里程碑必须声明 typed
+`outcomes`，包括 Canon entity `subject_id`、点路径 `field`、`eq|contains`
+operator 和真实 JSON value。系统在三层检查 future outcome：Canon 规范化时把初态视作
+chapter 0，计划 linter 从该初态逐章 replay，实际正文 gate 再对独立抽取并应用后的
+typed state 检查。任一层发现未来结果提前出现、已消费里程碑结果未落地或章节位置不符，
+都必须 fail closed。
+
+知识变化只允许写入 `knowledge_grants`，并携带 character、fact 和 source event；
+不得同时把 `knowledge` 伪装成普通 `state_transitions`。计划 replay 和正文 delta
+都使用同一 grant 规则，确保角色只能从已经发生的来源事件获得事实。
 
 每章上下文不拼接全部历史正文，而是在约 32K 字符预算内按以下优先级组装：
 
@@ -597,6 +647,22 @@ Script。整部小说审批是人工批准边界：只批量提升当前修订�
 每次 checkpoint 在 `continuity_ledger` 保存正文 hash、来源 hash、上下文 hash、
 候选 ID、字符数、情节增量和截断原因。正文完整且上下文 hash 一致时可恢复跳过；
 事实提取缺失时只补提取。
+
+新修订版使用 `story_novel_continuity.v3`，额外保存 `canon_hash`、
+`state_before_hash`、`state_after_hash`、typed state delta、状态校验问题、
+正文/提取返修次数以及 Event/Memory ID 与 hash。状态增量只在正文门禁和候选提取
+完成后原子应用。Resume 只有在 Canon、context、body、source 和 state hash 链全部
+匹配时才跳过 `ready` 章节；`gate_failed` 或 `stale` 从最早位置重写至结尾。
+
+规划断点也不能按“有 JSON 就复用”。失败计划、旧/缺失 gate version、无效 Canon
+或 Canon hash 不匹配一律重新编译 Canon；只有冻结 plan 在章节合同阶段失败、且
+`gate_version=1` Canon 可重新 normalize 并通过内外两层 hash 校验时，才可在章节规划
+返修中复用该 Canon。失败的章节计划本身不能复用；完整 ready plan 还必须通过 plan hash
+与确定性 replay 才能直接返回。
+
+平台 length profile 和逐章覆盖始终属于 Revision，不进入 Story Canon。只修改长度范围
+且正文 hash 未变化时，不使事件或记忆候选失效；修改章节内容计划或正文时，仍按来源
+version/hash 从最早受影响章节传播 stale。
 
 ### 13.3 Adaptation plan and Episode
 
@@ -650,6 +716,26 @@ v1 使用确定性检索，不使用语义向量召回。顺序如下：
 5. 加载仍未闭合的高优先级线索。
 6. 加载当前 Dramatic State 和 Audience Disclosure。
 
+Canon-gated 长篇在上述可裁剪上下文之前固定写入不可截断的
+`hard_constraints`：当前章节合同、相关 Canon ID、当前人物/物件状态、知情边界、
+已完成里程碑、禁止重复事件和到期伏笔。如果 hard constraints 自身超过约 32K
+字符预算，必须在正文模型调用前失败，不能裁掉 Canon。prompt evidence 保存
+hard-constraint hash、引用 ID、被裁剪的可选记忆/facts/摘要和原因。
+
+规划阶段可以读取冻结的完整结构化大纲；正文生成阶段不可以。第 N 章 Prompt 只投影
+`structured_outline` / `generation_plan` 的第 N 章合同，并移除 StorySeed 全文大纲、
+结局方向、后续章节合同、未来角色弧节点和终态。正文仍可读取截至 N-1 章且来源 hash
+有效的 facts、角色记忆、typed state、摘要和上一章尾部。独立状态审计可以读取压缩的
+未来事件禁区目录，用于标记 `premature_future_event_ids`；该目录不得进入正文或返修
+Prompt，审计输出也只有通过确定性门禁后才能原子写入 `current_state`。
+
+除语义事件禁区外，future outcome 还必须经过三个结构化门禁：
+
+1. chapter 0：初态不得已经满足后续一次性里程碑 outcome；
+2. plan replay：每章合同的 transition、movement、knowledge grant 和 milestone
+   consumption 依次应用，已消费 outcome 必须落地，未来 outcome 不得提前成立；
+3. actual body：独立抽取的 typed delta 应用后重复上述 milestone 边界校验。
+
 压缩优先级：
 
 ```text
@@ -678,6 +764,10 @@ v1 使用确定性检索，不使用语义向量召回。顺序如下：
 - 锚点被删除、移动或换源；
 - 公共记忆基线被用户主动同步；
 - Canon Fact 被 supersede。
+
+人工保存完整 typed Canon 时携带 expected plan version 和 expected Canon hash。
+服务端比较 Canon 差异与章节 `canon_refs`，从最早受影响章传播 stale。保存只更新
+本地数据，不调用模型，也不自动采用连续性报告的修复建议；用户确认后才显式 Resume。
 
 受影响对象进入 `review_required` 或 `stale`，同时记录：
 
@@ -885,8 +975,13 @@ AI 生成结果先进入可编辑 Story Seed 草稿。页面显示角色公共�
 章节保存不调用模型。章节菜单提供显式“提取/重算本章记忆候选”。连续性报告中的
 问题可以跳转到 Story memory workspace 对应事件/锚点。
 
-审批小说为 canonical 前，阻断级记忆冲突必须解决或填写接受理由；普通候选不强制
-全部公共化，只要求 Story 私有 Canon 完整。
+Canon-gated 修订版还显示 `state validated`、`gate failed`、Canon hash、最早 stale
+章节、七项确定性质量指标和按 Canon 项分组的修复建议。把建议应用到编辑器仅形成
+本地草稿；保存 Canon 和从失效章续写都必须由用户明确触发。
+
+审批小说为 canonical 前，所有阻断级记忆冲突必须解决。接受理由只保留审核轨迹，
+不能改变 blocking 状态或绕过审批；普通候选不强制全部公共化，只要求 Story 私有
+Canon 完整。
 
 ### 18.7 Episode production UI
 
@@ -998,8 +1093,8 @@ UI 必须区分：
 ## 20. Compatibility
 
 - 新 narrative-series Story 可启用 `story_scoped_memory_v1`。
-- 新 Story 目标格式为 `story_seed_v1`；现有 `structured_story_contract` 继续只读兼容，
-  不要求历史 Story 重生成。
+- 新 Story 目标格式为 `story_seed_v2`；`story_seed_v1` 和现有
+  `structured_story_contract` 继续兼容读取，不要求历史 Story 重生成或自动调用模型。
 - 历史 Story、`workflow_mode=direct` 和 single-video 默认 `memory_mode=off`。
 - 不自动回填历史内容；用户可显式为某个 Story 初始化基线并运行提取。
 - 缺少 memory snapshot 的旧 Episode/Script 继续使用现有上下文兼容路径。
@@ -1020,6 +1115,10 @@ UI 必须区分：
 - quality-gate verdict；
 - provider/model/usage 和 request ID。
 
+长篇 v2 还记录 Canon/context/body/source/state-before/state-after hash 链、typed
+delta、状态校验问题、硬约束引用/截断证据、逐章 repair 次数，以及全书连续性报告
+覆盖的全部章节 ID/hash。七项确定性指标必须由已持久化证据计算，不能由模型自报。
+
 禁止只记录拼接后的大段 prompt 而丢失结构化来源。浏览器证据和测试 artifact 仍写入
 `artifacts/runs/<run_id>/`。
 
@@ -1027,7 +1126,8 @@ UI 必须区分：
 
 ### 22.1 Backend
 
-- `StorySeed` 只要求轻量初始条件，不再强制前三集、投流、阶段高潮或拍摄字段。
+- `StorySeed` 只要求初始条件和确认的小说章节结构，不强制前三集、投流、分集高潮或
+  拍摄字段，也不接收平台长度规格。
 - Story Seed 仍执行 schema、ownership、公共记忆基线、Canon 冲突和阻断合规校验。
 - Story Seed schema repair 最多一次，失败时不持久化启发式自由文本。
 - Story A 私有记忆不会进入 Story B snapshot。
@@ -1040,6 +1140,20 @@ UI 必须区分：
 - 无权用户不能读取 Story 私有记忆或 promotion source。
 - HTTP 409 不覆盖其他编辑者的审批结果。
 - 旧 direct/single-video 路径不要求 memory snapshot。
+- Canon 与章节计划分别最多 repair 一次；失败时正文尚未生成。
+- 新严格 Canon 必须携带 `gate_version=1` 和可比较的 milestone typed outcomes；
+  chapter-0、plan replay、actual-body 三层 future-outcome gate 都必须通过。
+- knowledge 只能通过带 source event 的 `knowledge_grants` 获得，不能写入普通
+  `state_transitions`。
+- 失败/旧 gate/Canon hash 不匹配的规划 checkpoint 不可复用；仅 hash-valid 且
+  gated 的 Canon 可在章节规划返修时复用，失败章节计划不可复用。
+- 正文自报的 plot delta 不能代替对实际正文的 typed state 提取。
+- 第二次正文/state gate 失败保存证据、停止后续章节且不污染 `current_state`。
+- Canon 修改只使 `canon_refs` 命中的最早章及其后续 stale，旧来源 hash 不可再召回。
+- 审批要求 Canon/source/state hash 链完整，七项确定性硬指标为零，且报告覆盖每个
+  当前章节 ID/hash；人工理由不能绕过这些门禁。
+- 新长篇规划、正文和全局审读请求允许 provider 支持的 16000 output-token 预算，
+  回归测试必须证明没有被固定 8192 截断。
 
 ### 22.2 Frontend
 
@@ -1090,7 +1204,9 @@ UI 必须区分：
 
 ### Slice 1: contracts and story isolation
 
-- `story_seed_v1` schema、最小 Story gate 和现有合同兼容读取。
+- 已落地的 `story_seed_v1` schema、最小 Story gate 和现有合同兼容读取是 v1 基线；
+  `story_seed_v2` 扩展由
+  `docs/exec-plans/active/structured-outline-platform-lengths.md` 跟踪。
 - 新建 Story/Story Seed UI 简化和下游 `review_required`。
 - Anchor/Event/CharacterMemory schema and repository。
 - Story shared baseline freeze。

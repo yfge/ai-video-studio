@@ -97,3 +97,34 @@ def test_story_seed_edit_marks_novel_episode_and_script_for_review(db_session):
     assert script.extra_metadata["narrative_memory_stale"]["reason_code"] == (
         "story_seed_changed"
     )
+
+
+def test_story_seed_local_update_accepts_endpoint_dumped_dict(db_session):
+    user = User(
+        username="seed-dict-owner",
+        email="seed-dict-owner@example.com",
+        hashed_password="unused",
+        is_active=True,
+        is_approved=True,
+        email_verified=True,
+    )
+    db_session.add(user)
+    db_session.flush()
+    story = Story(
+        user_id=user.id,
+        title="旧标题",
+        genre="drama",
+        story_seed=_seed(outline="旧大纲").model_dump(by_alias=True),
+        story_seed_status="draft",
+        story_seed_version=1,
+    )
+    db_session.add(story)
+    db_session.commit()
+
+    next_seed = _seed(outline="连续第1章至第48章").model_dump(by_alias=True)
+    StorySeedService(NarrativeMemoryRepository(db_session)).apply_local_update(
+        story, next_seed, requested_status="draft"
+    )
+
+    assert story.story_seed["outline"] == "连续第1章至第48章"
+    assert story.story_seed_schema == "story_seed_v1"

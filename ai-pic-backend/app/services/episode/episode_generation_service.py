@@ -42,6 +42,7 @@ class EpisodeGenerationService:
         story = StoryRepository(self.db).get_by_user(story_id, user_id=owner_id)
         if not story:
             raise HTTPException(status_code=404, detail="故事不存在")
+        ensure_direct_episode_generation_allowed(story)
         return story
 
     def _get_focus_characters(self, character_ids: List[int]) -> List[Dict[str, Any]]:
@@ -96,7 +97,6 @@ class EpisodeGenerationService:
         self, request: EpisodeGenerationRequest
     ) -> List[Episode]:
         story = self._get_story(request.story_id)
-        ensure_direct_episode_generation_allowed(story)
         focus_characters = self._get_focus_characters(request.focus_characters)
         story_data = build_story_data(story)
         attach_narrative_memory_context(self.db, story, story_data)

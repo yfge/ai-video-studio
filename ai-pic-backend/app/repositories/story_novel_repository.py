@@ -3,7 +3,7 @@ from __future__ import annotations
 from app.models.script import Episode, Story, StoryCharacter
 from app.models.story_novel_export import StoryNovelChapter, StoryNovelExport
 from app.models.story_structure import StoryTreatment
-from app.models.task import Task
+from app.models.task import Task, TaskStatus
 from app.models.user import User
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload, selectinload
@@ -15,20 +15,28 @@ class StoryNovelRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def accessible_story(self, business_id: str, user: User) -> Story | None:
+    def accessible_story(
+        self, business_id: str, user: User, *, for_update: bool = False
+    ) -> Story | None:
         query = self.db.query(Story).filter(
             Story.is_deleted.is_(False), Story.business_id == business_id
         )
         if not (user.is_admin or user.is_superuser):
             query = query.filter(Story.user_id == user.id)
+        if for_update:
+            query = query.populate_existing().with_for_update()
         return query.first()
 
-    def accessible_story_by_id(self, story_id: int, user: User) -> Story | None:
+    def accessible_story_by_id(
+        self, story_id: int, user: User, *, for_update: bool = False
+    ) -> Story | None:
         query = self.db.query(Story).filter(
             Story.is_deleted.is_(False), Story.id == story_id
         )
         if not (user.is_admin or user.is_superuser):
             query = query.filter(Story.user_id == user.id)
+        if for_update:
+            query = query.populate_existing().with_for_update()
         return query.first()
 
     def accessible_revision(
@@ -53,7 +61,7 @@ class StoryNovelRepository:
         if not (user.is_admin or user.is_superuser):
             query = query.filter(Story.user_id == user.id)
         if for_update:
-            query = query.with_for_update()
+            query = query.populate_existing().with_for_update()
         return query.first()
 
     def list_revisions(self, story_id: int, user: User) -> list[StoryNovelExport]:
@@ -120,16 +128,17 @@ class StoryNovelRepository:
         )
         return max(0, int(value or 0)) + 1
 
-    def chapter(self, revision_id: int, business_id: str) -> StoryNovelChapter | None:
-        return (
-            self.db.query(StoryNovelChapter)
-            .filter(
-                StoryNovelChapter.novel_export_id == revision_id,
-                StoryNovelChapter.business_id == business_id,
-                StoryNovelChapter.is_deleted.is_(False),
-            )
-            .first()
+    def chapter(
+        self, revision_id: int, business_id: str, *, for_update: bool = False
+    ) -> StoryNovelChapter | None:
+        query = self.db.query(StoryNovelChapter).filter(
+            StoryNovelChapter.novel_export_id == revision_id,
+            StoryNovelChapter.business_id == business_id,
+            StoryNovelChapter.is_deleted.is_(False),
         )
+        if for_update:
+            query = query.populate_existing().with_for_update()
+        return query.first()
 
     def chapters_from_position(
         self, revision_id: int, position: int
@@ -145,8 +154,48 @@ class StoryNovelRepository:
             .all()
         )
 
-    def task(self, task_id: int) -> Task | None:
-        return self.db.query(Task).filter(Task.id == task_id).first()
+    def task(self, task_id: int, *, for_update: bool = False) -> Task | None:
+        query = self.db.query(Task).filter(Task.id == task_id)
+        if for_update:
+            query = query.populate_existing().with_for_update()
+        return query.first()
+
+    def claim_pending_task(self, task_id: int) -> Task | None:
+        claimed = (
+            self.db.query(Task)
+            .filter(
+                Task.id == task_id,
+                Task.is_deleted.is_(False),
+                Task.status == TaskStatus.PENDING,
+            )
+            .update(
+                {Task.status: TaskStatus.PROCESSING},
+                synchronize_session=False,
+            )
+        )
+        if claimed != 1:
+            self.db.rollback()
+            return None
+        self.db.commit()
+        return self.task(task_id)
+
+    def active_task_for_targets(
+        self,
+        target_business_ids: list[str],
+        *,
+        exclude_task_id: int | None = None,
+    ) -> Task | None:
+        targets = [item for item in target_business_ids if item]
+        if not targets:
+            return None
+        query = self.db.query(Task).filter(
+            Task.is_deleted.is_(False),
+            Task.target_business_id.in_(targets),
+            Task.status.in_([TaskStatus.PENDING, TaskStatus.PROCESSING]),
+        )
+        if exclude_task_id is not None:
+            query = query.filter(Task.id != exclude_task_id)
+        return query.order_by(Task.id.desc()).first()
 
     def accessible_task(self, task_id: int, user: User) -> Task | None:
         query = self.db.query(Task).filter(Task.id == task_id)

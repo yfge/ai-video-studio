@@ -170,6 +170,10 @@ def test_approval_freeze_and_source_change_propagate_stale(db_session):
     assert story.memory_ledger_version == 1
     assert evidence["character_snapshots"][0]["snapshot_hash"]
     assert memory.business_id in result["affected_candidate_ids"]
+    assert anchor.business_id in result["stale_anchor_ids"]
+    assert anchor.status == "stale"
+    assert repo.get_anchor(story.id, anchor.business_id) is None
+    assert anchor not in repo.list_anchors(story.id)
     assert memory.status == "stale"
     assert episode.memory_snapshot_stale is True
 

@@ -17,7 +17,14 @@ class CandidateService:
     def __init__(self, repo: NarrativeMemoryRepository):
         self.repo = repo
 
-    def ingest(self, story: Story, payload: CandidateDeltaCreate, user: User) -> dict:
+    def ingest(
+        self,
+        story: Story,
+        payload: CandidateDeltaCreate,
+        user: User,
+        *,
+        commit: bool = True,
+    ) -> dict:
         anchors = [
             AnchorService(self.repo).create(story, item, user.id, commit=False)
             for item in payload.anchors
@@ -30,7 +37,10 @@ class CandidateService:
             self._create_memory(story, item.model_dump(), user.id)
             for item in payload.memories
         ]
-        self.repo.commit()
+        if commit:
+            self.repo.commit()
+        else:
+            self.repo.flush()
         return {"anchors": anchors, "events": events, "memories": memories}
 
     def _create_event(self, story: Story, data: dict, user_id: int):
@@ -146,6 +156,8 @@ class CandidateService:
         *,
         valid_sources: dict[str, str],
         user_id: int,
+        require_verified_evidence: bool = False,
+        eligible_candidate_ids: set[str] | None = None,
         commit: bool = True,
     ) -> list[str]:
         """Promote only candidates whose chapter ID and source hash are current."""
@@ -157,8 +169,17 @@ class CandidateService:
         for entity in candidates:
             if (
                 entity.status != "candidate"
+                or (
+                    eligible_candidate_ids is not None
+                    and entity.business_id not in eligible_candidate_ids
+                )
                 or valid_sources.get(entity.source_artifact_business_id)
                 != entity.source_hash
+                or (
+                    require_verified_evidence
+                    and (entity.candidate_evidence or {}).get("source_quote_verified")
+                    is not True
+                )
             ):
                 continue
             entity.status = "approved"
@@ -197,6 +218,11 @@ class CandidateService:
         raw = json.dumps(sorted(approved), ensure_ascii=False, separators=(",", ":"))
         story.memory_ledger_hash = hashlib.sha256(raw.encode()).hexdigest()
         story.memory_review_status = "reviewed"
+
+    def refresh_ledger(self, story: Story, *, commit: bool = True) -> None:
+        self._advance_ledger(story)
+        if commit:
+            self.repo.commit()
 
     @staticmethod
     def _event_fields() -> set[str]:

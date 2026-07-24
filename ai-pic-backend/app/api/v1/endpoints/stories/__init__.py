@@ -29,11 +29,13 @@ from .novel_adaptation import router as novel_adaptation_router
 from .novel_revisions import router as novel_revisions_router
 from .readiness import router as readiness_router
 from .single_video import router as single_video_router
+from .story_seed import router as story_seed_router
 
 router = APIRouter()
 
 for sub_router in [
     single_video_router,
+    story_seed_router,
     crud_router,
     generation_router,
     async_router,

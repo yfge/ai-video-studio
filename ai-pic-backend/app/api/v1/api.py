@@ -6,6 +6,7 @@ from app.api.v1.endpoints import (
     episodes,
     image_gen_profiles,
     migrations,
+    novel_length_profiles,
     production_canvas,
     production_canvas_collaboration,
     prompts,
@@ -48,6 +49,7 @@ api_router.include_router(promotion_router, tags=["narrative-memory"])
 
 # 剧本相关路由
 api_router.include_router(stories.router, prefix="/stories", tags=["stories"])
+api_router.include_router(novel_length_profiles.router, prefix="/novel", tags=["novel"])
 api_router.include_router(episodes.router, prefix="/episodes", tags=["episodes"])
 api_router.include_router(scripts.router, prefix="/scripts", tags=["scripts"])
 api_router.include_router(

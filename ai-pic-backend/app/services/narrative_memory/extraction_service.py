@@ -1,5 +1,3 @@
-"""Explicit paid-operation boundary for extracting candidate memory deltas."""
-
 import json
 
 from app.core.exceptions import ConflictError, ServiceError
@@ -8,14 +6,22 @@ from app.schemas.narrative_extraction import (
     NarrativeExtractionEnvelope,
     NarrativeExtractionRequest,
 )
-from app.schemas.narrative_memory import (
-    CandidateDeltaCreate,
-    CharacterMemoryCandidateCreate,
-    NarrativeEventCandidateCreate,
-)
 from app.services.ai.structured_output import generate_with_repair
 from app.services.ai_service import ai_service
 from app.services.narrative_memory.candidate_service import CandidateService
+from app.services.narrative_memory.evidence_repair import (
+    repair_invalid_extraction_evidence,
+)
+from app.services.narrative_memory.extraction_candidates import (
+    build_candidate_payload,
+    knowledge_character_bindings,
+)
+from app.services.narrative_memory.extraction_evidence import (
+    extraction_evidence_errors,
+    normalize_extraction_evidence,
+)
+from app.services.narrative_memory.extraction_prompt import build_extraction_prompt
+from app.services.narrative_memory.novel_chapter_gate import require_gated_novel_chapter
 from app.services.narrative_memory.source_hash import (
     artifact_hash,
     novel_chapter_source_hash,
@@ -26,7 +32,15 @@ class NarrativeExtractionService:
     def __init__(self, repo: NarrativeMemoryRepository):
         self.repo = repo
 
-    async def extract(self, story, request: NarrativeExtractionRequest, user):
+    async def extract(
+        self,
+        story,
+        request: NarrativeExtractionRequest,
+        user,
+        *,
+        commit: bool = True,
+        before_ingest=None,
+    ):
         anchors, source_text = self._source(
             story,
             request.source_scope,
@@ -41,10 +55,26 @@ class NarrativeExtractionService:
             for item in self.repo.list_story_characters(story.id)
             if item.virtual_ip
         ]
+        strict, memory_bindings, event_evidence = self._candidate_contract(
+            story, request, characters
+        )
+        self.repo.commit()
         manager = ai_service.ai_manager
         if not manager:
             raise ServiceError("当前没有可用的文本模型提供商")
-        prompt = self._prompt(source_text, characters, anchors)
+        prompt = self._prompt(
+            source_text,
+            characters,
+            anchors,
+            (
+                {
+                    "event_evidence": event_evidence,
+                    "required_memory_grants": memory_bindings or {},
+                }
+                if strict
+                else None
+            ),
+        )
         result = await generate_with_repair(
             ai_manager=manager,
             base_prompt=prompt,
@@ -58,16 +88,86 @@ class NarrativeExtractionService:
             max_repairs=1,
         )
         normalized = result.get("normalized")
-        if not normalized:
-            raise ServiceError("记忆候选提取失败：模型未返回有效结构")
-        payload = self._candidate_payload(normalized, anchors)
-        return CandidateService(self.repo).ingest(story, payload, user)
+        errors = result.get("validation_errors") or []
+        if normalized:
+            evidence_errors = extraction_evidence_errors(normalized, source_text)
+            if evidence_errors:
+                errors = evidence_errors
+                normalized = await repair_invalid_extraction_evidence(
+                    manager,
+                    {
+                        "raw_json": normalized,
+                        "validation_errors": evidence_errors,
+                    },
+                    source_text=source_text,
+                    model=request.model,
+                )
+        elif errors and all(
+            item.get("type") == "value_error.source_evidence" for item in errors
+        ):
+            normalized = await repair_invalid_extraction_evidence(
+                manager,
+                {"raw_json": result.get("raw_json"), "validation_errors": errors},
+                source_text=source_text,
+                model=request.model,
+            )
+        if normalized is None:
+            detail = (errors[0] if errors else {}).get("msg") or "未返回有效结构"
+            raise ServiceError(f"记忆候选提取失败：{detail}")
+        normalize_extraction_evidence(normalized, source_text)
+        payload = build_candidate_payload(
+            normalized,
+            anchors,
+            characters,
+            strict=strict,
+            memory_character_bindings=memory_bindings,
+            occurred_event_evidence=event_evidence,
+        )
+        if before_ingest is not None:
+            before_ingest()
+        return CandidateService(self.repo).ingest(story, payload, user, commit=commit)
+
+    def _candidate_contract(self, story, request, characters):
+        if request.source_scope != "novel_chapter" or not hasattr(
+            self.repo, "novel_chapter"
+        ):
+            return False, None, {}
+        chapter = self.repo.novel_chapter(
+            story, request.source_artifact_business_id or ""
+        )
+        if (
+            not chapter
+            or (chapter.novel_export.generation_plan or {}).get("schema")
+            != "story_novel_generation_plan.v2"
+        ):
+            return False, None, {}
+        entry = (
+            (chapter.novel_export.continuity_ledger or {}).get("chapters") or {}
+        ).get(str(chapter.position)) or {}
+        delta = entry.get("state_delta") or {}
+        event_ids = list(delta.get("occurred_event_ids") or [])
+        event_evidence = {
+            event_id: str((delta.get("evidence") or {}).get(event_id) or "")
+            for event_id in event_ids
+        }
+        if any(not quote for quote in event_evidence.values()):
+            raise ServiceError("记忆候选提取失败：typed event 缺少逐字来源证据")
+        return (
+            True,
+            knowledge_character_bindings(
+                (chapter.novel_export.generation_plan or {}).get("canon") or {},
+                delta,
+                characters,
+            ),
+            event_evidence,
+        )
 
     def _source(self, story, scope: str, source_artifact_business_id: str | None):
         if scope == "novel_chapter":
             chapter = self.repo.novel_chapter(story, source_artifact_business_id or "")
             if not chapter:
                 raise ConflictError("小说章节不存在或不属于当前 Story")
+            require_gated_novel_chapter(self.repo.session, chapter)
             anchor = self._existing_or_chapter_anchor(story, chapter)
             self.repo.commit()
             return [anchor], f"{chapter.title}\n{chapter.content_text}"
@@ -142,66 +242,6 @@ class NarrativeExtractionService:
             source_hash=novel_chapter_source_hash(chapter),
         )
 
-    def _candidate_payload(
-        self, normalized: dict, anchors: list
-    ) -> CandidateDeltaCreate:
-        by_id = {item.business_id: item for item in anchors}
-        fallback = anchors[0]
-        events = []
-        for raw in normalized.get("events") or []:
-            item = dict(raw)
-            anchor = by_id.get(item.get("occurred_at_anchor_business_id")) or fallback
-            item["occurred_at_anchor_business_id"] = anchor.business_id
-            events.append(
-                NarrativeEventCandidateCreate(
-                    **item,
-                    source_artifact_type=anchor.source_artifact_type,
-                    source_artifact_business_id=anchor.source_artifact_business_id,
-                    source_version=anchor.source_version,
-                    source_hash=anchor.source_hash,
-                )
-            )
-        memories = []
-        for raw in normalized.get("memories") or []:
-            item = dict(raw)
-            growth_delta = item.pop("growth_delta", None)
-            learned = by_id.get(item.get("learned_at_anchor_business_id")) or fallback
-            item["learned_at_anchor_business_id"] = learned.business_id
-            item["effective_from_anchor_business_id"] = (
-                by_id.get(item.get("effective_from_anchor_business_id")) or learned
-            ).business_id
-            if item.get("occurred_at_anchor_business_id"):
-                item["occurred_at_anchor_business_id"] = (
-                    by_id.get(item["occurred_at_anchor_business_id"]) or learned
-                ).business_id
-            if item.get("invalidated_at_anchor_business_id"):
-                item["invalidated_at_anchor_business_id"] = (
-                    by_id.get(item["invalidated_at_anchor_business_id"]) or learned
-                ).business_id
-            memories.append(
-                CharacterMemoryCandidateCreate(
-                    **item,
-                    source_artifact_type=learned.source_artifact_type,
-                    source_artifact_business_id=learned.source_artifact_business_id,
-                    source_version=learned.source_version,
-                    source_hash=learned.source_hash,
-                    candidate_evidence=(
-                        {"growth_delta": growth_delta} if growth_delta else None
-                    ),
-                )
-            )
-        return CandidateDeltaCreate(events=events, memories=memories)
-
     @staticmethod
-    def _prompt(source_text, characters, anchors) -> str:
-        return f"""从来源正文提取客观事件和每个角色的主观记忆候选。
-角色白名单：{json.dumps(characters, ensure_ascii=False)}
-可用锚点：{json.dumps([{'business_id': a.business_id, 'source': a.source_artifact_business_id} for a in anchors], ensure_ascii=False)}
-严格区分：客观事件、角色获知/信念、观众显隐。离场发生用 presentation=offscreen；不要把潜台词写成长期记忆。
-只保留会影响后续连续性、知情边界、关系、能力或世界规则的增量；忽略重复信息、气氛描写、普通动作和逐句对话。
-硬性控制输出规模：events 最多 8 条，memories 总计最多 6 条；summary、content、belief、perception 各字段都用一句简洁中文。
-角色没有获得新的长期认知时不要为其创建 memory；允许 events 或 memories 为空数组。
-只输出严格 JSON，字段和值必须遵守以下合同，不得自创别名或枚举：
-{{"events":[{{"event_type":"action|reveal|relationship|state_change|world_fact","summary":"客观事实","participant_character_ids":["角色 business_id"],"occurred_at_anchor_business_id":"锚点 business_id","presentation":"on_screen|offscreen|withheld","audience_disclosure":"hidden|hinted|partial|revealed"}}],"memories":[{{"character_business_id":"角色 business_id","virtual_ip_business_id":"虚拟IP business_id","memory_type":"witnessed|heard|inferred|dreamed|misled|remembered","content":"角色长期记住的内容","belief":"可选信念","belief_confidence":0.8,"perception":"可选感知","emotional_impact":["情绪"],"salience":0.8,"occurred_at_anchor_business_id":"锚点 business_id","learned_at_anchor_business_id":"锚点 business_id","effective_from_anchor_business_id":"锚点 business_id","invalidated_at_anchor_business_id":null,"growth_delta":{{}}}}]}}
-participant_character_ids、character_business_id 只能取角色白名单中的 character_business_id；锚点字段只能取可用锚点 business_id。
-来源正文：\n{source_text}"""
+    def _prompt(source_text, characters, anchors, contract=None) -> str:
+        return build_extraction_prompt(source_text, characters, anchors, contract)

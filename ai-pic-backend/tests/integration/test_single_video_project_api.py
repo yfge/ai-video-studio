@@ -7,6 +7,7 @@ from app.models.story_structure import Environment
 from app.models.task import Task, TaskType
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP, VirtualIPEnvironment
+from tests.integration.production_canvas_ai_stub import ProductionCanvasAIStub
 
 
 def test_single_video_project_creates_internal_story_episode_without_task(
@@ -160,7 +161,7 @@ def test_single_video_canvas_plan_reuses_unique_prompt_asset(
 ):
     monkeypatch.setattr(
         "app.services.ai_service.ai_service.ai_manager",
-        None,
+        ProductionCanvasAIStub(),
     )
     user = db_session.query(User).filter(User.username == "test_admin").first()
     virtual_ip = VirtualIP(user_id=user.id, name="林妹妹", is_active=True)

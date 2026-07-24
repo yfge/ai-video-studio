@@ -3,11 +3,33 @@ export interface StorySeedProtagonist {
   initial_state: string;
 }
 
-export interface StorySeed {
-  schema: "story_seed_v1";
+export interface StorySeedStructuredChapter {
+  position: number;
+  title: string;
+  goal: string;
+  key_events: string[];
+  character_focus: string[];
+  open_threads: string[];
+  end_state: string;
+}
+
+export interface StorySeedThreadPayoff {
+  thread_id: string;
+  payoff_position: number;
+  evidence_key_event: string;
+}
+
+export interface StorySeedStructuredOutline {
+  status: "draft" | "confirmed" | "frozen";
+  version: number;
+  chapters: StorySeedStructuredChapter[];
+  thread_schedule_version: number;
+  thread_payoffs: StorySeedThreadPayoff[];
+}
+
+interface StorySeedBase {
   title: string;
   premise: string;
-  outline: string;
   protagonists: StorySeedProtagonist[];
   world_constraints: string[];
   central_conflict: string;
@@ -15,6 +37,20 @@ export interface StorySeed {
   target_audience?: string | null;
   content_constraints: string[];
 }
+
+export interface StorySeedV1 extends StorySeedBase {
+  schema: "story_seed_v1";
+  outline: string;
+}
+
+export interface StorySeedV2 extends StorySeedBase {
+  schema: "story_seed_v2";
+  outline_text: string;
+  structured_outline: StorySeedStructuredOutline;
+  outline?: string;
+}
+
+export type StorySeed = StorySeedV1 | StorySeedV2;
 
 export interface StoryCreateRequest {
   title: string;

@@ -20,6 +20,7 @@ export function StoryProjectCard({
   const storyKey = story.business_id || String(story.id);
   const linkedCharacters = story.story_characters || story.characters || [];
   const singleVideo = isSingleVideoProject(story);
+  const novelWorkflow = story.workflow_mode === "novel_adaptation_v1";
   const episodeId = singleVideoProjectEpisodeId(story);
   const taskId = singleVideoProjectTaskId(story);
   const singleVideoHref = episodeId
@@ -82,10 +83,14 @@ export function StoryProjectCard({
           ) : (
             <>
               <Link
-                href={`/stories/${storyKey}?generate=episodes#episode-generation`}
+                href={
+                  novelWorkflow
+                    ? `/stories/${storyKey}#novel-workflow`
+                    : `/stories/${storyKey}?generate=episodes#episode-generation`
+                }
                 className={operatorButtonClass("primary", "whitespace-nowrap")}
               >
-                生成剧集
+                {novelWorkflow ? "小说与改编" : "生成剧集"}
               </Link>
               <Link
                 href={`/stories/${storyKey}`}

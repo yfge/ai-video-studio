@@ -1,4 +1,9 @@
 import type { Episode } from "./story.types";
+import type {
+  NovelChapterLength,
+  NovelChapterLengthOverrides,
+  NovelGenerationLengthProfile,
+} from "./story-novel-planning.types";
 
 export type NovelLifecycle = "legacy" | "draft" | "approved" | "superseded";
 export type ContinuityStatus =
@@ -21,7 +26,14 @@ export interface StoryNovelChapter {
   content_text: string;
   summary?: string | null;
   cliffhanger?: string | null;
-  review_status: "ready" | "review_required";
+  review_status:
+    | "ready"
+    | "review_required"
+    | "target_changed"
+    | "length_mismatch";
+  actual_chars?: number | null;
+  generation_status?: string | null;
+  extraction_status?: string | null;
   content_hash?: string | null;
   updated_at: string;
 }
@@ -33,6 +45,56 @@ export interface ContinuityIssue {
   message: string;
   suggestion?: string;
   accepted_reason?: string;
+}
+
+export interface StoryNovelCanonItem {
+  id: string;
+  label?: string;
+  name?: string;
+  kind?: "character" | "location" | "object" | "organization";
+  [key: string]: unknown;
+}
+
+export interface StoryNovelCanon {
+  timeline: StoryNovelCanonItem[];
+  entities: StoryNovelCanonItem[];
+  world_rules: StoryNovelCanonItem[];
+  milestones: StoryNovelCanonItem[];
+  character_arcs: Array<{
+    character_id: string;
+    start_state: string;
+    checkpoints: Array<{ position: number; state: string }>;
+    end_state: string;
+  }>;
+  initial_state: Record<string, Record<string, unknown>>;
+  canon_hash?: string | null;
+}
+
+export interface StoryNovelChapterPlan {
+  position: number;
+  title: string;
+  goal: string;
+  key_events?: string[];
+  character_focus?: string[];
+  open_threads?: string[];
+  end_state?: string;
+  target_chars: number;
+  min_chars?: number;
+  max_chars?: number;
+  length?: NovelChapterLength;
+  actual_chars?: number;
+  generation_status?: string;
+  extraction_status?: string;
+  preconditions?: Array<Record<string, unknown>>;
+  required_event_ids?: string[];
+  state_transitions?: Array<Record<string, unknown>>;
+  knowledge_grants?: Array<Record<string, unknown>>;
+  location_transitions?: Array<Record<string, unknown>>;
+  milestones_consumed?: string[];
+  forbidden_event_ids?: string[];
+  payoffs_due?: string[];
+  canon_refs?: string[];
+  timeline_event_bindings?: Record<string, string>;
 }
 
 export interface AdaptationPlanEpisode {
@@ -55,29 +117,99 @@ export interface StoryNovelAdaptationPlan {
 }
 
 export interface StoryNovelGenerationPlan {
+  schema?: "story_novel_generation_plan.v2";
+  version?: number;
   status: "planning" | "ready" | "failed";
+  phase?: "spec_ready" | "canon" | "chapters" | "ready";
+  canon?: StoryNovelCanon;
+  canon_hash?: string;
   chapter_count?: number;
   target_chars?: number;
-  chapters: Array<{
-    position: number;
-    title: string;
-    goal: string;
-    target_chars: number;
-  }>;
+  planned_min_chars?: number;
+  planned_target_chars?: number;
+  planned_max_chars?: number;
+  story_seed_version?: number;
+  outline_hash?: string;
+  plan_hash?: string;
+  length_profile?: NovelGenerationLengthProfile;
+  chapter_length_overrides?: NovelChapterLengthOverrides;
+  chapters: StoryNovelChapterPlan[];
 }
 
 export interface StoryNovelContinuityLedger {
-  state_status?: "empty" | "ready" | "stale";
+  schema?: "story_novel_continuity.v2" | "story_novel_continuity.v3";
+  state_status?: "empty" | "generating" | "ready" | "stale" | "failed";
+  stale_from_position?: number;
+  recovery_from_position?: number;
+  current_state?: Record<string, unknown>;
   chapters?: Record<
     string,
     {
-      status?: "body_ready" | "ready" | "stale";
-      extraction_status?: "pending" | "ready" | "stale";
+      status?:
+        | "body_ready"
+        | "ready"
+        | "stale"
+        | "state_pending"
+        | "gate_failed";
+      generation_status?: string;
+      extraction_status?: "pending" | "ready" | "stale" | "blocked";
       char_count?: number;
       body_hash?: string;
       source_hash?: string;
+      canon_hash?: string;
+      context_hash?: string;
+      state_before_hash?: string;
+      state_after_hash?: string;
+      state_validation?: {
+        status?: "passed" | "failed";
+        violations?: Array<{ code: string; message: string }>;
+      };
+      body_repair_count?: number;
+      state_extraction_repair_count?: number;
     }
   >;
+}
+
+export interface StoryNovelQualityScore {
+  score: number;
+  rationale: string;
+}
+
+export interface StoryNovelRepairGroup {
+  id: string;
+  title?: string;
+  issue_ids?: string[];
+  canon_target?: {
+    section:
+      | "timeline"
+      | "entities"
+      | "world_rules"
+      | "milestones"
+      | "character_arcs"
+      | "initial_state";
+    item_id?: string;
+    field?: string;
+  };
+  suggested_value?: unknown;
+  affected_chapter_business_ids?: string[];
+  earliest_position?: number;
+}
+
+export interface StoryNovelContinuityReport {
+  schema?:
+    | "story_novel_continuity_review.v2"
+    | "story_novel_continuity_review.v3";
+  summary?: string;
+  issues?: ContinuityIssue[];
+  hard_metrics?: Record<string, number>;
+  quality_scores?: Record<string, StoryNovelQualityScore>;
+  repair_groups?: StoryNovelRepairGroup[];
+  report_hash?: string;
+  canon_hash?: string;
+  plan_version?: number;
+  plan_hash?: string;
+  status?: "stale";
+  stale?: boolean;
 }
 
 export interface StoryNovelRevision {
@@ -87,6 +219,7 @@ export interface StoryNovelRevision {
   task_id?: number | null;
   style: "zhihu" | "prose";
   target_words: number;
+  model?: string | null;
   chapter_count?: number | null;
   total_words?: number | null;
   revision_number: number;
@@ -96,7 +229,7 @@ export interface StoryNovelRevision {
   content_hash?: string | null;
   generation_plan?: StoryNovelGenerationPlan | null;
   continuity_ledger?: StoryNovelContinuityLedger | null;
-  continuity_report?: { summary?: string; issues?: ContinuityIssue[] } | null;
+  continuity_report?: StoryNovelContinuityReport | null;
   adaptation_plan?: StoryNovelAdaptationPlan | null;
   approved_at?: string | null;
   created_at: string;
@@ -113,6 +246,12 @@ export interface NovelTaskResponse {
   task_id: number;
   status: string;
   revision_business_id?: string | null;
+}
+
+export interface StoryNovelCanonUpdateResponse {
+  revision: StoryNovelRevision;
+  canon_hash: string;
+  stale_from_position?: number | null;
 }
 
 export type AppliedNovelEpisodes = Episode[];

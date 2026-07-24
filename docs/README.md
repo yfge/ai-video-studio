@@ -21,6 +21,12 @@ This directory holds design notes, API references, and testing guides. Keep this
   interaction, and shared prompt contract improvements.
 - `docs/exec-plans/active/story-novel-adaptation-chain.md` — checkpointed
   Story → Novel → Episode → Script workflow for new narrative series.
+- `docs/exec-plans/active/structured-outline-platform-lengths.md` — confirmed
+  StorySeed v2 chapter structure plus Revision-owned platform length profiles,
+  per-chapter overrides, and generation-plan v4 evidence.
+- `docs/exec-plans/active/canon-gated-longform-quality-loop.md` — compiled
+  Canon, actual-body typed state gates, earliest-safe Canon repair/resume,
+  deterministic continuity metrics, and GPT-5.6 long-form acceptance.
 - `docs/exec-plans/completed/outline-driven-longform-novel.md` — dynamic
   StorySeed planning, 3K–5K chapter checkpoints, bounded memory context,
   extraction-only resume, and real-model acceptance.

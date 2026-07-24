@@ -17,15 +17,25 @@ class NarrativeMemoryInvalidationService:
         artifact_business_id: str,
         source_before_hash: str | None,
         source_after_hash: str,
+        force: bool = False,
+        reason_code: str = "source_hash_changed",
         commit: bool = True,
     ) -> dict:
         affected = []
         reason = {
-            "reason_code": "source_hash_changed",
+            "reason_code": reason_code,
             "source_before_hash": source_before_hash,
             "source_after_hash": source_after_hash,
             "detected_at": datetime.utcnow().isoformat(),
         }
+        stale_anchors = []
+        for anchor in self.repo.list_anchors(story.id):
+            if anchor.source_artifact_business_id == artifact_business_id and (
+                force or anchor.source_hash != source_after_hash
+            ):
+                anchor.status = "stale"
+                anchor.version = int(anchor.version or 1) + 1
+                stale_anchors.append(anchor.business_id)
         candidates = [
             *self.repo.list_events(story.id),
             *self.repo.list_private_memories(story.id),
@@ -33,7 +43,7 @@ class NarrativeMemoryInvalidationService:
         for item in candidates:
             if (
                 item.source_artifact_business_id == artifact_business_id
-                and item.source_hash != source_after_hash
+                and (force or item.source_hash != source_after_hash)
                 and item.status not in {"rejected", "superseded"}
             ):
                 item.status = "stale"
@@ -60,6 +70,7 @@ class NarrativeMemoryInvalidationService:
             self.repo.commit()
         return {
             "affected_candidate_ids": affected,
+            "stale_anchor_ids": stale_anchors,
             "stale_snapshot_ids": stale_snapshots,
         }
 

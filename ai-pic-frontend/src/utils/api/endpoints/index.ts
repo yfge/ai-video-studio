@@ -30,6 +30,7 @@ export * from "./virtual-ip-image.endpoints";
 // Story endpoints
 export * from "./story.endpoints";
 export * from "./story-novel.endpoints";
+export * from "./story-novel-planning.endpoints";
 export * from "./narrative-memory.endpoints";
 
 // Episode endpoints

@@ -199,10 +199,20 @@ class StoryNovelExportRequest(BaseModel):
         None, description="指定文本生成模型，如 openai:gpt-4o-mini"
     )
     temperature: Optional[float] = Field(0.7, ge=0.0, le=1.5, description="创造性温度")
+    compatibility_warnings: List[str] = Field(default_factory=list, exclude=True)
 
     @model_validator(mode="after")
     def normalize_style_specific_limits(self):
         if self.style == "prose":
+            ignored = [
+                name
+                for name in ("target_words", "chapter_count")
+                if getattr(self, name) is not None
+            ]
+            if ignored:
+                self.compatibility_warnings.append(
+                    "prose 已忽略旧字段: " + ", ".join(ignored)
+                )
             self.target_words = None
             self.chapter_count = None
             return self

@@ -43,6 +43,8 @@ __all__ = [
 
 EPISODE_GENERATE_SOFT_TIME_LIMIT = 7200
 EPISODE_GENERATE_TIME_LIMIT = 7500
+STORY_NOVEL_GENERATE_SOFT_TIME_LIMIT = 82_800
+STORY_NOVEL_GENERATE_TIME_LIMIT = 86_400
 
 
 @celery_app.task(name="tasks.story_generate")
@@ -69,8 +71,8 @@ def story_generate_task(
 
 @celery_app.task(
     name="tasks.story_novel_generate",
-    soft_time_limit=0,
-    time_limit=0,
+    soft_time_limit=STORY_NOVEL_GENERATE_SOFT_TIME_LIMIT,
+    time_limit=STORY_NOVEL_GENERATE_TIME_LIMIT,
 )
 def story_novel_generate_task(
     task_id: int, payload: Dict[str, Any], user_id: int

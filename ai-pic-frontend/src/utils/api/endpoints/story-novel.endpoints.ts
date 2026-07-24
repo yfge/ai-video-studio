@@ -4,6 +4,8 @@ import type {
   AppliedNovelEpisodes,
   ApiResponse,
   NovelTaskResponse,
+  StoryNovelCanon,
+  StoryNovelCanonUpdateResponse,
   StoryNovelChapter,
   StoryNovelRevision,
   StoryNovelRevisionList,
@@ -97,6 +99,20 @@ export function regenerateStoryNovelChapter(
     ),
     { method: "POST" },
   );
+}
+
+export function updateStoryNovelCanon(
+  revisionId: string,
+  payload: {
+    expected_plan_version: number;
+    expected_canon_hash: string;
+    canon: StoryNovelCanon;
+  },
+): Promise<ApiResponse<StoryNovelCanonUpdateResponse>> {
+  return httpClient(revisionPath(revisionId, "/canon"), {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function cloneStoryNovelRevision(

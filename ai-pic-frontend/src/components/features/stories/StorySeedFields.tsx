@@ -6,7 +6,7 @@ export function StorySeedView({ seed }: { seed: StorySeed }) {
       <ReadField label="故事前提" value={seed.premise} />
       <ReadField label="核心冲突" value={seed.central_conflict} />
       <div className="md:col-span-2">
-        <ReadField label="整体大纲" value={seed.outline} />
+        <ReadField label="整体大纲" value={storySeedOutlineText(seed)} />
       </div>
       <ReadField label="结局方向" value={seed.ending_direction || "未指定"} />
       <ReadField label="目标受众" value={seed.target_audience || "未指定"} />
@@ -39,8 +39,14 @@ export function StorySeedEditor({
   seed: StorySeed;
   onChange: (seed: StorySeed) => void;
 }) {
-  const field = (key: keyof StorySeed, value: unknown) =>
-    onChange({ ...seed, [key]: value });
+  const field = (key: string, value: unknown) =>
+    onChange({ ...seed, [key]: value } as StorySeed);
+  const setOutlineText = (value: string) =>
+    onChange(
+      seed.schema === "story_seed_v2"
+        ? { ...seed, outline_text: value }
+        : { ...seed, outline: value },
+    );
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <Editor
@@ -56,9 +62,9 @@ export function StorySeedEditor({
       <div className="md:col-span-2">
         <Editor
           label="整体大纲"
-          value={seed.outline}
+          value={storySeedOutlineText(seed)}
           rows={8}
-          onChange={(v) => field("outline", v)}
+          onChange={setOutlineText}
         />
       </div>
       <Editor
@@ -155,4 +161,10 @@ export function resolveStorySeed(story: Story): StorySeed {
     target_audience: story.target_audience || null,
     content_constraints: [],
   };
+}
+
+export function storySeedOutlineText(seed: StorySeed) {
+  return seed.schema === "story_seed_v2"
+    ? seed.outline_text || seed.outline || ""
+    : seed.outline;
 }

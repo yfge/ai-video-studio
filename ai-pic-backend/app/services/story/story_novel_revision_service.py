@@ -4,22 +4,24 @@ from app.models.story_novel_export import StoryNovelChapter, StoryNovelExport
 from app.models.user import User
 from app.repositories.story_novel_repository import StoryNovelRepository
 from app.schemas.generation_requests import StoryNovelExportRequest
+from app.schemas.story_novel_export import StoryNovelCreateRevisionRequest
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from .story_novel_approval_service import approve_revision
+from .story_novel_canon_edit_service import update_revision_canon
+from .story_novel_canon_service import content_hash
 from .story_novel_domain import (
     active_chapters,
     build_story_snapshot,
     refresh_revision_content,
     sha256_text,
 )
-from .story_novel_approval_service import approve_revision
-from .story_novel_memory_context import (
-    capture_chapter_source_hashes,
-    ensure_timestamp,
-    invalidate_chapter_source,
-    invalidate_reordered_chapters,
-    mark_revision_ledger_stale,
+from .story_novel_length_service import apply_length_spec
+from .story_novel_revision_edits import reorder_chapters, save_chapter
+from .story_novel_revision_factory import (
+    create_legacy_revision,
+    create_platform_revision,
 )
 
 
@@ -49,38 +51,48 @@ class StoryNovelRevisionService:
         task_id: int | None = None,
     ) -> StoryNovelExport:
         story = self.story(story_business_id)
+        self._ensure_story_idle(story, exclude_task_id=task_id)
         if not story.story_seed or story.story_seed_status != "confirmed":
             raise HTTPException(
                 status_code=409, detail="请先确认 Story Seed，再生成小说"
             )
         if story.workflow_mode != "novel_adaptation_v1":
             story.workflow_mode = "novel_adaptation_v1"
-        revision = StoryNovelExport(
-            story_id=story.id,
-            story_business_id=story.business_id,
-            task_id=task_id,
-            user_id=self.user.id,
-            style="prose",
-            target_words=0,
-            chapter_count=None,
-            total_words=0,
-            model=request.model,
-            temperature=request.temperature,
-            content_text="",
-            revision_number=self.repo.next_revision_number(story.id),
-            lifecycle_status="draft",
-            continuity_status="unchecked",
-            adaptation_plan_status="empty",
-            story_snapshot=build_story_snapshot(story),
-            generation_plan={"version": 1, "status": "planning", "chapters": []},
-            continuity_ledger={
-                "schema": "story_novel_continuity.v2",
-                "state_status": "empty",
-                "chapters": {},
-            },
-        )
-        self.db.add(revision)
-        self.db.flush()
+        seed = story.story_seed or {}
+        if seed.get("schema") == "story_seed_v2":
+            return create_platform_revision(
+                self,
+                story,
+                StoryNovelCreateRevisionRequest(
+                    model=request.model, temperature=request.temperature
+                ),
+                task_id,
+            )
+        return create_legacy_revision(self, story, request, task_id)
+
+    def create_platform_draft(
+        self,
+        story_business_id: str,
+        request: StoryNovelCreateRevisionRequest,
+        *,
+        task_id: int | None = None,
+    ) -> StoryNovelExport:
+        story = self.story(story_business_id)
+        self._ensure_story_idle(story, exclude_task_id=task_id)
+        if story.workflow_mode != "novel_adaptation_v1":
+            story.workflow_mode = "novel_adaptation_v1"
+        return create_platform_revision(self, story, request, task_id)
+
+    def update_length_spec(self, revision_id: str, request):
+        revision = self.revision(revision_id)
+        self._ensure_draft(revision)
+        self.ensure_no_active_task(revision)
+        plan = apply_length_spec(revision, request)
+        revision.generation_plan = plan
+        revision.chapter_count = plan["chapter_count"]
+        revision.target_words = plan["planned_target_chars"]
+        self.db.commit()
+        self.db.refresh(revision)
         return revision
 
     def checkpoint_chapter(
@@ -118,55 +130,14 @@ class StoryNovelRevisionService:
         return chapter
 
     def save_chapter(self, revision_id: str, chapter_id: str, request):
-        revision = self.revision(revision_id)
-        self._ensure_draft(revision)
-        chapter = self.repo.chapter(revision.id, chapter_id)
-        if not chapter:
-            raise HTTPException(status_code=404, detail="章节不存在")
-        ensure_timestamp(chapter.updated_at, request.expected_updated_at)
-        source_before = capture_chapter_source_hashes([chapter])
-        for field in ("title", "content_text", "summary", "cliffhanger"):
-            value = getattr(request, field, None)
-            if value is not None:
-                setattr(chapter, field, value)
-        chapter.content_hash = sha256_text(chapter.content_text)
-        chapter.review_status = "ready"
-        mark_revision_ledger_stale(
-            revision, from_position=chapter.position, edited_chapter=chapter
-        )
-        self._invalidate_from(revision, chapter.position + 1)
-        refresh_revision_content(revision)
-        invalidate_chapter_source(
-            self.db, revision, chapter, source_before[chapter.business_id]
-        )
-        self.db.commit()
-        self.db.refresh(chapter)
-        return chapter
+        return save_chapter(self, revision_id, chapter_id, request)
 
     def reorder(self, revision_id: str, request) -> StoryNovelExport:
-        revision = self.revision(revision_id)
-        self._ensure_draft(revision)
-        ensure_timestamp(revision.updated_at, request.expected_updated_at)
-        chapters = active_chapters(revision)
-        existing = {row.business_id: row for row in chapters}
-        ordered = request.ordered_chapter_business_ids
-        if len(ordered) != len(set(ordered)) or set(ordered) != set(existing):
-            raise HTTPException(status_code=400, detail="章节排序列表不完整或有重复")
-        changed_at = len(chapters) + 1
-        old = {row.business_id: row.position for row in chapters}
-        source_before = capture_chapter_source_hashes(chapters)
-        for position, business_id in enumerate(ordered, start=1):
-            changed_at = min(changed_at, old[business_id], position)
-            existing[business_id].position = position
-        invalidate_reordered_chapters(self.db, revision, chapters, source_before)
-        mark_revision_ledger_stale(revision, from_position=changed_at)
-        self._invalidate_from(revision, changed_at)
-        refresh_revision_content(revision)
-        self.db.commit()
-        return revision
+        return reorder_chapters(self, revision_id, request)
 
     def clone(self, revision_id: str) -> StoryNovelExport:
         source = self.revision(revision_id)
+        self.ensure_no_active_task(source)
         story = source.story
         request = StoryNovelExportRequest(
             style="prose", model=source.model, temperature=source.temperature
@@ -192,6 +163,7 @@ class StoryNovelRevisionService:
     def accept_issue(self, revision_id: str, issue_id: str, reason: str):
         revision = self.revision(revision_id)
         self._ensure_draft(revision)
+        self.ensure_no_active_task(revision)
         report = dict(revision.continuity_report or {})
         issues = [dict(item) for item in report.get("issues") or []]
         issue = next((item for item in issues if str(item.get("id")) == issue_id), None)
@@ -199,20 +171,60 @@ class StoryNovelRevisionService:
             raise HTTPException(status_code=404, detail="连续性问题不存在")
         issue["accepted_reason"] = reason
         report["issues"] = issues
-        revision.continuity_report = report
         blockers = [
             item
             for item in issues
             if item.get("severity") == "blocking" and not item.get("accepted_reason")
         ]
-        revision.continuity_status = "failed" if blockers else "passed"
+        hard_failed = any(
+            value
+            for key, value in (report.get("hard_metrics") or {}).items()
+            if key != "chapter_repair_rate"
+        )
+        if report.get("schema") == "story_novel_continuity_review.v3":
+            report.pop("report_hash", None)
+            report["report_hash"] = content_hash(report)
+        revision.continuity_report = report
+        revision.continuity_status = "failed" if blockers or hard_failed else "passed"
         self.db.commit()
         return revision
+
+    def update_canon(self, revision_id: str, request):
+        revision = self.revision(revision_id)
+        self._ensure_draft(revision)
+        self.ensure_no_active_task(revision)
+        return update_revision_canon(self, revision, request)
 
     def approve(self, revision_id: str) -> StoryNovelExport:
         revision = self.revision(revision_id)
         self._ensure_draft(revision)
+        self.ensure_no_active_task(revision)
         return approve_revision(self, revision)
+
+    def ensure_no_active_task(
+        self, revision: StoryNovelExport, *, exclude_task_id: int | None = None
+    ) -> None:
+        active = self.repo.active_task_for_targets(
+            [revision.business_id, revision.story_business_id],
+            exclude_task_id=exclude_task_id,
+        )
+        if active:
+            raise HTTPException(
+                status_code=409,
+                detail=f"小说任务 {active.id} 正在运行，请先取消任务",
+            )
+
+    def _ensure_story_idle(self, story, *, exclude_task_id: int | None = None) -> None:
+        revisions = self.repo.story_revisions(story.id)
+        active = self.repo.active_task_for_targets(
+            [story.business_id, *(item.business_id for item in revisions)],
+            exclude_task_id=exclude_task_id,
+        )
+        if active:
+            raise HTTPException(
+                status_code=409,
+                detail=f"小说任务 {active.id} 正在运行，请先取消任务",
+            )
 
     def _invalidate_from(self, revision: StoryNovelExport, position: int) -> None:
         for row in self.repo.chapters_from_position(revision.id, position):

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import {
   OperatorPanel,
   OperatorSectionHeader,
@@ -10,27 +11,49 @@ import {
 import { useStoryNovelWorkflow } from "@/hooks/useStoryNovelWorkflow";
 import type { Story } from "@/utils/api/types";
 import { StoryNovelAdaptationPanel } from "./StoryNovelAdaptationPanel";
+import { StoryNovelCanonPanel } from "./StoryNovelCanonPanel";
 import { StoryNovelChapterEditor } from "./StoryNovelChapterEditor";
-import { StoryNovelGenerationStatus } from "./StoryNovelGenerationStatus";
+import {
+  StoryNovelGenerationStatus,
+  storyNovelResumeLabel,
+} from "./StoryNovelGenerationStatus";
+import { StoryNovelLengthPanel } from "./StoryNovelLengthPanel";
+import { StoryNovelQualityPanel } from "./StoryNovelQualityPanel";
 
 export function StoryNovelWorkflowPanel({
   story,
   onEpisodesApplied,
+  onTaskLockChange,
 }: {
   story: Story;
   onEpisodesApplied: () => Promise<void>;
+  onTaskLockChange?: (locked: boolean) => void;
 }) {
   const workflow = useStoryNovelWorkflow(story, onEpisodesApplied);
   const current = workflow.current;
+  useEffect(() => {
+    onTaskLockChange?.(workflow.activeTask);
+  }, [onTaskLockChange, workflow.activeTask]);
   const acceptIssue = (issueId: string) => {
     const reason = window.prompt("填写接受该阻断项的理由");
     if (reason?.trim()) void workflow.acceptIssue(issueId, reason.trim());
   };
   return (
     <>
+      {story.story_seed_status === "confirmed" &&
+      story.story_seed?.schema === "story_seed_v2" ? (
+        <StoryNovelLengthPanel
+          story={story}
+          revision={current}
+          locked={workflow.activeTask}
+          busy={workflow.busy}
+          onCreate={workflow.createRevision}
+          onUpdate={workflow.updateLengthSpec}
+        />
+      ) : null}
       <OperatorPanel id="novel-workflow" className="scroll-mt-24">
         <OperatorSectionHeader
-          title="2. 小说版本与章节编辑"
+          title="3. 小说版本与正文生成"
           subtitle="审批后的小说是新系列叙事母本；保存与模型检查分离，不会自动产生费用"
         />
         <div className="grid gap-3 p-5">
@@ -39,6 +62,7 @@ export function StoryNovelWorkflowPanel({
             <select
               aria-label="当前小说版本"
               value={workflow.selectedId || ""}
+              disabled={workflow.activeTask}
               onChange={(event) => workflow.setSelectedId(event.target.value)}
               className={operatorInputClass("mt-1 w-full")}
             >
@@ -46,6 +70,12 @@ export function StoryNovelWorkflowPanel({
               {workflow.revisions.map((revision) => (
                 <option key={revision.business_id} value={revision.business_id}>
                   v{revision.revision_number} · {revision.lifecycle_status}
+                  {revision.generation_plan?.length_profile
+                    ? ` · ${
+                        revision.generation_plan.length_profile.profile_name ||
+                        revision.generation_plan.length_profile.profile_id
+                      }`
+                    : ""}
                   {revision.business_id === workflow.canonicalId
                     ? " · canonical"
                     : ""}
@@ -55,27 +85,39 @@ export function StoryNovelWorkflowPanel({
           </label>
         </div>
         <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 px-5 py-4">
-          <button
-            type="button"
-            disabled={workflow.busy || story.story_seed_status !== "confirmed"}
-            onClick={() => void workflow.generate()}
-            className={operatorButtonClass("primary")}
-          >
-            根据故事大纲生成长篇小说
-          </button>
+          {current?.lifecycle_status === "draft" && !current.chapters.length ? (
+            <button
+              type="button"
+              disabled={
+                workflow.busy ||
+                workflow.activeTask ||
+                !["ready", "failed", "planning"].includes(
+                  current.generation_plan?.status || "",
+                )
+              }
+              onClick={() => void workflow.startGeneration()}
+              className={operatorButtonClass("primary")}
+            >
+              {current.generation_plan?.status === "failed"
+                ? "重试规划并生成正文"
+                : current.generation_plan?.status === "planning"
+                ? "继续规划并生成正文"
+                : "开始生成正文"}
+            </button>
+          ) : null}
           {story.story_seed_status !== "confirmed" ? (
             <span className="text-xs text-amber-700">
               请先确认 Story Seed；确认不会自动调用小说生成。
             </span>
           ) : null}
-          {current?.lifecycle_status === "draft" ? (
+          {current?.lifecycle_status === "draft" && current.chapters.length ? (
             <button
               type="button"
-              disabled={workflow.busy}
+              disabled={workflow.busy || workflow.activeTask}
               onClick={() => void workflow.resume()}
               className={operatorButtonClass("secondary")}
             >
-              补齐缺失章节
+              {storyNovelResumeLabel(current.continuity_ledger)}
             </button>
           ) : null}
           {current ? (
@@ -98,18 +140,32 @@ export function StoryNovelWorkflowPanel({
             </>
           ) : null}
           {workflow.taskId ? (
-            <StatusPill
-              tone={workflow.taskStatus === "completed" ? "green" : "blue"}
-            >
-              任务 #{workflow.taskId} · {workflow.taskStatus}
-            </StatusPill>
+            <>
+              <StatusPill
+                tone={workflow.taskStatus === "completed" ? "green" : "blue"}
+              >
+                任务 #{workflow.taskId} · {workflow.taskStatus}
+              </StatusPill>
+              {workflow.activeTask ? (
+                <button
+                  type="button"
+                  disabled={workflow.busy}
+                  onClick={() => void workflow.cancelTask()}
+                  className={operatorButtonClass("secondary")}
+                >
+                  取消正文任务
+                </button>
+              ) : null}
+            </>
           ) : null}
         </div>
         {current?.lifecycle_status === "draft" ? (
           <div className="flex flex-wrap gap-2 border-t border-gray-100 px-5 py-4">
             <button
               type="button"
-              disabled={workflow.busy || !current.chapters.length}
+              disabled={
+                workflow.busy || workflow.activeTask || !current.chapters.length
+              }
               onClick={() => void workflow.continuity()}
               className={operatorButtonClass("secondary")}
             >
@@ -117,7 +173,11 @@ export function StoryNovelWorkflowPanel({
             </button>
             <button
               type="button"
-              disabled={workflow.busy || current.continuity_status !== "passed"}
+              disabled={
+                workflow.busy ||
+                workflow.activeTask ||
+                current.continuity_status !== "passed"
+              }
               onClick={() => void workflow.approve()}
               className={operatorButtonClass("primary")}
             >
@@ -128,7 +188,7 @@ export function StoryNovelWorkflowPanel({
           <div className="border-t border-gray-100 px-5 py-4">
             <button
               type="button"
-              disabled={workflow.busy}
+              disabled={workflow.busy || workflow.activeTask}
               onClick={() => void workflow.clone()}
               className={operatorButtonClass("secondary")}
             >
@@ -144,60 +204,35 @@ export function StoryNovelWorkflowPanel({
             {workflow.error}
           </p>
         ) : null}
-        {current?.continuity_report?.issues?.length ? (
-          <div className="border-t border-gray-100 p-5">
-            <h3 className="text-sm font-semibold">连续性报告</h3>
-            <div className="mt-3 space-y-2">
-              {current.continuity_report.issues.map((issue) => (
-                <div
-                  key={issue.id}
-                  className="rounded-md border border-gray-200 p-3 text-xs"
-                >
-                  <div className="flex items-center gap-2">
-                    <StatusPill
-                      tone={issue.severity === "blocking" ? "red" : "amber"}
-                    >
-                      {issue.severity}
-                    </StatusPill>
-                    <span>{issue.message}</span>
-                  </div>
-                  {issue.suggestion ? (
-                    <p className="mt-2 text-gray-500">{issue.suggestion}</p>
-                  ) : null}
-                  {issue.severity === "blocking" && !issue.accepted_reason ? (
-                    <button
-                      type="button"
-                      onClick={() => acceptIssue(issue.id)}
-                      className={operatorButtonClass("secondary", "mt-2")}
-                    >
-                      填写接受理由
-                    </button>
-                  ) : null}
-                  {issue.accepted_reason ? (
-                    <p className="mt-2 text-green-700">
-                      已接受：{issue.accepted_reason}
-                    </p>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
       </OperatorPanel>
+      {current?.lifecycle_status === "draft" &&
+      current.generation_plan?.canon ? (
+        <StoryNovelCanonPanel
+          revision={current}
+          busy={workflow.busy || workflow.activeTask}
+          onSave={workflow.saveCanon}
+        />
+      ) : null}
+      {current?.continuity_report ? (
+        <StoryNovelQualityPanel
+          report={current.continuity_report}
+          onAcceptIssue={acceptIssue}
+        />
+      ) : null}
       {current?.chapters.length ? (
         <StoryNovelChapterEditor
           storyId={story.business_id}
           revision={current}
-          busy={workflow.busy}
+          busy={workflow.busy || workflow.activeTask}
           onSave={(chapter, patch) => void workflow.saveChapter(chapter, patch)}
           onMove={(ids) => void workflow.reorder(ids)}
           onRegenerate={(chapter) => void workflow.regenerate(chapter)}
         />
       ) : null}
-      {current?.lifecycle_status === "approved" ? (
+      {current ? (
         <StoryNovelAdaptationPanel
           revision={current}
-          busy={workflow.busy}
+          busy={workflow.busy || workflow.activeTask}
           onGenerate={() => void workflow.generatePlan()}
           onSave={(version, rows) => void workflow.savePlan(version, rows)}
           onApprove={(version) => void workflow.approvePlan(version)}

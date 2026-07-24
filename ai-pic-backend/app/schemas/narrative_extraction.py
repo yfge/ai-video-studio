@@ -1,8 +1,16 @@
 """Provider output schema for narrative-memory candidate extraction."""
 
+import re
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+
+def _require_semantic_evidence(value: str) -> str:
+    value = value.strip()
+    if len(re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]+", "", value)) < 3:
+        raise ValueError("evidence must contain at least 3 semantic characters")
+    return value
 
 
 class NarrativeExtractionRequest(BaseModel):
@@ -29,15 +37,22 @@ class ExtractedEvent(BaseModel):
         "action", "reveal", "relationship", "state_change", "world_fact"
     ]
     summary: str
+    typed_event_ids: list[str] = Field(default_factory=list)
     participant_character_ids: list[str] = Field(default_factory=list)
     occurred_at_anchor_business_id: str
     presentation: Literal["on_screen", "offscreen", "withheld"] = "on_screen"
     audience_disclosure: Literal["hidden", "hinted", "partial", "revealed"] = "revealed"
+    evidence: str = Field(..., min_length=3)
+
+    _validate_evidence = field_validator("evidence")(_require_semantic_evidence)
 
 
 class ExtractedMemory(BaseModel):
     character_business_id: str
     virtual_ip_business_id: str
+    typed_character_id: Optional[str] = None
+    typed_fact_id: Optional[str] = None
+    typed_source_event_id: Optional[str] = None
     memory_type: Literal[
         "witnessed", "heard", "inferred", "dreamed", "misled", "remembered"
     ]
@@ -52,6 +67,9 @@ class ExtractedMemory(BaseModel):
     effective_from_anchor_business_id: str
     invalidated_at_anchor_business_id: Optional[str] = None
     growth_delta: Optional[dict] = None
+    evidence: str = Field(..., min_length=3)
+
+    _validate_evidence = field_validator("evidence")(_require_semantic_evidence)
 
 
 class NarrativeExtractionEnvelope(BaseModel):

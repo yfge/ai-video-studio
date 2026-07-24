@@ -12,6 +12,10 @@ import type {
   StoryNovelRevision,
 } from "@/utils/api/types";
 import { StoryNovelAdaptationEpisodeCard } from "./StoryNovelAdaptationEpisodeCard";
+import {
+  adaptationEvidenceReady,
+  adaptationGateMessage,
+} from "./storyNovelAdaptationGate";
 
 interface Props {
   revision: StoryNovelRevision;
@@ -32,6 +36,14 @@ export function StoryNovelAdaptationPanel({
 }: Props) {
   const plan = revision.adaptation_plan;
   const editable = revision.adaptation_plan_status === "draft";
+  const novelApproved = revision.lifecycle_status === "approved";
+  const planCanGenerate =
+    novelApproved &&
+    ["empty", "stale"].includes(revision.adaptation_plan_status);
+  const episodesCanApply =
+    novelApproved &&
+    ["approved", "applied"].includes(revision.adaptation_plan_status) &&
+    adaptationEvidenceReady(revision);
   const [rows, setRows] = useState<AdaptationPlanEpisode[]>(
     plan?.episodes || [],
   );
@@ -62,7 +74,7 @@ export function StoryNovelAdaptationPanel({
   return (
     <OperatorPanel id="novel-adaptation" className="scroll-mt-24">
       <OperatorSectionHeader
-        title="3. 分集改编计划"
+        title="4. 小说改编计划 → 剧集"
         subtitle="确认来源章节、改编目标、情节点、冲突、角色弧和卡点后再创建 Episode"
         action={
           <StatusPill
@@ -77,15 +89,36 @@ export function StoryNovelAdaptationPanel({
           </StatusPill>
         }
       />
+      <div
+        aria-label="权威生产链路"
+        className="border-b border-gray-100 px-5 py-3 text-xs font-medium text-gray-700"
+      >
+        故事大纲 → 小说审批 → 改编计划 → 剧集 → 剧本
+      </div>
+      <p
+        role="status"
+        className={`px-5 pt-4 text-xs ${
+          episodesCanApply ? "text-green-700" : "text-amber-700"
+        }`}
+      >
+        {adaptationGateMessage(revision)}
+      </p>
       {!plan ? (
-        <div className="p-5">
+        <div className="flex flex-wrap gap-2 p-5">
           <button
             type="button"
-            disabled={busy}
+            disabled={busy || !planCanGenerate}
             onClick={onGenerate}
             className={operatorButtonClass("primary")}
           >
             生成分集改编计划
+          </button>
+          <button
+            type="button"
+            disabled
+            className={operatorButtonClass("secondary")}
+          >
+            创建剧集
           </button>
         </div>
       ) : (
@@ -112,6 +145,16 @@ export function StoryNovelAdaptationPanel({
             />
           ))}
           <div className="flex flex-wrap gap-2">
+            {revision.adaptation_plan_status === "stale" ? (
+              <button
+                type="button"
+                disabled={busy || !planCanGenerate}
+                onClick={onGenerate}
+                className={operatorButtonClass("primary")}
+              >
+                重新生成分集改编计划
+              </button>
+            ) : null}
             <button
               type="button"
               disabled={busy || !editable}
@@ -146,19 +189,16 @@ export function StoryNovelAdaptationPanel({
                 审批计划
               </button>
             ) : null}
-            {revision.adaptation_plan_status === "approved" ||
-            revision.adaptation_plan_status === "applied" ? (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={onApply}
-                className={operatorButtonClass("primary")}
-              >
-                {revision.adaptation_plan_status === "applied"
-                  ? "返回既有剧集"
-                  : "创建 Episode"}
-              </button>
-            ) : null}
+            <button
+              type="button"
+              disabled={busy || !episodesCanApply}
+              onClick={onApply}
+              className={operatorButtonClass("primary")}
+            >
+              {revision.adaptation_plan_status === "applied"
+                ? "返回既有剧集"
+                : "创建剧集"}
+            </button>
           </div>
         </div>
       )}

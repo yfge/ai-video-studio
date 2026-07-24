@@ -33,6 +33,15 @@ class TaskRepository(BaseRepository[Task]):
             .first()
         )
 
+    def get_status_fresh(self, task_id: int) -> TaskStatus | None:
+        """Read committed task status outside the worker's long transaction."""
+        with Session(bind=self.session.get_bind()) as fresh:
+            return (
+                fresh.query(Task.status)
+                .filter(Task.id == task_id, Task.is_deleted.is_(False))
+                .scalar()
+            )
+
     def list_for_user(
         self,
         *,

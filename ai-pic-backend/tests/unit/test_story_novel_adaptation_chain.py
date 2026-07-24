@@ -9,13 +9,15 @@ from app.schemas.story_novel_export import StoryNovelChapterUpdateRequest
 from app.services.episode.novel_workflow_guard import (
     ensure_direct_episode_generation_allowed,
 )
+from app.services.narrative_memory.source_hash import novel_chapter_source_hash
 from app.services.script.novel_source_context import build_source_novel_context
 from app.services.story.story_novel_adaptation_service import (
     StoryNovelAdaptationService,
 )
+from app.services.story.story_novel_downstream_gate import freeze_adaptation_plan
 from app.services.story.story_novel_export_payload import build_story_novel_payload
+from app.services.story.story_novel_length_service import generation_plan_hash
 from app.services.story.story_novel_revision_service import StoryNovelRevisionService
-from app.services.narrative_memory.source_hash import novel_chapter_source_hash
 from fastapi import HTTPException
 
 
@@ -85,6 +87,9 @@ def _draft_with_chapters(db_session, user, story):
             for position in range(1, 4)
         ],
     }
+    revision.generation_plan["plan_hash"] = generation_plan_hash(
+        revision.generation_plan
+    )
     revision.chapter_count = 3
     revision.target_words = 9000
     db_session.commit()
@@ -125,7 +130,13 @@ def _mark_revision_ready(revision):
             }
         )
     revision.continuity_ledger = {"chapters": rows}
-    revision.continuity_report = {"coverage": coverage, "issues": []}
+    revision.continuity_report = {
+        "status": "passed",
+        "plan_version": revision.generation_plan["version"],
+        "plan_hash": revision.generation_plan["plan_hash"],
+        "coverage": coverage,
+        "issues": [],
+    }
 
 
 def test_prose_payload_can_exclude_episode_cycle(db_session):
@@ -195,14 +206,16 @@ def test_adaptation_apply_is_idempotent_and_freezes_lineage(db_session):
     revision_service, revision, chapters = _draft_with_chapters(db_session, user, story)
     revision.continuity_status = "passed"
     revision_service.approve(revision.business_id)
-    revision.adaptation_plan = {
-        "version": 1,
-        "novel_content_hash": revision.content_hash,
-        "episodes": [
+    revision.adaptation_plan = freeze_adaptation_plan(
+        revision,
+        version=1,
+        rows=[
             {
                 "episode_number": 1,
                 "title": "秘密被看见",
-                "source_chapter_business_ids": [chapters[0].business_id],
+                "source_chapter_business_ids": [
+                    chapter.business_id for chapter in chapters
+                ],
                 "adaptation_goal": "把秘密转成可拍冲突",
                 "summary": "主角首次暴露",
                 "plot_points": ["目击", "追问"],
@@ -211,7 +224,7 @@ def test_adaptation_apply_is_idempotent_and_freezes_lineage(db_session):
                 "cliffhanger": "证据出现",
             }
         ],
-    }
+    )
     revision.adaptation_plan_status = "approved"
     db_session.commit()
 
@@ -226,6 +239,42 @@ def test_adaptation_apply_is_idempotent_and_freezes_lineage(db_session):
     source = build_source_novel_context(first[0])
     assert source["adaptation_goal"] == "把秘密转成可拍冲突"
     assert source["source_anchors"][0]["summary"] == "摘要1"
+
+
+def test_plan_approval_freezes_current_plan_and_chapter_hashes(db_session):
+    user, story = _user_story(db_session)
+    revision_service, revision, chapters = _draft_with_chapters(db_session, user, story)
+    revision.continuity_status = "passed"
+    revision_service.approve(revision.business_id)
+    rows = [
+        {
+            "episode_number": 1,
+            "title": "完整改编",
+            "source_chapter_business_ids": [
+                chapter.business_id for chapter in chapters
+            ],
+            "adaptation_goal": "覆盖全书",
+            "summary": "三章完整映射",
+            "plot_points": [],
+            "conflicts": [],
+            "character_arcs": {},
+        }
+    ]
+    revision.adaptation_plan = {
+        "version": 1,
+        "novel_content_hash": revision.content_hash,
+        "episodes": rows,
+    }
+    revision.adaptation_plan_status = "draft"
+    db_session.commit()
+
+    approved = StoryNovelAdaptationService(db_session, user).approve_plan(
+        revision.business_id, 1
+    )
+    assert approved.adaptation_plan_status == "approved"
+    assert approved.adaptation_plan["generation_plan_hash"]
+    assert approved.adaptation_plan["plan_hash"]
+    assert len(approved.adaptation_plan["chapter_sources"]) == 3
 
 
 def test_direct_episode_generation_guard_is_stable(db_session):

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   OperatorPanel,
   OperatorSectionHeader,
@@ -9,45 +9,118 @@ import {
 } from "@/components/shared";
 import { storyAPI } from "@/utils/api/endpoints";
 import type { Story } from "@/utils/api/types";
+import { saveStructuredStorySeed } from "@/utils/api/endpoints";
+import { useStorySeedStructureTask } from "@/hooks/useStorySeedStructureTask";
 import {
   resolveStorySeed,
   StorySeedEditor,
   StorySeedView,
+  storySeedOutlineText,
 } from "./StorySeedFields";
+import { StoryStructuredOutlineEditor } from "./StoryStructuredOutlineEditor";
+import { validateStructuredOutline } from "./storyStructuredOutline";
+import {
+  StorySeedBaselineEvidence,
+  StorySeedPlanningStatus,
+  StorySeedSaveActions,
+} from "./StorySeedSectionControls";
 
-export function StorySeedSection({ story }: { story: Story }) {
+export function StorySeedSection({
+  story,
+  locked = false,
+  onChanged,
+}: {
+  story: Story;
+  locked?: boolean;
+  onChanged?: () => Promise<void>;
+}) {
   const initial = useMemo(() => resolveStorySeed(story), [story]);
   const [seed, setSeed] = useState(initial);
-  const [status, setStatus] = useState(story.story_seed_status || "draft");
+  const [status, setStatus] = useState<"draft" | "confirmed">(
+    story.story_seed_status === "confirmed" ? "confirmed" : "draft",
+  );
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
+  const completedTask = useRef<number | null>(null);
+  const acceptPlannedStory = useCallback((next: Story) => {
+    if (next.story_seed) setSeed(next.story_seed);
+    setStatus(next.story_seed_status === "confirmed" ? "confirmed" : "draft");
+  }, []);
+  const planning = useStorySeedStructureTask(story, acceptPlannedStory);
   useEffect(() => {
     setSeed(initial);
-    setStatus(story.story_seed_status || "draft");
+    setStatus(story.story_seed_status === "confirmed" ? "confirmed" : "draft");
   }, [initial, story.story_seed_status]);
+  useEffect(() => {
+    if (
+      planning.taskId &&
+      ["completed", "failed", "cancelled"].includes(
+        planning.taskStatus || "",
+      ) &&
+      completedTask.current !== planning.taskId
+    ) {
+      completedTask.current = planning.taskId;
+      void onChanged?.();
+    }
+  }, [onChanged, planning.taskId, planning.taskStatus]);
 
-  const save = async (status: "draft" | "confirmed") => {
+  const save = async (nextStatus: "draft" | "confirmed") => {
     try {
       setSaving(true);
-      const response = await storyAPI.updateStory(story.business_id, {
-        story_seed: seed,
-        story_seed_status: status,
-      });
+      const response =
+        seed.schema === "story_seed_v2"
+          ? await saveStructuredStorySeed(story.business_id, {
+              outline_text: storySeedOutlineText(seed),
+              structured_outline: {
+                ...seed.structured_outline,
+                status: nextStatus,
+              },
+              story_seed_status: nextStatus,
+              story_seed_version:
+                story.story_seed_version || seed.structured_outline.version,
+            })
+          : await storyAPI.updateStory(story.business_id, {
+              story_seed: seed,
+              story_seed_status: nextStatus,
+            });
       if (!response.success || !response.data) throw new Error(response.error);
       setSeed(response.data.story_seed || seed);
-      setStatus(response.data.story_seed_status || status);
+      setStatus(
+        response.data.story_seed_status === "confirmed"
+          ? "confirmed"
+          : nextStatus,
+      );
       setEditing(false);
       setNotice(
-        status === "confirmed"
-          ? "Story Seed 已确认；不会自动生成小说或分集"
+        nextStatus === "confirmed"
+          ? "结构化 Story Seed 已确认并冻结；不会自动生成正文"
           : "Story Seed 已本地保存；未调用模型",
       );
+      await onChanged?.();
     } catch (error) {
       setNotice(`保存失败：${String(error)}`);
     } finally {
       setSaving(false);
     }
+  };
+  const structured =
+    seed.schema === "story_seed_v2" ? seed.structured_outline : null;
+  const validation = structured ? validateStructuredOutline(structured) : null;
+  const controlsLocked = locked || planning.active;
+  const toggleEditing = () => {
+    if (controlsLocked) return;
+    if (status === "confirmed" && seed.schema === "story_seed_v2") {
+      setSeed({
+        ...seed,
+        structured_outline: { ...seed.structured_outline, status: "draft" },
+      });
+      setStatus("draft");
+      setEditing(true);
+      setNotice("已进入新草稿；保存并重新确认后才可生成正文");
+      return;
+    }
+    setEditing((value) => !value);
   };
 
   return (
@@ -62,67 +135,84 @@ export function StorySeedSection({ story }: { story: Story }) {
             </StatusPill>
             <button
               type="button"
-              onClick={() => setEditing((value) => !value)}
+              disabled={controlsLocked}
+              onClick={toggleEditing}
               className={operatorButtonClass("secondary")}
             >
-              {editing ? "取消编辑" : "编辑大纲"}
+              {editing
+                ? "取消编辑"
+                : status === "confirmed"
+                ? "解冻为新草稿"
+                : "编辑大纲"}
             </button>
           </div>
         }
       />
       <div className="space-y-5 p-5">
-        <BaselineEvidence story={story} />
+        <StorySeedBaselineEvidence story={story} />
         {notice ? (
           <p className="text-xs text-gray-600" role="status">
             {notice}
           </p>
         ) : null}
-        {editing ? (
+        {locked ? (
+          <p className="text-xs text-amber-700">
+            正文任务运行期间大纲已冻结；请先取消任务并等待状态确认。
+          </p>
+        ) : null}
+        <StorySeedPlanningStatus
+          taskId={planning.taskId}
+          taskStatus={planning.taskStatus}
+          active={planning.active}
+          requesting={planning.requesting}
+          progress={planning.progress}
+          error={planning.error}
+          onCancel={() => void planning.cancel()}
+        />
+        {editing && seed.schema === "story_seed_v1" ? (
           <StorySeedEditor seed={seed} onChange={setSeed} />
         ) : (
           <StorySeedView seed={seed} />
         )}
+        {structured ? (
+          <StoryStructuredOutlineEditor
+            outline={structured}
+            disabled={!editing || controlsLocked}
+            onChange={(structured_outline) => {
+              if (seed.schema === "story_seed_v2") {
+                setSeed({ ...seed, structured_outline });
+              }
+            }}
+          />
+        ) : (
+          <button
+            type="button"
+            disabled={controlsLocked || planning.requesting}
+            onClick={() => void planning.start()}
+            className={operatorButtonClass("primary")}
+          >
+            AI 生成结构化章节计划
+          </button>
+        )}
+        {structured && (structured.thread_schedule_version !== 1 || editing) ? (
+          <button
+            type="button"
+            disabled={controlsLocked || planning.requesting}
+            onClick={() => void planning.start()}
+            className={operatorButtonClass("primary")}
+          >
+            AI 重新生成结构化章节计划
+          </button>
+        ) : null}
         {editing ? (
-          <div className="flex flex-wrap justify-end gap-2 border-t border-gray-100 pt-4">
-            <span className="mr-auto text-xs text-gray-500">
-              保存与确认均不调用模型；修改会将小说和下游标记为待复核。
-            </span>
-            <button
-              type="button"
-              disabled={saving}
-              onClick={() => void save("draft")}
-              className={operatorButtonClass("secondary")}
-            >
-              保存大纲
-            </button>
-            <button
-              type="button"
-              disabled={saving}
-              onClick={() => void save("confirmed")}
-              className={operatorButtonClass("primary")}
-            >
-              确认 Story Seed
-            </button>
-          </div>
+          <StorySeedSaveActions
+            saving={saving}
+            disabled={controlsLocked}
+            canConfirm={Boolean(structured) && !validation}
+            onSave={save}
+          />
         ) : null}
       </div>
     </OperatorPanel>
-  );
-}
-
-function BaselineEvidence({ story }: { story: Story }) {
-  const downstream = story.extra_metadata?.story_seed_downstream as
-    | { status?: string }
-    | undefined;
-  return (
-    <div className="flex flex-wrap gap-2 text-xs">
-      <StatusPill tone="blue">
-        公共记忆基线 v{story.shared_memory_baseline_version || 0}
-      </StatusPill>
-      <StatusPill tone="gray">Seed v{story.story_seed_version || 1}</StatusPill>
-      {downstream?.status === "review_required" ? (
-        <StatusPill tone="amber">下游待复核</StatusPill>
-      ) : null}
-    </div>
   );
 }

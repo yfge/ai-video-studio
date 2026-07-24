@@ -159,6 +159,7 @@ ai-pic-backend/backups/*.sql
 *.log
 logs/
 artifacts/
+/outputs/
 docker/.env.harness.*
 
 # 临时文件

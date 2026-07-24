@@ -8,24 +8,28 @@ import {
   approveStoryNovelRevision,
   checkStoryNovelContinuity,
   cloneStoryNovelRevision,
+  createStoryNovelRevision,
+  generateStoryNovelRevisionAsync,
   generateStoryNovelAdaptationPlan,
-  generateStoryZhihuNovelAsync,
   listStoryNovelRevisions,
   regenerateStoryNovelChapter,
   reorderStoryNovelChapters,
   resumeStoryNovelRevision,
   saveStoryNovelAdaptationPlan,
   saveStoryNovelChapter,
-  taskAPI,
+  updateStoryNovelCanon,
+  updateStoryNovelLengthSpec,
 } from "@/utils/api/endpoints";
 import type {
   AdaptationPlanEpisode,
   Story,
+  StoryNovelCanon,
   StoryNovelChapter,
+  StoryNovelCreateRevisionPayload,
   StoryNovelRevision,
+  StoryNovelUpdateLengthSpecPayload,
 } from "@/utils/api/types";
-
-const TERMINAL = new Set(["completed", "failed", "cancelled"]);
+import { useStoryNovelTaskTracking } from "./useStoryNovelTaskTracking";
 
 export function useStoryNovelWorkflow(
   story: Story,
@@ -34,9 +38,6 @@ export function useStoryNovelWorkflow(
   const [revisions, setRevisions] = useState<StoryNovelRevision[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [canonicalId, setCanonicalId] = useState<string | null>(null);
-  const [taskId, setTaskId] = useState<number | null>(null);
-  const [taskStatus, setTaskStatus] = useState<string | null>(null);
-  const [progress, setProgress] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,62 +60,22 @@ export function useStoryNovelWorkflow(
     void load();
   }, [load]);
 
-  useEffect(() => {
-    if (!taskId || (taskStatus && TERMINAL.has(taskStatus))) return;
-    let active = true;
-    const refresh = async () => {
-      const response = await taskAPI.getTask(String(taskId));
-      if (!active || !response.success || !response.data) return;
-      setTaskStatus(response.data.status);
-      setProgress(
-        response.data.progress_detail || response.data.description || null,
-      );
-      if (response.data.status === "failed") {
-        setError(response.data.error_message || "小说任务失败");
-      }
-      await load();
-    };
-    void refresh();
-    const timer = window.setInterval(refresh, 3000);
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-    };
-  }, [load, taskId, taskStatus]);
+  const task = useStoryNovelTaskTracking(load, setSelectedId);
+  const { taskId, trackTask } = task;
 
   const current = useMemo(
     () => revisions.find((item) => item.business_id === selectedId) || null,
     [revisions, selectedId],
   );
-
-  const startTask = async (
-    request: Promise<{
-      success: boolean;
-      data?: {
-        task_id: number;
-        status: string;
-        revision_business_id?: string | null;
-      };
-      error?: string;
-    }>,
-  ) => {
-    setBusy(true);
-    setError(null);
-    const response = await request;
-    setBusy(false);
-    if (!response.success || !response.data) {
-      setError(response.error || "创建任务失败");
-      return;
+  useEffect(() => {
+    if (
+      current &&
+      (task.revisionId !== current.business_id || (!taskId && current.task_id))
+    ) {
+      trackTask(current.task_id || null, current.business_id);
     }
-    setTaskId(response.data.task_id);
-    setTaskStatus(response.data.status);
-    setProgress("任务已创建，等待处理…");
-    if (response.data.revision_business_id) {
-      setSelectedId(response.data.revision_business_id);
-    }
-    await load();
-  };
-
+  }, [current, task.revisionId, taskId, trackTask]);
+  const taskIsCurrent = task.revisionId === current?.business_id;
   const replaceRevision = (revision: StoryNovelRevision) => {
     setRevisions((items) => [
       revision,
@@ -122,7 +83,6 @@ export function useStoryNovelWorkflow(
     ]);
     setSelectedId(revision.business_id);
   };
-
   const mutate = async (
     request: Promise<{
       success: boolean;
@@ -175,36 +135,80 @@ export function useStoryNovelWorkflow(
     return true;
   };
 
+  const saveCanonAction = async (canon: StoryNovelCanon) => {
+    if (
+      !current?.generation_plan?.version ||
+      !current.generation_plan.canon_hash
+    ) {
+      return false;
+    }
+    setBusy(true);
+    setError(null);
+    const response = await updateStoryNovelCanon(current.business_id, {
+      expected_plan_version: current.generation_plan.version,
+      expected_canon_hash: current.generation_plan.canon_hash,
+      canon,
+    });
+    setBusy(false);
+    if (!response.success || !response.data) {
+      setError(response.error || "保存 Canon 失败");
+      return false;
+    }
+    replaceRevision(response.data.revision);
+    return true;
+  };
+
   return {
     revisions,
     current,
     selectedId,
     canonicalId,
     setSelectedId,
-    taskId,
-    taskStatus,
-    progress,
-    busy,
-    error,
-    generate: () =>
-      startTask(
-        generateStoryZhihuNovelAsync(story.business_id, {
-          style: "prose",
-        }),
+    taskId: taskIsCurrent ? task.taskId : null,
+    taskStatus: taskIsCurrent ? task.taskStatus : null,
+    progress: taskIsCurrent ? task.progress : null,
+    busy: busy || task.busy,
+    error: error || (taskIsCurrent ? task.error : null),
+    activeTask: taskIsCurrent && task.active,
+    createRevision: (payload: StoryNovelCreateRevisionPayload) =>
+      mutate(createStoryNovelRevision(story.business_id, payload)),
+    updateLengthSpec: (
+      revisionId: string,
+      payload: StoryNovelUpdateLengthSpecPayload,
+    ) => mutate(updateStoryNovelLengthSpec(revisionId, payload)),
+    startGeneration: () =>
+      current &&
+      task.startTask(
+        generateStoryNovelRevisionAsync(current.business_id),
+        current.business_id,
       ),
+    cancelTask: task.cancelTask,
     resume: () =>
-      current && startTask(resumeStoryNovelRevision(current.business_id)),
+      current &&
+      task.startTask(
+        resumeStoryNovelRevision(current.business_id),
+        current.business_id,
+      ),
     regenerate: (chapter: StoryNovelChapter) =>
       current &&
-      startTask(
+      task.startTask(
         regenerateStoryNovelChapter(current.business_id, chapter.business_id),
+        current.business_id,
       ),
     continuity: () =>
-      current && startTask(checkStoryNovelContinuity(current.business_id)),
+      current &&
+      task.startTask(
+        checkStoryNovelContinuity(current.business_id),
+        current.business_id,
+      ),
     generatePlan: () =>
       current &&
-      startTask(generateStoryNovelAdaptationPlan(current.business_id)),
+      task.startTask(
+        generateStoryNovelAdaptationPlan(current.business_id),
+        current.business_id,
+      ),
     saveChapter: saveChapterAction,
+    saveCanon: saveCanonAction,
     reorder: (orderedIds: string[]) =>
       current?.updated_at
         ? mutate(

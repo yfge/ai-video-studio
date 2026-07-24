@@ -28,6 +28,9 @@ from app.services.episode.episode_generation_result_processor import (
 )
 from app.services.episode.episode_generation_utils import persist_story_outlines
 from app.services.episode.episode_stream_persistence import persist_episode_record
+from app.services.episode.novel_workflow_guard import (
+    ensure_direct_episode_generation_allowed,
+)
 from app.services.episode_agent import EpisodeGenerationCallbacks
 from app.services.narrative_quality_gate import (
     NarrativeQualityGateError,
@@ -61,6 +64,7 @@ def run_episode_generation_task(
         story = StoryRepository(db).get_by_user(request.story_id, user_id)
         if not story:
             raise RuntimeError("故事不存在")
+        ensure_direct_episode_generation_allowed(story)
 
         story_data = build_story_data(story)
         apply_marketing_overrides(story_data, build_marketing_overrides(request))

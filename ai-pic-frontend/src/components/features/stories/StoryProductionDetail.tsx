@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   OperatorPanel,
   OperatorInspector,
@@ -51,6 +52,7 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
     storyEnvironmentLinks,
   } = state;
   const openEpisodeGeneration = useEpisodeGenerationAnchor(setGenOpen);
+  const [novelTaskLocked, setNovelTaskLocked] = useState(false);
   if (loading) {
     return <OperatorState title="加载故事详情..." />;
   }
@@ -118,11 +120,16 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
             </div>
           </OperatorPanel>
 
-          <StoryOutlineSection story={story} />
+          <StoryOutlineSection
+            story={story}
+            locked={novelTaskLocked}
+            onChanged={refresh}
+          />
           {story.workflow_mode === "novel_adaptation_v1" ? (
             <StoryNovelWorkflowPanel
               story={story}
               onEpisodesApplied={refresh}
+              onTaskLockChange={setNovelTaskLocked}
             />
           ) : (
             <>

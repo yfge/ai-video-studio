@@ -5,10 +5,15 @@ from app.core.middleware import get_current_active_user
 from app.models.user import User
 from app.repositories.story_novel_repository import StoryNovelRepository
 from app.schemas.story_novel_export import (
+    StoryNovelCanonUpdateRequest,
+    StoryNovelCanonUpdateResponse,
     StoryNovelChapterReorderRequest,
     StoryNovelChapterResponse,
     StoryNovelChapterUpdateRequest,
     StoryNovelContinuityIssueAcceptRequest,
+    StoryNovelCreateRevisionRequest,
+    StoryNovelGenerateRevisionRequest,
+    StoryNovelLengthSpecUpdateRequest,
     StoryNovelRevisionListResponse,
     StoryNovelRevisionResponse,
 )
@@ -19,6 +24,24 @@ from sqlalchemy.orm import Session
 from .novel_task_queue import queue_novel_operation
 
 router = APIRouter()
+
+
+@router.post(
+    "/business/{story_business_id}/novel/revisions",
+    response_model=StoryNovelRevisionResponse,
+)
+def create_novel_revision(
+    story_business_id: str,
+    request: StoryNovelCreateRevisionRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    revision = StoryNovelRevisionService(db, current_user).create_platform_draft(
+        story_business_id, request
+    )
+    db.commit()
+    db.refresh(revision)
+    return revision
 
 
 @router.get(
@@ -50,6 +73,36 @@ def get_novel_revision(
     db: Session = Depends(get_db),
 ):
     return StoryNovelRevisionService(db, current_user).revision(revision_business_id)
+
+
+@router.post("/novel/revisions/{revision_business_id}/generate-async")
+def generate_novel_revision(
+    revision_business_id: str,
+    request: StoryNovelGenerateRevisionRequest | None = None,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    service = StoryNovelRevisionService(db, current_user)
+    revision = service.revision(revision_business_id)
+    service._ensure_draft(revision)
+    response = queue_novel_operation(db, current_user, revision, "generate_revision")
+    response["data"]["warnings"] = request.compatibility_warnings() if request else []
+    return response
+
+
+@router.patch(
+    "/novel/revisions/{revision_business_id}/length-spec",
+    response_model=StoryNovelRevisionResponse,
+)
+def update_novel_length_spec(
+    revision_business_id: str,
+    request: StoryNovelLengthSpecUpdateRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    return StoryNovelRevisionService(db, current_user).update_length_spec(
+        revision_business_id, request
+    )
 
 
 @router.post("/novel/revisions/{revision_business_id}/resume-async")
@@ -153,6 +206,26 @@ def accept_continuity_issue(
     return StoryNovelRevisionService(db, current_user).accept_issue(
         revision_business_id, issue_id, request.reason
     )
+
+
+@router.patch(
+    "/novel/revisions/{revision_business_id}/canon",
+    response_model=StoryNovelCanonUpdateResponse,
+)
+def update_novel_canon(
+    revision_business_id: str,
+    request: StoryNovelCanonUpdateRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    revision, canon_hash, stale_from = StoryNovelRevisionService(
+        db, current_user
+    ).update_canon(revision_business_id, request)
+    return {
+        "revision": revision,
+        "canon_hash": canon_hash,
+        "stale_from_position": stale_from,
+    }
 
 
 @router.post(

@@ -3,7 +3,58 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from app.schemas.story_novel_longform import StoryNovelCanon
+from pydantic import BaseModel, Field, model_validator
+
+
+class NovelLengthRange(BaseModel):
+    min_chars: int = Field(..., strict=True, gt=0)
+    target_chars: int = Field(..., strict=True, gt=0)
+    max_chars: int = Field(..., strict=True, gt=0)
+
+    @model_validator(mode="after")
+    def validate_order(self):
+        if not self.min_chars <= self.target_chars <= self.max_chars:
+            raise ValueError(
+                "length must satisfy min_chars <= target_chars <= max_chars"
+            )
+        return self
+
+
+class NovelLengthProfileResponse(NovelLengthRange):
+    profile_id: str
+    name: str
+    count_mode: Literal["non_whitespace_chars"] = "non_whitespace_chars"
+
+
+class StoryNovelCreateRevisionRequest(BaseModel):
+    style: Literal["prose"] = "prose"
+    length_profile_id: str = "standard_serial"
+    custom_length_profile: Optional[NovelLengthRange] = None
+    chapter_length_overrides: dict[str, NovelLengthRange] = Field(default_factory=dict)
+    model: Optional[str] = None
+    temperature: Optional[float] = Field(0.7, ge=0.0, le=1.5)
+
+
+class StoryNovelLengthSpecUpdateRequest(BaseModel):
+    length_profile_id: str
+    custom_length_profile: Optional[NovelLengthRange] = None
+    chapter_length_overrides: dict[str, NovelLengthRange] = Field(default_factory=dict)
+    expected_plan_version: int = Field(..., strict=True, ge=1)
+    model: Optional[str] = Field(None, min_length=1, max_length=128)
+
+
+class StoryNovelGenerateRevisionRequest(BaseModel):
+    target_words: Optional[int] = None
+    chapter_count: Optional[int] = None
+
+    def compatibility_warnings(self) -> list[str]:
+        ignored = [
+            name
+            for name in ("target_words", "chapter_count")
+            if getattr(self, name) is not None
+        ]
+        return ["prose 已忽略旧字段: " + ", ".join(ignored)] if ignored else []
 
 
 class StoryNovelExportSummary(BaseModel):
@@ -84,6 +135,18 @@ class StoryNovelChapterReorderRequest(BaseModel):
 
 class StoryNovelContinuityIssueAcceptRequest(BaseModel):
     reason: str = Field(..., min_length=3, max_length=1000)
+
+
+class StoryNovelCanonUpdateRequest(BaseModel):
+    expected_plan_version: int = Field(..., ge=1)
+    expected_canon_hash: str = Field(..., min_length=64, max_length=64)
+    canon: StoryNovelCanon
+
+
+class StoryNovelCanonUpdateResponse(BaseModel):
+    revision: StoryNovelRevisionResponse
+    canon_hash: str
+    stale_from_position: Optional[int] = None
 
 
 class AdaptationPlanEpisode(BaseModel):

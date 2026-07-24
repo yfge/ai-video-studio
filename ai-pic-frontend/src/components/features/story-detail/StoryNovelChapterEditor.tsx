@@ -8,6 +8,7 @@ import {
 } from "@/components/shared";
 import type { StoryNovelChapter, StoryNovelRevision } from "@/utils/api/types";
 import { narrativeMemoryAPI } from "@/utils/api/endpoints";
+import { resolveNovelChapterStatus } from "./storyNovelChapterStatus";
 
 interface Props {
   storyId: string;
@@ -30,6 +31,7 @@ function ChapterCard({
   onRegenerate,
   orderedIds,
   storyId,
+  status,
 }: {
   chapter: StoryNovelChapter;
   locked: boolean;
@@ -39,11 +41,12 @@ function ChapterCard({
   onRegenerate: Props["onRegenerate"];
   orderedIds: string[];
   storyId: string;
+  status: ReturnType<typeof resolveNovelChapterStatus>;
 }) {
   const [title, setTitle] = useState(chapter.title);
   const [content, setContent] = useState(chapter.content_text);
   const [summary, setSummary] = useState(chapter.summary || "");
-  const [memoryStatus, setMemoryStatus] = useState("未提取");
+  const [memoryRequestStatus, setMemoryRequestStatus] = useState("");
   useEffect(() => {
     setTitle(chapter.title);
     setContent(chapter.content_text);
@@ -58,13 +61,13 @@ function ChapterCard({
     onMove(ids);
   };
   const extractMemory = async () => {
-    setMemoryStatus("正在提交提取任务…");
+    setMemoryRequestStatus("正在提交提取任务…");
     const response = await narrativeMemoryAPI.extractCandidates(
       storyId,
       "novel_chapter",
       chapter.business_id,
     );
-    setMemoryStatus(
+    setMemoryRequestStatus(
       response.success && response.data
         ? `候选任务 #${response.data.task_id}`
         : response.error || "提取失败；正文已保留",
@@ -79,9 +82,22 @@ function ChapterCard({
         >
           {chapter.review_status === "ready" ? "就绪" : "待复核"}
         </StatusPill>
-        <StatusPill tone={memoryStatus === "未提取" ? "gray" : "blue"}>
-          记忆 {memoryStatus}
+        <StatusPill
+          tone={status.generationStatus === "ready" ? "green" : "blue"}
+        >
+          正文 {status.generationStatus}
         </StatusPill>
+        <StatusPill
+          tone={status.extractionStatus === "ready" ? "green" : "gray"}
+        >
+          提取 {memoryRequestStatus || status.extractionStatus}
+        </StatusPill>
+        <span className="text-xs text-gray-500">
+          实际 {status.actualChars} 字符
+          {status.length
+            ? ` · 计划 ${status.length.min_chars}–${status.length.max_chars}`
+            : ""}
+        </span>
         <div className="ml-auto flex gap-2">
           <button
             type="button"
@@ -181,13 +197,14 @@ export function StoryNovelChapterEditor(props: Props) {
         <ChapterCard
           key={chapter.business_id}
           chapter={chapter}
-          locked={props.revision.lifecycle_status !== "draft"}
+          locked={props.revision.lifecycle_status !== "draft" || props.busy}
           busy={props.busy}
           onSave={props.onSave}
           onMove={props.onMove}
           onRegenerate={props.onRegenerate}
           orderedIds={orderedIds}
           storyId={props.storyId}
+          status={resolveNovelChapterStatus(props.revision, chapter)}
         />
       ))}
     </div>

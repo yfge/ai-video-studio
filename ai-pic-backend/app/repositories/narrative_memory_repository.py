@@ -1,5 +1,3 @@
-from typing import Optional
-
 from app.models.narrative_memory import (
     CharacterMemory,
     CharacterMemorySnapshot,
@@ -18,7 +16,7 @@ class NarrativeMemoryRepository:
     def __init__(self, session: Session):
         self.session = session
 
-    def get_owned_story(self, business_id: str, user: User) -> Optional[Story]:
+    def get_owned_story(self, business_id: str, user: User) -> Story | None:
         query = self.session.query(Story).filter(
             Story.business_id == business_id,
             Story.is_deleted.is_(False),
@@ -29,7 +27,7 @@ class NarrativeMemoryRepository:
 
     def get_story_character(
         self, story_id: int, character_business_id: str
-    ) -> Optional[StoryCharacter]:
+    ) -> StoryCharacter | None:
         return (
             self.session.query(StoryCharacter)
             .options(joinedload(StoryCharacter.virtual_ip))
@@ -53,7 +51,7 @@ class NarrativeMemoryRepository:
             .all()
         )
 
-    def get_virtual_ip(self, business_id: str) -> Optional[VirtualIP]:
+    def get_virtual_ip(self, business_id: str) -> VirtualIP | None:
         return (
             self.session.query(VirtualIP)
             .filter(
@@ -68,13 +66,14 @@ class NarrativeMemoryRepository:
         self.session.add(anchor)
         return anchor
 
-    def get_anchor(self, story_id: int, business_id: str) -> Optional[NarrativeAnchor]:
+    def get_anchor(self, story_id: int, business_id: str) -> NarrativeAnchor | None:
         return (
             self.session.query(NarrativeAnchor)
             .filter(
                 NarrativeAnchor.story_id == story_id,
                 NarrativeAnchor.business_id == business_id,
                 NarrativeAnchor.is_deleted.is_(False),
+                NarrativeAnchor.status == "active",
             )
             .first()
         )
@@ -85,6 +84,7 @@ class NarrativeMemoryRepository:
             .filter(
                 NarrativeAnchor.story_id == story_id,
                 NarrativeAnchor.is_deleted.is_(False),
+                NarrativeAnchor.status == "active",
             )
             .order_by(NarrativeAnchor.narrative_sequence, NarrativeAnchor.id)
             .all()
@@ -95,7 +95,7 @@ class NarrativeMemoryRepository:
         self.session.add(event)
         return event
 
-    def get_event(self, story_id: int, business_id: str) -> Optional[NarrativeEvent]:
+    def get_event(self, story_id: int, business_id: str) -> NarrativeEvent | None:
         return (
             self.session.query(NarrativeEvent)
             .filter(
@@ -131,7 +131,7 @@ class NarrativeMemoryRepository:
         self.session.add(memory)
         return memory
 
-    def get_memory(self, story_id: int, business_id: str) -> Optional[CharacterMemory]:
+    def get_memory(self, story_id: int, business_id: str) -> CharacterMemory | None:
         return (
             self.session.query(CharacterMemory)
             .filter(
@@ -145,7 +145,7 @@ class NarrativeMemoryRepository:
 
     def get_owned_private_memory(
         self, business_id: str, user: User
-    ) -> Optional[CharacterMemory]:
+    ) -> CharacterMemory | None:
         query = (
             self.session.query(CharacterMemory)
             .join(Story, CharacterMemory.story_id == Story.id)
@@ -196,7 +196,7 @@ class NarrativeMemoryRepository:
 
     def latest_snapshot(
         self, story_id: int, character_business_id: str | None = None
-    ) -> Optional[CharacterMemorySnapshot]:
+    ) -> CharacterMemorySnapshot | None:
         query = self.session.query(CharacterMemorySnapshot).filter(
             CharacterMemorySnapshot.story_id == story_id,
             CharacterMemorySnapshot.is_deleted.is_(False),
@@ -236,7 +236,7 @@ class NarrativeMemoryRepository:
             .all()
         )
 
-    def canonical_novel(self, story: Story) -> Optional[StoryNovelExport]:
+    def canonical_novel(self, story: Story) -> StoryNovelExport | None:
         if not story.canonical_novel_export_id:
             return None
         return (
@@ -249,9 +249,7 @@ class NarrativeMemoryRepository:
             .first()
         )
 
-    def novel_chapter(
-        self, story: Story, business_id: str
-    ) -> Optional[StoryNovelChapter]:
+    def novel_chapter(self, story: Story, business_id: str) -> StoryNovelChapter | None:
         return (
             self.session.query(StoryNovelChapter)
             .join(

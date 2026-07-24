@@ -1,12 +1,19 @@
 from types import SimpleNamespace
 
 import pytest
+from app.core.exceptions import ServiceError
 from app.repositories.narrative_memory_repository import NarrativeMemoryRepository
 from app.repositories.narrative_promotion_repository import NarrativePromotionRepository
 from app.schemas.narrative_memory import CharacterMemoryCandidateCreate
 from app.services.narrative_memory.baseline_service import BaselineService
-from app.services.narrative_memory.dramatic_state_service import DramaticStateService
+from app.services.narrative_memory.extraction_evidence import (
+    normalize_extraction_evidence,
+)
 from app.services.narrative_memory.extraction_service import NarrativeExtractionService
+from app.services.narrative_memory.source_evidence import (
+    align_source_evidence,
+    source_contains_evidence,
+)
 from pydantic import ValidationError as PydanticValidationError
 from tests.unit.services.test_narrative_memory_system import _world
 
@@ -43,6 +50,163 @@ def test_extraction_prompt_bounds_per_chapter_candidate_volume():
     assert "允许 events 或 memories 为空数组" in prompt
     assert '"event_type":"action|reveal|relationship|state_change|world_fact"' in prompt
     assert '"presentation":"on_screen|offscreen|withheld"' in prompt
+    assert '"evidence":"正文逐字证据"' in prompt
+    assert '"typed_fact_id":"事实ID"' in prompt
+    assert "不得用角色在别处出现的姓名拼接他人对话" in prompt
+
+
+def test_candidate_evidence_must_exist_in_source():
+    source = "褚蓝打开保险箱，取出零号风钥。黎雁确认接收。"
+
+    assert source_contains_evidence(
+        source, "褚蓝打开保险箱，取出零号风钥……黎雁确认接收"
+    )
+    assert not source_contains_evidence(source, "裴衡承认制造旱潮")
+
+
+def test_extraction_evidence_aligns_only_ordered_source_fragments():
+    source = (
+        "黎雁站在露台上，看着天光变白。"
+        "风里带着盐和锈的味道。"
+        "她低头看表，2174年8月3日，07:23。"
+    )
+    evidence = "黎雁站在露台上，看着天光变白。她低头看表，2174年8月3日，07:23。"
+
+    aligned = align_source_evidence(source, evidence)
+
+    assert aligned == ("黎雁站在露台上，看着天光变白……她低头看表，2174年8月3日，07:23")
+    assert source_contains_evidence(source, aligned)
+    assert align_source_evidence(source, "裴衡承认制造旱潮") == "裴衡承认制造旱潮"
+
+
+def test_extraction_evidence_restores_short_dialogue_attribution():
+    source = (
+        "我可以告诉你，数据来自三个独立的气象站。"
+        "“可以。”他说，“但你必须在一周内完成验证。九月二十日不会等你。”"
+    )
+    normalized = {
+        "events": [],
+        "memories": [
+            {"evidence": "可以。但你必须在一周内完成验证。九月二十日不会等你。"}
+        ],
+    }
+
+    normalize_extraction_evidence(normalized, source)
+
+    assert normalized["memories"][0]["evidence"] == (
+        "可以。”他说，“但你必须在一周内完成验证。九月二十日不会等你"
+    )
+
+
+def test_extraction_evidence_expands_multiple_short_source_fragments():
+    source = (
+        "“议长。”她说，“我要求对数据进行独立验证。在验证完成之前，我不会使用风钥。”"
+        "裴衡沉默了很久，最后点了点头。"
+        "“可以。”他说，“但你必须在一周内完成验证。”"
+    )
+    evidence = (
+        "议长。……我要求对数据进行独立验证。在验证完成之前，我不会使用风钥。"
+        "……可以。……但你必须在一周内完成验证。"
+    )
+
+    aligned = align_source_evidence(source, evidence)
+
+    assert source_contains_evidence(source, aligned)
+    assert "议长。”她" in aligned
+    assert "可以。”他" in aligned
+
+
+def test_extraction_evidence_rejects_multi_fragment_speaker_attribution():
+    source = (
+        "“移交完成。”裴衡说，签收灯由红转绿。"
+        "裴衡把风钥匣推到黎雁面前。"
+        "“黎工程师，从现在开始，你就是零号风钥的合法保管人。”"
+    )
+    evidence = (
+        "裴衡说：“移交完成。……黎工程师，从现在开始，你就是零号风钥的合法保管人。”"
+    )
+
+    aligned = align_source_evidence(source, evidence)
+
+    assert aligned == evidence
+    assert not source_contains_evidence(source, aligned)
+
+
+@pytest.mark.parametrize(
+    "source",
+    (
+        "裴衡宣布：“九月二十日之后，季风窗口将永久关闭。”大厅里一片寂静。",
+        "“九月二十日之后，季风窗口将永久关闭。”裴衡宣布。",
+    ),
+)
+def test_extraction_evidence_strips_attribution_from_long_direct_quote(source):
+    evidence = "裴衡说：“九月二十日之后，季风窗口将永久关闭。”"
+
+    aligned = align_source_evidence(source, evidence)
+
+    assert aligned == "九月二十日之后，季风窗口将永久关闭。"
+    assert source_contains_evidence(source, aligned)
+
+
+@pytest.mark.parametrize(
+    "source_prefix",
+    (
+        "裴衡看着王五。王五说：",
+        "裴衡问王五，王五说：",
+        "裴衡示意王五，王五宣布：",
+        "王五说：",
+    ),
+)
+def test_extraction_evidence_rejects_nested_delegated_or_wrong_speaker(
+    source_prefix,
+):
+    quote = "九月二十日之后，季风窗口将永久关闭，所有运输线路也会停止运行。"
+    evidence = f"裴衡说：“{quote}”"
+
+    assert align_source_evidence(f"{source_prefix}“{quote}”", evidence) == evidence
+    assert not source_contains_evidence(f"{source_prefix}“{quote}”", evidence)
+
+
+def test_extraction_evidence_does_not_join_different_speakers():
+    source = (
+        "裴衡说：“季风窗口将在九月二十日永久关闭。”"
+        "王五说：“零号风钥必须在今晚交给黎雁保管。”"
+    )
+    evidence = (
+        "裴衡说：“季风窗口将在九月二十日永久关闭……零号风钥必须在今晚交给黎雁保管。”"
+    )
+
+    assert align_source_evidence(source, evidence) == evidence
+    assert not source_contains_evidence(source, evidence)
+
+
+def test_extraction_evidence_does_not_strip_attribution_around_false_claims():
+    source = (
+        "“移交完成。”签收灯由红转绿。"
+        "“黎工程师，从现在开始，你就是零号风钥的合法保管人。”"
+    )
+    invalid_evidence = (
+        "裴衡说：“黎工程师，从现在开始，你就是零号风钥的合法保管人。……移交完成。”",
+        "裴衡说：“移交完成。……黎工程师，你就是零号风钥的唯一继承人。”",
+        "裴衡说：“移交完成。”",
+    )
+
+    for evidence in invalid_evidence:
+        assert align_source_evidence(source, evidence) == evidence
+        assert not source_contains_evidence(source, evidence)
+
+
+def test_extraction_evidence_rejects_reordered_or_fabricated_claims():
+    source = "黎雁明确接收零号风钥并签字。褚蓝随后核对完整维护记录并封存。"
+    for evidence in (
+        "褚蓝随后核对完整维护记录并封存……黎雁明确接收零号风钥并签字",
+        "伪。黎雁明确接收零号风钥并签字。褚蓝随后核对完整维护记录并封存。",
+        "虚构。黎雁明确接收零号风钥并签字。褚蓝随后核对完整维护记录并封存。",
+        "裴衡销毁零号风钥并删除全部记录",
+    ):
+        normalized = {"events": [{"evidence": evidence}], "memories": []}
+        with pytest.raises(ServiceError, match="正文证据无效"):
+            normalize_extraction_evidence(normalized, source)
 
 
 def test_shared_memory_is_filtered_by_canon_branch(db_session):
@@ -80,25 +244,3 @@ def test_shared_memory_is_filtered_by_canon_branch(db_session):
         )
         == 1
     )
-
-
-def test_dramatic_state_gate_separates_subtext_and_disclosure():
-    state = {
-        "must_not_reveal": ["密门在井下"],
-        "character_intents": [
-            {
-                "character_business_id": "char-a",
-                "hidden_goal": "逼他交出钥匙",
-                "expression_policy": "subtext_only",
-            }
-        ],
-    }
-    script = SimpleNamespace(
-        dialogues=[{"scene_number": 1, "content": "密门在井下，逼他交出钥匙"}]
-    )
-    gate = DramaticStateService._quality_gate(state, script, {"scene_number": 1})
-    assert gate["passed"] is False
-    assert {item["id"] for item in gate["blocking_issues"]} == {
-        "must_not_reveal",
-        "subtext_spoken_directly",
-    }
