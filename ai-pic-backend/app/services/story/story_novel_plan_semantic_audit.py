@@ -13,6 +13,7 @@ from app.utils.json_utils import extract_json_block
 from pydantic import ValidationError
 
 from .story_novel_canon_service import content_hash
+from .story_novel_plan_semantic_movements import filter_redundant_audit_movements
 from .story_novel_plan_semantic_prompt import EFFECT_FIELDS as _EFFECT_FIELDS
 from .story_novel_plan_semantic_prompt import (
     build_plan_semantic_audit_prompt as _audit_prompt,
@@ -47,7 +48,12 @@ async def audit_and_patch_plan_batch(
         max_tokens=PLAN_SEMANTIC_AUDIT_MAX_TOKENS,
         temperature=0.0,
     )
-    first = _parse_audit(first_text, canon, batch_chapters)
+    first = filter_redundant_audit_movements(
+        _parse_audit(first_text, canon, batch_chapters),
+        canon,
+        prior_chapters,
+        batch_chapters,
+    )
     patched, patch_count = _apply_missing_effects(batch_chapters, first)
     candidate = [*prior_chapters, *patched]
     if require_complete:
@@ -68,7 +74,12 @@ async def audit_and_patch_plan_batch(
             max_tokens=PLAN_SEMANTIC_AUDIT_MAX_TOKENS,
             temperature=0.0,
         )
-        final = _parse_audit(final_text, canon, patched)
+        final = filter_redundant_audit_movements(
+            _parse_audit(final_text, canon, patched),
+            canon,
+            prior_chapters,
+            patched,
+        )
         if any(
             event["missing_effects"][field]
             for event in final
