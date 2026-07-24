@@ -153,3 +153,60 @@ def test_deterministic_gate_allows_conclusion_in_current_contract():
         )
         == []
     )
+
+
+def test_deterministic_gate_catches_exact_irreversible_future_event():
+    current = {
+        **_plan_row(1),
+        "key_events": ["苏砚查看门锁"],
+    }
+    future = {
+        **_plan_row(2),
+        "key_events": ["苏砚杀死闻鹿"],
+        "required_event_ids": ["event-wen-lu-killed"],
+    }
+    revision = SimpleNamespace(
+        generation_plan={
+            "schema": "story_novel_generation_plan.v2",
+            "canon": _canon(),
+            "chapters": [current, future],
+        }
+    )
+
+    violations = premature_plan_violations(
+        revision,
+        1,
+        "苏砚杀死闻鹿。门外的人群随即散去。",
+    )
+
+    assert [item["message"] for item in violations] == [
+        "正文提前完成未来事件: event-wen-lu-killed"
+    ]
+
+
+def test_deterministic_gate_allows_hypothetical_future_event_quote():
+    current = {
+        **_plan_row(1),
+        "key_events": ["苏砚查看门锁"],
+    }
+    future = {
+        **_plan_row(2),
+        "key_events": ["苏砚杀死闻鹿"],
+        "required_event_ids": ["event-wen-lu-killed"],
+    }
+    revision = SimpleNamespace(
+        generation_plan={
+            "schema": "story_novel_generation_plan.v2",
+            "canon": _canon(),
+            "chapters": [current, future],
+        }
+    )
+
+    assert (
+        premature_plan_violations(
+            revision,
+            1,
+            "守卫否认“苏砚杀死闻鹿”的传言，双方此刻仍在交谈。",
+        )
+        == []
+    )

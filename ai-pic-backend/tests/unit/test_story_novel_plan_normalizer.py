@@ -1,4 +1,5 @@
 from app.services.story.story_novel_plan_normalizer import (
+    normalize_plan_payload,
     normalize_redundant_location_state,
 )
 
@@ -32,10 +33,10 @@ def _canon():
     }
 
 
-def _chapter(transition, movements=None):
+def _chapter(transition=None, movements=None):
     return {
         "position": 1,
-        "state_transitions": [transition],
+        "state_transitions": [transition] if transition else [],
         "location_transitions": movements or [],
     }
 
@@ -91,3 +92,82 @@ def test_removes_duplicate_when_explicit_movement_is_present():
 
     assert normalized[0]["state_transitions"] == []
     assert normalized[0]["location_transitions"] == [movement]
+
+
+def test_normalizes_location_reason_alias_without_fabricating_means():
+    normalized = normalize_plan_payload(
+        {
+            "chapters": [
+                {
+                    "location_transitions": [
+                        {"subject_id": "char-a", "reason": "步行"},
+                        {"subject_id": "char-a"},
+                    ]
+                }
+            ]
+        }
+    )
+
+    movements = normalized["chapters"][0]["location_transitions"]
+    assert movements[0]["means"] == "步行"
+    assert "means" not in movements[1]
+
+
+def _owned_object_canon():
+    canon = _canon()
+    canon["entities"].append(
+        {
+            "id": "obj-a",
+            "kind": "object",
+            "name": "物件",
+            "aliases": [],
+            "attributes": {},
+        }
+    )
+    canon["entities"].append(
+        {
+            "id": "loc-c",
+            "kind": "location",
+            "name": "丙地",
+            "aliases": [],
+            "attributes": {},
+        }
+    )
+    canon["initial_state"]["char-a"]["possessions"] = ["obj-a"]
+    canon["initial_state"]["obj-a"] = {
+        "owner_id": "char-a",
+        "location": "loc-a",
+    }
+    return canon
+
+
+def _movement(subject_id, target="loc-b"):
+    return {
+        "subject_id": subject_id,
+        "from_location_id": "loc-a",
+        "to_location_id": target,
+        "means": "同行",
+    }
+
+
+def test_drops_owned_object_movement_already_applied_by_owner_movement():
+    owner_movement = _movement("char-a")
+    object_movement = _movement("obj-a")
+    chapter = _chapter(movements=[owner_movement, object_movement])
+
+    normalized = normalize_redundant_location_state(_owned_object_canon(), [chapter])
+
+    assert normalized[0]["location_transitions"] == [owner_movement]
+
+
+def test_preserves_object_movement_when_owner_target_does_not_match():
+    owner_movement = _movement("char-a")
+    object_movement = _movement("obj-a", "loc-c")
+    chapter = _chapter(movements=[owner_movement, object_movement])
+
+    normalized = normalize_redundant_location_state(_owned_object_canon(), [chapter])
+
+    assert normalized[0]["location_transitions"] == [
+        owner_movement,
+        object_movement,
+    ]

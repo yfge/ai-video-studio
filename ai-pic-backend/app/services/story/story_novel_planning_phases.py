@@ -17,7 +17,10 @@ from .story_novel_canon_service import (
 )
 from .story_novel_length_service import generation_plan_hash
 from .story_novel_outline_merge import merge_frozen_chapters
-from .story_novel_plan_normalizer import normalize_redundant_location_state
+from .story_novel_plan_normalizer import (
+    normalize_plan_payload,
+    normalize_redundant_location_state,
+)
 from .story_novel_plan_repair import plan_repair_prompt as _plan_repair_prompt
 from .story_novel_task_guard import ensure_task_not_cancelled
 from .story_novel_thread_schedule import compile_thread_payoffs
@@ -179,7 +182,7 @@ _parse_canon_with_diagnostics = parse_model_canon
 def _parse_plan(
     text, expected_positions, canon, frozen_spec, thread_payoffs=None
 ) -> tuple[dict | None, str | None]:
-    payload = extract_json_block(text)
+    payload = normalize_plan_payload(extract_json_block(text))
     try:
         if not payload:
             raise ValueError("missing JSON object")

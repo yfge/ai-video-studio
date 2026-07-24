@@ -10,6 +10,39 @@ from .story_novel_initial_state import (
 from .story_novel_location_rules import entity_kinds
 
 
+def normalize_plan_payload(payload):
+    """Normalize provider field aliases before Pydantic validation."""
+    if not isinstance(payload, dict) or not isinstance(payload.get("chapters"), list):
+        return payload
+    normalized = dict(payload)
+    normalized["chapters"] = [
+        _normalize_chapter_aliases(chapter) for chapter in payload["chapters"]
+    ]
+    return normalized
+
+
+def _normalize_chapter_aliases(chapter):
+    if not isinstance(chapter, dict):
+        return chapter
+    row = dict(chapter)
+    movements = []
+    for raw in row.get("location_transitions") or []:
+        if not isinstance(raw, dict):
+            movements.append(raw)
+            continue
+        movement = dict(raw)
+        means = movement.get("means")
+        reason = movement.get("reason")
+        if (not isinstance(means, str) or not means.strip()) and isinstance(
+            reason, str
+        ):
+            if reason.strip():
+                movement["means"] = reason
+        movements.append(movement)
+    row["location_transitions"] = movements
+    return row
+
+
 def normalize_redundant_location_state(canon: dict, chapters: list[dict]) -> list[dict]:
     """Drop location state entries that cannot represent a real move."""
     subjects = canonical_initial_subjects(canon)
@@ -58,6 +91,10 @@ def _drop_owner_placement_movements(movements, transitions, subjects, kinds):
     for movement in movements:
         subject_id = movement["subject_id"]
         if movement.get("from_location_id") is not None:
+            if _carried_by_owner_movement(
+                movement, movements, transitions, subjects, kinds
+            ):
+                continue
             kept.append(movement)
             continue
         current = subjects.get(subject_id) or {}
@@ -75,6 +112,34 @@ def _drop_owner_placement_movements(movements, transitions, subjects, kinds):
         if not owner_places_object:
             kept.append(movement)
     return kept
+
+
+def _carried_by_owner_movement(movement, movements, transitions, subjects, kinds):
+    subject_id = movement["subject_id"]
+    current = subjects.get(subject_id) or {}
+    owner_id = current.get("owner_id")
+    owner = subjects.get(owner_id) or {}
+    if (
+        kinds.get(subject_id) != "object"
+        or kinds.get(owner_id) != "character"
+        or subject_id not in (owner.get("possessions") or [])
+        or any(
+            item.get("subject_id") == subject_id and item.get("field") == "owner_id"
+            for item in transitions
+        )
+    ):
+        return False
+    start = movement.get("from_location_id")
+    owner_movements = [item for item in movements if item.get("subject_id") == owner_id]
+    if len(owner_movements) != 1:
+        return False
+    owner_movement = owner_movements[0]
+    return (
+        current.get("location") == start
+        and owner.get("location") == start
+        and owner_movement.get("from_location_id") == start
+        and owner_movement.get("to_location_id") == movement.get("to_location_id")
+    )
 
 
 def _replay_row(row: dict, subjects: dict) -> None:

@@ -41,6 +41,14 @@ _UNCERTAINTY_MARKERS = (
     "待化验",
     "似乎",
     "或许",
+    "传言",
+    "据说",
+    "听说",
+    "谣言",
+    "假设",
+    "如果",
+    "假如",
+    "否认",
 )
 _INVALID_FUTURE_ID_PREFIX = "premature_future_event_ids 引用了目录外事件: "
 
@@ -108,9 +116,12 @@ def future_claim_violations(
         if int(chapter["position"]) <= position:
             continue
         for event in paired_future_events(chapter):
-            claim = _claim_target(str(event.get("description") or ""))
+            description = str(event.get("description") or "")
+            claim = _claim_target(description)
             terms = _future_only_body_terms(claim, visible, body) if claim else []
-            if terms and any(_asserts_term(content_text, term) for term in terms):
+            if _asserts_exact_future_event(description, visible, content_text) or (
+                terms and any(_asserts_term(content_text, term) for term in terms)
+            ):
                 violations.append(
                     {
                         "code": "canon_violation",
@@ -118,6 +129,21 @@ def future_claim_violations(
                     }
                 )
     return violations
+
+
+def _asserts_exact_future_event(
+    description: str, visible: str, content_text: str
+) -> bool:
+    event = _compact(description)
+    if len(event) < 4 or event in visible:
+        return False
+    for sentence in re.split(r"[。！？!?；\n]+", content_text):
+        compact = _compact(sentence)
+        if event in compact and not any(
+            marker in compact for marker in _UNCERTAINTY_MARKERS
+        ):
+            return True
+    return False
 
 
 def _claim_target(description: str) -> str:

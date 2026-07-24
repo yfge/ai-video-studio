@@ -9,7 +9,10 @@ from app.services.story.story_novel_canon_service import (
     normalize_canon,
 )
 from app.services.story.story_novel_length_service import generation_plan_hash
-from app.services.story.story_novel_planning_phases import _plan_repair_prompt
+from app.services.story.story_novel_planning_phases import (
+    _parse_plan,
+    _plan_repair_prompt,
+)
 from app.services.story.story_novel_planning_service import ensure_generation_plan
 from app.services.story.story_novel_state_service import initial_story_state
 from fastapi import HTTPException
@@ -146,6 +149,39 @@ def test_plan_repair_keeps_the_complete_previous_output():
     assert "transition.from_value 写为 null" in repair
     assert "outcome.subject_id 添加 knowledge_grant" in repair
     assert "每个未回收 ID" in repair
+
+
+def test_plan_parser_accepts_location_reason_as_means_alias():
+    raw_canon = _canon()
+    raw_canon["entities"].append(
+        {
+            "id": "loc-b",
+            "kind": "location",
+            "name": "次要地点",
+            "aliases": [],
+            "attributes": {},
+        }
+    )
+    canon = normalize_canon(raw_canon)
+    row = _plan_row(1)
+    row["location_transitions"] = [
+        {
+            "subject_id": "char-a",
+            "from_location_id": "loc-gate",
+            "to_location_id": "loc-b",
+            "reason": "步行",
+        }
+    ]
+
+    parsed, error = _parse_plan(
+        json.dumps({"chapters": [row]}, ensure_ascii=False),
+        [1],
+        canon,
+        None,
+    )
+
+    assert error is None
+    assert parsed["chapters"][0]["location_transitions"][0]["means"] == "步行"
 
 
 def test_explicit_outline_chapters_must_be_fully_covered(db_session):
