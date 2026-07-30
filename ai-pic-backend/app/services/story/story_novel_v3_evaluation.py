@@ -36,7 +36,7 @@ async def evaluate_body(
     reserve_call,
 ):
     position = int(chapter_plan["position"])
-    deterministic = prose_violations(revision, chapter_plan, prose)
+    deterministic = prose_violations(revision, chapter_plan, prose, brief)
     update_progress(service, task, position, revision, "audit")
     index = sentence_spans(prose["content_text"])
     audit, metrics = await _audit_once(

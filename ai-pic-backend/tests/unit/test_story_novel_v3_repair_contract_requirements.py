@@ -1,6 +1,10 @@
 import json
 
 from app.services.story.story_novel_v3_prompts import local_block_contract_retry_prompt
+from app.services.story.story_novel_v3_repair_guidance import (
+    deterministic_repair_issue,
+    safe_repair_issues,
+)
 from app.services.story.story_novel_v3_repair_input import build_repair_input
 
 
@@ -114,3 +118,25 @@ def test_length_retry_keeps_current_effect_without_audit_free_text():
     assert "清点完损失后返回旧屋" in prompt
     assert "清点冻损" in prompt
     assert "不得发送给正文模型的审计自由文本" not in prompt
+
+
+def test_named_entity_repair_keeps_only_current_contract_name():
+    issue = deterministic_repair_issue(
+        {
+            "code": "canon_violation",
+            "reason_code": "entity_introduction_name_missing",
+            "message": "模型自由文本不得进入正文修复",
+            "entity_id": "char-zhou",
+            "required_names": ["周谨"],
+            "block_ids": ["B03"],
+        }
+    )
+
+    assert safe_repair_issues([issue]) == [
+        {
+            "code": "entity_introduction_name_missing",
+            "entity_id": "char-zhou",
+            "required_names": ["周谨"],
+            "block_ids": ["B03"],
+        }
+    ]

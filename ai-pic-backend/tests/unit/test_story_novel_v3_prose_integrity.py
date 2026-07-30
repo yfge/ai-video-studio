@@ -62,3 +62,65 @@ def test_gate_maps_integrity_failure_directly_to_failed_block():
 
     assert [item["reason_code"] for item in violations] == ["truncated_block_ending"]
     assert failed_blocks_for_prose(violations, blocks, {"beats": []}) == ["B02"]
+
+
+def test_gate_requires_current_named_entity_introduction_in_its_beats():
+    blocks = _blocks()
+    prose = {
+        "block_contents": blocks,
+        "content_text": "\n\n".join(item["content_text"] for item in blocks),
+        "char_count": 25,
+    }
+    plan = {
+        "min_chars": 10,
+        "target_chars": 20,
+        "max_chars": 100,
+        "entity_introductions": [
+            {"id": "char-zhou", "kind": "character", "name": "周谨"}
+        ],
+    }
+    brief = {
+        "beats": [
+            {
+                "beat_id": "B02",
+                "allowed_entity_ids": ["char-zhou"],
+                "effect_contract_ids": ["entity:char-zhou"],
+            }
+        ]
+    }
+
+    violations = prose_violations(SimpleNamespace(), plan, prose, brief)
+
+    assert violations[-1] == {
+        "code": "canon_violation",
+        "reason_code": "entity_introduction_name_missing",
+        "message": "当前章具名实体未出现：周谨",
+        "entity_id": "char-zhou",
+        "required_names": ["周谨"],
+        "block_ids": ["B02"],
+    }
+
+
+def test_gate_accepts_current_entity_alias_in_prose():
+    blocks = _blocks()
+    blocks[1]["content_text"] = "东方浪认出周三郎，立即移开视线。"
+    prose = {
+        "block_contents": blocks,
+        "content_text": "\n\n".join(item["content_text"] for item in blocks),
+        "char_count": 27,
+    }
+    plan = {
+        "min_chars": 10,
+        "target_chars": 20,
+        "max_chars": 100,
+        "entity_introductions": [
+            {
+                "id": "char-zhou",
+                "kind": "character",
+                "name": "周谨",
+                "aliases": ["周三郎"],
+            }
+        ],
+    }
+
+    assert prose_violations(SimpleNamespace(), plan, prose, {"beats": []}) == []

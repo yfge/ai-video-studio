@@ -15,6 +15,8 @@ _SAFE_REPAIR_FIELDS = {
     "length_action",
     "block_ids",
     "source_block_id",
+    "entity_id",
+    "required_names",
 }
 
 
@@ -67,5 +69,11 @@ def deterministic_repair_issue(item: dict) -> dict:
                 else f"全部 replacements 合计至少增加 {target - actual} 个非空白字符，"
                 f"合并正文目标为 {target}"
             ),
+        )
+    if item.get("reason_code") == "entity_introduction_name_missing":
+        result.update(
+            entity_id=item.get("entity_id"),
+            required_names=list(item.get("required_names") or []),
+            block_ids=list(item.get("block_ids") or []),
         )
     return result

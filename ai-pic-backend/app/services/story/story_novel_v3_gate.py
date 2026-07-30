@@ -7,7 +7,9 @@ import re
 from .story_novel_prose_integrity import prose_integrity_violations
 
 
-def prose_violations(revision, chapter_plan: dict, prose_result: dict) -> list[dict]:
+def prose_violations(
+    revision, chapter_plan: dict, prose_result: dict, brief: dict | None = None
+) -> list[dict]:
     actual = int(prose_result["char_count"])
     minimum = int(chapter_plan["min_chars"])
     maximum = int(chapter_plan["max_chars"])
@@ -28,9 +30,49 @@ def prose_violations(revision, chapter_plan: dict, prose_result: dict) -> list[d
         {"block_id": "B01", "content_text": prose_result.get("content_text") or ""}
     ]
     violations.extend(prose_integrity_violations(blocks))
+    violations.extend(
+        _entity_introduction_name_violations(
+            chapter_plan, prose_result.get("content_text") or "", brief or {}
+        )
+    )
     # Dates, future entities and natural-language world rules are semantic
     # audit candidates. Only the objective length contract is deterministic.
     return violations
+
+
+def _entity_introduction_name_violations(
+    chapter_plan: dict, content_text: str, brief: dict
+) -> list[dict]:
+    result = []
+    for entity in chapter_plan.get("entity_introductions") or []:
+        entity_id = str(entity.get("id") or "")
+        names = [
+            str(value).strip()
+            for value in [entity.get("name"), *(entity.get("aliases") or [])]
+            if str(value or "").strip()
+        ]
+        if not entity_id or not names or any(name in content_text for name in names):
+            continue
+        block_ids = [
+            str(beat["beat_id"])
+            for beat in brief.get("beats") or []
+            if beat.get("beat_id")
+            and (
+                entity_id in (beat.get("allowed_entity_ids") or [])
+                or f"entity:{entity_id}" in (beat.get("effect_contract_ids") or [])
+            )
+        ]
+        result.append(
+            {
+                "code": "canon_violation",
+                "reason_code": "entity_introduction_name_missing",
+                "message": f"当前章具名实体未出现：{names[0]}",
+                "entity_id": entity_id,
+                "required_names": names,
+                "block_ids": block_ids,
+            }
+        )
+    return result
 
 
 def failed_blocks_for_prose(
