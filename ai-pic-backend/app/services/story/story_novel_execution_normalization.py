@@ -8,6 +8,7 @@ _ALIASES = {
     ("action_phase", "reaction"): "instant",
     ("time_scope", "day"): "same_day",
     ("time_scope", "short"): "same_day",
+    ("time_scope", "current_chapter"): "unspecified",
     ("effort", "medium"): "moderate",
 }
 

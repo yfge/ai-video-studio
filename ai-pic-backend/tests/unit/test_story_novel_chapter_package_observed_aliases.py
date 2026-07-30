@@ -9,10 +9,11 @@ from app.services.story.story_novel_chapter_package_normalization import (
 
 
 def test_execution_enum_aliases_normalize_before_repair():
-    for phase, time_scope in (
-        ("active", "short"),
-        ("progressive", "short"),
-        ("ongoing", "day"),
+    for phase, time_scope, expected_scope in (
+        ("active", "short", "same_day"),
+        ("progressive", "short", "same_day"),
+        ("ongoing", "day", "same_day"),
+        ("active", "current_chapter", "unspecified"),
     ):
         contract = {
             "execution_contracts": [
@@ -28,7 +29,7 @@ def test_execution_enum_aliases_normalize_before_repair():
         result = normalize_missing_contract_fields(contract, {"entities": []})
 
         assert result["execution_contracts"][0]["action_phase"] == "progress"
-        assert result["execution_contracts"][0]["time_scope"] == "same_day"
+        assert result["execution_contracts"][0]["time_scope"] == expected_scope
         assert result["execution_contracts"][0]["effort"] == "moderate"
         assert repairable_contract_issues(result) == []
 
