@@ -51,4 +51,4 @@
 
 ## Linked Commits
 
-- Pending.
+- `875c1aa8` — `feat(story): add scalable staged novel planning`
