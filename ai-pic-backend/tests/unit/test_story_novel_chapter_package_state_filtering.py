@@ -12,11 +12,12 @@ def test_package_state_unions_skeleton_refs_with_allowed_past_entities(monkeypat
     context = {
         "brief_input": {
             "state_before": {
+                "revision_local_entities": {"old-concept": {"status": "known"}},
                 "subjects": {
                     "char-he": {"permissions": ["perm-stamp"]},
                     "org-cooperative": {"status": "active"},
                     "future-unrelated": {"status": "hidden"},
-                }
+                },
             },
             "state_before_hash": "state-hash",
             "planning_evidence": {"world_events": [], "character_memories": []},
@@ -61,6 +62,7 @@ def test_package_state_unions_skeleton_refs_with_allowed_past_entities(monkeypat
     }
     assert result["story_invariants"] == context["hard_constraints"]["story_invariants"]
     assert result["novel_delivery"]["profile_id"] == "commercial_serial"
+    assert "revision_local_entities" not in result["state_before"]
 
 
 def test_unknown_state_field_and_noop_movement_are_discarded_as_model_noise():

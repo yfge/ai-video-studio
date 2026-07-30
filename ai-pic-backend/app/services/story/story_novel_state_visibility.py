@@ -95,6 +95,8 @@ def visible_subject(value: dict, fields: set[str], refs: set[str]) -> dict:
     result = {key: item for key, item in value.items() if key in fields}
     if result.get("owner_id") not in refs:
         result.pop("owner_id", None)
+    if isinstance(result.get("knowledge"), list):
+        result["knowledge"] = [item for item in result["knowledge"] if item in refs]
     if isinstance(result.get("relationships"), dict):
         result["relationships"] = {
             key: item for key, item in result["relationships"].items() if key in refs

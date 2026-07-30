@@ -56,7 +56,7 @@ def _planning_state(context: dict, skeleton: dict) -> dict:
         **{
             key: copy.deepcopy(value)
             for key, value in source.items()
-            if key != "subjects"
+            if key not in {"subjects", "revision_local_entities"}
         },
         "subjects": {
             key: copy.deepcopy(value)

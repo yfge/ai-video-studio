@@ -135,7 +135,10 @@ def _visible_refs(canon: dict, chapters: list[dict]) -> set[str]:
             name
             and (
                 str(name) in surface
-                or any(value in str(name) or str(name) in value for value in focus)
+                or (
+                    item.get("kind") == "character"
+                    and any(value in str(name) or str(name) in value for value in focus)
+                )
             )
             for name in names
         ):
@@ -148,7 +151,11 @@ def _visible_state(
 ) -> dict:
     allowed = visible_state_fields(canon, chapters, refs)
     return {
-        **state_before,
+        **{
+            key: value
+            for key, value in state_before.items()
+            if key not in {"subjects", "revision_local_entities"}
+        },
         "subjects": {
             subject_id: visible_subject(value, allowed.get(subject_id, set()), refs)
             for subject_id, value in (state_before.get("subjects") or {}).items()
