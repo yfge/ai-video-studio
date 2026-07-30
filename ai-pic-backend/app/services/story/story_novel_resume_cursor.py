@@ -13,10 +13,13 @@ from .story_novel_v3_runtime import candidate_checkpoint_ready
 def resume_suffix_plan_rows(service, revision, plan_rows: list[dict]) -> list[dict]:
     """Skip an immutable ready prefix or fail before any provider call."""
     ledger = dict(revision.continuity_ledger or {})
-    cursor = int(ledger.get("stale_from_position") or 1)
+    entries = ledger.get("chapters") or {}
+    cursor = int(
+        ledger.get("stale_from_position")
+        or _first_non_ready_position(entries, plan_rows)
+    )
     if cursor <= 1:
         return plan_rows
-    entries = ledger.get("chapters") or {}
     chapters = {item.position: item for item in active_chapters(revision)}
     canon_hash = (revision.generation_plan or {}).get("canon_hash")
     previous_after_hash = None
@@ -61,7 +64,22 @@ def resume_suffix_plan_rows(service, revision, plan_rows: list[dict]) -> list[di
                 ),
             )
         previous_after_hash = entry["state_after_hash"]
+    if ledger.get("stale_from_position") is None:
+        ledger.update(state_status="stale", stale_from_position=cursor)
+        revision.continuity_ledger = ledger
     return [row for row in plan_rows if int(row["position"]) >= cursor]
+
+
+def _first_non_ready_position(entries: dict, plan_rows: list[dict]) -> int:
+    positions = sorted(int(row["position"]) for row in plan_rows)
+    return next(
+        (
+            position
+            for position in positions
+            if (entries.get(str(position)) or {}).get("status") != "ready"
+        ),
+        (positions[-1] + 1) if positions else 1,
+    )
 
 
 def advance_resume_cursor(revision, plan_rows) -> None:

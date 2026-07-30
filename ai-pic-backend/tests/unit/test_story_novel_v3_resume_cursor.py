@@ -51,7 +51,7 @@ def test_all_ready_chapters_clear_resume_cursor():
     assert revision.continuity_ledger["state_status"] == "ready"
 
 
-def test_resume_cursor_skips_hash_valid_prefix_despite_context_compiler_change(
+def test_resume_cursor_infers_missing_cursor_and_skips_hash_valid_prefix(
     monkeypatch,
 ):
     row_1 = {"position": 1, "title": "第一章", "key_events": []}
@@ -89,7 +89,6 @@ def test_resume_cursor_skips_hash_valid_prefix_despite_context_compiler_change(
     revision = SimpleNamespace(
         generation_plan={"canon_hash": "canon-hash"},
         continuity_ledger={
-            "stale_from_position": 2,
             "chapters": {"1": entry},
         },
         chapters=[chapter],
@@ -102,6 +101,8 @@ def test_resume_cursor_skips_hash_valid_prefix_despite_context_compiler_change(
     assert resume_suffix_plan_rows(SimpleNamespace(), revision, [row_1, row_2]) == [
         row_2
     ]
+    assert revision.continuity_ledger["stale_from_position"] == 2
+    assert revision.continuity_ledger["state_status"] == "stale"
 
 
 def test_resume_cursor_rejects_invalid_prefix_instead_of_rewriting_it(monkeypatch):
