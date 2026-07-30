@@ -55,6 +55,18 @@ def reusable_body(
 def reusable_verified_body(entry, chapter, context, brief) -> bool:
     if reusable_body(entry, chapter, context, brief) is None:
         return False
+    if not proofs_match_body(entry, chapter):
+        return False
+    replayed = replay_checkpoint_state(context["state_before"], entry)
+    return bool(
+        entry.get("status") in {"memory_ready", "ready"}
+        and (entry.get("state_validation") or {}).get("status") == "passed"
+        and replayed is not None
+        and entry.get("state_after_hash") == state_hash(replayed)
+    )
+
+
+def proofs_match_body(entry: dict, chapter) -> bool:
     try:
         for proof in entry.get("proof_spans") or []:
             resolved = resolve_sentence_refs(
@@ -76,10 +88,4 @@ def reusable_verified_body(entry, chapter, context, brief) -> bool:
                 return False
     except (KeyError, TypeError, ValueError):
         return False
-    replayed = replay_checkpoint_state(context["state_before"], entry)
-    return bool(
-        entry.get("status") in {"memory_ready", "ready"}
-        and (entry.get("state_validation") or {}).get("status") == "passed"
-        and replayed is not None
-        and entry.get("state_after_hash") == state_hash(replayed)
-    )
+    return True

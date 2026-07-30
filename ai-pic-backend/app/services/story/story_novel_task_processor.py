@@ -20,8 +20,9 @@ from .story_novel_downstream_gate import (
 )
 from .story_novel_legacy_task import run_legacy_export
 from .story_novel_memory_context import mark_revision_ledger_stale
+from .story_novel_plan_versions import is_v3_plan
 from .story_novel_planning_service import ensure_generation_plan
-from .story_novel_resume_cursor import advance_resume_cursor
+from .story_novel_resume_cursor import advance_resume_cursor, resume_suffix_plan_rows
 from .story_novel_revision_service import StoryNovelRevisionService
 from .story_novel_task_generation import generate_task_text as _generate_text
 from .story_seed_structure_service import structure_story_seed
@@ -36,6 +37,8 @@ async def _generate_missing_chapters(service, revision, task, *, only_position=N
         service, revision, task, partial(generate, stage="planning")
     )
     plan_rows = plan["chapters"]
+    if only_position is None and is_v3_plan(plan):
+        plan_rows = resume_suffix_plan_rows(service, revision, plan_rows)
     if only_position is not None:
         mark_revision_ledger_stale(revision, from_position=only_position)
         for row in service.repo.chapters_from_position(revision.id, only_position + 1):
