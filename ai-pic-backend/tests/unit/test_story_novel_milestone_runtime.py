@@ -5,6 +5,9 @@ from app.services.story.story_novel_canon_service import (
     CANON_GATE_VERSION,
     normalize_canon,
 )
+from app.services.story.story_novel_milestone_effect_compiler import (
+    compile_milestone_effects,
+)
 from app.services.story.story_novel_milestone_state import (
     validate_consumed_milestone_outcomes,
     validate_future_milestone_outcomes,
@@ -88,4 +91,89 @@ def test_future_and_consumed_helpers_share_the_same_outcome_contract():
             canon["initial_state"],
             ["mile-key-transfer"],
             current_position=1,
+        )
+
+
+def test_relationship_contains_outcome_compiles_and_validates_as_mapping():
+    canon = {
+        "entities": [
+            {"id": "char-a", "kind": "character", "name": "甲"},
+            {"id": "char-b", "kind": "character", "name": "乙"},
+        ],
+        "milestones": [
+            {
+                "id": "mile-partners",
+                "planned_position": 2,
+                "repeatable": False,
+                "outcomes": [
+                    {
+                        "subject_id": "char-a",
+                        "field": "relationships",
+                        "operator": "contains",
+                        "value": "business-partner:char-b",
+                    }
+                ],
+            }
+        ],
+    }
+    subjects = {
+        "char-a": {"relationships": {"char-c": "trusted:char-c"}},
+        "char-b": {"relationships": {}},
+    }
+    chapter = {
+        "position": 2,
+        "required_event_ids": ["event-2-1"],
+        "milestones_consumed": ["mile-partners"],
+        "state_transitions": [],
+        "knowledge_grants": [],
+        "location_transitions": [],
+    }
+
+    compiled = compile_milestone_effects(canon, chapter, subjects)
+
+    assert compiled["state_transitions"] == [
+        {
+            "subject_id": "char-a",
+            "field": "relationships",
+            "from_value": {"char-c": "trusted:char-c"},
+            "to_value": {
+                "char-c": "trusted:char-c",
+                "char-b": "business-partner:char-b",
+            },
+            "reason": "Canon milestone mile-partners",
+        }
+    ]
+    after = deepcopy(subjects)
+    after["char-a"]["relationships"] = compiled["state_transitions"][0]["to_value"]
+    validate_consumed_milestone_outcomes(
+        canon, after, ["mile-partners"], current_position=2
+    )
+
+
+def test_non_relationship_mapping_contains_outcome_stays_invalid():
+    canon = {
+        "milestones": [
+            {
+                "id": "mile-invalid",
+                "outcomes": [
+                    {
+                        "subject_id": "concept-a",
+                        "field": "status",
+                        "operator": "contains",
+                        "value": "active",
+                    }
+                ],
+            }
+        ]
+    }
+    chapter = {
+        "milestones_consumed": ["mile-invalid"],
+        "state_transitions": [],
+        "knowledge_grants": [],
+        "location_transitions": [],
+    }
+
+    with pytest.raises(ValueError, match="目标不是数组"):
+        compile_milestone_effects(
+            canon, chapter, {"concept-a": {"status": {"phase": "old"}}}
         )

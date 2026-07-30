@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .story_novel_contains_outcome import merge_contains_outcome
 from .story_novel_location_hierarchy import persistent_location_id
 from .story_novel_owner_contract import owner_outcome_target_valid
 
@@ -56,13 +57,10 @@ def _ensure_state(row, subjects, milestone_id, outcome):
     target = outcome.get("value")
     if outcome.get("operator") == "contains":
         base = matches[0].get("to_value") if matches else current
-        if base is None:
-            base = []
-        if not isinstance(base, list):
+        try:
+            target = merge_contains_outcome(base, field, outcome.get("value"))
+        except ValueError:
             raise ValueError(f"里程碑 contains outcome 目标不是数组: {milestone_id}")
-        target = list(base)
-        if outcome.get("value") not in target:
-            target.append(outcome.get("value"))
     if matches:
         matches[0]["to_value"] = target
         return

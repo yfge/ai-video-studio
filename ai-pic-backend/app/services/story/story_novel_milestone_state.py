@@ -7,6 +7,10 @@ import json
 from collections.abc import Iterable
 from typing import Any
 
+from .story_novel_contains_outcome import (
+    contains_outcome_matches,
+    merge_contains_outcome,
+)
 from .story_novel_initial_state import (
     apply_subject_transition,
     canonical_initial_subjects,
@@ -159,12 +163,11 @@ def _future_milestone_outcome_violations(
 def _apply_outcome(subjects: dict, outcome: dict) -> None:
     value = outcome["value"]
     if outcome["operator"] == "contains":
-        value = list(
-            _state_value(subjects.get(outcome["subject_id"], {}), outcome["field"])
-            or []
+        value = merge_contains_outcome(
+            _state_value(subjects.get(outcome["subject_id"], {}), outcome["field"]),
+            outcome["field"],
+            outcome["value"],
         )
-        if outcome["value"] not in value:
-            value.append(outcome["value"])
     apply_subject_transition(subjects, outcome["subject_id"], outcome["field"], value)
 
 
@@ -205,7 +208,7 @@ def outcome_matches(subjects: dict, outcome: dict) -> bool:
     )
     if outcome["operator"] == "eq":
         return actual == outcome["value"]
-    return isinstance(actual, (list, tuple, set)) and outcome["value"] in actual
+    return contains_outcome_matches(actual, outcome["field"], outcome["value"])
 
 
 def _gated_milestones(canon: dict) -> list[dict]:
