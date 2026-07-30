@@ -36,6 +36,8 @@ def test_package_assigns_stable_ids_and_rewrites_current_refs():
     entity = normalized["entity_introductions"][0]
 
     assert entity["id"].startswith("char-local-3-")
+    assert entity["name"] == "引路人"
+    assert entity["reason"] == "后续继续带领主角认识更大区域"
     assert normalized["execution_contracts"][0]["actor_ids"] == [
         "char-main",
         entity["id"],
@@ -43,6 +45,8 @@ def test_package_assigns_stable_ids_and_rewrites_current_refs():
     assert normalized_brief["character_motivations"][0]["character_id"] == entity["id"]
     repeated, _ = normalize_package_expansion(contract, brief, _canon(), _state())
     assert repeated["entity_introductions"][0]["id"] == entity["id"]
+    expanded = canon_with_plan_expansion(_canon(), [normalized], _state())
+    assert entity["id"] in {item["id"] for item in expanded["entities"]}
 
 
 def test_verified_introduction_enters_revision_world_and_next_state():

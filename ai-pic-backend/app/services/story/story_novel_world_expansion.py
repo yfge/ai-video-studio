@@ -54,7 +54,6 @@ def normalize_package_expansion(
             raise ValueError(f"世界实体临时 ref 重复: {local_ref}")
         entity_id = stable_entity_id(kind, position, name, source_event_id)
         refs[local_ref] = entity_id
-        refs[name] = entity_id
         rows.append(
             {
                 "id": entity_id,
