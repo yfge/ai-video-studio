@@ -1,0 +1,16 @@
+description: Story Novel v3 window and global continuity review
+category: story
+version: "1.3"
+variables:
+  label:
+    required: true
+    type: string
+  payload_json:
+    required: true
+    type: string
+  issue_limit:
+    required: true
+    type: integer
+  include_editorial:
+    required: true
+    type: boolean

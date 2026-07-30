@@ -26,7 +26,7 @@ def knowledge_evidence_key(item: dict) -> str:
 
 
 def explicit_knowledge_acquisition(source_quote: str, names: list[str]) -> bool:
-    if re.search(r"(?:…+|\.{3,}|[,，])", source_quote):
+    if re.search(r"(?:…+|\.{3,})", source_quote):
         return False
     clauses = [
         semantic_text(item)
@@ -35,8 +35,6 @@ def explicit_knowledge_acquisition(source_quote: str, names: list[str]) -> bool:
     ]
     name_pattern = "|".join(re.escape(name) for name in names if name)
     if len(clauses) != 1 or not name_pattern:
-        return False
-    if len(re.findall(rf"{_ACQUIRE}|{_TRANSFER}", clauses[0])) != 1:
         return False
     return bool(
         re.search(rf"(?:{name_pattern}).{{0,4}}{_ACQUIRE}", clauses[0])
@@ -82,11 +80,15 @@ def knowledge_evidence_violations(
         event_quote = str(
             (delta.get("evidence") or {}).get(grant.get("source_event_id")) or ""
         )
-        if semantic_text(quote) not in {
+        semantic_quote = semantic_text(quote)
+        event_fragments = [
             semantic_text(fragment)
             for fragment in _ELLIPSIS.split(event_quote)
             if semantic_text(fragment)
-        }:
+        ]
+        if not semantic_quote or not any(
+            semantic_quote in fragment for fragment in event_fragments
+        ):
             violations.append(_issue("角色获知证据未绑定来源事件", item_key))
         entity = entities.get(grant.get("character_id")) or {}
         names = [

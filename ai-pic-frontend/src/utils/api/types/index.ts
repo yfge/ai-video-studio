@@ -43,6 +43,7 @@ export * from "./story.types";
 export * from "./story-character.types";
 export * from "./story-seed.types";
 export * from "./story-novel-planning.types";
+export * from "./story-novel-continuity.types";
 export * from "./story-novel.types";
 export * from "./narrative-memory.types";
 export * from "./episode-character.types";

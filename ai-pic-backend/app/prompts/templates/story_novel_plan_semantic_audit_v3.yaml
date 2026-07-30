@@ -1,0 +1,13 @@
+description: Story Novel v3 plan semantic audit
+category: story
+version: "1.0"
+variables:
+  positions_json:
+    required: true
+    type: string
+  verification:
+    required: true
+    type: boolean
+  payload_json:
+    required: true
+    type: string

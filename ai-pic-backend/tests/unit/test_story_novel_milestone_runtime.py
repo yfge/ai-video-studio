@@ -37,6 +37,14 @@ def test_gate_v1_requires_outcomes_and_known_subjects():
         normalize_canon(unknown, required_gate_version=CANON_GATE_VERSION)
 
 
+def test_gate_v1_rejects_unknown_owner_outcome_target():
+    invalid = _canon()
+    invalid["milestones"][0]["outcomes"][0]["value"] = "char-not-exist"
+
+    with pytest.raises(ValueError, match="owner_id 指向非法所有者"):
+        normalize_canon(invalid, required_gate_version=CANON_GATE_VERSION)
+
+
 def test_milestone_outcome_operator_is_limited_to_eq_and_contains():
     invalid = _canon()
     invalid["milestones"][0]["outcomes"][0]["operator"] = "ne"

@@ -1,0 +1,7 @@
+description: Story Novel v3 local failed-block repair
+category: story
+version: "1.3"
+variables:
+  repair_input_json:
+    required: true
+    type: string

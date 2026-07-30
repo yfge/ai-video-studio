@@ -4,6 +4,7 @@ from app.services.story.story_novel_canon_service import (
     validate_generation_plan,
 )
 from app.services.story.story_novel_plan_normalizer import (
+    normalize_plan_payload,
     normalize_redundant_location_state,
 )
 from tests.unit.test_story_novel_longform import _canon as _longform_canon
@@ -28,6 +29,43 @@ def _object_plan_canon():
         "owner_id": None,
     }
     return normalize_canon(raw)
+
+
+def test_normalizes_only_unambiguous_predicate_operator_aliases():
+    row = _plan_row(1)
+    row["preconditions"] = [
+        {
+            "subject_id": "char-a",
+            "field": "location",
+            "operator": "equals",
+            "value": "loc-gate",
+        },
+        {
+            "subject_id": "char-a",
+            "field": "rank",
+            "operator": "greater_than",
+            "value": 1,
+        },
+        {
+            "subject_id": "char-a",
+            "field": "new_trial_status",
+            "operator": "not_exists",
+            "value": None,
+        },
+        {
+            "subject_id": "char-a",
+            "field": "rank",
+            "operator": "not_exists",
+            "value": 1,
+        },
+    ]
+
+    normalized = normalize_plan_payload({"chapters": [row]})
+
+    assert normalized["chapters"][0]["preconditions"][0]["operator"] == "eq"
+    assert normalized["chapters"][0]["preconditions"][1]["operator"] == "greater_than"
+    assert normalized["chapters"][0]["preconditions"][2]["operator"] == "eq"
+    assert normalized["chapters"][0]["preconditions"][3]["operator"] == "not_exists"
 
 
 def _owner_transition():

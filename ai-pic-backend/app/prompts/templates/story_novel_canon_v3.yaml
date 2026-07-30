@@ -1,0 +1,7 @@
+description: Story Novel v3 Canon compilation
+category: story
+version: "1.2"
+variables:
+  planning_contract_json:
+    required: true
+    type: string

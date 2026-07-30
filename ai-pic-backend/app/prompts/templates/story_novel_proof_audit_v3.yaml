@@ -1,0 +1,7 @@
+description: Story Novel v3 proof and future audit
+category: story
+version: "1.4"
+variables:
+  audit_input_json:
+    required: true
+    type: string

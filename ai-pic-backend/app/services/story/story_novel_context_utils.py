@@ -152,6 +152,8 @@ def recent_chapter_rows(previous: list) -> list[dict]:
             "business_id": item.business_id,
             "position": item.position,
             "title": item.title,
+            "summary": item.summary,
+            "cliffhanger": item.cliffhanger,
             "content_hash": item.content_hash,
         }
         for item in previous[-6:]

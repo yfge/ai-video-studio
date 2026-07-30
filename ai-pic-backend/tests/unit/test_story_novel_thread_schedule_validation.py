@@ -1,4 +1,5 @@
 import json
+from types import SimpleNamespace
 
 import anyio
 import pytest
@@ -195,10 +196,10 @@ def test_schedule_budget_scales_beyond_8192_without_application_cap():
 
     result = anyio.run(
         compile_thread_payoffs,
-        object(),
+        SimpleNamespace(generation_plan={}),
         Task(),
         generate,
-        object(),
+        SimpleNamespace(generation_plan={}),
         {"chapters": chapters},
     )
 

@@ -1,4 +1,5 @@
 import json
+from types import SimpleNamespace
 
 import anyio
 from app.services.story.story_novel_outline_merge import merge_frozen_chapters
@@ -79,6 +80,7 @@ def test_real_planning_call_sequence_schedules_threads_before_full_plan(db_sessi
 def test_invalid_schedule_gets_exactly_one_provider_repair():
     frozen = _frozen_one_thread()
     calls = []
+    revision = SimpleNamespace(generation_plan={})
 
     class Task:
         status = "pending"
@@ -102,10 +104,10 @@ def test_invalid_schedule_gets_exactly_one_provider_repair():
 
     result = anyio.run(
         compile_thread_payoffs,
-        object(),
+        SimpleNamespace(),
         Task(),
         generate,
-        object(),
+        revision,
         frozen,
     )
 
@@ -114,6 +116,12 @@ def test_invalid_schedule_gets_exactly_one_provider_repair():
     assert "只允许提交一次最小修复" in calls[1][0]
     assert "authoritative_conflict_thread_ids" in calls[1][0]
     assert [value for _, value in calls] == [16000, 16000]
+    entries = revision.generation_plan["planning_invocations"]["entries"]
+    assert [item["logical_stage"] for item in entries] == [
+        "thread_schedule.initial",
+        "thread_schedule.repair",
+    ]
+    assert entries[0]["result_hash"] == entries[1]["result_hash"]
 
 
 def test_merge_ignores_machine_payoffs_when_schedule_is_authoritative():

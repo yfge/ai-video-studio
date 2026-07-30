@@ -1,0 +1,10 @@
+description: Story Novel v3 frozen thread payoff schedule
+category: story
+version: "1.0"
+variables:
+  max_payoffs_per_chapter:
+    required: true
+    type: integer
+  contract_json:
+    required: true
+    type: string

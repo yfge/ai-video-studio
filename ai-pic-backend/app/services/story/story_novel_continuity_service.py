@@ -10,6 +10,10 @@ from .story_novel_continuity_contract import continuity_prompt as _prompt
 from .story_novel_continuity_contract import (
     normalize_continuity_report as _normalize_report,
 )
+from .story_novel_continuity_grounding import (
+    chapter_evidence_catalog,
+    payload_evidence_catalog,
+)
 from .story_novel_continuity_review import (
     compile_report,
     global_payload,
@@ -18,6 +22,7 @@ from .story_novel_continuity_review import (
 )
 from .story_novel_domain import active_chapters
 from .story_novel_generation_context import revision_local_candidates
+from .story_novel_plan_versions import is_state_gated_plan
 from .story_novel_state_service import (
     apply_state_delta,
     initial_story_state,
@@ -45,9 +50,7 @@ def _require_review_ready(revision, chapters: list, ledger_rows: dict) -> None:
         raise HTTPException(status_code=409, detail="章节尚未全部生成")
     if not review_ready(chapters, ledger_rows):
         raise HTTPException(status_code=409, detail="章节事实或记忆提取尚未完成")
-    if (revision.generation_plan or {}).get(
-        "schema"
-    ) == "story_novel_generation_plan.v2":
+    if is_state_gated_plan(revision.generation_plan):
         require_valid_state_chain(revision, chapters, ledger_rows)
 
 
@@ -60,19 +63,33 @@ async def _review_windows(
 ) -> list:
     windows = _windows(chapters)
     reports = []
+    canon = (revision.generation_plan or {}).get("canon") or {}
     for index, rows in enumerate(windows, start=1):
         task.description = f"正在审读章节批次 {index}/{len(windows)}…"
         service.db.commit()
+        payload = window_payload(
+            revision,
+            rows,
+            (getattr(revision, "continuity_ledger", None) or {}).get("chapters") or {},
+        )
         text = await generate_text(
             revision,
             _prompt(
                 "这是相邻章节全文窗口检查。",
-                window_payload(revision, rows),
+                payload,
                 issue_limit=12,
             ),
             max_tokens=5000,
+            stage=f"continuity.window.{index}",
         )
         ensure_task_not_cancelled(service.db, task)
+        normalized = _normalize_report(
+            text,
+            f"window-{index}",
+            evidence_catalog=chapter_evidence_catalog(rows),
+            contract_catalog=payload["valid_contract_refs"],
+            canon=canon,
+        )
         reports.append(
             {
                 "batch_index": index,
@@ -85,7 +102,8 @@ async def _review_windows(
                     }
                     for row in rows
                 ],
-                **_normalize_report(text, f"window-{index}"),
+                **normalized,
+                "invocation": dict(getattr(text, "invocation_evidence", {}) or {}),
             }
         )
     return reports
@@ -109,9 +127,19 @@ async def _review_global(
             include_editorial=True,
         ),
         max_tokens=GLOBAL_REVIEW_MAX_TOKENS,
+        stage="continuity.global",
     )
     ensure_task_not_cancelled(service.db, task)
-    return _normalize_report(text, "global", include_editorial=True)
+    report = _normalize_report(
+        text,
+        "global",
+        include_editorial=True,
+        evidence_catalog=payload_evidence_catalog(payload),
+        contract_catalog=payload.get("valid_contract_refs") or [],
+        canon=(revision.generation_plan or {}).get("canon") or {},
+    )
+    report["invocation"] = dict(getattr(text, "invocation_evidence", {}) or {})
+    return report
 
 
 def _save_report(service, revision, chapters: list, report: dict) -> None:

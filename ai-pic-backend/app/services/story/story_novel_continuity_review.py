@@ -3,18 +3,56 @@
 from app.services.narrative_memory.source_hash import novel_chapter_source_hash
 
 from .story_novel_canon_service import content_hash
+from .story_novel_continuity_grounding import contract_reference_catalog
+from .story_novel_sentence_spans import (
+    audit_sentence_index,
+    sentence_index_hash,
+    sentence_spans,
+)
 
 
-def window_payload(revision, chapters: list) -> dict:
+def window_payload(revision, chapters: list, ledger_rows: dict | None = None) -> dict:
+    plan = revision.generation_plan or {}
+    ledger_rows = ledger_rows or {}
     return {
         "story_contract": revision.story_snapshot or {},
+        "compiled_canon": plan.get("canon") or {},
+        "valid_contract_refs": sorted(contract_reference_catalog(revision, chapters)),
         "chapters": [
             {
                 "business_id": row.business_id,
                 "content_hash": row.content_hash,
                 "position": row.position,
                 "title": row.title,
-                "content": row.content_text,
+                "sentence_index": audit_sentence_index(
+                    sentence_spans(row.content_text or "")
+                ),
+                "sentence_index_hash": sentence_index_hash(
+                    sentence_spans(row.content_text or "")
+                ),
+                "chapter_contract": next(
+                    (
+                        item
+                        for item in plan.get("chapters") or []
+                        if int(item["position"]) == row.position
+                    ),
+                    {},
+                ),
+                "checkpoint": {
+                    key: value
+                    for key, value in (ledger_rows.get(str(row.position)) or {}).items()
+                    if key
+                    in {
+                        "body_hash",
+                        "source_hash",
+                        "brief_hash",
+                        "expected_delta",
+                        "proof_spans",
+                        "state_before_hash",
+                        "state_after_hash",
+                        "future_audit",
+                    }
+                },
             }
             for row in chapters
         ],
@@ -34,6 +72,7 @@ def global_chapter_row(chapter, ledger_rows: dict) -> dict:
         "state_delta": entry.get("state_delta"),
         "state_before_hash": entry.get("state_before_hash"),
         "state_after_hash": entry.get("state_after_hash"),
+        "proof_spans": entry.get("proof_spans") or [],
     }
 
 
@@ -55,6 +94,7 @@ def global_payload(
         "character_memories": memories,
         "rolling_state": (revision.continuity_ledger or {}).get("current_state"),
         "window_findings": window_reports,
+        "valid_contract_refs": sorted(contract_reference_catalog(revision, chapters)),
     }
 
 
@@ -85,6 +125,7 @@ def compile_report(
             {
                 "business_id": row.business_id,
                 "content_hash": row.content_hash,
+                "source_hash": novel_chapter_source_hash(row),
                 "position": row.position,
             }
             for row in chapters
@@ -102,10 +143,22 @@ def compile_report(
         "overall_score": global_report.get("overall_score"),
         "quality_scores": global_report.get("quality_scores") or {},
         "major_strengths": global_report.get("major_strengths") or [],
-        "blocking_issues": global_report.get("blocking_issues") or [],
+        "blocking_issues": [
+            str(item.get("message") or "")
+            for item in issues
+            if item.get("severity") == "blocking"
+        ],
         "revision_priorities": global_report.get("revision_priorities") or [],
         "repair_groups": global_report.get("repair_groups") or [],
-        "reviewer_model": revision.model,
+        "reviewer_model": (
+            (plan.get("model_policy") or {}).get("audit_model") or revision.model
+        ),
+        "review_invocations": [
+            report.get("invocation")
+            for report in window_reports
+            if report.get("invocation")
+        ]
+        + ([global_report["invocation"]] if global_report.get("invocation") else []),
         "canon_hash": plan.get("canon_hash"),
         "plan_version": plan.get("version"),
         "plan_hash": plan.get("plan_hash"),

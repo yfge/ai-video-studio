@@ -2,7 +2,10 @@ import pytest
 from app.schemas.generation_requests import StoryNovelExportRequest
 from app.services.story.story_novel_ai_prompts import canon_prompt, planning_prompt
 from app.services.story.story_novel_planning_phases import _plan_repair_prompt
-from app.services.story.story_novel_planning_service import planning_contract
+from app.services.story.story_novel_planning_service import (
+    canon_planning_contract,
+    planning_contract,
+)
 from pydantic import ValidationError
 
 
@@ -44,21 +47,58 @@ def test_v2_planning_uses_confirmed_structured_outline_not_stale_outline_text():
     assert "outline_text" not in seed
 
 
+def test_canon_contract_keeps_progression_but_not_hundreds_of_chapters():
+    chapters = [
+        {"position": position, "key_events": [f"事件{position}"]}
+        for position in range(1, 801)
+    ]
+    contract = canon_planning_contract(
+        {
+            "story_seed": {
+                "schema": "story_seed_v2",
+                "title": "超长故事",
+                "premise": "逐步看见更大的世界",
+                "structured_outline": {
+                    "status": "frozen",
+                    "version": 1,
+                    "requested_chapter_count": 800,
+                    "planning_structure_version": 1,
+                    "progression_arcs": [
+                        {
+                            "arc_id": "arc-001",
+                            "major_entries": ["后续主要人物"],
+                        }
+                    ],
+                    "chapters": chapters,
+                    "thread_payoffs": [],
+                },
+            }
+        }
+    )
+
+    outline = contract["story_seed"]["structured_outline"]
+    assert outline["requested_chapter_count"] == 800
+    assert outline["progression_arcs"][0]["major_entries"] == ["后续主要人物"]
+    assert "chapters" not in outline
+    assert "thread_payoffs" not in outline
+
+
 def test_canon_prompt_separates_physical_location_from_object_ownership():
     prompt = canon_prompt(planning_contract={})
     assert "物件所有者必须写 owner_id" in prompt
     assert "禁止把角色 ID 写入 location" in prompt
-    assert "entities.attributes 只允许年龄、职业、类型" in prompt
+    assert "entities.attributes 只允许年龄、职业、类型、性别" in prompt
+    assert "gender、pronouns、family_role" in prompt
     assert "可变或未来字段一律写入 initial_state 的事件前值" in prompt
     assert "规则和里程碑只写入各自专用数组" in prompt
     assert "第1章任何事件发生前（position=0）" in prompt
-    assert "不得把未来接收者、未来知识或未来伤势提前写入" in prompt
-    assert "车厢、缆车或路线区段" in prompt
+    assert "不得把未来结果提前写入" in prompt
+    assert "持久中途地点" in prompt
     assert "不得为了逐章对齐而每章都创建 milestone" in prompt
     assert "只是确认、验证或保持此前已经成立的状态" in prompt
     assert "临时权限的取得、到期或撤销只属于章节状态变化" in prompt
     assert "null→持有人→null 状态链" in prompt
-    assert "status 应写 opened 或 verified" in prompt
+    assert "status 必须表达实际存续状态" in prompt
     assert "owner_id eq null 重复写成 outcome" in prompt
     assert "只保留 planned_position 最早" in prompt
     assert "在 milestone 所在章结束后新变为真" in prompt

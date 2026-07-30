@@ -1,0 +1,22 @@
+为超长小说建立有界分卷/阶段规划，不写逐章正文。
+StorySeed：{{ story_seed_json }}
+系统已经确定分卷边界，必须逐项原样使用：{{ chapter_ranges_json }}
+
+每个 progression_arc 必须包含对应 arc_id、start_position、end_position，以及 title、
+narrative_goal、ending_state、growth、major_entries、world_scope_changes、threads。
+
+growth 是全书层面的软规划提示，不是逐章 KPI。它包含 cognition、capability、resources、
+activity_and_time_scale 四个可选字符串；题材或当前阶段不支持的项必须为 null。允许蓄势、失败、
+有代价的回撤和暂时停滞，不得要求每章升级、换地图、赚钱或延长时间线。全书应在原始大纲授权下
+避免长期停留在同一问题、同一活动范围和同一收益层级。
+
+major_entries 只列该阶段计划首次成为持续世界成员的主要人物、地点、组织、物件或概念；
+world_scope_changes 只描述题材确实需要的世界边界变化。不得第一卷倾倒全部世界，也不得为了扩张
+凭空改题材或引入 StorySeed 未授权的特殊机制与尺度。
+
+threads 是跨章硬伏笔方向。每项必须包含全书唯一 thread_id、question、open_position、
+payoff_position、payoff_intent；必须先开后收且位置位于给定总章数内。可以为空，不得为每章强造。
+
+只输出严格 JSON：
+{"progression_plan":{"planning_structure_version":1,"requested_chapter_count":{{ requested_chapter_count }},"progression_arcs":[{"arc_id":"arc-001","title":"阶段标题","start_position":1,"end_position":32,"narrative_goal":"阶段叙事目标","ending_state":"阶段结束状态","growth":{"cognition":null,"capability":null,"resources":null,"activity_and_time_scale":null},"major_entries":[],"world_scope_changes":[],"threads":[]}]}}
+不得修改边界、遗漏阶段或输出章节正文。

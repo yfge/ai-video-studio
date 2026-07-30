@@ -1,0 +1,26 @@
+为当前小说章节编译可执行章前 brief。
+输入：{{ brief_input_json }}
+只能细化 current_chapter_contract，禁止新增、删除、提前或改写合同事件。
+world_events 与 character_memories 只用于补足当前章因果、人物动机和知情边界；
+不得把其中未被当前合同授权的观察升级为本章硬事件。
+execution_contracts 必须逐字复制当前章节合同；它是每个事件的完成度、时间范围与行动规模
+的唯一解释，优先于自由文本 purpose。未明示数量、规模或耗时时不得擅自补写精确值。
+必须服从 story_invariants 中冻结的 genre、target_audience 与 story_format；若其明确要求连载或商业网文，
+优先形成“冲突/压力—主角选择—有效行动—可见收益或代价—章末钩子”的推进。其他格式按其受众
+组织节奏。避免流程报告、元叙事说明和为了写实而拖慢情节；一般戏剧化、行动略快只属软编辑建议。
+每个 beat 必须承担不同叙事任务，同一结论只完整呈现一次；让本章至少形成一个可感知的
+主线进展、人物变化、收益或代价。只有当前合同确实涉及观察、推理、专业能力或背景知识时，
+才通过角色的目标、选择、行动及结果自然呈现；不得强套固定步骤或写成说明书。任何特殊背景、
+知识来源、机制或能力只能来自 StorySeed/Canon，且只服务当前选择。
+若当前合同授权关系弧推进，可安排职责互补、信任、分歧或情绪变化，但不得自行新增关系或强制升级。
+章末钩子必须来自新风险、新选择或尚未兑现的收益，禁止复述 summary。
+beats 必须严格为 expected_beat_count 条，每条包含稳定 beat_id、purpose、字符预算、
+允许实体、绑定当前事件 ID，以及来自 expected_delta.proof_contracts 的 effect_contract_ids。
+allowed_entity_ids 只能复制输入 allowed_entity_ids 中已有的 ID；普通场景
+道具可在 purpose 中自然描述，但不得为它们发明 obj-* ID 或状态实体。
+所有 beat 的 target_chars 之和必须等于 chapter_contract.target_chars。
+summary 与 cliffhanger 必须是非空的当前章摘要和章末钩子；setup_thread_ids 与
+payoff_thread_ids 必须逐字、同序复制当前合同的 open_threads 与 payoffs_due。
+只输出 JSON：
+{"schema":"story_novel_chapter_brief.v1","chapter_contract_hash":"逐字复制输入值","state_before_hash":"逐字复制输入值","input_evidence_hash":"逐字复制输入值","execution_contracts":[],"beats":[{"beat_id":"B01","purpose":"叙事动作","target_chars":450,"allowed_entity_ids":[],"bound_event_ids":[],"effect_contract_ids":[]}],"character_motivations":[{"character_id":"char-a","motivation":"动机"}],"emotional_continuity":"情绪延续","causal_bridge":"因果桥","summary":"当前章摘要","cliffhanger":"当前章末钩子","setup_thread_ids":[],"payoff_thread_ids":[]}
+不得输出正文、未来章节目录、证据或状态 delta。

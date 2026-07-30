@@ -17,10 +17,18 @@ class StoryNovelCanonTimelineEvent(BaseModel):
 
 class StoryNovelCanonEntity(BaseModel):
     id: str = Field(..., min_length=1)
-    kind: Literal["character", "location", "object", "organization"]
+    kind: Literal["character", "location", "object", "organization", "concept"]
     name: str = Field(..., min_length=1)
     aliases: list[str] = Field(default_factory=list)
     attributes: dict[str, Any] = Field(default_factory=dict)
+
+
+class StoryNovelEntityIntroduction(StoryNovelCanonEntity):
+    source_event_id: str = Field(..., min_length=1)
+    first_appearance_position: int = Field(..., ge=1)
+    persistence: Literal["revision"] = "revision"
+    reason: str = Field(..., min_length=1)
+    initial_state: dict[str, Any] = Field(default_factory=dict)
 
 
 class StoryNovelCanonRule(BaseModel):
@@ -95,6 +103,16 @@ class StoryNovelLocationTransition(BaseModel):
     means: str = Field(..., min_length=1)
 
 
+class StoryNovelEventExecution(BaseModel):
+    event_id: str = Field(..., min_length=1)
+    action_phase: Literal["start", "progress", "complete", "instant"]
+    time_scope: Literal["instant", "same_day", "multi_day", "unspecified"]
+    actor_ids: list[str] = Field(default_factory=list)
+    effort: Literal["none", "light", "moderate", "heavy", "unspecified"]
+    timeline_ids: list[str] = Field(default_factory=list)
+    knowledge_fact_ids: list[str] = Field(default_factory=list)
+
+
 class StoryNovelChapterPlan(BaseModel):
     position: int = Field(..., ge=1)
     title: str = Field(..., min_length=1, max_length=255)
@@ -119,6 +137,10 @@ class StoryNovelChapterPlan(BaseModel):
     payoffs_due: list[str] = Field(default_factory=list)
     canon_refs: list[str] = Field(default_factory=list)
     timeline_event_bindings: dict[str, str]
+    execution_contracts: list[StoryNovelEventExecution] = Field(default_factory=list)
+    entity_introductions: list[StoryNovelEntityIntroduction] = Field(
+        default_factory=list
+    )
 
     @model_validator(mode="after")
     def require_finite_length_range(self):

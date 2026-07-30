@@ -1,0 +1,16 @@
+description: Story Novel v3 thread payoff one-shot repair
+category: story
+version: "1.0"
+variables:
+  max_payoffs_per_chapter:
+    required: true
+    type: integer
+  repair_template_json:
+    required: true
+    type: string
+  repair_context_json:
+    required: true
+    type: string
+  validation_error:
+    required: true
+    type: string

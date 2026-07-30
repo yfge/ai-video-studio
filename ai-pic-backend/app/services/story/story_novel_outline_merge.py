@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from .story_novel_canon_service import validate_generation_plan
 from .story_novel_thread_schedule import payoffs_by_position
 from .story_novel_timeline_contract import compile_timeline_bindings
@@ -21,6 +23,7 @@ _OUTLINE_KEYS = (
     "length",
 )
 _QUOTE_VARIANTS = str.maketrans({"‘": "'", "’": "'", "“": '"', "”": '"'})
+_EVENT_SEPARATOR = re.compile(r"^[\s，。；、：,:;.!！？—\-（）()\[\]【】\"']*$")
 
 
 def merge_frozen_chapters(
@@ -43,8 +46,9 @@ def merge_frozen_chapters(
     )
     merged = []
     for source in sources:
-        machine = generated[int(source["position"])]
-        _require_authoritative_event_order(machine, source)
+        machine = _align_authoritative_events(
+            generated[int(source["position"])], source
+        )
         row = {
             **machine,
             **{key: source[key] for key in _OUTLINE_KEYS if key in source},
@@ -59,6 +63,101 @@ def merge_frozen_chapters(
     if validate:
         validate_generation_plan(canon, compiled)
     return compiled
+
+
+def _align_authoritative_events(machine: dict, source: dict) -> dict:
+    """Restore omitted frozen events without guessing a changed event's identity."""
+    if "key_events" not in source:
+        return machine
+    generated = list(machine.get("key_events") or [])
+    frozen = list(source.get("key_events") or [])
+    if [_event_key(item) for item in generated] == [
+        _event_key(item) for item in frozen
+    ]:
+        return machine
+    groups = _ordered_event_groups(generated, frozen)
+    if groups is None:
+        groups = _single_unmatched_positional_groups(generated, frozen)
+    required = list(machine.get("required_event_ids") or [])
+    if groups is None or len(required) != len(generated):
+        _require_authoritative_event_order(machine, source)
+    by_index = {
+        group[0]: event_id for group, event_id in zip(groups, required, strict=True)
+    }
+    used = set(required)
+    position = int(source["position"])
+    aligned_ids = []
+    for index in range(len(frozen)):
+        event_id = by_index.get(index) or f"event-{position}-{index + 1}"
+        if event_id in aligned_ids or (index not in by_index and event_id in used):
+            _require_authoritative_event_order(machine, source)
+        aligned_ids.append(event_id)
+    return {**machine, "key_events": frozen, "required_event_ids": aligned_ids}
+
+
+def _ordered_event_groups(
+    generated: list[str], frozen: list[str]
+) -> list[list[int]] | None:
+    groups: list[list[int]] = []
+    start = 0
+    for event in generated:
+        value = _event_key(event)
+        group = _ordered_frozen_group(value, frozen, start)
+        if not group:
+            return None
+        groups.append(group)
+        start = group[-1] + 1
+    return groups
+
+
+def _single_unmatched_positional_groups(
+    generated: list[str], frozen: list[str]
+) -> list[list[int]] | None:
+    """Use surrounding exact events to anchor one provider paraphrase."""
+    if len(generated) != len(frozen) or len(frozen) < 2:
+        return None
+    mismatches = [
+        index
+        for index, (actual, expected) in enumerate(zip(generated, frozen, strict=True))
+        if _event_key(actual) != _event_key(expected)
+    ]
+    if len(mismatches) != 1:
+        return None
+    generated_keys = [_event_key(value) for value in generated]
+    if len(generated_keys) != len(set(generated_keys)):
+        return None
+    mismatch = mismatches[0]
+    candidate = generated_keys[mismatch]
+    other_frozen = [
+        _event_key(value) for index, value in enumerate(frozen) if index != mismatch
+    ]
+    if any(value in candidate or candidate in value for value in other_frozen):
+        return None
+    return [[index] for index in range(len(frozen))]
+
+
+def _ordered_frozen_group(
+    value: str, frozen: list[str], start: int
+) -> list[int] | None:
+    """Match exact consecutive events; only punctuation may join them."""
+    for first in range(start, len(frozen)):
+        event = _event_key(frozen[first])
+        offset = value.find(event)
+        if offset < 0 or not _EVENT_SEPARATOR.fullmatch(value[:offset]):
+            continue
+        group, cursor = [first], offset + len(event)
+        for index in range(first + 1, len(frozen)):
+            next_event = _event_key(frozen[index])
+            next_offset = value.find(next_event, cursor)
+            if next_offset < 0 or not _EVENT_SEPARATOR.fullmatch(
+                value[cursor:next_offset]
+            ):
+                break
+            group.append(index)
+            cursor = next_offset + len(next_event)
+        if _EVENT_SEPARATOR.fullmatch(value[cursor:]):
+            return group
+    return None
 
 
 def _require_authoritative_event_order(machine: dict, source: dict) -> None:

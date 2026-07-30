@@ -1,0 +1,16 @@
+description: Story Novel v3 truncated prose continuation
+category: story
+version: "1.2"
+variables:
+  prose_input_json:
+    required: true
+    type: string
+  complete_blocks_json:
+    required: true
+    type: string
+  missing_block_ids_repr:
+    required: true
+    type: string
+  first_missing_block_id:
+    required: true
+    type: string

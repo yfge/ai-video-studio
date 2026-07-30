@@ -12,6 +12,7 @@ from app.services.narrative_memory.extraction_service import (  # noqa: F401
 from app.services.narrative_memory.source_hash import novel_chapter_source_hash
 
 from .story_novel_chapter_gate import non_whitespace_chars, parse_chapter
+from .story_novel_plan_versions import is_state_gated_plan, is_v3_plan
 
 __all__ = [
     "_parse_chapter",
@@ -36,10 +37,13 @@ def save_ledger_entry(revision, position: int, entry: dict) -> None:
     chapters = dict(ledger.get("chapters") or {})
     chapters[str(position)] = entry
     schema = (
-        "story_novel_continuity.v3"
-        if (revision.generation_plan or {}).get("schema")
-        == "story_novel_generation_plan.v2"
-        else "story_novel_continuity.v2"
+        "story_novel_continuity.v4"
+        if is_v3_plan(revision.generation_plan)
+        else (
+            "story_novel_continuity.v3"
+            if is_state_gated_plan(revision.generation_plan)
+            else "story_novel_continuity.v2"
+        )
     )
     ledger.update({"schema": schema, "chapters": chapters})
     revision.continuity_ledger = ledger
@@ -49,9 +53,7 @@ def source_candidates(db, revision, chapter) -> tuple[list, list]:
     source_hash = novel_chapter_source_hash(chapter)
     repo = NarrativeMemoryRepository(db)
     entry = chapter_entry(revision, chapter.position)
-    require_evidence = (revision.generation_plan or {}).get(
-        "schema"
-    ) == "story_novel_generation_plan.v2"
+    require_evidence = is_state_gated_plan(revision.generation_plan)
     events = [
         item
         for item in repo.list_events(revision.story_id)
@@ -157,9 +159,18 @@ async def generate_or_resume_chapter(
     *,
     force: bool = False,
 ):
-    if (revision.generation_plan or {}).get(
-        "schema"
-    ) == "story_novel_generation_plan.v2":
+    if is_v3_plan(revision.generation_plan):
+        from .story_novel_chapter_v3 import generate_or_resume_v3
+
+        return await generate_or_resume_v3(
+            service,
+            revision,
+            task,
+            chapter_plan,
+            generate_text,
+            force=force,
+        )
+    if is_state_gated_plan(revision.generation_plan):
         from .story_novel_chapter_v2 import generate_or_resume_v2
 
         return await generate_or_resume_v2(

@@ -71,6 +71,30 @@ def test_knowledge_evidence_is_continuous_and_bound_to_event_fragment():
     assert any("未明确对应角色获知关系" in item for item in messages)
 
 
+def test_knowledge_evidence_may_be_contained_in_larger_event_fragment():
+    nested = _delta()
+    nested["evidence"]["event-transfer"] = BODY
+
+    assert knowledge_evidence_violations(BODY, nested, CANON) == []
+
+
+def test_knowledge_evidence_allows_comma_and_source_fact_verb():
+    body = "王明确认老拐检索断潮礁旧档案，发现潮时记录存在断档。"
+    delta = {
+        "occurred_event_ids": ["event-departure"],
+        "evidence": {"event-departure": body},
+        "knowledge_grants": [
+            {
+                "character_id": "char-wang",
+                "fact_id": "fact-departure",
+                "source_event_id": "event-departure",
+            }
+        ],
+        "knowledge_evidence": {"char-wang|fact-departure|event-departure": body},
+    }
+    assert knowledge_evidence_violations(body, delta, CANON) == []
+
+
 def test_state_parse_requires_every_planned_knowledge_quote_with_canon():
     invalid = _delta()
     invalid["knowledge_evidence"].pop("char-guai|fact-owner|event-transfer")
@@ -91,11 +115,52 @@ def test_state_parse_requires_every_planned_knowledge_quote_with_canon():
 
 def test_chapter_prompt_requires_explicit_per_grant_acquisition_sentence():
     prompt = chapter_prompt(
-        context_pack={"chapter_contract": {"knowledge_grants": []}},
+        context_pack={
+            "hard_constraints": {
+                "chapter_contract": {"knowledge_grants": _delta()["knowledge_grants"]},
+                "compiled_canon": CANON,
+            }
+        },
         target_chars=4000,
     )
     assert "每一项都必须在正文里有一条连续、独立的获知句" in prompt
-    assert "不要用省略拼接、隐含在场或旁人对话代替" in prompt
+    assert "姓名与获知词之间不得插入动作、代词、标点或其他角色" in prompt
+    assert "王明确认" in prompt
+    assert "老拐确认" in prompt
+
+
+def test_chapter_prompt_freezes_generic_canon_role_name():
+    prompt = chapter_prompt(
+        context_pack={
+            "hard_constraints": {
+                "chapter_contract": {
+                    "required_event_ids": ["event-transfer"],
+                    "key_events": ["港务监理公开移交潮汐测针"],
+                    "knowledge_grants": [
+                        {
+                            "character_id": "char-supervisor",
+                            "fact_id": "fact-owner",
+                            "source_event_id": "event-transfer",
+                        }
+                    ],
+                },
+                "compiled_canon": {
+                    "entities": [
+                        {
+                            "id": "char-supervisor",
+                            "kind": "character",
+                            "name": "港务监理",
+                        }
+                    ]
+                },
+            }
+        },
+        target_chars=4000,
+    )
+
+    assert "港务监理确认" in prompt
+    assert '"source_event_text":"港务监理公开移交潮汐测针"' in prompt
+    assert "不得用自行生成的人名、职位别称" in prompt
 
 
 def test_candidate_completeness_uses_frozen_persisted_character_grants():
@@ -131,7 +196,10 @@ def test_evidence_only_repair_can_replace_knowledge_quote_without_state_changes(
         }
     ]
 
-    async def generate(_revision, _prompt, **_kwargs):
+    prompts = []
+
+    async def generate(_revision, prompt, **_kwargs):
+        prompts.append(prompt)
         return json.dumps(
             {
                 "evidence": delta["evidence"],
@@ -145,12 +213,15 @@ def test_evidence_only_repair_can_replace_knowledge_quote_without_state_changes(
         return await repair_state_evidence(
             object(),
             chapter_plan={
+                "required_event_ids": ["event-transfer"],
+                "key_events": ["港务监理把潮汐测针交给王明"],
                 "knowledge_grants": delta["knowledge_grants"],
                 "canon_refs": [],
                 "timeline_event_bindings": {},
             },
             content_text=BODY,
             current_timeline=[],
+            canon=CANON,
             delta=delta,
             diagnostics=[],
             error="证据错误",
@@ -162,3 +233,9 @@ def test_evidence_only_repair_can_replace_knowledge_quote_without_state_changes(
 
     assert normalized["state_transitions"] == delta["state_transitions"]
     assert normalized["knowledge_evidence"] == delta["knowledge_evidence"]
+    assert '"required_knowledge_evidence_keys"' in prompts[0]
+    assert '"required_prefix":"王明确认"' in prompts[0]
+    assert '"source_event_text":"港务监理把潮汐测针交给王明"' in prompts[0]
+    assert "禁止把 key 中的 source_event_id 换成" in prompts[0]
+    assert "exact_offsets=[] 且没有 source_candidate 的片段必须删除" in prompts[0]
+    assert "按最早 exact_offset 升序重排" in prompts[0]

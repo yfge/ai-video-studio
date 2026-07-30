@@ -99,7 +99,7 @@ describe("structured Story Seed outline", () => {
         {
           thread_id: "线索来源",
           payoff_position: 2,
-          evidence_key_event: "关于“线索来源”的最终证据确认：来自旧档案",
+          evidence_key_event: "旧档案揭示线索来源",
         },
       ],
     };
@@ -110,6 +110,47 @@ describe("structured Story Seed outline", () => {
     );
     assert.equal(replaced.status, "draft");
     assert.deepEqual(replaced.thread_payoffs, []);
+  });
+
+  it("keeps soft progression arcs only while their chapter coverage remains valid", () => {
+    const source: StorySeedStructuredOutline = {
+      status: "confirmed",
+      version: 1,
+      planning_structure_version: 1,
+      progression_arcs: [
+        {
+          arc_id: "arc-001",
+          title: "起步阶段",
+          start_position: 1,
+          end_position: 2,
+          narrative_goal: "推进当前矛盾",
+          ending_state: "获得新的选择",
+          growth: {
+            cognition: "看见更大的选择空间",
+            capability: null,
+            resources: null,
+            activity_and_time_scale: null,
+          },
+          major_entries: [],
+          world_scope_changes: [],
+          threads: [],
+        },
+      ],
+      thread_schedule_version: 1,
+      chapters: [chapter(1, "开端"), chapter(2, "展开")],
+      thread_payoffs: [],
+    };
+
+    const unchanged = replaceOutlineChapters(source, source.chapters);
+    assert.equal(unchanged.planning_structure_version, 1);
+    assert.equal(validateStructuredOutline(unchanged), null);
+
+    const expanded = replaceOutlineChapters(
+      source,
+      appendOutlineChapter(source.chapters),
+    );
+    assert.equal(expanded.planning_structure_version, 0);
+    assert.deepEqual(expanded.progression_arcs, []);
   });
 });
 

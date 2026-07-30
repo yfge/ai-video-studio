@@ -16,12 +16,14 @@ import {
   splitOutlineChapter,
   validateStructuredOutline,
 } from "./storyStructuredOutline";
+import { visibleProgressionChapters } from "./storyProgressionArcs";
 import {
   StoryOutlineAction,
   StoryOutlineField,
   StoryOutlineListField,
 } from "./StoryStructuredOutlineFields";
 import { StoryThreadPayoffEditor } from "./StoryThreadPayoffEditor";
+import { StoryProgressionArcSelector } from "./StoryProgressionArcSelector";
 
 interface Props {
   outline: StorySeedStructuredOutline;
@@ -35,6 +37,9 @@ export function StoryStructuredOutlineEditor({
   onChange,
 }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const arcs = outline.progression_arcs ?? [];
+  const [selectedArcId, setSelectedArcId] = useState(arcs[0]?.arc_id ?? "");
+  const progression = visibleProgressionChapters(outline, selectedArcId);
   const setChapters = (
     chapters: StorySeedStructuredChapter[],
     mapPayoff?: Parameters<typeof replaceOutlineChapters>[2],
@@ -79,7 +84,12 @@ export function StoryStructuredOutlineEditor({
           </span>
         ) : null}
       </div>
-      {outline.chapters.map((chapter, index) => (
+      <StoryProgressionArcSelector
+        arcs={arcs}
+        value={progression.selectedArc?.arc_id ?? ""}
+        onChange={setSelectedArcId}
+      />
+      {progression.chapterRows.map(({ chapter, index }) => (
         <article
           key={chapter.position}
           onDragOver={(event) => event.preventDefault()}

@@ -71,11 +71,10 @@ def test_thread_contract_requires_unique_later_exact_payoff():
     with pytest.raises(ValueError, match="未逐字复制"):
         validate_seed_thread_contract(paraphrased, require_version=True)
 
-    unlabelled = copy.deepcopy(outline)
-    unlabelled["chapters"][1]["key_events"] = ["审计证明裴衡改写了数据"]
-    unlabelled["thread_payoffs"][0]["evidence_key_event"] = "审计证明裴衡改写了数据"
-    with pytest.raises(ValueError, match="显式问题标签"):
-        validate_seed_thread_contract(unlabelled, require_version=True)
+    neutral = copy.deepcopy(outline)
+    neutral["chapters"][1]["key_events"] = ["裴衡承认自己改写了数据"]
+    neutral["thread_payoffs"][0]["evidence_key_event"] = "裴衡承认自己改写了数据"
+    assert validate_seed_thread_contract(neutral, require_version=True)
 
 
 def test_structure_parse_requires_versioned_thread_contract():
@@ -93,22 +92,20 @@ def test_structure_parse_requires_versioned_thread_contract():
         json.dumps({"structured_outline": projected}, ensure_ascii=False),
         [1, 2],
     )
-    assert error is None
-    assert parsed.thread_payoffs[0].evidence_key_event in parsed.chapters[1].key_events
+    assert parsed is None
+    assert "evidence_key_event 未逐字复制" in error
 
-    unlabelled = copy.deepcopy(outline)
-    unlabelled_event = "审计证明裴衡改写了数据"
-    unlabelled["chapters"][1]["key_events"] = [unlabelled_event]
-    unlabelled["thread_payoffs"][0]["evidence_key_event"] = unlabelled_event
+    neutral = copy.deepcopy(outline)
+    neutral_event = "裴衡承认自己改写了数据"
+    neutral["chapters"][1]["key_events"] = [neutral_event]
+    neutral["thread_payoffs"][0]["evidence_key_event"] = neutral_event
     parsed, error = _parse(
-        json.dumps({"structured_outline": unlabelled}, ensure_ascii=False),
+        json.dumps({"structured_outline": neutral}, ensure_ascii=False),
         [1, 2],
     )
     assert error is None
-    assert parsed.thread_payoffs[0].evidence_key_event.startswith(
-        "关于“谁改写了数据”的最终证据确认："
-    )
-    assert unlabelled_event in parsed.chapters[1].key_events
+    assert parsed.thread_payoffs[0].evidence_key_event == neutral_event
+    assert parsed.chapters[1].key_events == [neutral_event]
 
     duplicated = copy.deepcopy(outline)
     duplicated["chapters"][0]["key_events"].append(

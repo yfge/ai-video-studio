@@ -25,7 +25,7 @@ const dom = new JSDOM("<!doctype html><html><body></body></html>", {
 describe("StoryNovelLengthPanel model", () => {
   afterEach(() => cleanup());
 
-  it("hydrates and saves the current revision model", async () => {
+  it("hydrates and saves the frozen three-stage model policy", async () => {
     const originalFetch = globalThis.fetch;
     const updates: StoryNovelUpdateLengthSpecPayload[] = [];
     globalThis.fetch = async (input) =>
@@ -82,9 +82,26 @@ describe("StoryNovelLengthPanel model", () => {
         (modelInput as HTMLSelectElement).value,
         "deepseek:deepseek-v4-flash",
       );
+      assert.equal(
+        (utils.getByLabelText("章前规划模型") as HTMLSelectElement).value,
+        "deepseek:deepseek-v4-flash",
+      );
+      assert.equal(
+        (utils.getByLabelText("状态审计模型（可选）") as HTMLSelectElement)
+          .value,
+        "",
+      );
+      fireEvent.change(utils.getByLabelText("状态审计模型（可选）"), {
+        target: { value: "deepseek:deepseek-v4-flash" },
+      });
       fireEvent.click(utils.getByRole("button", { name: "保存到当前版本" }));
       await waitFor(() => assert.equal(updates.length, 1));
       assert.equal(updates[0].model, "deepseek:deepseek-v4-flash");
+      assert.deepEqual(updates[0].model_policy, {
+        planning_model: "deepseek:deepseek-v4-flash",
+        prose_model: "deepseek:deepseek-v4-flash",
+        audit_model: "deepseek:deepseek-v4-flash",
+      });
       assert.equal(updates[0].expected_plan_version, 4);
     } finally {
       globalThis.fetch = originalFetch;
@@ -105,6 +122,7 @@ const story = {
     structured_outline: {
       status: "confirmed",
       version: 7,
+      planning_model: "deepseek:deepseek-v4-flash",
       thread_schedule_version: 1,
       thread_payoffs: [],
       chapters: [
@@ -120,7 +138,7 @@ const story = {
       ],
     },
   },
-} as Story;
+} as unknown as Story;
 
 const revision = {
   business_id: "revision-1",
@@ -129,6 +147,11 @@ const revision = {
   generation_plan: {
     version: 4,
     status: "ready",
+    model_policy: {
+      planning_model: "deepseek:deepseek-v4-flash",
+      prose_model: "deepseek:deepseek-v4-flash",
+      audit_model: null,
+    },
     length_profile: {
       profile_id: "standard_serial",
       default_min_chars: 3000,
@@ -138,4 +161,4 @@ const revision = {
     chapter_length_overrides: {},
     chapters: [],
   },
-} as StoryNovelRevision;
+} as unknown as StoryNovelRevision;

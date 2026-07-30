@@ -1,5 +1,6 @@
 import json
 
+import pytest
 from app.services.story.story_novel_canon_service import (
     normalize_canon,
     parse_model_canon,
@@ -156,6 +157,69 @@ def test_model_parser_keeps_location_sourced_only_at_milestone_chapter():
     assert error is None
     assert len(canon["milestones"][0]["outcomes"]) == 2
     assert diagnostics == []
+
+
+def test_model_parser_drops_organization_knowledge_outcome_but_raw_is_strict():
+    raw = _raw_canon_with_archive_milestone()
+    raw["entities"].append(
+        {
+            "id": "org-villagers",
+            "kind": "organization",
+            "name": "村民组织",
+            "aliases": [],
+            "attributes": {},
+        }
+    )
+    raw["milestones"][0]["outcomes"].append(
+        {
+            "subject_id": "org-villagers",
+            "field": "knowledge",
+            "operator": "contains",
+            "value": "fact-archive-public",
+        }
+    )
+
+    canon, error, diagnostics = parse_model_canon(
+        json.dumps(raw, ensure_ascii=False),
+        _contract("王明检查出发清单", "潮汐测针在归航档案馆正式归档"),
+    )
+
+    assert error is None
+    assert all(
+        outcome["subject_id"] != "org-villagers"
+        for outcome in canon["milestones"][0]["outcomes"]
+    )
+    assert diagnostics == [
+        {
+            "id": "mile-archive",
+            "section": "milestone",
+            "reason": "non_character_knowledge_subject",
+            "subject_id": "org-villagers",
+            "fact_id": "fact-archive-public",
+        }
+    ]
+    with pytest.raises(ValueError, match="knowledge outcome 只能授予角色"):
+        normalize_canon(raw)
+
+
+def test_model_parser_keeps_non_location_list_outcome_without_entity_lookup():
+    raw = _raw_canon_with_archive_milestone()
+    raw["milestones"][0]["outcomes"].append(
+        {
+            "subject_id": "char-a",
+            "field": "permissions",
+            "operator": "eq",
+            "value": ["记录权", "复核权"],
+        }
+    )
+
+    canon, error, _diagnostics = parse_model_canon(
+        json.dumps(raw, ensure_ascii=False),
+        _contract("王明检查出发清单", "潮汐测针在归航档案馆正式归档"),
+    )
+
+    assert error is None
+    assert canon["milestones"][0]["outcomes"][-1]["value"] == ["记录权", "复核权"]
 
 
 def test_old_filter_checkpoint_recompiles_canon(db_session):

@@ -96,7 +96,9 @@ async def _generate_initial_body(revision, plan, context_pack, generate_text):
         target_chars=target,
         max_chars=maximum,
     )
-    return await generate_text(revision, prompt, max_tokens=chapter_output_tokens(plan))
+    return await generate_text(
+        revision, prompt, max_tokens=chapter_output_tokens(plan, revision.model)
+    )
 
 
 async def _generate_repaired_body(
@@ -132,7 +134,7 @@ async def _generate_repaired_body(
     return await generate_text(
         revision,
         prompt,
-        max_tokens=chapter_output_tokens(plan),
+        max_tokens=chapter_output_tokens(plan, revision.model),
         temperature=0.2,
     )
 

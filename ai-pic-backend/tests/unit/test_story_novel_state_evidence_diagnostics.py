@@ -81,7 +81,7 @@ def test_evidence_diagnostics_offer_unique_exact_suffix_for_rewritten_lead():
     body = f"老拐直起身，{exact}，确认锚定牢固。"
     diagnostics = _evidence_repair_diagnostics(
         body,
-        {"evidence": {"event-2": f"将一根标尺用力插在陡坎边缘的裂缝里"}},
+        {"evidence": {"event-2": "将一根标尺用力插在陡坎边缘的裂缝里"}},
         [{"message": "事件缺少可核对的正文证据: event-2"}],
     )
 

@@ -1,8 +1,10 @@
 import type { Episode } from "./story.types";
+import type { StoryNovelChapterLedger } from "./story-novel-continuity.types";
 import type {
   NovelChapterLength,
   NovelChapterLengthOverrides,
   NovelGenerationLengthProfile,
+  StoryNovelModelPolicy,
 } from "./story-novel-planning.types";
 
 export type NovelLifecycle = "legacy" | "draft" | "approved" | "superseded";
@@ -51,7 +53,7 @@ export interface StoryNovelCanonItem {
   id: string;
   label?: string;
   name?: string;
-  kind?: "character" | "location" | "object" | "organization";
+  kind?: "character" | "location" | "object" | "organization" | "concept";
   [key: string]: unknown;
 }
 
@@ -95,6 +97,7 @@ export interface StoryNovelChapterPlan {
   payoffs_due?: string[];
   canon_refs?: string[];
   timeline_event_bindings?: Record<string, string>;
+  entity_introductions?: Array<Record<string, unknown>>;
 }
 
 export interface AdaptationPlanEpisode {
@@ -117,7 +120,7 @@ export interface StoryNovelAdaptationPlan {
 }
 
 export interface StoryNovelGenerationPlan {
-  schema?: "story_novel_generation_plan.v2";
+  schema?: "story_novel_generation_plan.v2" | "story_novel_generation_plan.v3";
   version?: number;
   status: "planning" | "ready" | "failed";
   phase?: "spec_ready" | "canon" | "chapters" | "ready";
@@ -131,43 +134,24 @@ export interface StoryNovelGenerationPlan {
   story_seed_version?: number;
   outline_hash?: string;
   plan_hash?: string;
+  model_policy?: StoryNovelModelPolicy;
+  planning_contract_version?: number;
+  future_guard_hash?: string;
   length_profile?: NovelGenerationLengthProfile;
   chapter_length_overrides?: NovelChapterLengthOverrides;
   chapters: StoryNovelChapterPlan[];
 }
 
 export interface StoryNovelContinuityLedger {
-  schema?: "story_novel_continuity.v2" | "story_novel_continuity.v3";
+  schema?:
+    | "story_novel_continuity.v2"
+    | "story_novel_continuity.v3"
+    | "story_novel_continuity.v4";
   state_status?: "empty" | "generating" | "ready" | "stale" | "failed";
   stale_from_position?: number;
   recovery_from_position?: number;
   current_state?: Record<string, unknown>;
-  chapters?: Record<
-    string,
-    {
-      status?:
-        | "body_ready"
-        | "ready"
-        | "stale"
-        | "state_pending"
-        | "gate_failed";
-      generation_status?: string;
-      extraction_status?: "pending" | "ready" | "stale" | "blocked";
-      char_count?: number;
-      body_hash?: string;
-      source_hash?: string;
-      canon_hash?: string;
-      context_hash?: string;
-      state_before_hash?: string;
-      state_after_hash?: string;
-      state_validation?: {
-        status?: "passed" | "failed";
-        violations?: Array<{ code: string; message: string }>;
-      };
-      body_repair_count?: number;
-      state_extraction_repair_count?: number;
-    }
-  >;
+  chapters?: Record<string, StoryNovelChapterLedger>;
 }
 
 export interface StoryNovelQualityScore {

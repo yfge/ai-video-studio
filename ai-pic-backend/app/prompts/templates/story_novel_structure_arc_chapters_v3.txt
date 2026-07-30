@@ -1,0 +1,21 @@
+把当前分卷细化为结构化章节，不写正文。
+StorySeed：{{ story_seed_json }}
+当前唯一分卷合同：{{ current_arc_json }}
+必须完整返回这些连续章节：{{ positions_json }}
+与本批开启或回收有关的伏笔指令：{{ thread_directives_json }}
+{{ ending_requirement }}
+
+每章必须有 position、title、goal、至少一个 key_event、character_focus、open_threads 和
+end_state。当前分卷的 growth 只帮助安排阶段节奏，不要求每章升级，也不得把它写成数值播报。
+允许失败、代价、蓄势、关系变化和局部回撤；但相邻章节不得机械重复同一发现、判断和收益。
+
+主要人物和世界范围既可以预先规划，也必须按章节依次登场。只有当前事件确实需要时才首次引入
+新人物、地点、组织、物件或概念；后续章节可以延续，不得在第一章展示未来全部世界。
+
+open_threads 必须严格等于 thread_directives 中 open_position 落在该章的 thread_id，顺序保持
+指令顺序；没有则必须为空。thread_payoffs 必须严格等于 payoff_position 落在本批的指令，
+并让 evidence_key_event 逐字复制目标章的一条 key_events，真实完成 payoff_intent。
+
+只输出严格 JSON：
+{"chapters":[{"position":1,"title":"标题","goal":"情节目标","key_events":["关键事件"],"character_focus":[],"open_threads":[],"end_state":"章末状态"}],"thread_payoffs":[{"thread_id":"伏笔ID","payoff_position":2,"evidence_key_event":"目标章关键事件原文"}]}
+不得输出其他分卷、未来章节正文、解释或省略章。

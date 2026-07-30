@@ -192,6 +192,7 @@ Profiles are configurable and product-neutral. Initial defaults are:
 
 | Profile         |    Minimum |     Target |    Maximum |
 | --------------- | ---------: | ---------: | ---------: |
+| Commercial web  |       2000 |       2500 |       3000 |
 | Short serial    |       1500 |       2200 |       3000 |
 | Standard serial |       3000 |       4000 |       5000 |
 | Long chapter    |       4500 |       6000 |       8000 |
@@ -247,6 +248,234 @@ IDs, and memory IDs. The plan version and hashes are approval evidence.
 freezes the StorySeed version, plan version, resolved ranges, and model. While a
 task is running, these fields cannot be changed. The user must cancel first and
 create a new plan version.
+
+## Chapter-planning quality pipeline v3
+
+Research basis (checked 2026-07-27):
+
+- [DOME (NAACL 2025)](https://aclanthology.org/2025.naacl-long.63/) motivates
+  dynamic hierarchical outline/write coupling plus temporal memory instead of a
+  single rigid outline dump.
+- [FactTrack (NAACL 2025)](https://aclanthology.org/2025.naacl-long.144/)
+  motivates directional atomic effects, time-aware validity, contradiction
+  detection, and ordered state update.
+- [E²RAG (EACL 2026)](https://aclanthology.org/2026.eacl-long.90/) motivates
+  keeping entity state and event causality as distinct retrieval/ranking signals.
+- [ConStory-Bench (Findings ACL 2026)](https://aclanthology.org/2026.findings-acl.410.pdf)
+  motivates evidence-grounded factual/temporal consistency categories rather
+  than relying on a single opaque LLM score.
+
+These papers inform the decomposition and evaluation boundaries; they do not
+replace the product's deterministic Canon, hash, state, and approval gates.
+
+New revisions created with an explicit three-stage model policy use
+`story_novel_generation_plan.v3` and `story_novel_continuity.v4`. Existing v2
+revisions remain readable and resumable under their original contract; they are
+not migrated and cannot enter the v3-only Episode/Script downstream boundary.
+
+StorySeed structuring accepts a finite positive `chapter_count` and a planning
+model. The model must return exactly the contiguous positions
+`1..chapter_count`; an omitted count is compatible only when the textual outline
+contains an explicit finite range. The confirmed structured-outline list remains
+the sole chapter-count authority. There is no separate novel-total input or
+application-level chapter ceiling. A roughly two-million-character serial is
+therefore expressed, for example, as about 800 chapters under the default
+2,000–3,000 non-whitespace-character profile, not as a mutable `target_words`
+field.
+
+Outlines longer than 32 chapters use `planning_structure_version=1`: one bounded
+progression call freezes contiguous 32-chapter arc ranges, followed by one
+bounded chapter-detail call per arc. Every call has one format repair and an
+output ceiling no higher than 16K tokens; an invalid or incomplete arc fails
+closed instead of truncating or synthesizing empty chapters. Each arc may carry
+four optional prose directions—cognition, capability, resources, and
+activity/time scale. These are whole-arc editorial curves, may be null, and are
+never per-chapter numeric KPIs. Buildup, failure, and costly regression remain
+valid chapter shapes.
+
+A Revision freezes:
+
+```json
+{
+  "model_policy": {
+    "planning_model": "provider:model",
+    "prose_model": "provider:model",
+    "audit_model": "provider:model"
+  }
+}
+```
+
+`revision.model` mirrors `prose_model`. Legacy clients that send only `model`
+continue to use that model for every stage. New clients always send the policy;
+after task dispatch or the first chapter checkpoint, changing the policy requires
+a new Revision. Planning defaults to reasoning enabled, while prose and audit
+default to reasoning disabled. Per-chapter brief, prose, audit, and local repair
+budgets are respectively 12000, dynamically 12000–16000, 6000, and 4000 output
+tokens; no v3 stage restores an 8192 cap.
+
+All V3 model-facing instructions use the repository PromptManager rather than
+Python f-string prompt bodies. Dedicated, versioned templates cover the system
+prompt, structured-outline conversion and both repair paths, Canon
+compilation/repair, thread scheduling/repair, bounded chapter-plan batches,
+targeted and full-plan repair, semantic audit, chapter brief, prose blocks and
+truncation continuation, proof audit, local block repair, bounded JSON repair,
+and continuity window/global review. The generation plan freezes
+`story_novel_prompt_policy.v9` with each template name, metadata version, and
+source hash. Each invocation persists the exact rendered user-prompt hash plus
+the versioned system-prompt fingerprint, including provider calls rejected for
+`finish_reason=length`; continuity and approval compare that evidence with the
+real invocation row. A template source change therefore invalidates V3 plan or
+checkpoint reuse instead of silently changing the generation contract. Stored
+v1-v8 policies remain structurally verifiable as legacy snapshots; new plans
+always freeze v9. Legacy Zhihu templates and behavior remain separate.
+
+Novel runtime instructions are genre-neutral. StorySeed, Canon, and the current
+chapter contract are the only sources of subject matter, relationship arcs, and
+special mechanisms. The server does not inject agriculture, transmigration,
+gendered lead roles, fixed payoff prose, or domain-specific process examples;
+an automated scan covers every `story_novel_*.txt` template and the Python
+modules that assemble novel prompts.
+
+Global chapter-contract planning is split between model-authored narrative
+intent and a deterministic server state compiler. The model selects the current
+event effects and desired destinations; the service replays the Canon state
+machine and owns every `from_value`, movement origin, and executable
+precondition. Provider JSON is checked as one structural error vector before
+semantic validation, and a parseable invalid batch receives field-level patches
+instead of reprinting all chapters. The semantic audit reports both missing and
+unsupported effects, so scene description or model inference cannot silently
+become a durable state change. Batches remain at most eight chapters but shrink
+to three or more chapters as event, character, thread, timeline, and milestone
+complexity increases; each batch receives only the next boundary anchor.
+
+The audit also freezes one typed execution contract for every required event:
+action phase, time scope, actors, effort class, timeline bindings, and knowledge
+bindings. Blocking issues are limited to direct contradictions among the frozen
+event, timeline, chapter end state, knowledge effects, and explicit world rules.
+Unspecified scale stays unspecified; the auditor must not invent dimensions or
+labor assumptions. General realism, slightly accelerated labor, dramatic
+coincidence, pacing, prose style, and other commercial-web-fiction choices are
+editorial advisories, never deterministic blockers. A prose passage becomes a
+hard world-rule failure only when its own concrete claim directly violates an
+explicit rule or another frozen contract. The service derives severity from the
+typed issue code rather than trusting the model's severity field: generic labor
+feasibility is advisory, while direct timeline/state/knowledge/end-state/world-
+rule conflict codes remain blocking.
+
+Canon locations may declare static `attributes.location_scope` as `persistent`
+or `scene`. A scene location must have a valid acyclic
+`attributes.parent_location_id`; it is available for prose staging but compiles
+to its persistent ancestor for state replay. Initial state and milestone
+location outcomes cannot target a scene location. This prevents visits to a
+station room or warehouse from becoming fictitious cross-chapter travel while
+preserving real vehicle, route, and destination transitions.
+
+Each chapter executes four durable phases:
+
+1. **Chapter planning.** The planning model receives only the current frozen
+   contract, visible Canon and `state_before`, valid earlier Revision events and
+   memories, unresolved threads, recent summaries, and the previous body tail.
+   It never receives later chapter titles, dates, actions, end states, or payoff
+   prose. It returns `story_novel_chapter_brief.v1`; new commercial plans freeze
+   brief policy v4 with 4–6 larger, non-overlapping beats, while historical
+   policy v3 keeps 6–12 beats for hash compatibility. Each brief records
+   character budgets, allowed entities/events/effects, motivations,
+   emotional continuity, causal bridge, and current setup/payoff IDs.
+   The active progression arc is included only as a multi-chapter soft direction;
+   future arcs, future entries, and future payoff text remain absent.
+   The brief preserves the execution contract and shapes commercial-web-fiction
+   rhythm as pressure/conflict -> protagonist choice -> action -> visible gain
+   or cost -> chapter-end hook; it does not turn the chapter into an engineering
+   report merely to satisfy plausibility.
+   Valid earlier Event/Memory rows are deterministically ranked by current
+   characters, contract terms, source position, and knowledge boundary before
+   the context budget is applied; low-relevance history is discarded first.
+   The non-truncatable world projection is bounded to current-chapter references
+   plus their direct current-state dependencies. Merely appearing in an old
+   chapter never makes an entity occupy every later hard context.
+2. **Block prose.** The prose model receives the validated brief, current visible
+   Canon projection, writing style, and length contract. The projection includes
+   only current-chapter event text/execution contracts plus currently visible
+   character introductions, motivations, state, and relationships; references
+   to future characters and later relationship progress are filtered out. It receives zero raw
+   Narrative Event/Memory rows, zero future contracts, zero evidence rules, and
+   no expected/state delta. It returns only contiguous `B01..Bnn` body blocks.
+3. **Proof audit.** The server compiles the only authoritative `expected_delta`
+   from the chapter contract plus `state_before`, splits the assembled body into
+   stable Unicode sentence IDs/offsets, and asks the audit model only to bind
+   contract IDs to sentence IDs and report unexpected, future, or world-rule
+   hits. The model cannot author state IDs, from/to values, owners, locations, or
+   milestones. Required-event, material state, location, and knowledge contracts
+   need semantic sentence proof. Milestone consumption and thread open/payoff are
+   deterministic effects of a proved required event and do not demand a second
+   restatement. Timeline bindings remain audit context rather than proof
+   contracts: natural relative time or omitted repeated dates are valid whenever
+   the event sequence, travel duration, and day/night continuity are reasonable.
+   Quotes and spans are always reconstructed from the stored body.
+4. **Narrative materialization.** After every proof and deterministic gate passes,
+   required events become World Event candidates and knowledge grants become
+   Character Memory candidates, enriched by the brief's motivation/emotional
+   intent and current character-arc checkpoint. No additional Narrative
+   extraction model is called. Only source-hash-valid, earlier ready candidates
+   may enter the next chapter's planning context.
+
+Major people, locations, organizations, objects, and concepts may be registered
+in Canon before generation while remaining hidden until the first chapter whose
+frozen outline names them. A chapter package may also introduce a previously
+unplanned persistent entity when the current event actually needs it. The
+service assigns a stable Revision-local ID, binds the introduction to the
+current required event, records initial state and first appearance, and rejects
+any earlier ID or name reference. Once its chapter passes proof/state gates, the
+entity joins `revision_local_entities` and may be used by later chapter planning;
+one-scene extras and ordinary props do not become permanent world state. This
+lets a serial expand from village to county, city, country, continent, planet,
+or other genre-appropriate scopes without requiring any particular scale or a
+forced map change.
+
+The global plan compiles a hash-addressed `future_guard_index` containing only
+stable event IDs, first-allowed positions, protected entities/dates/conclusions,
+milestone outcomes, and semantic match terms. The prose model never sees it.
+Claim-card selection is only a candidate-recall step, never a deterministic prose
+failure. The audit model also receives the current values of chapter-relevant
+subjects and compact future state boundaries for those subjects, without future
+titles, goals, or end states. This lets it reject a paraphrased early permission,
+ownership, location, knowledge, or payoff outcome while allowing harmless name,
+date, world-detail, and hypothetical mentions. Literal date/entity/world-rule
+matches do not fail a v3 chapter until the semantic audit identifies a real
+contract contradiction and binds it to current-body sentence IDs.
+The brief and context checkpoint records input Event/Memory IDs and source
+hashes, state/chapter-contract/Canon hashes, excluded future count, and complete
+record-level truncation reasons. `hard_constraints` alone are non-truncatable;
+optional evidence, summaries, ledger rows, and tail text are retained only as
+complete bounded records.
+
+The service assembles block offsets and hashes before persistence. Body plus
+ledger checkpoint commit atomically. A content failure may replace only the
+failed blocks once and then re-audits the whole assembled body; untouched block
+bytes remain identical. If provider transport ends with `finish_reason=length`,
+the service recovers only complete leading block objects and requests the exact
+missing block IDs once; no recovered byte is regenerated. With no complete
+block it allows one whole-prose retry. A format failure gets at most one recovery
+call. Invocation audit keeps provider transport status separate from
+`product_status=rejected` and the precise product error. An
+evidence-only failure preserves an `audit` checkpoint and a later Resume calls
+only the auditor; it never rewrites prose. `ready` and candidate-only recovery
+paths are model-free when all hashes match.
+
+`story_novel_continuity.v4` stores the brief/input/model/hash evidence, block
+manifest, expected delta, sentence-index hash, proof spans, future/world audit,
+all stage invocation IDs/tokens/finish reasons/latency, Narrative candidate IDs,
+and the Canon/context/body/source/state hash chain. Six-chapter continuity
+reviews additionally report reader-retention warnings for conflict, payoff
+cadence, relationship movement, repetition, and chapter hooks. These are
+editorial signals, not deterministic approval blockers. Global review also
+scores optional long-range cognition, capability, resource, and activity/time
+progression plus reader appeal; a curve that does not fit the genre is not
+penalized, and no chapter is required to announce an upgrade. V3 approval recomputes these
+values, requires every stage invocation and all eight six-chapter plus one global
+review invocation for a 48-chapter book, and rejects any tampering. The approved
+canonical v3 Revision is the only novel source accepted by the adaptation plan,
+Episode, and Script lineage gates.
 
 ## Generation, repair, and resume
 

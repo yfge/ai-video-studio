@@ -55,6 +55,20 @@ describe("StoryNovelWorkflow generation polling acceptance", () => {
           ],
         });
       }
+      if (url.includes("/api/v1/ai/models/available")) {
+        return response({
+          models: [
+            {
+              model_id: "deepseek:deepseek-v4-pro",
+              id: "deepseek-v4-pro",
+              name: "DeepSeek V4 Pro",
+              provider: "deepseek",
+              type: "text_generation",
+              capabilities: ["text_generation"],
+            },
+          ],
+        });
+      }
       if (url.endsWith("/api/v1/tasks/7001")) {
         taskCalls += 1;
         return response({
@@ -92,6 +106,18 @@ describe("StoryNovelWorkflow generation polling acceptance", () => {
         true,
       );
       assert.equal(
+        utils.getByLabelText("章前规划模型").hasAttribute("disabled"),
+        true,
+      );
+      assert.equal(
+        utils.getByLabelText("正文生成模型（可选）").hasAttribute("disabled"),
+        true,
+      );
+      assert.equal(
+        utils.getByLabelText("状态审计模型（可选）").hasAttribute("disabled"),
+        true,
+      );
+      assert.equal(
         utils.getByLabelText("当前小说版本").hasAttribute("disabled"),
         true,
       );
@@ -113,6 +139,12 @@ describe("StoryNovelWorkflow generation polling acceptance", () => {
       assert.equal(
         utils.getByLabelText("长度预设").hasAttribute("disabled"),
         false,
+      );
+      await waitFor(() =>
+        assert.equal(
+          utils.getByLabelText("章前规划模型").hasAttribute("disabled"),
+          false,
+        ),
       );
       assert.equal(
         utils.getByLabelText("当前小说版本").hasAttribute("disabled"),

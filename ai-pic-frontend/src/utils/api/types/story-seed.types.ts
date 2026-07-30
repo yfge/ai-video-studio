@@ -19,11 +19,39 @@ export interface StorySeedThreadPayoff {
   evidence_key_event: string;
 }
 
+export interface StorySeedGrowthCurves {
+  cognition?: string | null;
+  capability?: string | null;
+  resources?: string | null;
+  activity_and_time_scale?: string | null;
+}
+
+export interface StorySeedProgressionArc {
+  arc_id: string;
+  title: string;
+  start_position: number;
+  end_position: number;
+  narrative_goal: string;
+  ending_state: string;
+  growth: StorySeedGrowthCurves;
+  major_entries: string[];
+  world_scope_changes: string[];
+  threads: Array<{
+    thread_id: string;
+    question: string;
+    open_position: number;
+    payoff_position: number;
+    payoff_intent: string;
+  }>;
+}
+
 export interface StorySeedStructuredOutline {
   status: "draft" | "confirmed" | "frozen";
   version: number;
   requested_chapter_count?: number | null;
   planning_model?: string | null;
+  planning_structure_version?: 0 | 1;
+  progression_arcs?: StorySeedProgressionArc[];
   chapters: StorySeedStructuredChapter[];
   thread_schedule_version: number;
   thread_payoffs: StorySeedThreadPayoff[];

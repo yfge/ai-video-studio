@@ -7,6 +7,8 @@ from app.services.narrative_memory.candidate_verification import (
 from app.services.narrative_memory.source_hash import novel_chapter_source_hash
 
 from .story_novel_domain import active_chapters
+from .story_novel_plan_versions import is_state_gated_plan
+from .story_novel_revision_local_memory import prior_local_memories
 
 
 def _source_hashes(prior_rows: list) -> dict:
@@ -24,9 +26,7 @@ def revision_local_candidates(
     source_hashes = _source_hashes(prior_rows)
     chapters_by_id = {item.business_id: item for item in prior_rows}
     ledger_rows = (revision.continuity_ledger or {}).get("chapters") or {}
-    strict = (revision.generation_plan or {}).get(
-        "schema"
-    ) == "story_novel_generation_plan.v2"
+    strict = is_state_gated_plan(revision.generation_plan)
 
     def verified(item) -> bool:
         if not strict:
@@ -80,7 +80,7 @@ def revision_local_candidates(
         and source_hashes.get(item.source_artifact_business_id) == item.source_hash
         and verified(item)
     ]
-    return events, memories
+    return events, [*memories, *prior_local_memories(revision, prior_rows)]
 
 
 def ready_prior_chapters(revision, position: int, *, strict=False) -> list:
@@ -89,9 +89,7 @@ def ready_prior_chapters(revision, position: int, *, strict=False) -> list:
         for item in active_chapters(revision)
         if item.position < position
     }
-    if (revision.generation_plan or {}).get(
-        "schema"
-    ) != "story_novel_generation_plan.v2":
+    if not is_state_gated_plan(revision.generation_plan):
         return [chapters[key] for key in sorted(chapters)]
     ledger_rows = (revision.continuity_ledger or {}).get("chapters") or {}
     result = []

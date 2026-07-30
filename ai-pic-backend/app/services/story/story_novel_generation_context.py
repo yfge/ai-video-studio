@@ -24,6 +24,7 @@ from .story_novel_context_utils import (
 )
 from .story_novel_hard_context import build_hard_constraints, hard_constraints_hash
 from .story_novel_memory_context import chapter_memory_context
+from .story_novel_plan_versions import is_state_gated_plan
 from .story_novel_state_service import state_before_position, state_hash
 
 
@@ -45,7 +46,7 @@ def _hard_context(service, revision, position: int, chapter_plan: dict, plan: di
     approved_canon = stable_canon(
         chapter_memory_context(service.db, revision, position) or {}
     )
-    if plan.get("schema") != "story_novel_generation_plan.v2":
+    if not is_state_gated_plan(plan):
         return {}, approved_canon, None, None
     try:
         state_before = state_before_position(revision, position)

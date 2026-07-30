@@ -40,14 +40,22 @@ export interface StoryNovelLengthSpecPayload {
   chapter_length_overrides: NovelChapterLengthOverrides;
 }
 
+export interface StoryNovelModelPolicy {
+  planning_model: string | null;
+  prose_model: string | null;
+  audit_model: string | null;
+}
+
 export interface StoryNovelCreateRevisionPayload
   extends StoryNovelLengthSpecPayload {
   style: "prose";
   model?: string;
+  model_policy: StoryNovelModelPolicy;
 }
 
 export interface StoryNovelUpdateLengthSpecPayload
   extends StoryNovelLengthSpecPayload {
   expected_plan_version: number;
   model?: string | null;
+  model_policy: StoryNovelModelPolicy;
 }

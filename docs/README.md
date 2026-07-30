@@ -27,6 +27,16 @@ This directory holds design notes, API references, and testing guides. Keep this
 - `docs/exec-plans/active/canon-gated-longform-quality-loop.md` — compiled
   Canon, actual-body typed state gates, earliest-safe Canon repair/resume,
   deterministic continuity metrics, and GPT-5.6 long-form acceptance.
+- `docs/exec-plans/active/story-novel-planning-quality-v3.md` — chapter-planning
+  briefs, prose blocks, proof-only audit, deterministic Narrative materialization,
+  three-stage model policy, commercial 2K–3K chapters, bounded multi-arc planning
+  for roughly two-million-character serials, progressive Revision-local world
+  expansion, soft growth/reader-appeal review, cancel/Resume proof, and a new
+  48-chapter GPT-5.6 acceptance sample.
+- `docs/exec-plans/active/narrative-world-character-agents.md` — optional
+  character-agent scene rehearsal with isolated perspective packets, central
+  world resolution, unified narration, A/B decision gate, Resume evidence, and
+  fresh 48-chapter acceptance.
 - `docs/exec-plans/completed/outline-driven-longform-novel.md` — dynamic
   StorySeed planning, 3K–5K chapter checkpoints, bounded memory context,
   extraction-only resume, and real-model acceptance.
@@ -66,6 +76,10 @@ Keep durable engineering rules in repository docs like the files above. Do not t
 
 ## Design Documents
 
+- `docs/design/narrative-world-character-agents.md` — proposed constrained
+  character-agent scene rehearsal: authoritative narrative world state,
+  per-character perspective packets, central resolution, unified narration,
+  and v3-compatible proof/memory materialization.
 - `docs/design/narrative-memory-and-dramatic-state.md` — story-scoped Canon,
   anchored character memory and growth, manual shared-memory promotion,
   offscreen events, audience disclosure, subtext, and operator UI design.

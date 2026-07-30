@@ -1,7 +1,5 @@
 import anyio
 import pytest
-from fastapi import HTTPException
-
 from app.services.narrative_memory.source_hash import novel_chapter_source_hash
 from app.services.story import story_novel_chapter_checkpoint as checkpoint
 from app.services.story.story_novel_chapter_service import generate_or_resume_chapter
@@ -9,6 +7,7 @@ from app.services.story.story_novel_generation_context import build_chapter_cont
 from app.services.story.story_novel_state_pending_preflight import (
     pending_checkpoint_reusable,
 )
+from fastapi import HTTPException
 from tests.unit.test_story_novel_state_pending_resume import (
     INVALID_QUOTE,
     _audit,

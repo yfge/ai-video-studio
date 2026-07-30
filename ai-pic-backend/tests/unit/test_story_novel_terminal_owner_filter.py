@@ -126,7 +126,7 @@ def test_conflicting_terminal_owner_still_fails_closed():
     assert diagnostics == []
 
 
-def test_initial_null_owner_without_prior_transfer_still_fails_future_gate():
+def test_initial_null_owner_without_prior_transfer_needs_no_redundant_clear():
     raw = _terminal_canon()
     raw["milestones"] = [
         item for item in raw["milestones"] if item["id"] != "mile-key-transfer"
@@ -134,9 +134,38 @@ def test_initial_null_owner_without_prior_transfer_still_fails_future_gate():
 
     canon, error, diagnostics = _parse(raw)
 
-    assert canon is None
-    assert "状态提前包含未来里程碑结果" in error
-    assert diagnostics[0]["reason"] == "terminal_owner_clear_completed"
+    assert error is None
+    assert canon["milestones"][-1]["outcomes"] == [
+        _outcome("obj-zero-wind-key", "status", "destroyed")
+    ]
+    assert diagnostics == []
+
+
+def test_model_parser_drops_explicit_redundant_null_owner_but_raw_is_strict():
+    raw = _terminal_canon(
+        _outcome("obj-zero-wind-key", "status", "destroyed"),
+        _outcome("obj-zero-wind-key", "owner_id", None),
+    )
+    raw["milestones"] = [
+        item for item in raw["milestones"] if item["id"] != "mile-key-transfer"
+    ]
+
+    canon, error, diagnostics = _parse(raw)
+
+    assert error is None
+    assert canon["milestones"][-1]["outcomes"] == [
+        _outcome("obj-zero-wind-key", "status", "destroyed")
+    ]
+    assert diagnostics == [
+        {
+            "id": "mile-key-destroyed",
+            "section": "milestone",
+            "reason": "redundant_null_owner_outcome",
+            "subject_id": "obj-zero-wind-key",
+        }
+    ]
+    with pytest.raises(ValueError, match="状态提前包含未来里程碑结果"):
+        normalize_canon(raw, required_gate_version=CANON_GATE_VERSION)
 
 
 def test_terminal_completion_leaves_later_archive_milestone_unchanged():

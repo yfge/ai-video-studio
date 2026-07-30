@@ -28,6 +28,7 @@ def build_story_snapshot(story: Story) -> dict[str, Any]:
         "resolution": story.resolution,
         "main_characters": story.main_characters,
         "character_relationships": story.character_relationships,
+        "characters": _character_snapshots(story),
         "setting_time": story.setting_time,
         "setting_location": story.setting_location,
         "world_building": story.world_building,
@@ -40,6 +41,54 @@ def build_story_snapshot(story: Story) -> dict[str, Any]:
         "memory_ledger_hash": story.memory_ledger_hash,
         "captured_at": datetime.utcnow().isoformat(),
     }
+
+
+def _character_snapshots(story: Story) -> list[dict[str, Any]]:
+    """Freeze StoryCharacter/IP prose instead of consulting mutable rows later."""
+    result = []
+    for row in list(getattr(story, "story_characters", None) or [])[:50]:
+        if getattr(row, "is_deleted", False):
+            continue
+        vip = getattr(row, "virtual_ip", None)
+        result.append(
+            {
+                "business_id": getattr(row, "business_id", None),
+                "virtual_ip_business_id": getattr(row, "virtual_ip_business_id", None),
+                "name": getattr(row, "display_name", None),
+                "role_type": getattr(row, "role_type", None),
+                "importance": getattr(row, "importance", None),
+                "personality": _clip(getattr(row, "personality", None), 800),
+                "background": _clip(getattr(row, "background", None), 1500),
+                "motivation": _clip(getattr(row, "motivation", None), 800),
+                "character_arc": _clip(getattr(row, "character_arc", None), 800),
+                "relationships": getattr(row, "relationships", None),
+                "virtual_ip": (
+                    {
+                        "business_id": getattr(vip, "business_id", None),
+                        "name": getattr(vip, "name", None),
+                        "description": _clip(getattr(vip, "description", None), 800),
+                        "background_story": _clip(
+                            getattr(vip, "background_story", None), 1500
+                        ),
+                        "biography": _clip(getattr(vip, "biography", None), 2000),
+                    }
+                    if vip and not getattr(vip, "is_deleted", False)
+                    else None
+                ),
+            }
+        )
+    return result
+
+
+def _clip(value: str | None, limit: int) -> str | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    return (
+        text
+        if len(text) <= limit
+        else f"{text[: limit * 7 // 10]}\n...\n{text[-limit * 3 // 10 :]}"
+    )
 
 
 def default_generation_plan(story: Story, chapter_count: int) -> dict[str, Any]:

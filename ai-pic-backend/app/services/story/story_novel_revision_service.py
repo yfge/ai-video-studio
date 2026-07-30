@@ -18,11 +18,13 @@ from .story_novel_domain import (
     sha256_text,
 )
 from .story_novel_length_service import apply_length_spec
-from .story_novel_revision_edits import reorder_chapters, save_chapter
+from .story_novel_plan_versions import is_v3_plan
+from .story_novel_revision_edits import ensure_draft, reorder_chapters, save_chapter
 from .story_novel_revision_factory import (
     create_legacy_revision,
     create_platform_revision,
 )
+from .story_novel_v3_clone import clone_generation_plan
 
 
 class StoryNovelRevisionService:
@@ -104,6 +106,7 @@ class StoryNovelRevisionService:
         content_text: str,
         summary: str | None,
         cliffhanger: str | None,
+        commit: bool = True,
     ) -> StoryNovelChapter:
         chapter = next(
             (row for row in active_chapters(revision) if row.position == position),
@@ -126,7 +129,10 @@ class StoryNovelRevisionService:
         chapter.review_status = "ready"
         chapter.content_hash = sha256_text(chapter.content_text)
         refresh_revision_content(revision)
-        self.db.commit()
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
         return chapter
 
     def save_chapter(self, revision_id: str, chapter_id: str, request):
@@ -144,7 +150,14 @@ class StoryNovelRevisionService:
         )
         clone = self.create_draft(story.business_id, request)
         clone.story_snapshot = build_story_snapshot(story)
-        clone.generation_plan = source.generation_plan
+        clone.generation_plan = clone_generation_plan(source.generation_plan)
+        if is_v3_plan(source.generation_plan):
+            clone.continuity_ledger = {
+                "schema": "story_novel_continuity.v4",
+                "state_status": "stale",
+                "stale_from_position": 1,
+                "chapters": {},
+            }
         clone.target_words = source.target_words
         clone.chapter_count = source.chapter_count
         for row in active_chapters(source):
@@ -233,9 +246,4 @@ class StoryNovelRevisionService:
         if revision.adaptation_plan_status != "empty":
             revision.adaptation_plan_status = "stale"
 
-    @staticmethod
-    def _ensure_draft(revision: StoryNovelExport) -> None:
-        if revision.lifecycle_status != "draft":
-            raise HTTPException(
-                status_code=409, detail="已审批小说不可编辑，请克隆新草稿"
-            )
+    _ensure_draft = staticmethod(ensure_draft)

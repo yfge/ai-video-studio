@@ -6,6 +6,7 @@ from app.utils.json_utils import extract_json_block
 
 from .story_novel_canon_service import canonical_json
 from .story_novel_plan_quality import MAX_PAYOFFS_PER_CHAPTER
+from .story_novel_prompt_renderer import render_novel_prompt
 
 
 def extracted_schedule_rows(text: str) -> list[dict]:
@@ -77,19 +78,12 @@ def thread_schedule_repair_prompt(
             for thread_id in conflict_ids
         ]
     }
-    return (
-        "你正在修复冻结大纲的伏笔回收调度，只允许提交一次最小修复补丁。"
-        + "\n只返回 repair_context 点名的稳定 thread_id；不得拆分、改写或新增 ID。"
-        + "\n必须按模板顺序让每个点名 ID 恰好出现一次；未点名行由系统原样保留，禁止复读。"
-        + f"\n每个 thread_id 各占一个槽位；每章最多 {MAX_PAYOFFS_PER_CHAPTER} 条，"
-        "不得超过 repair_context.candidate_chapters 的 available_slots。"
-        + "\npayoff_position 必须严格晚于对应 open_position；"
-        "evidence_key_event 必须逐字复制目标章 key_events，且必须真正回答该线索。"
-        + "\n若冻结大纲没有任何后续 key_event 能真正回答某条线索，不得用无关事件凑数；"
-        "保留模板中的 payoff_position=0，让确定性门禁终止规划。"
-        + f"\n只返回严格 JSON，并补全此模板：{canonical_json(template)}"
-        + f"\nrepair_context：{canonical_json(context)}"
-        + f"\n全部确定性诊断：{error}"
+    return render_novel_prompt(
+        "story_novel_thread_schedule_repair_v3",
+        max_payoffs_per_chapter=MAX_PAYOFFS_PER_CHAPTER,
+        repair_template_json=canonical_json(template),
+        repair_context_json=canonical_json(context),
+        validation_error=error or "伏笔回收调度无效",
     )
 
 

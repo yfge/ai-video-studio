@@ -1,0 +1,31 @@
+description: Story Novel v3 executable chapter contracts
+category: story
+version: "1.0"
+variables:
+  planning_contract_json:
+    required: true
+    type: string
+  canon_json:
+    required: true
+    type: string
+  thread_schedule:
+    required: true
+    type: string
+  absence_literals:
+    required: true
+    type: string
+  terminal_literals:
+    required: true
+    type: string
+  batch_positions_json:
+    required: false
+    type: string
+  batch_start:
+    required: false
+    type: integer
+  batch_end:
+    required: false
+    type: integer
+  prefix_context_json:
+    required: false
+    type: string

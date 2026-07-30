@@ -1,0 +1,13 @@
+description: Story Novel v3 bounded JSON format repair
+category: story
+version: "1.0"
+variables:
+  original_prompt:
+    required: true
+    type: string
+  raw_response:
+    required: true
+    type: string
+  error:
+    required: true
+    type: string

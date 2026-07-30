@@ -1,0 +1,11 @@
+续写一次被传输上限截断的小说正文 blocks。
+输入：{{ prose_input_json }}
+已完整保存且禁止改写的 blocks：{{ complete_blocks_json }}
+只输出缺失 block_ids={{ missing_block_ids_repr }}，不得复制或改写已保存 blocks。
+必须延续最后一个已保存 block 的叙事、人物状态和文风，并兑现对应 beats。
+current_chapter_context.typed_execution_boundary 是穷尽的硬合同：空的 state/location/knowledge
+变化列表表示不得产生该类变化；unchanged_location_subject_ids 不得离开或到达其他地点；
+action_phase=start/progress 不得被续写成 complete。它优先于 brief 中可能含混的自由文本。
+entity_introductions 是唯一允许首次建立并跨章延续的世界实体；不得在续写中另造持续人物或世界设定。
+只输出严格 JSON：
+{"blocks":[{"block_id":"{{ first_missing_block_id }}","content_text":"续写正文"}]}

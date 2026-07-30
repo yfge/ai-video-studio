@@ -1,6 +1,7 @@
 """Build the frozen typed contract for one gated novel chapter."""
 
 from app.core.exceptions import ServiceError
+from app.services.story.story_novel_plan_versions import is_v3_plan
 
 from .extraction_bindings import (
     bound_knowledge_grant_keys,
@@ -12,6 +13,8 @@ def novel_candidate_contract(repo, story, request, characters):
     if request.source_scope != "novel_chapter" or not hasattr(repo, "novel_chapter"):
         return False, None, {}, []
     chapter = repo.novel_chapter(story, request.source_artifact_business_id or "")
+    if chapter and is_v3_plan(chapter.novel_export.generation_plan):
+        raise ServiceError("v3 小说章节候选由已验证 proof spans 确定性生成")
     if (
         not chapter
         or (chapter.novel_export.generation_plan or {}).get("schema")

@@ -664,6 +664,77 @@ typed state 检查。任一层发现未来结果提前出现、已消费里程�
 且正文 hash 未变化时，不使事件或记忆候选失效；修改章节内容计划或正文时，仍按来源
 version/hash 从最早受影响章节传播 stale。
 
+`story_novel_generation_plan.v3` 将 Narrative Memory 的职责进一步收紧为
+“章前规划证据”和“章后确定性落账”两端：
+
+- 只有当前 Revision 中、更早位置、`ready` 且 source hash 仍有效的 Narrative
+  Events、Character Memories 与成长意图进入 `chapter_brief.v1` 规划输入。
+  进入 32K 预算前按当前角色、章节词项、来源章新近度与知情边界做确定性排序；
+  排序分数和原因随 planning evidence 保存，正文仍不可见这些原始记录。
+- 正文模型不读取原始 Event/Memory、候选文本、未来目录、evidence 规则或 state
+  delta；它只读取 hash-valid brief、当前可见 Canon 投影、文风和长度合同。该投影
+  会带入当前章事件、当前可见人物介绍、动机、状态和关系；未来人物与未来关系进展
+  必须过滤。
+- system prompt、结构化大纲及修复、Canon、伏笔调度、批次章节合同、完整/定点
+  plan repair、brief、正文、proof audit、有界返修和连续性审读都通过统一
+  PromptManager 的 V3 专用版本化模板渲染。新 plan 冻结
+  `story_novel_prompt_policy.v9` 的模板名/version/source hash，每次调用还把 user
+  rendered hash 与 system template fingerprint 写入 invocation 和 ledger；包括
+  `finish_reason=length` 的拒绝调用。模板变更不能在 Resume 时静默套用到旧
+  brief/body/candidate 证据链，已存 v1-v8 policy 只按 legacy snapshot 读取。
+- 服务端从章节合同和 `state_before` 编译唯一 `expected_delta`。审计模型只返回
+  contract ID 对稳定正文 sentence ID 的绑定，以及当前正文的 unexpected/future/
+  world-rule hits，不能自报或改写状态。
+- 正文 proof 只覆盖 required event、关键状态/权限、地点变化和知识来源。milestone
+  与 thread open/payoff 由已证明的 required event 确定性派生，不再强迫正文另写一句
+  重复结果；timeline 只做时序合理性审计，不要求逐字日期或独立 proof。
+- 日期、未来实体和自然语言世界规则的字符串命中只负责选择审计候选，不直接判正文
+  失败。审计模型额外读取本章相关主体的当前状态与紧凑 future state boundaries，只有
+  语义上提前成立的权限、所有权、地点、知识、伏笔结论或真实规则矛盾才会 fail closed。
+- 全局章节合同同样不再信任模型自报的状态起点：服务端按 Canon 顺序重放并编译
+  `from_value`、地点起点和前置条件；语义审计必须同时列出 missing 与 unsupported
+  effects，并为每个 required event 冻结 action phase、time scope、actor、effort、
+  timeline 和 knowledge 绑定。只有编译后的 effects 才能成为后续 `expected_delta`。
+- 事件执行审计只把与冻结事件、时间线、终态、知识效果或显式世界规则直接矛盾的
+  问题标为 blocking。一般写实程度、劳动略快、戏剧化巧合、节奏和文风属于网文
+  编辑建议，不阻断状态落账；模型未获得规模信息时不得自行发明尺寸再据此判失败。
+- World Event 候选由 required event 与已验证正文 span 确定性创建；Character
+  Memory 候选由 knowledge grant、brief 中的人物动机/情绪延续、角色弧 checkpoint
+  和已验证 span 确定性创建。v3 不再额外调用 Narrative extraction 模型。
+- 候选与章节正文、sentence-index、proof span、Canon/state/context hash 同事务落账。
+  `memory_ready` 失败后的 Resume 只补候选；evidence-only `audit` checkpoint 只重审
+  同一正文；两条路径均不得调用正文模型。
+- 计划外且未被当前合同授权的硬事实不能改变状态或下一章合同。审计命中的
+  unexpected claim 保留为 gate evidence 并阻断状态应用；只有当前合同验证通过的
+  候选才获得“修订版内 Canon”资格。
+- 主要人物、地点、组织、物件和概念可以在全书 Canon 中提前规划，但按结构化大纲
+  的首次出现章逐步可见；尚未登场的 ID、名称、别名和终态不能进入当前规划或正文。
+- 当前章因果确实需要一个此前不存在、后续仍持续存在的实体时，章前 package 可提出
+  `entity_introductions`。服务端为其分配稳定的 Revision-local ID，绑定当前 required
+  event、初始状态和首次出现章；正文 proof/state gate 通过后才写入
+  `revision_local_entities`，失败章不会扩张世界。一次性路人、普通用品和环境细节不
+  进入长期世界状态。
+- 长篇只把认知、能力、资源、活动/时间尺度作为全书/分卷的可选软成长曲线，供章前
+  规划理解方向、供最终吸引力审读评价。它们不是逐章 KPI；失败、蓄势和付出代价的
+  回撤都合法。硬状态仍只登记大纲已经授权的能力、权限、资产、关系或世界范围变化。
+- 为支持数百章，硬上下文只保留当前章引用及其当前状态直接依赖；已通过章节的完整
+  Event/Memory、摘要和账本仍按相关性与预算排序，不能因为曾经登场就永久占据 32K
+  不可裁剪区。
+
+因此 v3 的信息流是单向的：
+
+```text
+earlier ready Event/Memory -> chapter brief planning
+chapter brief + current events + visible people/relations -> prose blocks
+prose sentence spans + server expected delta -> proof audit
+verified spans -> candidate Event/Memory -> next chapter planning
+```
+
+`future_guard_index` 只存在于 plan/audit 边界。正文永远看不到 future claim cards；
+审计只接收当前正文命中的 claim cards，以及与当前章主体相关的紧凑未来状态边界，
+不接收未来标题、goal 或 end_state，也不回显无关未来章节。正文 hash 变化会使全部
+sentence/proof/candidate evidence 自动 stale。
+
 ### 13.3 Adaptation plan and Episode
 
 改编计划读取审批小说、审批 Narrative Events、章节锚点和 Story 角色成长状态。

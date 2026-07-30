@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from .story_novel_canon_service import canonical_json
 from .story_novel_planning_batches import validated_prefix_context
+from .story_novel_prompt_renderer import render_novel_prompt
 
 EFFECT_FIELDS = (
     "knowledge_grants",
@@ -28,6 +29,24 @@ def build_plan_semantic_audit_prompt(
             "position": int(chapter["position"]),
             "event_id": event_id,
             "key_event": (chapter.get("key_events") or [])[index],
+            "chapter_end_state": chapter.get("end_state"),
+            "timeline": [
+                {
+                    "timeline_id": timeline_id,
+                    "story_time": next(
+                        (
+                            item.get("story_time")
+                            for item in canon.get("timeline") or []
+                            if item.get("id") == timeline_id
+                        ),
+                        None,
+                    ),
+                }
+                for timeline_id, bound_event_id in (
+                    chapter.get("timeline_event_bindings") or {}
+                ).items()
+                if bound_event_id == event_id
+            ],
             "existing_knowledge_grants": [
                 grant
                 for grant in chapter.get("knowledge_grants") or []
@@ -42,7 +61,22 @@ def build_plan_semantic_audit_prompt(
             {
                 "position": item["position"],
                 "event_id": item["event_id"],
+                "execution_contract": {
+                    "event_id": item["event_id"],
+                    "action_phase": "start|progress|complete|instant",
+                    "time_scope": "instant|same_day|multi_day|unspecified",
+                    "actor_ids": [],
+                    "effort": "none|light|moderate|heavy|unspecified",
+                    "timeline_ids": [row["timeline_id"] for row in item["timeline"]],
+                    "knowledge_fact_ids": list(
+                        dict.fromkeys(
+                            row["fact_id"] for row in item["existing_knowledge_grants"]
+                        )
+                    ),
+                },
+                "feasibility_issues": [],
                 "missing_effects": {field: [] for field in EFFECT_FIELDS},
+                "unsupported_effects": {field: [] for field in EFFECT_FIELDS},
             }
             for item in event_contract
         ]
@@ -58,6 +92,7 @@ def build_plan_semantic_audit_prompt(
             for item in canon.get("entities") or []
         ],
         "canon_milestones": canon.get("milestones") or [],
+        "world_rules": canon.get("world_rules") or [],
         "prior_chapters": [
             {
                 "position": item["position"],
@@ -84,34 +119,9 @@ def build_plan_semantic_audit_prompt(
             for key in ("world_constraints", "content_constraints")
         },
     }
-    return (
-        "独立审计章节计划中的长期知识与状态效果，不得相信计划自报完整性。"
-        f"\npositions={positions}；逐项审查 event_contract 中每个事件。"
-        "\n必须逐字复制 input.output_skeleton 的 position、event_id、数量和顺序；"
-        "只能填写各 missing_effects 数组，禁止合并为每章一项或自造 event_id。"
-        "\nmissing 只表示 input.chapters 对应数组里尚不存在的精确 typed effect；"
-        "相同 character_id+source_event_id 已有 grant 时，不得为同一命题再造 fact；"
-        "相同 subject/from/to 的 movement 已存在时，即使 means 措辞不同也不得重报；"
-        "角色已在 to_location_id 时不得要求重复移动。"
-        "\n凡事件会让角色确认、获知、宣布、发现、判断或长期记住新事实，"
-        "必须列出遗漏的 knowledge_grants；说话者本人和必然听见的在场者都不能漏。"
-        "“怀疑”不得升级成“确认”。普通动作、气氛和既有事实不要生成长期知识。"
-        "仅有联系、请求、询问、呼叫或发送动作，且未逐字写出所传达的具体新事实时，"
-        "不得推断任一方获得 knowledge_grant。"
-        "\n非 Canon milestone 的新知识 fact_id 固定为 "
-        "fact-{source_event_id}-{从1开始的事实序号}；同一事实对多个角色复用同一 fact_id。"
-        "fact_id 内的 event_id 必须与该行 event_id 逐字相同，禁止引用同章其他事件。"
-        "Canon milestone knowledge outcome 必须逐字使用 outcome.value。"
-        "\n同时列出 key_event 必然要求但计划遗漏的 state_transitions、"
-        "location_transitions 与 milestones_consumed；地点转移只允许明确跨越两个"
-        "不同的已有 location ID，地点内部移动必须为空且不得创建子地点；只返回遗漏项。"
-        "\n只输出填充后的 input.output_skeleton 严格 JSON，不得缺失、额外或重复。"
-        + (
-            "\n这是补丁后的最终复核；只验证 verification_targets 中首轮报告的"
-            " effects 已写入 chapters。禁止提出首轮未报告的新候选 effect；"
-            "逐项核对现有 typed effects 后，已写入的 target 必须返回空数组。"
-            if verification
-            else ""
-        )
-        + f"\n输入：{canonical_json(payload)}"
+    return render_novel_prompt(
+        "story_novel_plan_semantic_audit_v3",
+        positions_json=canonical_json(positions),
+        verification=verification,
+        payload_json=canonical_json(payload),
     )

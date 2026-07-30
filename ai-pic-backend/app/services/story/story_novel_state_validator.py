@@ -18,6 +18,11 @@ from .story_novel_state_rules import (
     validate_transitions,
 )
 from .story_novel_state_service import apply_state_delta, get_state_value
+from .story_novel_world_expansion import (
+    canon_with_plan_expansion,
+    state_with_pending_expansion,
+    validate_entity_introductions,
+)
 
 
 def validate_state_delta(
@@ -27,15 +32,25 @@ def validate_state_delta(
     delta: dict,
 ) -> tuple[dict, dict]:
     violations: list[dict] = []
-    context = _validation_context(canon, state_before, delta)
+    for message in validate_entity_introductions(
+        canon, chapter_plan, state_before, delta
+    ):
+        add_violation(violations, "canon_violation", message)
+    effective_canon = canon_with_plan_expansion(canon, [chapter_plan], state_before)
+    validation_state = state_with_pending_expansion(
+        state_before, delta.get("entity_introductions") or []
+    )
+    context = _validation_context(effective_canon, validation_state, delta)
     _validate_events(chapter_plan, delta, context, violations)
     _validate_preconditions(chapter_plan, context["subjects"], violations)
     _validate_state_changes(chapter_plan, delta, context, violations)
-    validate_milestones(canon, chapter_plan, state_before, delta, violations)
+    validate_milestones(
+        effective_canon, chapter_plan, validation_state, delta, violations
+    )
     _validate_threads(chapter_plan, delta, violations)
     _validate_world_rules(delta, violations)
     state_after = apply_state_delta(state_before, delta)
-    _validate_outcome_boundaries(canon, chapter_plan, state_after, violations)
+    _validate_outcome_boundaries(effective_canon, chapter_plan, state_after, violations)
     return {
         "status": "failed" if violations else "passed",
         "violations": violations,

@@ -1,0 +1,13 @@
+description: StorySeed structured outline one-shot repair
+category: story
+version: "1.0"
+variables:
+  original_prompt:
+    required: true
+    type: string
+  validation_error:
+    required: true
+    type: string
+  previous_output:
+    required: true
+    type: string

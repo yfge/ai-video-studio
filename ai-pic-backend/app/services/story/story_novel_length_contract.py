@@ -9,6 +9,7 @@ from app.schemas.story_novel_export import NovelLengthRange
 from fastapi import HTTPException
 
 _PRESETS = (
+    ("commercial_serial", "商业网文短章", 2000, 2500, 3000),
     ("short_serial", "短章连载", 1500, 2200, 3000),
     ("standard_serial", "标准网文", 3000, 4000, 5000),
     ("long_chapter", "长章模式", 4500, 6000, 8000),
@@ -19,6 +20,7 @@ _KNOWN_OUTPUT_LIMITS = {
     "abab6.5s-chat": 8192,
 }
 _MIN_NOVEL_OUTPUT_TOKENS = 16000
+_MODEL_OUTPUT_FLOORS = {"deepseek-v4-pro": 48000}
 
 
 def non_whitespace_chars(value: str) -> int:
@@ -33,9 +35,9 @@ def chapter_length_range(chapter_plan: dict) -> tuple[int, int, int]:
     )
 
 
-def chapter_output_tokens(chapter_plan: dict) -> int:
+def chapter_output_tokens(chapter_plan: dict, model: str | None = None) -> int:
     return max(
-        _MIN_NOVEL_OUTPUT_TOKENS,
+        _model_output_floor(model),
         dynamic_output_tokens(chapter_length_range(chapter_plan)[2]),
     )
 
@@ -56,6 +58,11 @@ def list_length_profiles() -> list[dict]:
 
 def dynamic_output_tokens(max_chars: int) -> int:
     return max(2048, math.ceil(max_chars * 1.6) + 1500)
+
+
+def _model_output_floor(model: str | None) -> int:
+    model_id = (model or "").split(":", 1)[-1]
+    return _MODEL_OUTPUT_FLOORS.get(model_id, _MIN_NOVEL_OUTPUT_TOKENS)
 
 
 def validate_model_capacity(model: str | None, max_chars: int) -> None:

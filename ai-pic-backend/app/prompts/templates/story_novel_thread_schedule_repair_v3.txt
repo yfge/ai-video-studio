@@ -1,0 +1,9 @@
+你正在修复冻结大纲的伏笔回收调度，只允许提交一次最小修复补丁。
+只返回 repair_context 点名的稳定 thread_id；不得拆分、改写或新增 ID。
+必须按模板顺序让每个点名 ID 恰好出现一次；未点名行由系统原样保留，禁止复读。
+每个 thread_id 各占一个槽位；每章最多 {{ max_payoffs_per_chapter }} 条，不得超过 repair_context.candidate_chapters 的 available_slots。
+payoff_position 必须严格晚于对应 open_position；evidence_key_event 必须逐字复制目标章 key_events，且必须真正回答该线索。
+若冻结大纲没有任何后续 key_event 能真正回答某条线索，不得用无关事件凑数；保留模板中的 payoff_position=0，让确定性门禁终止规划。
+只返回严格 JSON，并补全此模板：{{ repair_template_json }}
+repair_context：{{ repair_context_json }}
+全部确定性诊断：{{ validation_error }}

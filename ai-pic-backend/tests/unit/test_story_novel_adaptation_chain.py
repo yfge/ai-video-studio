@@ -19,6 +19,7 @@ from app.services.story.story_novel_export_payload import build_story_novel_payl
 from app.services.story.story_novel_length_service import generation_plan_hash
 from app.services.story.story_novel_revision_service import StoryNovelRevisionService
 from fastapi import HTTPException
+from tests.unit.story_novel_v3_test_support import mark_v3_downstream_ready
 
 
 def _user_story(db_session, *, workflow_mode="novel_adaptation_v1"):
@@ -206,6 +207,7 @@ def test_adaptation_apply_is_idempotent_and_freezes_lineage(db_session):
     revision_service, revision, chapters = _draft_with_chapters(db_session, user, story)
     revision.continuity_status = "passed"
     revision_service.approve(revision.business_id)
+    mark_v3_downstream_ready(revision)
     revision.adaptation_plan = freeze_adaptation_plan(
         revision,
         version=1,
@@ -246,6 +248,7 @@ def test_plan_approval_freezes_current_plan_and_chapter_hashes(db_session):
     revision_service, revision, chapters = _draft_with_chapters(db_session, user, story)
     revision.continuity_status = "passed"
     revision_service.approve(revision.business_id)
+    mark_v3_downstream_ready(revision)
     rows = [
         {
             "episode_number": 1,

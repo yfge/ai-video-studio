@@ -3,6 +3,31 @@
 from typing import Any
 
 _ENCODED_JSON_VALUES = {"null", "[]", "{}"}
+_PREDICATE_OPERATOR_ALIASES = {"equals": "eq"}
+
+
+def normalize_predicate_operators(chapter: dict) -> dict:
+    """Translate only unambiguous provider aliases before strict schema parsing."""
+    normalized = dict(chapter)
+    normalized["preconditions"] = [
+        (
+            {
+                **item,
+                "operator": _predicate_operator(item),
+            }
+            if isinstance(item, dict)
+            else item
+        )
+        for item in chapter.get("preconditions") or []
+    ]
+    return normalized
+
+
+def _predicate_operator(item: dict):
+    operator = item.get("operator")
+    if operator == "not_exists" and item.get("value") is None:
+        return "eq"
+    return _PREDICATE_OPERATOR_ALIASES.get(operator, operator)
 
 
 def predicate_matches(actual: Any, operator: str, expected: Any) -> bool:

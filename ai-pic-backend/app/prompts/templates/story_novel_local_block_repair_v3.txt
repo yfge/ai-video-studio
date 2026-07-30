@@ -1,0 +1,39 @@
+仅返修失败的小说正文块。
+先检查输入中的 rewrite_mode，并把对应规则置于其他要求之前：
+- expand_previous_replacements：只续写 previous_replacements_to_expand，逐块达到 target_chars；
+  必须让 actual_chars 发生增加，但不得新增人物关系、知识、权限、所有权或跨章情节。
+- compress_previous_replacements：只压缩 previous_replacements_to_compress，逐块达到 target_chars；
+  必须让所有超过 max_chars 的 actual_chars 实际下降，删除重复讲解、动作和景物，不得原样返回。
+- compress_current_blocks：只压缩 failed_blocks 中的现有安全正文；仅删除或合并重复表达，保持事件顺序、
+  人物、关系、地点、知识和动作完成度不变，不得根据 brief 重新创作另一版情节。
+- repair_previous_replacements：只修改 previous_response_to_revise 中被 validation_error 指出的块；
+  若与只读 neighbor 重复，删除全部重叠句段，再用当前场景内不同的动作、冲突、对话、感官或即时判断补足预算。
+返回前按非空白字符自行复核每个 replacement 及合并全文；未改变超限/不足的 actual_chars 即视为失败。
+输入：{{ repair_input_json }}
+只可返回 failed_block_ids 中的 block；其他 block 不得重写、摘要或复制。
+current_chapter_context 或 current_contract_requirements 中的 events 必须完整兑现；
+scene_participants 是当前章已授权的非状态称谓，只能在事件原文明示它时参与。
+events[].execution.actor_ids 之外的人物不得自行赶来或协助，返修不得遗漏原事件明示的参与者。
+typed_execution_boundary 是穷尽的当前章硬合同，优先于自由文本；空的状态或地点变化列表表示不得新增
+该类变化，unchanged_location_subject_ids 不得在返修后离开或到达其他地点，start/progress 不得升级为完成。
+neighbor_blocks 中 editable=false 的前后块只用于校对因果、时间、地点和语气衔接；
+替换块的开头与结尾必须分别接得上相邻只读块，禁止制造昼夜、地点或行程跳变。
+不得逐字复制 neighbor_blocks 的句子或长段落来填充 replacement。
+visible_canon.chapter_contract.key_events 仍须逐项兑现；严格保持原动词完成度：
+execution_contracts 优先于错误的自由文本 beat purpose；开始不能升级为完成，完成也不能弱化成仅计划。
+只有 violation 引用了正文自己写出的明确数量、规模或耗时并直接违反 world_rule 时才修复；
+此时优先删除无来源的数量、尺度、耗时或效率数据，保留合同动作、可见进展和情节强度，
+不得通过少做、漏做或推迟当前合同动作来规避 world_rules。
+修复当前章缺失证明、世界规则、明显未来剧情或长度问题，但不得引入未来实体/日期/结论。
+若 violation.reason_code=length_out_of_range，replacement_length 是硬合同：
+length_action=compress 时必须实际删去至少 required_removed_chars 个非空白字符；
+length_action=expand 时必须实际增加至少 minimum_added_chars 个非空白字符。
+每个 replacement 必须落入 replacement_blocks 对应 min_chars–max_chars，并尽量接近
+target_chars；全部替换块合并全文后还必须落入 chapter_min_chars–chapter_max_chars。
+replacement_max_chars 已为过长返修预留 safety margin，禁止占用
+repair_safety_margin_chars；合并正文应低于 repair_chapter_ceiling_chars。
+不得原样返回未通过预算的正文块。
+不得为补长度或修证据新增可跨章延续的身世、居住年限、亲属关系、识字能力、所有权、权限、
+伤势、契约条款或世界制度；只扩写当前场景动作、冲突、对话、感官和即时判断。
+只输出 JSON：
+{"replacements":[{"block_id":"B03","content_text":"替换后的完整正文块"}]}

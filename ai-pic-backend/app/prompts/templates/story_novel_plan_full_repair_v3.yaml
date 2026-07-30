@@ -1,0 +1,28 @@
+description: Story Novel v3 full chapter-plan one-shot repair
+category: story
+version: "1.0"
+variables:
+  original_prompt:
+    required: true
+    type: string
+  previous_output:
+    required: true
+    type: string
+  batch_start:
+    required: false
+    type: integer
+  batch_end:
+    required: false
+    type: integer
+  absence_literals:
+    required: true
+    type: string
+  terminal_literals:
+    required: true
+    type: string
+  repair_context_json:
+    required: true
+    type: string
+  validation_error:
+    required: true
+    type: string

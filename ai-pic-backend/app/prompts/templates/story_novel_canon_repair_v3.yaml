@@ -1,0 +1,16 @@
+description: Story Novel v3 bounded Canon repair
+category: story
+version: "1.0"
+variables:
+  original_prompt:
+    required: true
+    type: string
+  error:
+    required: true
+    type: string
+  repair_context_json:
+    required: true
+    type: string
+  previous_canon:
+    required: true
+    type: string

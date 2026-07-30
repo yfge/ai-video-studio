@@ -94,6 +94,27 @@ def test_removes_duplicate_when_explicit_movement_is_present():
     assert normalized[0]["location_transitions"] == [movement]
 
 
+def test_preserves_ordered_round_trip_to_initial_location():
+    outbound = {
+        "subject_id": "char-a",
+        "from_location_id": "loc-a",
+        "to_location_id": "loc-b",
+        "means": "步行外出",
+    }
+    inbound = {
+        "subject_id": "char-a",
+        "from_location_id": "loc-b",
+        "to_location_id": "loc-a",
+        "means": "步行返回",
+    }
+
+    normalized = normalize_redundant_location_state(
+        _canon(), [_chapter(movements=[outbound, inbound])]
+    )
+
+    assert normalized[0]["location_transitions"] == [outbound, inbound]
+
+
 def test_normalizes_location_reason_alias_without_fabricating_means():
     normalized = normalize_plan_payload(
         {
@@ -111,6 +132,33 @@ def test_normalizes_location_reason_alias_without_fabricating_means():
     movements = normalized["chapters"][0]["location_transitions"]
     assert movements[0]["means"] == "步行"
     assert "means" not in movements[1]
+
+
+def test_drops_misrouted_unknown_character_arrival_but_keeps_explicit_move():
+    canon = _canon()
+    canon["entities"].append(
+        {"id": "char-b", "kind": "character", "name": "乙", "attributes": {}}
+    )
+    alias = {
+        "subject_id": "char-b",
+        "field": "location",
+        "from_value": None,
+        "to_value": "loc-a",
+        "reason": "首次在场",
+    }
+    explicit = {
+        "subject_id": "char-b",
+        "from_location_id": None,
+        "to_location_id": "loc-a",
+        "means": "从未知地点来到甲地",
+    }
+
+    normalized = normalize_plan_payload(
+        {"chapters": [_chapter(alias, [explicit])]}, canon
+    )["chapters"][0]
+
+    assert normalized["state_transitions"] == []
+    assert normalized["location_transitions"] == [explicit]
 
 
 def _owned_object_canon():

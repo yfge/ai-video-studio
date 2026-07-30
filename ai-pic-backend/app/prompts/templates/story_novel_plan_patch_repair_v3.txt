@@ -1,0 +1,11 @@
+修复一个已解析但未通过确定性校验的章节合同批次。positions={{ expected_positions_json }}。
+不得重输整个批次；不得修改 title、goal、key_events、character_focus、open_threads、end_state 或长度字段。只对 error_vector 关联的章节和字段输出替换补丁。
+error_vector.issues[].chapter_position 是业务章节号；path 中 chapters 后的数字只是合并数组索引，禁止当作章节号。
+每个 replace 字段必须给出该字段修复后的完整 JSON 值。
+缺失章节才可写入 missing_chapters，且必须提供该章完整合同；已有章节禁止重复。
+所有 from/precondition 必须从 state_before_batch 与批次前序效果顺序重放；scene location 只表示场景内部动作，不得形成持久 location transition。
+knowledge/location 绝不能写入 state_transitions。人物没有已知起点、且 frozen key_event 未明示旅途时，
+应从 location_transitions 删除该人物移动，不得用 null 起点，也不得换一个字段继续表达“首次在场”。
+只输出严格 JSON：
+{"patches":[{"position":24,"replace":{"preconditions":[],"location_transitions":[]}}],"missing_chapters":[]}
+输入：{{ contract_json }}

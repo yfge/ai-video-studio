@@ -8,11 +8,14 @@ from .story_novel_canon_service import (
     normalize_canon,
     validate_generation_plan,
 )
+from .story_novel_incremental_plan import is_incremental_plan
 from .story_novel_length_service import generation_plan_hash
 from .story_novel_memory_context import (
     invalidate_revision_candidates,
     mark_revision_ledger_stale,
 )
+from .story_novel_plan_versions import is_state_gated_plan
+from .story_novel_v3_plan import valid_v3_plan_fields
 
 
 def frozen_generation_spec(current: dict) -> dict | None:
@@ -45,7 +48,7 @@ def validated_canon_checkpoint(current: dict) -> dict | None:
 
 def reusable_generation_plan(current: dict, frozen_spec: dict | None) -> bool:
     if (
-        current.get("schema") == "story_novel_generation_plan.v2"
+        is_state_gated_plan(current)
         and int(current.get("canon_model_filter_version") or 0)
         < CANON_MODEL_FILTER_VERSION
     ):
@@ -57,14 +60,17 @@ def reusable_generation_plan(current: dict, frozen_spec: dict | None) -> bool:
         and current.get("chapters")
     )
     if ready:
-        if (
-            not frozen_spec
-            and current.get("schema") != "story_novel_generation_plan.v2"
-        ):
+        if not frozen_spec and not is_state_gated_plan(current):
             return True
         canon = validated_canon_checkpoint(current)
-        if not canon or current.get("plan_hash") != generation_plan_hash(current):
+        if (
+            not canon
+            or not valid_v3_plan_fields(current)
+            or current.get("plan_hash") != generation_plan_hash(current)
+        ):
             return False
+        if is_incremental_plan(current):
+            return True
         try:
             validate_generation_plan(canon, current["chapters"])
         except (TypeError, ValueError):
@@ -74,7 +80,7 @@ def reusable_generation_plan(current: dict, frozen_spec: dict | None) -> bool:
         current.get("status") == "ready"
         and current.get("chapters")
         and not frozen_spec
-        and current.get("schema") != "story_novel_generation_plan.v2"
+        and not is_state_gated_plan(current)
     )
 
 
@@ -127,6 +133,8 @@ def begin_planning(service, revision, task, current: dict, frozen_spec) -> bool:
                     "canon_model_filter_version",
                     "error",
                     "plan_hash",
+                    "planning_invocations",
+                    "planning_invocations_hash",
                 }
             },
             "version": int(current.get("version") or 0) + int(ready_replan),

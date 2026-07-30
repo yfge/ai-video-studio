@@ -7,7 +7,6 @@ from app.services.story.story_novel_canon_service import (
     normalize_canon,
 )
 from app.services.story.story_novel_continuity_contract import (
-    continuity_prompt,
     normalize_continuity_report,
 )
 from app.services.story.story_novel_length_service import generation_plan_hash
@@ -138,6 +137,13 @@ def test_v3_editorial_output_normalizes_independent_overall_score():
                         "id": "issue-1",
                         "severity": "blocking",
                         "chapter_business_ids": ["chapter-2"],
+                        "evidence_refs": [
+                            {
+                                "chapter_business_id": "chapter-2",
+                                "sentence_ids": ["S0001"],
+                            }
+                        ],
+                        "contract_refs": ["canon:timeline:time-1:story_time"],
                         "message": "时间冲突",
                     }
                 ],
@@ -183,6 +189,9 @@ def test_v3_editorial_output_normalizes_independent_overall_score():
         ),
         "global",
         include_editorial=True,
+        evidence_catalog={"chapter-2": {"S0001"}},
+        contract_catalog={"canon:timeline:time-1:story_time"},
+        canon={"timeline": [{"id": "time-1", "story_time": "第二日"}]},
     )
 
     assert report["issues"][0]["id"] == "global-issue-1"
@@ -226,18 +235,3 @@ def test_editorial_normalizer_keeps_legacy_model_output_readable():
     assert report["major_strengths"] == []
     assert report["blocking_issues"] == []
     assert report["revision_priorities"] == []
-
-
-def test_global_prompt_records_acceptance_thresholds_without_auto_approval():
-    prompt = continuity_prompt(
-        "全局检查",
-        {"chapters": []},
-        issue_limit=40,
-        include_editorial=True,
-    )
-
-    assert "overall_score >= 75" in prompt
-    assert "structure、\ncharacter、world 均 >= 7" in prompt
-    assert "blocking_issues 为空" in prompt
-    assert "不得由分项分数加权或平均计算" in prompt
-    assert "不得据此\n输出审批结论或自动批准" in prompt

@@ -1,0 +1,17 @@
+把普通文字大纲转换为可编辑的结构化章节大纲。
+StorySeed：{{ story_seed_json }}
+{{ coverage }}
+每章必须有 title、goal、至少一个 key_event、character_focus、open_threads 和 end_state。
+若题材与原始大纲支持成长，商业连载的整体推进应让读者逐步看见更大的选择空间：角色的认知、
+能力与可支配资源，关系网络与活动范围，因果与时间跨度都可以分阶段扩大。它是软规划目标，
+不要求每章升级、换场景或增加人物，也不得覆盖 StorySeed 的题材与结局；但应避免全书长期重复
+同一问题、同一场景和同一收益层级。新范围只在实际需要的章节首次出现，后续再延续，
+禁止第一章倾倒完整世界设定。
+open_threads 只允许列出本章首次提出、且需要更晚章节回答的新线索；同一 ID 在全书只能出现一次，后续章节不得重复携带仍未解决的旧 ID。已经在本章 key_events 中回答的问题不得写入 open_threads。open_threads 可以为空，不得为每章强造卡点；每个 ID 只表达一个原子问题，禁止用分号、顿号或“以及”合并多条线索。
+稳定 thread_id 必须全书唯一，终章不得新开线索。
+先在内部建立全书伏笔表，再输出 thread_payoffs：每个 open_threads ID 必须且只能在严格更晚的一章回收一次；payoff_position 不能等于或早于打开章。每条 evidence_key_event 必须逐字复制目标章已输出的一条 key_events，该事件必须在语义上真实回答对应线索，禁止加固定前缀或用无关事件凑数。
+同一章最多回收 3 条；若某条线索没有后续明确答案，必须先在初次大纲内写出真实回答它的中性 key_event，不得由服务端事后自动补句。
+最后一章必须在 goal、key_events 或 end_state 中明确且原样覆盖 ending_direction。
+只输出严格 JSON：
+{"structured_outline":{"status":"draft","version":1,"thread_schedule_version":1,"chapters":[{"position":1,"title":"标题","goal":"情节目标","key_events":["关键事件"],"character_focus":[],"open_threads":[],"end_state":"章末状态"}],"thread_payoffs":[{"thread_id":"逐字复制此前 open_threads ID","payoff_position":2,"evidence_key_event":"目标章 key_events 原文"}]}}
+不得输出正文，不得静默裁剪章节。

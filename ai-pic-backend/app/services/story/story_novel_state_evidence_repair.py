@@ -6,7 +6,10 @@ import copy
 import json
 
 from app.services.narrative_memory.knowledge_evidence import knowledge_evidence_key
+from app.services.narrative_memory.source_evidence import source_contains_evidence
 from app.utils.json_utils import extract_json_block
+
+from .story_novel_knowledge_prompt import knowledge_sentence_prefixes
 
 STATE_EVIDENCE_REPAIR_MAX_TOKENS = 16000
 
@@ -17,6 +20,7 @@ async def repair_state_evidence(
     chapter_plan: dict,
     content_text: str,
     current_timeline: list[dict],
+    canon: dict | None = None,
     delta: dict,
     diagnostics: list[dict],
     error: str | None,
@@ -29,6 +33,7 @@ async def repair_state_evidence(
             chapter_plan=chapter_plan,
             content_text=content_text,
             current_timeline=current_timeline,
+            canon=canon or {},
             delta=delta,
             diagnostics=diagnostics,
             error=error,
@@ -38,11 +43,36 @@ async def repair_state_evidence(
     )
     patch = extract_json_block(response)
     _validate_patch(patch, delta, chapter_plan, current_timeline)
+    _apply_diagnostic_fallbacks(patch, diagnostics, content_text)
     merged = copy.deepcopy(delta)
     merged["evidence"] = patch["evidence"]
     merged["knowledge_evidence"] = patch.get("knowledge_evidence", {})
     merged["timeline_evidence"] = patch["timeline_evidence"]
     return json.dumps(merged, ensure_ascii=False, separators=(",", ":"))
+
+
+def _apply_diagnostic_fallbacks(
+    patch: dict, diagnostics: list[dict], content_text: str
+) -> None:
+    """Replace a still-invalid model quote with source-derived exact fragments."""
+    for diagnostic in diagnostics:
+        field, item_id = diagnostic.get("field"), diagnostic.get("id")
+        quotes = patch.get(field) if isinstance(field, str) else None
+        if not isinstance(quotes, dict) or item_id not in quotes:
+            continue
+        if source_contains_evidence(content_text, str(quotes[item_id])):
+            continue
+        fragments = []
+        for item in diagnostic.get("fragments") or []:
+            offsets = item.get("exact_offsets") or []
+            candidate = item.get("source_candidate") or {}
+            text = item.get("text") if offsets else candidate.get("text")
+            offset = min(offsets) if offsets else candidate.get("exact_offset")
+            if text and isinstance(offset, int) and offset >= 0:
+                fragments.append((offset, str(text)))
+        fallback = "……".join(text for _offset, text in sorted(fragments))
+        if source_contains_evidence(content_text, fallback):
+            quotes[item_id] = fallback
 
 
 def _validate_patch(
@@ -94,6 +124,7 @@ def _prompt(
     chapter_plan: dict,
     content_text: str,
     current_timeline: list[dict],
+    canon: dict,
     delta: dict,
     diagnostics: list[dict],
     error: str | None,
@@ -125,6 +156,12 @@ def _prompt(
         "current_immutable_timeline": current_timeline,
         "content_text": content_text,
         "frozen_event_ids_and_quotes": frozen,
+        "required_knowledge_evidence_keys": [
+            knowledge_evidence_key(item) for item in delta.get("knowledge_grants") or []
+        ],
+        "required_knowledge_sentence_contracts": knowledge_sentence_prefixes(
+            {"chapter_contract": chapter_plan, "compiled_canon": canon}
+        ),
         "evidence_diagnostics": diagnostics,
         "validation_error": error,
     }
@@ -134,15 +171,24 @@ def _prompt(
         f"输入：{json.dumps(payload, ensure_ascii=False, separators=(',', ':'))}\n"
         "evidence 必须逐字复制正文；跨句只能用‘……’连接按正文顺序出现的片段。"
         "三个 evidence map 的 key 必须严格等于冻结 ID 集合；"
+        "knowledge_evidence 的 key 必须逐项逐字复制 required_knowledge_evidence_keys，"
+        "禁止把 key 中的 source_event_id 换成正文看似更匹配的其他事件；"
+        "knowledge_evidence 必须逐项选择 required_knowledge_sentence_contracts 中"
+        "required_prefix 紧接 source_event_text 的正文连续句，并把同一句完整加入"
+        "对应 source_event_id 的 evidence；不得选择缺少 required_prefix 的较短复述。"
         "current_immutable_timeline 为空时 timeline_evidence 必须是空对象。"
         "诊断中的 source_candidate 是从正文计算出的最长连续逐字候选；"
         "若它能证明对应事件，直接复制其 text，不得保留候选之外的说话人前缀。"
+        "failure_kind=quote_rewrite 时，exact_offsets=[] 且没有 source_candidate 的片段"
+        "必须删除；其余片段按最早 exact_offset 升序重排后再用‘……’连接，"
+        "不得保留模型原先的乱序。"
         "timeline_evidence[timeline-id] 必须包含固定日期，并逐字复用 "
         "evidence[current_chapter_contract.timeline_event_bindings[timeline-id]] "
         "的完整片段；不得借用同章其他事件。不得添加说话人、代词或概括，"
         "不得使用计划措辞代替正文。"
-        "knowledge_evidence 的每个 value 必须是 evidence[对应 source event] "
-        "中的一个完整连续片段，明确写出目标角色及其获知关系；不得用省略号拼接。"
+        "knowledge_evidence 的每个 value 必须完整、连续地包含在 "
+        "evidence[对应 source event] 的某个逐字片段中，明确写出目标角色及其"
+        "获知关系；knowledge_evidence 自身不得用省略号拼接。"
         "只输出严格 JSON："
         '{"evidence":{"event-id":"正文逐字片段"},'
         '"knowledge_evidence":{"character-id|fact-id|event-id":"连续获知句"},'

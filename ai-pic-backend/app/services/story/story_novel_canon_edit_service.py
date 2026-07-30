@@ -13,6 +13,8 @@ from .story_novel_canon_service import (
 from .story_novel_length_service import generation_plan_hash
 from .story_novel_memory_context import mark_revision_ledger_stale
 from .story_novel_plan_checkpoint import validated_canon_checkpoint
+from .story_novel_plan_versions import is_state_gated_plan, is_v3_plan
+from .story_novel_v3_plan import v3_plan_fields
 
 
 def update_revision_canon(service, revision, request):
@@ -28,7 +30,7 @@ def update_revision_canon(service, revision, request):
         and plan.get("phase") == "chapters"
         and validated_canon_checkpoint(plan) is not None
     )
-    if plan.get("schema") != "story_novel_generation_plan.v2" or not (
+    if not is_state_gated_plan(plan) or not (
         ready or failed_checkpoint or planning_checkpoint
     ):
         raise HTTPException(status_code=409, detail="当前修订版没有可编辑 Canon")
@@ -63,6 +65,8 @@ def update_revision_canon(service, revision, request):
     )
     if failed_checkpoint:
         plan["error"] = None
+    if is_v3_plan(plan):
+        plan.update(v3_plan_fields(plan["schema"], after, plan.get("chapters") or []))
     plan["plan_hash"] = generation_plan_hash(plan)
     revision.generation_plan = plan
     if stale_from is not None:

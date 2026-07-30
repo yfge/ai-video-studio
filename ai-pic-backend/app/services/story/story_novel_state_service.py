@@ -11,6 +11,7 @@ from .story_novel_initial_state import (
     apply_subject_transition,
     canonical_initial_subjects,
 )
+from .story_novel_world_expansion import apply_entity_introductions
 
 HARD_METRIC_CODES = {
     "canon_violation": "canon_violation_count",
@@ -85,6 +86,7 @@ def state_before_position(revision, position: int) -> dict:
 
 def apply_state_delta(state_before: dict, delta: dict) -> dict:
     state = copy.deepcopy(state_before)
+    apply_entity_introductions(state, delta.get("entity_introductions") or [])
     subjects = state.setdefault("subjects", {})
     for transition in delta.get("state_transitions") or []:
         apply_subject_transition(

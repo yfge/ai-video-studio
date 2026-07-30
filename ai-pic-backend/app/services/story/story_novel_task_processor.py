@@ -10,7 +10,7 @@ from app.utils.json_utils import extract_json_block
 from fastapi import HTTPException
 
 from . import story_novel_task_guard as task_guard
-from .story_novel_ai_prompts import SYSTEM_PROMPT, adaptation_prompt
+from .story_novel_ai_prompts import adaptation_prompt
 from .story_novel_chapter_service import generate_or_resume_chapter
 from .story_novel_continuity_service import run_layered_continuity
 from .story_novel_downstream_gate import (
@@ -18,39 +18,13 @@ from .story_novel_downstream_gate import (
     freeze_adaptation_plan,
     require_canonical_revision,
 )
-from .story_novel_export_ai import generate_story_novel_text
 from .story_novel_legacy_task import run_legacy_export
 from .story_novel_memory_context import mark_revision_ledger_stale
 from .story_novel_planning_service import ensure_generation_plan
+from .story_novel_resume_cursor import advance_resume_cursor
 from .story_novel_revision_service import StoryNovelRevisionService
+from .story_novel_task_generation import generate_task_text as _generate_text
 from .story_seed_structure_service import structure_story_seed
-
-
-def _split_model(model_id: str | None) -> tuple[str | None, str | None]:
-    if model_id and ":" in model_id:
-        return tuple(model_id.split(":", 1))  # type: ignore[return-value]
-    return None, model_id
-
-
-async def _generate_text(
-    revision,
-    prompt: str,
-    *,
-    max_tokens: int | None,
-    temperature: float | None = None,
-) -> str:
-    provider, model = _split_model(revision.model)
-    chosen_temperature = (
-        temperature if temperature is not None else revision.temperature or 0.7
-    )
-    return await generate_story_novel_text(
-        prompt=prompt,
-        system_prompt=SYSTEM_PROMPT,
-        model=model,
-        prefer_provider=provider,
-        temperature=chosen_temperature,
-        max_tokens=max_tokens,
-    )
 
 
 async def _generate_missing_chapters(service, revision, task, *, only_position=None):
@@ -58,7 +32,9 @@ async def _generate_missing_chapters(service, revision, task, *, only_position=N
     generate = partial(
         task_guard.generate_text_unless_cancelled, service.db, task, _generate_text
     )
-    plan = await ensure_generation_plan(service, revision, task, generate)
+    plan = await ensure_generation_plan(
+        service, revision, task, partial(generate, stage="planning")
+    )
     plan_rows = plan["chapters"]
     if only_position is not None:
         mark_revision_ledger_stale(revision, from_position=only_position)
@@ -81,6 +57,8 @@ async def _generate_missing_chapters(service, revision, task, *, only_position=N
             generate,
             force=only_position is not None,
         )
+        advance_resume_cursor(revision, plan_rows)
+        service.db.commit()
     task_guard.ensure_task_not_cancelled(service.db, task)
     ledger = dict(revision.continuity_ledger or {})
     entries = ledger.get("chapters") or {}
@@ -97,7 +75,11 @@ async def _generate_missing_chapters(service, revision, task, *, only_position=N
 
 async def _run_continuity(service, revision, task):
     generate = partial(
-        task_guard.generate_text_unless_cancelled, service.db, task, _generate_text
+        task_guard.generate_text_unless_cancelled,
+        service.db,
+        task,
+        _generate_text,
+        stage="continuity",
     )
     await run_layered_continuity(service, revision, task, generate)
 
@@ -197,7 +179,7 @@ def _structure_seed(repo, db, task, payload, user) -> None:
             story,
             task,
             carrier,
-            _generate_text,
+            partial(_generate_text, stage="planning"),
             expected_version=int(payload["story_seed_version"]),
             requested_chapter_count=payload.get("chapter_count"),
         )

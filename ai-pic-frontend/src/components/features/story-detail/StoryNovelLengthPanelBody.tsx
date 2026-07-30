@@ -1,8 +1,4 @@
-import {
-  ModelSelector,
-  operatorButtonClass,
-  operatorInputClass,
-} from "@/components/shared";
+import { operatorButtonClass, operatorInputClass } from "@/components/shared";
 import type {
   StoryNovelCreateRevisionPayload,
   StoryNovelRevision,
@@ -10,6 +6,7 @@ import type {
 } from "@/utils/api/types";
 import { StoryNovelChapterLengthOverrides } from "./StoryNovelChapterLengthOverrides";
 import { StoryNovelLengthRangeFields } from "./StoryNovelLengthRangeFields";
+import { StoryNovelModelPolicyFields } from "./StoryNovelModelPolicyFields";
 import { formatCharacterCount } from "./storyNovelLengthPlan";
 import type { useStoryNovelLengthPanelState } from "./useStoryNovelLengthPanelState";
 
@@ -30,6 +27,15 @@ export function StoryNovelLengthPanelBody(props: BodyProps) {
   return (
     <div className="space-y-4 p-5">
       <LengthProfileInputs state={props.state} locked={props.locked} />
+      <StoryNovelModelPolicyFields
+        planningModel={props.state.planningModel}
+        proseModel={props.state.proseModel}
+        auditModel={props.state.auditModel}
+        disabled={props.locked}
+        onPlanningModel={props.state.setPlanningModel}
+        onProseModel={props.state.setProseModel}
+        onAuditModel={props.state.setAuditModel}
+      />
       <LengthDefaults state={props.state} locked={props.locked} />
       <StoryNovelChapterLengthOverrides
         chapters={props.state.chapters}
@@ -57,7 +63,7 @@ function LengthProfileInputs({
   locked: boolean;
 }) {
   return (
-    <div className="grid gap-3 md:grid-cols-2">
+    <div>
       <label className="text-xs font-medium text-gray-600">
         长度预设
         <select
@@ -76,16 +82,6 @@ function LengthProfileInputs({
           <option value="custom">自定义</option>
         </select>
       </label>
-      <ModelSelector
-        value={state.model}
-        onChange={state.setModel}
-        label="正文生成模型（可选）"
-        helperText="用于当前小说版本的 Canon、正文和连续性调用。"
-        autoLabel="使用服务端默认模型"
-        modelType="text"
-        disabled={locked}
-        cacheKey="story-novel-prose-models"
-      />
     </div>
   );
 }
@@ -124,6 +120,11 @@ function LengthActions(props: BodyProps) {
     custom_length_profile: state.profileId === "custom" ? state.custom : null,
     chapter_length_overrides: state.overrides,
   };
+  const modelPolicy = {
+    planning_model: state.planningModel.trim() || null,
+    prose_model: state.proseModel.trim() || null,
+    audit_model: state.auditModel.trim() || null,
+  };
   return (
     <div className="flex flex-wrap gap-2">
       <button
@@ -133,7 +134,10 @@ function LengthActions(props: BodyProps) {
           void props.onCreate({
             style: "prose",
             ...spec,
-            ...(state.model.trim() ? { model: state.model.trim() } : {}),
+            model_policy: modelPolicy,
+            ...(state.proseModel.trim()
+              ? { model: state.proseModel.trim() }
+              : {}),
           })
         }
         className={operatorButtonClass("primary")}
@@ -148,7 +152,8 @@ function LengthActions(props: BodyProps) {
             void props.onUpdate(revision.business_id, {
               ...spec,
               expected_plan_version: revision.generation_plan?.version || 1,
-              model: state.model.trim() || null,
+              model: state.proseModel.trim() || null,
+              model_policy: modelPolicy,
             })
           }
           className={operatorButtonClass("secondary")}

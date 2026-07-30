@@ -1,0 +1,57 @@
+审计当前章节正文是否逐项兑现当前合同，不得改写正文或创造状态。
+输入：{{ audit_input_json }}
+若输入含 repair_focus，它是上一轮确定性校验的强制修复目标：
+- 必须逐条修正相关 proofs，原样返回上一轮违规的 sentence_ids 视为失败。
+- 必须按正文语义重新判断合同是否成立；不得仅移动、排序或删减 sentence_ids 来规避问题。
+expected_delta 是服务端唯一权威；禁止返回任何 state ID、from/to、owner、location 或 milestone。
+proofs 中每个 contract_id 必须来自 proof_contracts；sentence_ids 只能引用 sentence_index。
+事件、持久世界实体的首次呈现、关键状态、知识与地点变化必须由实际句子证明，不得用摘要或推断替代。
+milestones、opened_threads 与 resolved_threads 是 required event 通过后由服务端派生的状态，
+不得要求另一句重复证明；但 event proof 必须语义完整地兑现对应 current_events。
+current_contract_context 只解释当前章的事件、角色和 beat；beat purpose 只是定位提示，
+不得授权 current_events、proof_contracts 或 expected_delta 之外的新事实；必须回到 sentence_index 取证。
+established_background 仅含此前 ready 章节已验证事件，可作为已知背景自然提及，
+不得据此新增状态变化，也不得把其重复出现误报为 unexpected_claim；它不能充当本章 proof。
+current_state_contract、current_events 与 expected_delta 优先；不得要求正文复述当前状态值。
+背景若与当前状态矛盾或产生新结论仍必须报告。
+execution_contracts 只约束 required event 的完成度、结果和规模，不是对全部叙事细节的穷举；
+只有正文叙述“本章发生”且会改变 state_before 的计划外硬变化时才报告 unexpected_claim，
+例如新增身份/关系、所有权或权限转移、获得/失去能力、受伤/死亡、角色新获知事实、地点移动、
+里程碑、世界规则改变或未来事件的客观结果。合理的自然时间流逝本身不是状态变化。
+不得把不改变 expected_delta、且不与当前 Canon 或 future guard 冲突的题材内叙事扩写报告为
+unexpected_claim：感官与环境纹理、对话、动机或主观猜测、Canon 未禁止的普通生活经验、
+场景内行动与日常细节、当前事件的执行过程、临时 NPC 均属于允许扩写。主观判断不是客观硬事实。
+背景性说明如过往经历、日常能力或当前场景的常识性过程，若没有
+在本章造成计划外状态变化、违反 Canon/world rule 或命中 future_claim_card，也不得作为硬问题。
+若细节确实在本章建立了新的法律义务、权限、所有权或命中 future_claim_card，仍必须报告。
+世界规则命中只报告正文对某条逐字 visible_world_rule 的直接矛盾；一般戏剧化、行动略快、
+写实程度、节奏和文风不得写入 world_rule_hits，它们只属于后续软质量审读。
+knowledge 合同必须由角色自然获知对应 source event 事实的句子证明。若获知句与事件动作句
+不是同一句，可分别引用；多句事件可以经历“发现/比较/判断/完成”，角色在事件过程中的发现句
+可以早于事件完成句。sentence_id 的前后大小不能单独证明或否定因果关系，必须语义确认角色确实
+由同一事件过程获知事实。若知识在该事件前已经存在、来自无关事件或正文没有证明，则不要提交
+伪证明，并在 unexpected_claims 中定位实际问题。不得要求正文逐字使用角色名、获知动词或固定句式。
+时间线审计只判断对应事件所处时间是否合理，不要求独立 proof。
+current_timeline 只用于判断本章时序是否合理，不是独立 proof contract，
+正文可使用自然的相对时间、昼夜承接或省略重复日期；不得要求正文逐字复述日期。
+只有发生时间倒退、同一事件先后矛盾、不可能的旅行耗时、昼夜明显跳变或提前兑现未来事件时，
+才在 unexpected_claims/future_hits 中报告，并引用实际矛盾句。
+提交结果前必须在内部逐项核对，但不要输出核对过程：
+- 同一项硬冲突若在全文多处出现，必须在同一问题的 sentence_ids 中列出全部相关句子，不得只报告第一处；
+- 所有正文明确提到的 Canon 人物，其 immutable_attributes（性别、称谓、家庭角色、年龄、职业）是否矛盾；
+- 所有正文明确提到的 Canon 人物/物件/地点，其 current_state 的 status、owner、location、权限和知识是否矛盾；
+- 同一事件的参与者数量、身份与动作是否前后回滚或重复完成；
+- 地点切换是否满足已有旅行时间，正文日期、相对时间与事件顺序是否可能同时成立；
+- 结论究竟是观察、怀疑、推断还是已确认事实，是否缺少本章或 established_background 中的因果来源；
+- 正文中明确写出的数量、单位、比例、耗时、换算和总量关系是否自洽。
+只有可由 sentence_index 与当前合同客观证明的冲突才可成为硬问题；一般文风、节奏、爽感或写实偏好不得硬拦。
+future_claim_cards 只用于识别正文命中的提前兑现；不得逐项回显未命中内容。
+future_state_boundaries 只供审计未来状态、权限、所有权、地点、知识与伏笔结果；
+若正文在 first_allowed_position 前语义上断言其已经成立，必须写入 future_hits。
+所有由 future_state_boundaries 识别的问题必须放入 future_hits，并把 boundary_id 原样写入 claim_id；
+禁止把未来边界文本写入 unexpected_claims 的 message。
+不得因为正文仅提到同一人物、物件、地点或主观猜测就命中；必须是受保护结果已经成立。
+unexpected_claims、future_hits、world_rule_hits 无问题时必须为空数组；有问题时每项
+只能包含 message、sentence_ids 以及可选 claim_id/rule_id，sentence_ids 必须定位原文。
+只输出 JSON：
+{"proofs":[{"contract_id":"event:ev-1","sentence_ids":["S0001"]}],"unexpected_claims":[],"future_hits":[],"world_rule_hits":[]}

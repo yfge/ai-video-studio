@@ -6,11 +6,13 @@ from typing import Awaitable, Callable
 
 from fastapi import HTTPException
 
+from .story_novel_incremental_planning import prepare_incremental_plan
 from .story_novel_plan_checkpoint import (
     begin_planning,
     frozen_generation_spec,
     reusable_generation_plan,
 )
+from .story_novel_plan_versions import is_v3_plan
 from .story_novel_planning_phases import (
     checkpoint_canon,
     compile_canon,
@@ -31,11 +33,32 @@ def planning_contract(snapshot: dict) -> dict:
     return {
         "story_seed": seed,
         "main_characters": snapshot.get("main_characters"),
+        "characters": snapshot.get("characters") or [],
         "character_relationships": snapshot.get("character_relationships"),
         "world_building": snapshot.get("world_building"),
         "setting_time": snapshot.get("setting_time"),
         "setting_location": snapshot.get("setting_location"),
     }
+
+
+def canon_planning_contract(snapshot: dict) -> dict:
+    """Keep long-form Canon input bounded while retaining planned world growth."""
+    contract = planning_contract(snapshot)
+    seed = dict(contract.get("story_seed") or {})
+    outline = dict(seed.get("structured_outline") or {})
+    if int(outline.get("planning_structure_version") or 0) == 1:
+        seed["structured_outline"] = {
+            key: outline.get(key)
+            for key in (
+                "status",
+                "version",
+                "requested_chapter_count",
+                "planning_model",
+                "planning_structure_version",
+                "progression_arcs",
+            )
+        }
+    return {**contract, "story_seed": seed}
 
 
 async def ensure_generation_plan(
@@ -69,10 +92,14 @@ async def ensure_generation_plan(
         revision,
         task,
         generate_text,
-        contract,
+        canon_planning_contract(snapshot),
         current.get("canon") if resumed else None,
     )
     checkpoint_canon(service, revision, task, canon, timeline_filter)
+    if frozen_spec is not None and is_v3_plan(frozen_spec):
+        return await prepare_incremental_plan(
+            service, revision, task, generate_text, frozen_spec, canon
+        )
     chapters = await plan_chapters(
         service,
         revision,

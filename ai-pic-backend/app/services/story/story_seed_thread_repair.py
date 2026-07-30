@@ -6,6 +6,7 @@ from app.schemas.story_seed import StorySeedStructuredOutline
 from app.utils.json_utils import extract_json_block
 
 from .story_novel_canon_service import canonical_json
+from .story_novel_prompt_renderer import render_novel_prompt
 from .story_seed_thread_contract import (
     MAX_PAYOFFS_PER_CHAPTER,
     payoff_evidence_sources,
@@ -103,18 +104,12 @@ def seed_thread_repair_prompt(
             for thread_id in conflict_ids
         ],
     }
-    return (
-        "你正在修复已完整生成的结构化章节大纲，只允许返回一次最小伏笔补丁。"
-        "\n必须按模板顺序让每个点名 thread_id 恰好出现一次；不得改名、新增、遗漏，"
-        "未点名的有效调度由系统原样保留。"
-        f"\n每章最多回收 {MAX_PAYOFFS_PER_CHAPTER} 条。系统已经确定性分配且预留唯一"
-        " assigned_payoff_position；必须逐字复制模板中的位置，禁止沿用旧位置或改章。"
-        "\nevidence_key_event 的完整允许值已经写在模板中：必须逐字复制，不得补充"
-        "任何新人物、地点、时刻、物件、动作或因果。系统会把它追加为目标章 key_event。"
-        "\n只返回严格 JSON，不得重输 chapters 或解释："
-        f"{canonical_json(template)}"
-        f"\nrepair_context：{canonical_json(context)}"
-        f"\n确定性诊断：{error or '伏笔合同无效'}"
+    return render_novel_prompt(
+        "story_novel_seed_thread_repair_v3",
+        max_payoffs_per_chapter=MAX_PAYOFFS_PER_CHAPTER,
+        repair_template_json=canonical_json(template),
+        repair_context_json=canonical_json(context),
+        validation_error=error or "伏笔合同无效",
     )
 
 

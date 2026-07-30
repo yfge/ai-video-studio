@@ -1,0 +1,10 @@
+description: Story Novel v3 structured StorySeed outline
+category: story
+version: "1.1"
+variables:
+  story_seed_json:
+    required: true
+    type: string
+  coverage:
+    required: true
+    type: string

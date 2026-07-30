@@ -127,7 +127,7 @@ def test_chapter_prompt_forbids_deriving_an_adjacent_future_date():
     assert "不得为它补写修改时间、人物身份、原因、答案、未来权限或后果" in prompt
     assert "不得把它写入 resolved_threads" in prompt
     assert "location_transitions 是本章允许发生的全部地点移动" in prompt
-    assert "“准备转移”不等于出发、登船、起锚或抵达" in prompt
+    assert "“准备转移”不等于开始移动、离开当前位置或抵达目标地点" in prompt
 
 
 def test_gate_repair_compensates_for_large_underproduction():

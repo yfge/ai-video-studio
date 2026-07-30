@@ -10,8 +10,10 @@ from typing import Any
 from .story_novel_initial_state import (
     apply_subject_transition,
     canonical_initial_subjects,
+    owner_before_milestone,
 )
 from .story_novel_location_rules import TERMINAL_OBJECT_STATUS_LITERALS
+from .story_novel_owner_contract import memory_outcome_errors, owner_outcome_errors
 
 
 def validate_milestone_outcome_contract(canon: dict) -> None:
@@ -47,6 +49,7 @@ def _milestone_outcome_contract_errors(canon: dict) -> list[str]:
             errors.append(
                 f"里程碑 outcome 引用未知实体: {milestone['id']} {sorted(unknown)}"
             )
+        errors.extend(memory_outcome_errors(entities, outcomes, milestone["id"]))
         invalid_values = [
             outcome
             for outcome in outcomes
@@ -56,11 +59,12 @@ def _milestone_outcome_contract_errors(canon: dict) -> list[str]:
             errors.append(
                 f"里程碑 outcome value 必须使用真实 JSON 值: {milestone['id']}"
             )
+        errors.extend(owner_outcome_errors(entities, outcomes, milestone["id"]))
         for outcome in outcomes:
             signatures.setdefault(_outcome_signature(outcome), []).append(
                 milestone["id"]
             )
-        errors.extend(_terminal_object_errors(milestone, outcomes, entities))
+        errors.extend(_terminal_object_errors(canon, milestone, outcomes, entities))
     for signature, milestone_ids in signatures.items():
         unique_ids = list(dict.fromkeys(milestone_ids))
         if len(unique_ids) > 1:
@@ -73,6 +77,7 @@ def _milestone_outcome_contract_errors(canon: dict) -> list[str]:
 
 
 def _terminal_object_errors(
+    canon: dict,
     milestone: dict,
     outcomes: list[dict],
     entities: dict[str, dict],
@@ -93,9 +98,14 @@ def _terminal_object_errors(
         and item["operator"] == "eq"
         and item.get("value") is None
     }
+    required_owner_clear = {
+        subject_id
+        for subject_id in destroyed_ids
+        if owner_before_milestone(canon, milestone, subject_id) is not None
+    }
     return [
         f"物件终态里程碑必须清空 owner_id: {milestone['id']} {subject_id}"
-        for subject_id in sorted(destroyed_ids - cleared_owner_ids)
+        for subject_id in sorted(required_owner_clear - cleared_owner_ids)
     ]
 
 
