@@ -6,6 +6,7 @@ from typing import Awaitable, Callable
 
 from fastapi import HTTPException
 
+from .story_novel_continuity_budget import require_global_prompt_budget
 from .story_novel_continuity_contract import continuity_prompt as _prompt
 from .story_novel_continuity_contract import (
     normalize_continuity_report as _normalize_report,
@@ -118,14 +119,17 @@ async def _review_global(
 ) -> dict:
     task.description = "正在综合全书摘要、事实、角色状态与未闭合线索…"
     service.db.commit()
+    prompt = _prompt(
+        "这是覆盖全书的综合检查。全局只提供代表性 proof 句；"
+        "新发现作为编辑 warning，blocking 结论必须来自已完成的全文窗口检查。",
+        payload,
+        issue_limit=40,
+        include_editorial=True,
+    )
+    budget = require_global_prompt_budget(revision, prompt, GLOBAL_REVIEW_MAX_TOKENS)
     text = await generate_text(
         revision,
-        _prompt(
-            "这是覆盖全书的综合检查。",
-            payload,
-            issue_limit=40,
-            include_editorial=True,
-        ),
+        prompt,
         max_tokens=GLOBAL_REVIEW_MAX_TOKENS,
         stage="continuity.global",
     )
@@ -137,8 +141,10 @@ async def _review_global(
         evidence_catalog=payload_evidence_catalog(payload),
         contract_catalog=payload.get("valid_contract_refs") or [],
         canon=(revision.generation_plan or {}).get("canon") or {},
+        allow_blocking=False,
     )
     report["invocation"] = dict(getattr(text, "invocation_evidence", {}) or {})
+    report["context_budget"] = budget
     return report
 
 

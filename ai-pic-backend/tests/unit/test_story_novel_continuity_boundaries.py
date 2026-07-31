@@ -103,3 +103,36 @@ def test_canon_conflict_with_sentence_and_contract_ref_remains_blocking():
     assert report["issues"][0]["severity"] == "blocking"
     assert report["issues"][0]["grounding_status"] == "verified"
     assert report["blocking_issues"] == ["人物性别与 Canon 冲突"]
+
+
+def test_sampled_global_issue_cannot_create_a_new_blocker():
+    report = normalize_continuity_report(
+        json.dumps(
+            {
+                "summary": "全局综合",
+                "issues": [
+                    {
+                        "id": "identity",
+                        "severity": "blocking",
+                        "chapter_business_ids": ["chapter-1"],
+                        "evidence_refs": [
+                            {
+                                "chapter_business_id": "chapter-1",
+                                "sentence_ids": ["S0002"],
+                            }
+                        ],
+                        "contract_refs": ["canon:entity:char-a:attributes.gender"],
+                        "message": "抽样证据中的潜在冲突",
+                    }
+                ],
+            },
+            ensure_ascii=False,
+        ),
+        "global",
+        evidence_catalog={"chapter-1": {"S0002"}},
+        contract_catalog={"canon:entity:char-a:attributes.gender"},
+        allow_blocking=False,
+    )
+
+    assert report["issues"][0]["severity"] == "warning"
+    assert report["issues"][0]["grounding_status"] == "sampled_global"

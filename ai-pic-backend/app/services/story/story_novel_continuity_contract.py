@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import json
 
-from app.utils.json_utils import extract_json_block
 from fastapi import HTTPException
+
+from app.utils.json_utils import extract_json_block
 
 from .story_novel_continuity_grounding import ground_issue, normalize_repair_groups
 from .story_novel_prompt_renderer import render_novel_prompt
@@ -33,6 +34,7 @@ def normalize_continuity_report(
     evidence_catalog=None,
     contract_catalog=None,
     canon=None,
+    allow_blocking=True,
 ) -> dict:
     report = extract_json_block(text)
     if not report or not isinstance(report.get("issues"), list):
@@ -46,9 +48,12 @@ def normalize_continuity_report(
             "blocking" if item.get("severity") == "blocking" else "warning"
         )
         item["chapter_business_ids"] = list(item.get("chapter_business_ids") or [])
-        issues.append(
-            ground_issue(item, evidence_catalog or {}, set(contract_catalog or []))
+        grounded = ground_issue(
+            item, evidence_catalog or {}, set(contract_catalog or [])
         )
+        if not allow_blocking and grounded["severity"] == "blocking":
+            grounded.update(severity="warning", grounding_status="sampled_global")
+        issues.append(grounded)
     result = {"summary": str(report.get("summary") or ""), "issues": issues}
     if include_editorial:
         result["overall_score"] = _normalize_overall_score(report.get("overall_score"))

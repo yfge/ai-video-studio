@@ -3,6 +3,7 @@
 from app.services.narrative_memory.source_hash import novel_chapter_source_hash
 
 from .story_novel_canon_service import content_hash
+from .story_novel_continuity_global_context import build_global_context
 from .story_novel_continuity_grounding import contract_reference_catalog
 from .story_novel_sentence_spans import (
     audit_sentence_index,
@@ -59,23 +60,6 @@ def window_payload(revision, chapters: list, ledger_rows: dict | None = None) ->
     }
 
 
-def global_chapter_row(chapter, ledger_rows: dict) -> dict:
-    entry = ledger_rows.get(str(chapter.position)) or {}
-    return {
-        "business_id": chapter.business_id,
-        "content_hash": chapter.content_hash,
-        "position": chapter.position,
-        "title": chapter.title,
-        "summary": chapter.summary,
-        "cliffhanger": chapter.cliffhanger,
-        "plot_delta": entry.get("plot_delta"),
-        "state_delta": entry.get("state_delta"),
-        "state_before_hash": entry.get("state_before_hash"),
-        "state_after_hash": entry.get("state_after_hash"),
-        "proof_spans": entry.get("proof_spans") or [],
-    }
-
-
 def global_payload(
     revision,
     chapters: list,
@@ -84,18 +68,15 @@ def global_payload(
     memories: list,
     window_reports: list,
 ) -> dict:
-    plan = revision.generation_plan or {}
-    return {
-        "story_contract": revision.story_snapshot or {},
-        "generation_plan": plan,
-        "compiled_canon": plan.get("canon") or {},
-        "chapters": [global_chapter_row(row, ledger_rows) for row in chapters],
-        "facts": events,
-        "character_memories": memories,
-        "rolling_state": (revision.continuity_ledger or {}).get("current_state"),
-        "window_findings": window_reports,
-        "valid_contract_refs": sorted(contract_reference_catalog(revision, chapters)),
-    }
+    return build_global_context(
+        revision,
+        chapters,
+        ledger_rows,
+        events,
+        memories,
+        window_reports,
+        sorted(contract_reference_catalog(revision, chapters)),
+    )
 
 
 def review_ready(chapters: list, ledger_rows: dict) -> bool:
@@ -149,6 +130,7 @@ def compile_report(
             if item.get("severity") == "blocking"
         ],
         "revision_priorities": global_report.get("revision_priorities") or [],
+        "global_context_budget": global_report.get("context_budget") or {},
         "repair_groups": global_report.get("repair_groups") or [],
         "reviewer_model": (
             (plan.get("model_policy") or {}).get("audit_model") or revision.model

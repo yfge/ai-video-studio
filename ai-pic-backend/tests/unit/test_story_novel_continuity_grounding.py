@@ -4,6 +4,7 @@ from app.services.story.story_novel_continuity_contract import continuity_prompt
 from app.services.story.story_novel_continuity_grounding import (
     chapter_evidence_catalog,
     contract_reference_catalog,
+    payload_evidence_catalog,
 )
 from app.services.story.story_novel_continuity_review import window_payload
 
@@ -62,3 +63,17 @@ def test_global_prompt_requires_grounding_without_auto_approval():
     assert "evidence_refs" in prompt
     assert "缺少上述可验证证据的问题只能标 warning" in prompt
     assert "不得据此\n输出审批结论或自动批准" in prompt
+
+
+def test_global_proof_refs_without_sentence_text_do_not_authorize_blocking_evidence():
+    payload = {
+        "chapters": [
+            {
+                "business_id": "chapter-1",
+                "sentence_index": [{"sentence_id": "S0001", "text": "已提供正文"}],
+                "proof_refs": {"event:event-1": ["S0001", "S9999"]},
+            }
+        ]
+    }
+
+    assert payload_evidence_catalog(payload) == {"chapter-1": {"S0001"}}
