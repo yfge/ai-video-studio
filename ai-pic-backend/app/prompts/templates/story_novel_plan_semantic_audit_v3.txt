@@ -8,6 +8,7 @@ missing 只表示 input.chapters 对应数组里尚不存在的精确 typed effe
 凡事件会让角色确认、获知、宣布、发现、判断或长期记住新事实，必须列出遗漏的 knowledge_grants；说话者本人和必然听见的在场者都不能漏。knowledge_grants.character_id 只能引用 Canon kind=character；组织和群体不是人物记忆主体。“怀疑”不得升级成“确认”。普通动作、气氛和既有事实不要生成长期知识。仅有联系、请求、询问、呼叫或发送动作，且未逐字写出所传达的具体新事实时，不得推断任一方获得 knowledge_grant。
 非 Canon milestone 的新知识 fact_id 固定为 fact-{source_event_id}-{从1开始的事实序号}；同一事实对多个角色复用同一 fact_id。fact_id 内的 event_id 必须与该行 event_id 逐字相同，禁止引用同章其他事件。Canon milestone knowledge outcome 必须逐字使用 outcome.value。
 同时列出 key_event 必然要求但计划遗漏的 state_transitions、location_transitions 与 milestones_consumed；地点转移只允许明确跨越两个不同的已有 location ID，地点内部移动必须为空且不得创建子地点；同时删除把场景内走动、准备动作或模型推测误写成持久状态的 unsupported effect。
+对 input.entity_lifecycle_contract 中初态为“不存在”的持久实体，必须跨本批事件按顺序审查其首次实际使用：建立记录、存放、操作、交付、启用或成为关系的一部分，都要求在首次实际使用事件所在章补入唯一的 status 创建转换；仅讨论、设想、准备或计划创建不算。必须结合 name、aliases 和语义明确的简称识别同一实体。首次创建后，更晚章节不得再次从不存在开始；若 chapters 中已有这种错误的晚创建转换，必须把它逐字列入 unsupported_effects，并在 missing_effects 给出从当时 current state 到该章真实目标状态的替代转换。最终链必须前后连续，不能把成长、升级或扩展误写成第二次创建。
 顶层必须是一个只含 events 键的对象，即 {"events":[...]}；不要输出 output_skeleton 键名，严格 JSON，不得缺失、额外或重复。
 {% if verification %}这是补丁后的最终复核；只验证 verification_targets 中首轮报告的 effects 已写入 chapters。禁止提出首轮未报告的新候选 effect；逐项核对现有 typed effects 后，missing 与 unsupported 必须全部返回空数组；execution_contract 的 action_phase/time_scope/actor_ids/effort 与 feasibility_issues 必须与首轮逐项一致；timeline_ids 与 knowledge_fact_ids 按本轮 skeleton 逐字复制。{% endif %}
 输入：{{ payload_json }}

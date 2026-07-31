@@ -101,7 +101,7 @@ def test_48_chapter_contract_is_generated_in_bounded_batches(db_session):
     assert '"next_boundary_anchor":{"position":9' in calls[1][0]
     assert '"position":10' not in calls[1][0]
     assert '"position":10' not in calls[2][0]
-    assert plan["plan_semantic_audit_version"] == 2
+    assert plan["plan_semantic_audit_version"] == 3
     assert "chapter_plan_draft" not in plan
 
 

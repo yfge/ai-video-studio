@@ -25,7 +25,7 @@ from .story_novel_plan_state_compiler import compile_plan_state
 from .story_novel_plan_validator import validate_generation_plan
 from .story_novel_planning_batches import validated_prefix_context
 
-PLAN_SEMANTIC_AUDIT_VERSION, PLAN_SEMANTIC_AUDIT_MAX_TOKENS = 2, 16000
+PLAN_SEMANTIC_AUDIT_VERSION, PLAN_SEMANTIC_AUDIT_MAX_TOKENS = 3, 16000
 _parse_audit = parse_plan_semantic_audit
 
 

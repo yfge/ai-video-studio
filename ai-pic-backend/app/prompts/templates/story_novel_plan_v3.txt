@@ -27,6 +27,7 @@ knowledge 只能通过 knowledge_grants 增加，禁止在 state_transitions 中
 只有真实发生地点变化时才写 location_transitions；人物已在本章起点地点时不要输出 null 起点或原地移动。
 location_transitions 的 to_location_id 必须是非空 Canon location ID；from_location_id 仅在 Canon kind=object 的物件于同章通过 status 从不存在变为存在、且此前没有地点时可写 null，人物、组织与普通旅行绝不能用 null 起点；角色在既有地点首次出场不算移动，直接省略该 transition。
 “不存在”只认这些精确 status 字面值：{{ absence_literals }}。null、缺失 status 和其他任何字符串都不表示对象不存在；这些对象即使 location 为 null 也不能输出 null 起点 movement。
+若 Canon 持久实体在本章起点的 status 命中上述“不存在”字面值，则它第一次被 key_event 实际使用、记录、存放、操作或投入关系的章节，必须同时包含唯一的 status 创建转换，从该精确旧值变为已存在的临时或正式状态；仅讨论、设想、准备或计划创建不算实际使用。创建后更晚章节只能从当时当前值继续升级、扩展、转交或终止，绝不能再次从“不存在”开始。实体名称、aliases 和语义明确的简称都要按同一 Canon ID 审查。
 null 起点首次落点还必须同时满足：Canon 初态与本章起始 status 都是上述允许值，本章对该物件恰有一个从精确起始值到非不存在、非空、非终止值的 status transition，reason 必须非空；终止值包括 {{ terminal_literals }}。且恰有一个 location transition；任一条件不满足就省略 movement。
 已存在但地点未知的物件若在当前 key_event 中明确交给某个实际接收者，只能用 owner_id state_transition 从精确旧 owner_id 转到该接收者，并省略 location_transition；接收者地点会确定物件地点。若当前事件没有明确所有权转移，则保持地点未知并省略 movement，禁止猜测落点或接收者。
 location_transitions 的起终点只能引用 Canon kind=location 的 ID；跨章旅途必须使用 Canon 已注册的持久中途地点，禁止自造 en-route ID。

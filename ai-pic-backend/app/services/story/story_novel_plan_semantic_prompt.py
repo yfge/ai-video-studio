@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .story_novel_canon_service import canonical_json
+from .story_novel_location_rules import ABSENT_OBJECT_STATUS_LITERALS
 from .story_novel_planning_batches import validated_prefix_context
 from .story_novel_prompt_renderer import render_novel_prompt
 
@@ -88,9 +89,31 @@ def build_plan_semantic_audit_prompt(
         "output_skeleton": output_skeleton,
         "state_before_batch": validated_prefix_context(canon, prior_chapters)["state"],
         "canon_entities": [
-            {"id": item["id"], "kind": item["kind"], "name": item["name"]}
+            {
+                "id": item["id"],
+                "kind": item["kind"],
+                "name": item["name"],
+                "aliases": item.get("aliases") or [],
+            }
             for item in canon.get("entities") or []
         ],
+        "entity_lifecycle_contract": {
+            "absence_status_literals": list(ABSENT_OBJECT_STATUS_LITERALS),
+            "initially_absent_entities": [
+                {
+                    "subject_id": item["id"],
+                    "kind": item["kind"],
+                    "name": item["name"],
+                    "aliases": item.get("aliases") or [],
+                    "initial_status": (canon.get("initial_state") or {})
+                    .get(item["id"], {})
+                    .get("status"),
+                }
+                for item in canon.get("entities") or []
+                if (canon.get("initial_state") or {}).get(item["id"], {}).get("status")
+                in ABSENT_OBJECT_STATUS_LITERALS
+            ],
+        },
         "canon_milestones": canon.get("milestones") or [],
         "world_rules": canon.get("world_rules") or [],
         "prior_chapters": [

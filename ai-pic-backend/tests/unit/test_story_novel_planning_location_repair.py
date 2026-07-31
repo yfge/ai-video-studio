@@ -49,6 +49,8 @@ def test_planning_prompt_uses_the_runtime_absence_literals():
         assert value in prompt
     assert "其他任何字符串都不表示对象不存在" in prompt
     assert "Canon 中已经定义的空数组 [] 是精确旧值" in prompt
+    assert "第一次被 key_event 实际使用、记录、存放、操作" in prompt
+    assert "绝不能再次从“不存在”开始" in prompt
 
 
 def test_repair_exposes_exact_unlocated_object_and_empty_array_states():
