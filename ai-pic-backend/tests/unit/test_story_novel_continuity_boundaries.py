@@ -136,3 +136,78 @@ def test_sampled_global_issue_cannot_create_a_new_blocker():
 
     assert report["issues"][0]["severity"] == "warning"
     assert report["issues"][0]["grounding_status"] == "sampled_global"
+
+
+def test_validated_state_chain_mismatch_is_editorial_not_blocking():
+    report = normalize_continuity_report(
+        json.dumps(
+            {
+                "summary": "状态链误判",
+                "issues": [
+                    {
+                        "id": "state-before",
+                        "severity": "blocking",
+                        "chapter_business_ids": ["chapter-18"],
+                        "evidence_refs": [
+                            {
+                                "chapter_business_id": "chapter-18",
+                                "sentence_ids": ["S0001", "S0002"],
+                            }
+                        ],
+                        "contract_refs": [
+                            "canon:entity:obj-ledger",
+                            "chapter:chapter-18:contract",
+                            "chapter:chapter-18:state_before",
+                        ],
+                        "message": "本章发生的关系变化不同于章前状态",
+                    }
+                ],
+            },
+            ensure_ascii=False,
+        ),
+        "window-3",
+        evidence_catalog={"chapter-18": {"S0001", "S0002"}},
+        contract_catalog={
+            "canon:entity:obj-ledger",
+            "chapter:chapter-18:contract",
+            "chapter:chapter-18:state_before",
+        },
+        state_chain_verified=True,
+    )
+
+    assert report["issues"][0]["severity"] == "warning"
+    assert (
+        report["issues"][0]["grounding_status"] == "deterministic_state_chain_verified"
+    )
+
+
+def test_specific_canon_state_conflict_remains_blocking_with_validated_chain():
+    report = normalize_continuity_report(
+        json.dumps(
+            {
+                "summary": "Canon 冲突",
+                "issues": [
+                    {
+                        "id": "identity",
+                        "severity": "blocking",
+                        "chapter_business_ids": ["chapter-1"],
+                        "evidence_refs": [
+                            {
+                                "chapter_business_id": "chapter-1",
+                                "sentence_ids": ["S0001"],
+                            }
+                        ],
+                        "contract_refs": ["canon:initial_state:char-a:identity"],
+                        "message": "人物身份与 Canon 冲突",
+                    }
+                ],
+            },
+            ensure_ascii=False,
+        ),
+        "window-1",
+        evidence_catalog={"chapter-1": {"S0001"}},
+        contract_catalog={"canon:initial_state:char-a:identity"},
+        state_chain_verified=True,
+    )
+
+    assert report["issues"][0]["severity"] == "blocking"

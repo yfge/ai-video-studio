@@ -3,6 +3,7 @@
 from app.services.narrative_memory.source_hash import novel_chapter_source_hash
 
 from .story_novel_canon_service import content_hash
+from .story_novel_context_utils import frozen_story_contract
 from .story_novel_continuity_global_context import build_global_context
 from .story_novel_continuity_grounding import contract_reference_catalog
 from .story_novel_sentence_spans import (
@@ -16,7 +17,19 @@ def window_payload(revision, chapters: list, ledger_rows: dict | None = None) ->
     plan = revision.generation_plan or {}
     ledger_rows = ledger_rows or {}
     return {
-        "story_contract": revision.story_snapshot or {},
+        "story_contract": frozen_story_contract(revision.story_snapshot or {}),
+        "authority_order": [
+            "compiled_canon",
+            "validated_chapter_contract",
+            "validated_checkpoint",
+            "story_contract",
+        ],
+        "state_chain_contract": {
+            "state_before": "章节开始前的已验证状态，不是本章结束状态",
+            "state_delta": "本章正文允许且已经验证的实际状态变化",
+            "state_after": "应用本章 state_delta 后的已验证状态",
+            "window_scope": "窗口外的状态变化由连续 hash 链证明，不得因正文未重演而判为缺失",
+        },
         "compiled_canon": plan.get("canon") or {},
         "valid_contract_refs": sorted(contract_reference_catalog(revision, chapters)),
         "chapters": [
@@ -48,6 +61,8 @@ def window_payload(revision, chapters: list, ledger_rows: dict | None = None) ->
                         "source_hash",
                         "brief_hash",
                         "expected_delta",
+                        "state_delta",
+                        "state_validation",
                         "proof_spans",
                         "state_before_hash",
                         "state_after_hash",

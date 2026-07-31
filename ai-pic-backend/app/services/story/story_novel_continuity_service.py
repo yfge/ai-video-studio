@@ -90,6 +90,7 @@ async def _review_windows(
             evidence_catalog=chapter_evidence_catalog(rows),
             contract_catalog=payload["valid_contract_refs"],
             canon=canon,
+            state_chain_verified=is_state_gated_plan(revision.generation_plan),
         )
         reports.append(
             {

@@ -18,7 +18,11 @@ def test_window_payload_uses_stable_sentence_index_instead_of_raw_duplicate_body
         content_text="沈禾量完三亩地。顾砚记下水位。",
     )
     revision = SimpleNamespace(
-        story_snapshot={},
+        story_snapshot={
+            "title": "开荒记",
+            "characters": [{"name": "旧档案人物", "background": "冲突旧背景"}],
+            "story_seed": {"title": "开荒记", "target_audience": "连载读者"},
+        },
         generation_plan={
             "canon": {
                 "entities": [
@@ -34,7 +38,16 @@ def test_window_payload_uses_stable_sentence_index_instead_of_raw_duplicate_body
         },
     )
 
-    payload = window_payload(revision, [chapter], {})
+    payload = window_payload(
+        revision,
+        [chapter],
+        {
+            "1": {
+                "state_delta": {"occurred_event_ids": ["event-1"]},
+                "state_validation": {"status": "passed"},
+            }
+        },
+    )
     row = payload["chapters"][0]
 
     assert "content" not in row
@@ -51,6 +64,10 @@ def test_window_payload_uses_stable_sentence_index_instead_of_raw_duplicate_body
         "chapter:chapter-1:contract",
         "canon:initial_state:char-shenhe:location",
     }
+    assert "characters" not in payload["story_contract"]
+    assert payload["story_contract"]["story_seed_invariants"]["title"] == "开荒记"
+    assert row["checkpoint"]["state_delta"]["occurred_event_ids"] == ["event-1"]
+    assert payload["state_chain_contract"]["state_before"].startswith("章节开始前")
 
 
 def test_global_prompt_requires_grounding_without_auto_approval():

@@ -35,6 +35,7 @@ def normalize_continuity_report(
     contract_catalog=None,
     canon=None,
     allow_blocking=True,
+    state_chain_verified=False,
 ) -> dict:
     report = extract_json_block(text)
     if not report or not isinstance(report.get("issues"), list):
@@ -49,7 +50,10 @@ def normalize_continuity_report(
         )
         item["chapter_business_ids"] = list(item.get("chapter_business_ids") or [])
         grounded = ground_issue(
-            item, evidence_catalog or {}, set(contract_catalog or [])
+            item,
+            evidence_catalog or {},
+            set(contract_catalog or []),
+            state_chain_verified=state_chain_verified,
         )
         if not allow_blocking and grounded["severity"] == "blocking":
             grounded.update(severity="warning", grounding_status="sampled_global")

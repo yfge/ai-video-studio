@@ -80,6 +80,8 @@ def ground_issue(
     item: dict,
     evidence_catalog: dict[str, set[str]],
     contract_catalog: set[str],
+    *,
+    state_chain_verified: bool = False,
 ) -> dict:
     result = dict(item)
     evidence = _valid_evidence_refs(result.get("evidence_refs"), evidence_catalog)
@@ -102,6 +104,13 @@ def ground_issue(
     if result.get("severity") == "blocking" and not grounded:
         result["severity"] = "warning"
         result["grounding_status"] = "unverified"
+    elif (
+        result.get("severity") == "blocking"
+        and state_chain_verified
+        and _only_validated_state_chain_refs(result["contract_refs"])
+    ):
+        result["severity"] = "warning"
+        result["grounding_status"] = "deterministic_state_chain_verified"
     else:
         result["grounding_status"] = "verified" if grounded else "not_required"
     return result
@@ -173,6 +182,23 @@ def _blocking_grounded(item: dict) -> bool:
         return False
     sentence_count = sum(len(ref["sentence_ids"]) for ref in refs)
     return len(covered) >= 2 or sentence_count >= 2 or bool(item.get("contract_refs"))
+
+
+def _only_validated_state_chain_refs(refs: list[str]) -> bool:
+    has_state_ref = False
+    for ref in refs:
+        if ref.startswith("chapter:") and ref.rsplit(":", 1)[-1] in {
+            "contract",
+            "expected_delta",
+            "state_before",
+            "state_after",
+        }:
+            has_state_ref = has_state_ref or not ref.endswith(":contract")
+            continue
+        if ref.startswith("canon:entity:") and len(ref.split(":")) == 3:
+            continue
+        return False
+    return has_state_ref
 
 
 def _canon_target_value(canon: dict, target: dict):
