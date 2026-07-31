@@ -26,7 +26,7 @@ _MIN_LEGACY_SAMPLES = 3
 _MIN_SCALE = 0.30
 _MAX_SCALE = 1.25
 _REQUEST_VARIANCE = 0.10
-PROMPT_CONTRACT_VERSION = 4
+PROMPT_CONTRACT_VERSION = 5
 
 
 def build_length_control(
@@ -68,7 +68,7 @@ def build_length_control(
         scale = _bounded(scale, _MIN_SCALE, _MAX_SCALE)
     acceptance = copy.deepcopy(prose_input["chapter_length"])
     requested = max(1, round(int(acceptance["target_chars"]) * scale))
-    if prompt_contract_version >= 3:
+    if 3 <= prompt_contract_version < 5:
         requested = _safe_v3_target(acceptance, requested)
     block_targets = _scaled_blocks(
         prose_input["chapter_brief"].get("beats") or [], requested
@@ -216,6 +216,12 @@ def _safe_v3_target(acceptance: dict, requested: int) -> int:
 
 
 def _requested_length(acceptance: dict, requested: int, version: int) -> dict:
+    if version >= 5:
+        return {
+            "min_chars": max(1, requested * 90 // 100),
+            "target_chars": requested,
+            "max_chars": max(1, requested * 110 // 100),
+        }
     if version >= 3:
         return {**copy.deepcopy(acceptance), "target_chars": requested}
     return {

@@ -44,19 +44,17 @@ def test_historical_overshoot_scales_only_the_model_facing_copy(monkeypatch):
     }
     assert control["observed_response_ratio"] == 4.0
     assert control["requested_length"] == {
-        "min_chars": 2000,
-        "target_chars": 2223,
-        "max_chars": 3000,
+        "min_chars": 675,
+        "target_chars": 750,
+        "max_chars": 825,
     }
-    assert sum(item["target_chars"] for item in control["requested_blocks"]) == 2223
-    assert prompt_input["chapter_length"]["target_chars"] == 2223
-    assert (
-        prompt_input["generation_length_hints"]["requested_length"]["target_chars"]
-        == 2223
-    )
+    assert sum(item["target_chars"] for item in control["requested_blocks"]) == 750
+    assert prompt_input["chapter_length"]["target_chars"] == 750
+    hints = prompt_input["generation_length_hints"]
+    assert hints["requested_length"]["target_chars"] == 750
     assert (
         sum(item["target_chars"] for item in prompt_input["chapter_brief"]["beats"])
-        == 2223
+        == 750
     )
     assert source["chapter_length"]["target_chars"] == 2500
     assert (
@@ -96,7 +94,11 @@ def test_controlled_sample_takes_priority_and_recovers_without_oscillation(
     assert control["sample_source"] == "controlled"
     assert control["sample_count"] == 1
     assert control["request_scale"] == 0.825
-    assert control["requested_length"]["target_chars"] == 2223
+    assert control["requested_length"] == {
+        "min_chars": 1855,
+        "target_chars": 2062,
+        "max_chars": 2268,
+    }
 
 
 def test_observation_is_persistable_without_mutating_invocation_attempts(monkeypatch):

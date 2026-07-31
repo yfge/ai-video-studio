@@ -25,7 +25,11 @@ def test_frozen_prior_revision_samples_avoid_new_revision_cold_start():
     assert control["sample_source"] == "controlled"
     assert control["sample_count"] == 3
     assert control["request_scale"] == 0.507576
-    assert control["requested_length"]["target_chars"] == 2223
+    assert control["requested_length"] == {
+        "min_chars": 1142,
+        "target_chars": 1269,
+        "max_chars": 1395,
+    }
     assert valid_length_control_marker(revision)
 
 

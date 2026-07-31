@@ -31,6 +31,30 @@ def test_model_prompt_exposes_only_one_length_contract(monkeypatch):
     assert source["chapter_length"]["target_chars"] == 2500
 
 
+def test_v5_model_contract_may_undershoot_acceptance_to_cancel_provider_bias(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        length_control,
+        "length_observations",
+        lambda *_args: [_sample(1, 3900), _sample(2, 4000), _sample(3, 4100)],
+    )
+
+    control = build_length_control(object(), _revision(), 4, _prose_input())
+
+    assert control["acceptance_length"] == {
+        "min_chars": 2000,
+        "target_chars": 2500,
+        "max_chars": 3000,
+    }
+    assert control["requested_length"]["target_chars"] == 1562
+    assert control["requested_length"] == {
+        "min_chars": 1405,
+        "target_chars": 1562,
+        "max_chars": 1718,
+    }
+
+
 def test_v1_persisted_prompt_evidence_remains_replayable(monkeypatch):
     monkeypatch.setattr(length_control, "length_observations", lambda *_args: [])
     source = _prose_input()
