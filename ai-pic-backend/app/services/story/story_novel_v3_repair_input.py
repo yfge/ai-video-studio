@@ -31,7 +31,11 @@ def build_repair_input(
         "neighbor_blocks": neighbors,
         "violations": violations,
         "chapter_brief": prose_input["chapter_brief"],
-        "current_chapter_context": prose_input.get("current_chapter_context") or {},
+        "current_chapter_context": _failed_chapter_context(
+            prose_input.get("current_chapter_context") or {},
+            prose_input["chapter_brief"],
+            failed,
+        ),
         "current_contract_requirements": _current_contract_requirements(
             prose_input["chapter_brief"], failed, expected_delta or {}
         ),
@@ -108,6 +112,52 @@ def _current_contract_requirements(
             if contract_id in contracts
         ],
     }
+
+
+def _failed_chapter_context(context: dict, brief: dict, failed: set[str]) -> dict:
+    """Keep only the events and actors authorized for the editable blocks."""
+    value = copy.deepcopy(context)
+    beats = [item for item in brief.get("beats") or [] if item.get("beat_id") in failed]
+    event_ids = {
+        str(event_id)
+        for beat in beats
+        for event_id in beat.get("bound_event_ids") or []
+        if str(event_id or "").strip()
+    }
+    if not event_ids:
+        return value
+    events = [
+        item for item in value.get("events") or [] if item.get("event_id") in event_ids
+    ]
+    allowed_entities = {
+        str(entity_id)
+        for beat in beats
+        for entity_id in beat.get("allowed_entity_ids") or []
+        if str(entity_id or "").strip()
+    }
+    allowed_entities.update(
+        str(actor_id)
+        for event in events
+        for actor_id in (event.get("execution") or {}).get("actor_ids") or []
+    )
+    value["events"] = events
+    value["characters"] = [
+        item
+        for item in value.get("characters") or []
+        if str(item.get("id") or "") in allowed_entities
+    ]
+    participant_labels = {
+        str(item.get("label") or "")
+        for event in events
+        for item in event.get("scene_participants") or []
+    }
+    value["scene_participants"] = [
+        item
+        for item in value.get("scene_participants") or []
+        if str(item.get("label") or "") in participant_labels
+    ]
+    value.pop("typed_execution_boundary", None)
+    return value
 
 
 def _source_free(item: dict) -> dict:

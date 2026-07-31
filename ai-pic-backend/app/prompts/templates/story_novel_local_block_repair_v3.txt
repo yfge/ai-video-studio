@@ -11,7 +11,8 @@
 返回前按非空白字符自行复核每个 replacement 及合并全文；未改变超限/不足的 actual_chars 即视为失败。
 输入：{{ repair_input_json }}
 只可返回 failed_block_ids 中的 block；其他 block 不得重写、摘要或复制。
-current_chapter_context 或 current_contract_requirements 中的 events 必须完整兑现；
+current_contract_requirements.proof_contracts 是本次返修唯一必须兑现的效果合同；
+current_chapter_context.events 只包含这些可编辑 blocks 已绑定的当前事件，不得扩写其他事件；
 scene_participants 是当前章已授权的非状态称谓，只能在事件原文明示它时参与。
 events[].execution.actor_ids 之外的人物不得自行赶来或协助，返修不得遗漏原事件明示的参与者。
 typed_execution_boundary 是穷尽的当前章硬合同，优先于自由文本；空的状态或地点变化列表表示不得新增
