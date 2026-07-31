@@ -32,6 +32,18 @@ def test_integrity_locates_duplicate_passage_on_later_block():
     assert violations[0]["source_block_id"] == "B01"
 
 
+def test_integrity_rejects_exact_repeated_passage_inside_one_block():
+    paragraph = "双方逐项确认数量、交付日期和违约责任，最后才在契约上签名。" * 5
+
+    violations = prose_integrity_violations(
+        [{"block_id": "B01", "content_text": f"{paragraph}\n{paragraph}"}]
+    )
+
+    assert violations[0]["reason_code"] == "duplicate_passage"
+    assert violations[0]["block_ids"] == ["B01"]
+    assert violations[0]["source_block_id"] == "B01"
+
+
 def test_integrity_rejects_literal_escape_quote_and_truncated_block():
     violations = prose_integrity_violations(
         [

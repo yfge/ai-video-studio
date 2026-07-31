@@ -102,6 +102,9 @@ def audit_contract_context(
             }
             for beat in (brief or {}).get("beats") or []
         ],
+        "continuity_watchpoints": list(
+            (brief or {}).get("continuity_watchpoints") or []
+        ),
     }
 
 

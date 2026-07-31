@@ -678,10 +678,15 @@ version/hash 从最早受影响章节传播 stale。
 - system prompt、结构化大纲及修复、Canon、伏笔调度、批次章节合同、完整/定点
   plan repair、brief、正文、proof audit、有界返修和连续性审读都通过统一
   PromptManager 的 V3 专用版本化模板渲染。新 plan 冻结
-  `story_novel_prompt_policy.v9` 的模板名/version/source hash，每次调用还把 user
+  `story_novel_prompt_policy.v10` 的模板名/version/source hash，每次调用还把 user
   rendered hash 与 system template fingerprint 写入 invocation 和 ledger；包括
   `finish_reason=length` 的拒绝调用。模板变更不能在 Resume 时静默套用到旧
-  brief/body/candidate 证据链，已存 v1-v8 policy 只按 legacy snapshot 读取。
+  brief/body/candidate 证据链，已存 v1-v9 policy 只按 legacy snapshot 读取。
+- 章前规划可把已验证 Event/Memory 或 `state_before.subjects` 中与当前章有关的资源、
+  借用期限、债务/承诺、耗时、因果前置和关系边界提炼为带来源 ID 的
+  `continuity_watchpoints`。正文只读约束摘要，不读取原始 Event/Memory；审计只在
+  正文明显矛盾时报告 unexpected claim。watchpoint 不要求正文复述，也不是逐章
+  成长 KPI、required event 或状态变化。
 - 服务端从章节合同和 `state_before` 编译唯一 `expected_delta`。审计模型只返回
   contract ID 对稳定正文 sentence ID 的绑定，以及当前正文的 unexpected/future/
   world-rule hits，不能自报或改写状态。

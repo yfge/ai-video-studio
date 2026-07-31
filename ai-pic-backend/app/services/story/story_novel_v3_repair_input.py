@@ -183,6 +183,7 @@ def _failed_brief(brief: dict, failed: set[str]) -> dict:
             ],
             "emotional_continuity": brief.get("emotional_continuity"),
             "causal_bridge": brief.get("causal_bridge"),
+            "continuity_watchpoints": brief.get("continuity_watchpoints"),
         }.items()
         if value
     }

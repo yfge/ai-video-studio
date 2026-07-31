@@ -1,6 +1,7 @@
 import json
 
 import anyio
+
 from app.services.story import story_novel_planning_invocations
 from app.services.story.story_novel_brief_policy import expected_beat_count
 from app.services.story.story_novel_canon_milestone_filter import (
@@ -154,7 +155,7 @@ def test_v3_generation_plan_freezes_skeleton_before_any_chapter_contract(db_sess
     assert plan["brief_policy_version"].endswith(".v4")
     assert plan["planning_contract_version"] == 9
     assert plan["prose_execution_boundary_version"] == 1
-    assert plan["prompt_templates"]["schema"] == "story_novel_prompt_policy.v9"
+    assert plan["prompt_templates"]["schema"] == "story_novel_prompt_policy.v10"
     assert plan["world_reveal_index"]["schema"] == ("story_novel_world_reveal_index.v1")
     assert plan["compiled_chapter_count"] == 0
     assert len(plan["chapters"]) == 48

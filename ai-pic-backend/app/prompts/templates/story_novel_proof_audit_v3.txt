@@ -10,6 +10,9 @@ milestones、opened_threads 与 resolved_threads 是 required event 通过后由
 不得要求另一句重复证明；但 event proof 必须语义完整地兑现对应 current_events。
 current_contract_context 只解释当前章的事件、角色和 beat；beat purpose 只是定位提示，
 不得授权 current_events、proof_contracts 或 expected_delta 之外的新事实；必须回到 sentence_index 取证。
+current_contract_context.continuity_watchpoints 是由章前规划从已验证的既有事件、人物记忆或当前状态
+提炼的连续性护栏。只在正文明确与其矛盾时写入 unexpected_claims，并定位矛盾句；不得要求正文
+复述 watchpoint，也不得把未提及、暂未解决或正常失败/回撤当成问题。
 established_background 仅含此前 ready 章节已验证事件，可作为已知背景自然提及，
 不得据此新增状态变化，也不得把其重复出现误报为 unexpected_claim；它不能充当本章 proof。
 current_state_contract、current_events 与 expected_delta 优先；不得要求正文复述当前状态值。

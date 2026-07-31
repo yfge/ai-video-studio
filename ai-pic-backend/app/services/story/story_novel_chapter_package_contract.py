@@ -5,16 +5,10 @@ import json
 
 from app.schemas.story_novel_longform import StoryNovelEventExecution
 
+from . import story_novel_chapter_package_normalization as normalization
 from .story_novel_brief_location_scope import brief_allowed_entity_ids
 from .story_novel_chapter_brief_contract import validate_model_brief
 from .story_novel_chapter_effect_manifest import compile_effect_manifest
-from .story_novel_chapter_package_normalization import (
-    normalize_missing_contract_fields as _normalize_missing_contract_fields,
-)
-from .story_novel_chapter_package_normalization import repairable_contract_issues
-from .story_novel_chapter_package_normalization import (
-    strip_invalid_model_fields as _strip_thread_state_transitions,
-)
 from .story_novel_chapter_package_recovery import extract_chapter_package_payload
 from .story_novel_incremental_plan import chapter_skeleton
 from .story_novel_plan_effect_refs import chapter_actor_refs
@@ -26,9 +20,12 @@ from .story_novel_world_expansion import (
     normalize_package_expansion,
 )
 
+_normalize_missing_contract_fields = normalization.normalize_missing_contract_fields
+_strip_thread_state_transitions = normalization.strip_invalid_model_fields
+
 
 def parse_chapter_package(
-    text, service, revision, position: int, *, package_input: dict | None = None
+    text, service, revision, position: int, *, package_input=None
 ):
     payload = extract_chapter_package_payload(text)
     if not isinstance(payload, dict) or set(payload) != {
@@ -50,20 +47,18 @@ def parse_chapter_package(
         [*list(plan.get("chapters") or [])[: position - 1], model_contract],
         state_before,
     )
-    model_contract = _normalize_missing_contract_fields(
+    model_contract = normalization.normalize_missing_contract_fields(
         model_contract,
         validation_canon,
         state_before=state_before,
     )
-    raw_contract = _strip_thread_state_transitions(
+    raw_contract = normalization.strip_invalid_model_fields(
         model_contract, state_before=(package_input or {}).get("state_before")
     )
-    repair_issues = repairable_contract_issues(raw_contract)
+    repair_issues = normalization.repairable_contract_issues(raw_contract)
     if repair_issues:
-        raise ValueError(
-            "chapter package 当前事件已授权但 typed JSON 遗漏；"
-            "只补下列字段不改变事件语义: " + "; ".join(repair_issues)
-        )
+        detail = "; ".join(repair_issues)
+        raise ValueError(f"chapter package typed 字段遗漏，仅补字段不改语义: {detail}")
     prior = list(plan.get("chapters") or [])[: position - 1]
     parsed, error = parse_plan(
         json.dumps({"chapters": [raw_contract]}, ensure_ascii=False),
@@ -179,6 +174,7 @@ def _bound_brief(raw, brief_input: dict) -> dict:
         "causal_bridge": raw.get("causal_bridge"),
         "summary": raw.get("summary"),
         "cliffhanger": raw.get("cliffhanger"),
+        "continuity_watchpoints": raw.get("continuity_watchpoints") or [],
         "setup_thread_ids": list(contract.get("open_threads") or []),
         "payoff_thread_ids": list(contract.get("payoffs_due") or []),
     }

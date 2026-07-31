@@ -380,7 +380,12 @@ Each chapter executes four durable phases:
    brief policy v4 with 4–6 larger, non-overlapping beats, while historical
    policy v3 keeps 6–12 beats for hash compatibility. Each brief records
    character budgets, allowed entities/events/effects, motivations,
-   emotional continuity, causal bridge, and current setup/payoff IDs.
+   emotional continuity, causal bridge, and current setup/payoff IDs. Verified
+   prior Event/Memory rows and current-state subjects may also yield up to
+   twelve source-bound continuity watchpoints for resources, obligations,
+   elapsed time, causal prerequisites, or existing relationships. They prevent
+   contradiction but are not events to restate, state changes to apply, or
+   per-chapter growth targets.
    The active progression arc is included only as a multi-chapter soft direction;
    future arcs, future entries, and future payoff text remain absent.
    The brief preserves the execution contract and shapes commercial-web-fiction
@@ -411,6 +416,9 @@ Each chapter executes four durable phases:
    restatement. Timeline bindings remain audit context rather than proof
    contracts: natural relative time or omitted repeated dates are valid whenever
    the event sequence, travel duration, and day/night continuity are reasonable.
+   The auditor also receives continuity watchpoints and reports only concrete
+   body contradictions; omission, delayed resolution, buildup, failure, and
+   costly regression remain valid prose.
    Quotes and spans are always reconstructed from the stored body.
 4. **Narrative materialization.** After every proof and deterministic gate passes,
    required events become World Event candidates and knowledge grants become

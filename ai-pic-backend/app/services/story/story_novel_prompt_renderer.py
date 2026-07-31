@@ -59,6 +59,7 @@ V3_PROMPT_TEMPLATES_V9 = (
     "story_novel_structure_arc_chapters_v3",
     "story_novel_structure_arc_repair_v3",
 )
+V3_PROMPT_TEMPLATES_V10 = V3_PROMPT_TEMPLATES_V9
 
 
 class RenderedNovelPrompt(str):
@@ -109,6 +110,7 @@ def valid_v3_prompt_template_policy(policy: dict[str, Any]) -> bool:
         "story_novel_prompt_policy.v7",
         "story_novel_prompt_policy.v8",
         "story_novel_prompt_policy.v9",
+        "story_novel_prompt_policy.v10",
     }:
         return False
     version = int(schema.rsplit("v", 1)[-1])
@@ -127,9 +129,9 @@ def valid_v3_prompt_template_policy(policy: dict[str, Any]) -> bool:
     ):
         return False
     structurally_valid = policy.get("hash") == _policy_hash(templates)
-    if not structurally_valid or version in {1, 2, 3, 4, 5, 6, 7, 8}:
+    if not structurally_valid or version in {1, 2, 3, 4, 5, 6, 7, 8, 9}:
         return structurally_valid
-    return policy == v3_prompt_template_policy(version=9)
+    return policy == v3_prompt_template_policy(version=10)
 
 
 def _policy_names(version: int) -> tuple[str, ...]:
@@ -151,6 +153,8 @@ def _policy_names(version: int) -> tuple[str, ...]:
         return V3_PROMPT_TEMPLATES_V8
     if version == 9:
         return V3_PROMPT_TEMPLATES_V9
+    if version == 10:
+        return V3_PROMPT_TEMPLATES_V10
     raise ValueError(f"unsupported Story Novel prompt policy version: {version}")
 
 

@@ -60,8 +60,17 @@ def test_v8_policy_remains_readable_as_a_frozen_historical_snapshot():
     assert valid_v3_prompt_template_policy(policy)
 
 
-def test_v9_policy_must_match_current_template_sources():
+def test_v9_policy_remains_readable_as_a_frozen_historical_snapshot():
     policy = v3_prompt_template_policy(version=9)
+
+    assert valid_v3_prompt_template_policy(policy)
+    policy["templates"]["story_novel_proof_audit_v3"]["sources_hash"] = "changed"
+    policy["hash"] = _policy_hash(policy["templates"])
+    assert valid_v3_prompt_template_policy(policy)
+
+
+def test_v10_policy_must_match_current_template_sources():
+    policy = v3_prompt_template_policy(version=10)
 
     assert valid_v3_prompt_template_policy(policy)
     policy["templates"]["story_novel_proof_audit_v3"]["sources_hash"] = "changed"

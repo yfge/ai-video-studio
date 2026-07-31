@@ -58,7 +58,7 @@ def _duplicate_passages(blocks: list[dict]) -> list[dict]:
             if len(value) < 80:
                 continue
             previous = seen_paragraphs.get(value)
-            if previous and previous != block["block_id"]:
+            if previous:
                 issues.append(
                     _duplicate_issue(previous, block["block_id"], len(value), "exact")
                 )

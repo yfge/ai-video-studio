@@ -8,6 +8,7 @@ from .story_novel_brief_location_scope import (
 )
 from .story_novel_brief_policy import LEGACY_BRIEF_POLICY_VERSION, expected_beat_count
 from .story_novel_context_utils import value_hash
+from .story_novel_continuity_watchpoints import validate_continuity_watchpoints
 from .story_novel_expected_delta import compile_expected_delta
 
 BRIEF_INPUT_SCHEMA = "story_novel_chapter_brief_input.v1"
@@ -24,6 +25,7 @@ _MODEL_KEYS = {
     "causal_bridge",
     "summary",
     "cliffhanger",
+    "continuity_watchpoints",
     "setup_thread_ids",
     "payoff_thread_ids",
     "brief_hash",
@@ -115,6 +117,9 @@ def validate_chapter_brief(
         raise ValueError("beat 字符预算之和必须等于章节 target_chars")
 
     _validate_motivations(brief, allowed_entities)
+    watchpoints = validate_continuity_watchpoints(
+        brief.get("continuity_watchpoints"), brief_input
+    )
     for key in ("emotional_continuity", "causal_bridge", "summary", "cliffhanger"):
         _require_text(brief, key)
     _require_complete_coverage(beats, "bound_event_ids", allowed_events, "当前章节事件")
@@ -124,6 +129,8 @@ def validate_chapter_brief(
     _require_exact_ids(brief, "setup_thread_ids", contract.get("open_threads") or [])
     _require_exact_ids(brief, "payoff_thread_ids", contract.get("payoffs_due") or [])
     result = copy.deepcopy(brief)
+    if "continuity_watchpoints" in result:
+        result["continuity_watchpoints"] = watchpoints
     stored_hash = result.pop("brief_hash", None)
     calculated_hash = value_hash(result)
     if stored_hash is not None and stored_hash != calculated_hash:

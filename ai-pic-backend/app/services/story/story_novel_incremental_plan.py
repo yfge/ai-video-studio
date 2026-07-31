@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import copy
 
-from app.schemas.story_novel_longform import StoryNovelChapterPlan
 from pydantic import ValidationError
+
+from app.schemas.story_novel_longform import StoryNovelChapterPlan
 
 from .story_novel_brief_policy import BRIEF_POLICY_VERSION
 from .story_novel_chapter_effect_manifest import VERSION as EFFECT_MANIFEST_VERSION
@@ -124,7 +125,7 @@ def incremental_plan_fields(canon: dict, chapters: list[dict]) -> dict:
         "future_guard_hash": future["index_hash"],
         "world_reveal_index": reveal,
         "world_reveal_hash": reveal["index_hash"],
-        "prompt_templates": v3_prompt_template_policy(version=9),
+        "prompt_templates": v3_prompt_template_policy(version=10),
     }
 
 

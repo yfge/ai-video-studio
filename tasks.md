@@ -78,7 +78,9 @@
 - P0（进行中）：新长篇 Revision 升级为章前规划质量 v3。世界事件和人物记忆只供
   `chapter_brief` 规划，正文只读当前 brief/可见 Canon，服务端 expected delta 与
   sentence proof 审计决定状态和 Narrative 落账；三阶段模型策略、局部 block 返修、
-  evidence-only Resume 与 v3-only 下游门禁已进入自动验证。执行计划见
+  evidence-only Resume 与 v3-only 下游门禁已进入自动验证。章前 brief 现可把既有
+  资源、义务、耗时、因果和关系约束提炼为来源绑定的 continuity watchpoints；正文
+  无需复述，只有实际矛盾才由审计阻断。执行计划见
   `docs/exec-plans/active/story-novel-planning-quality-v3.md`。
 - P0：无限画布已有交互、保存恢复、动态节点、类型化端口与边、按图输入解析、
   Run Node、Run Downstream、stale descendants、故事板/视频候选评审和显式

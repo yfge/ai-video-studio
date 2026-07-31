@@ -53,6 +53,12 @@
 10. current_progression_arc 是多章范围的软方向，只用于理解当前章在阶段中的位置。growth 的认知、
     能力、资源、活动/时间尺度字段可以为空；不得在本章逐项兑现、补数值或为了“达标”改写 key_events。
     失败、蓄势和有代价的回撤均为合法阶段推进。
+11. continuity_watchpoints 只提炼会影响当前章写法的既有连续性约束，例如临时借用是否到期、
+    可用资源是否已分配、债务/承诺是否成立、行动所需时间、尚未满足的因果前置或既有关系边界。
+    每项必须从 prior_world_events/prior_character_memories 的 evidence_id，或 state_before.subjects 的
+    subject ID 绑定来源；不得引用 future 信息。没有相关约束时输出 []，最多 12 项。
+    watchpoint 只是“不得与既有事实矛盾”的护栏，不要求正文逐项提及，更不得把它当成本章新增事件、
+    状态变化或升级 KPI。kind 只允许 resource/obligation/time/causal/relationship。
 chapter_contract 必须包含当前章全部 typed 字段。chapter_brief 只需输出叙事字段；
 服务端会确定性编译 effect manifest、expected delta，并绑定 hash、execution_contracts、
 effect_contract_ids、允许实体及线程 ID。不要输出 effect_coverage、effect_refs、proof 或证据。
@@ -60,6 +66,6 @@ beats 数量必须等于 expected_beat_count，beat_id 从 B01 连续编号，�
 bound_event_ids 只能引用当前 required_event_ids，并完整覆盖。
 
 只输出 JSON：
-{"chapter_contract":{"position":1,"title":"标题","goal":"目标","key_events":["事件"],"character_focus":["角色"],"open_threads":[],"end_state":"章末状态","target_chars":2500,"preconditions":[],"required_event_ids":["event-1-1"],"timeline_event_bindings":{},"state_transitions":[],"knowledge_grants":[],"location_transitions":[],"milestones_consumed":[],"forbidden_event_ids":[],"payoffs_due":[],"canon_refs":[],"entity_introductions":[{"ref":"new-1","kind":"character","name":"新人物","aliases":[],"attributes":{"occupation":"当前身份"},"initial_state":{"location":"loc-current","knowledge":[],"relationships":{}},"source_event_id":"event-1-1","persistence":"revision","reason":"后续仍承担明确叙事职责"}],"execution_contracts":[{"event_id":"event-1-1","action_phase":"instant","time_scope":"unspecified","actor_ids":["new-1"],"effort":"light","timeline_ids":[],"knowledge_fact_ids":[]}]},"chapter_brief":{"beats":[{"beat_id":"B01","purpose":"叙事动作","target_chars":420,"bound_event_ids":["event-1-1"]}],"character_motivations":[{"character_id":"new-1","motivation":"当前动机"}],"emotional_continuity":"情绪延续","causal_bridge":"因果桥","summary":"本章摘要","cliffhanger":"章末钩子"}}
+{"chapter_contract":{"position":1,"title":"标题","goal":"目标","key_events":["事件"],"character_focus":["角色"],"open_threads":[],"end_state":"章末状态","target_chars":2500,"preconditions":[],"required_event_ids":["event-1-1"],"timeline_event_bindings":{},"state_transitions":[],"knowledge_grants":[],"location_transitions":[],"milestones_consumed":[],"forbidden_event_ids":[],"payoffs_due":[],"canon_refs":[],"entity_introductions":[{"ref":"new-1","kind":"character","name":"新人物","aliases":[],"attributes":{"occupation":"当前身份"},"initial_state":{"location":"loc-current","knowledge":[],"relationships":{}},"source_event_id":"event-1-1","persistence":"revision","reason":"后续仍承担明确叙事职责"}],"execution_contracts":[{"event_id":"event-1-1","action_phase":"instant","time_scope":"unspecified","actor_ids":["new-1"],"effort":"light","timeline_ids":[],"knowledge_fact_ids":[]}]},"chapter_brief":{"beats":[{"beat_id":"B01","purpose":"叙事动作","target_chars":420,"bound_event_ids":["event-1-1"]}],"character_motivations":[{"character_id":"new-1","motivation":"当前动机"}],"emotional_continuity":"情绪延续","causal_bridge":"因果桥","summary":"本章摘要","cliffhanger":"章末钩子","continuity_watchpoints":[{"watchpoint_id":"W01","kind":"resource","constraint":"既有工具的临时借用已经到期，除非本章事件重新取得，否则不得继续使用","source_evidence_ids":["既有event ID"],"source_subject_ids":[]}]}}
 
 不得输出正文、证据、proof、state delta、未来目录或解释文字。

@@ -73,6 +73,13 @@ or provider bypass.
 - [x] Bound hard Canon/state context to current references and their direct
       state dependencies, so hundreds of previously introduced entities do not
       accumulate in every later prompt.
+- [x] Add source-bound continuity watchpoints for current-chapter resources,
+      obligations, elapsed time, causal prerequisites, and relationships. Raw
+      Event/Memory stays planning-only; prose omission is valid and audit blocks
+      only a concrete contradiction. Prompt policy v10 preserves v1-v9 as
+      historical snapshots.
+- [x] Reject an exact long-paragraph replay even when both copies occur inside
+      the same prose block, so local repair can replace only that block.
 
 ### 3. Proof audit, state, and Narrative materialization
 
