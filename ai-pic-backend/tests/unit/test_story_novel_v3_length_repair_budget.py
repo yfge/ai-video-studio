@@ -35,13 +35,51 @@ def test_real_chapter_one_repair_preserves_event_bearing_block_capacity():
 
     assert failed == ["B01", "B02"]
     assert contract["fixed_chars"] == 1830
-    assert contract["repair_model_target_chars"] == 2500
+    assert contract["repair_model_target_chars"] == 670
     assert contract["replacement_target_chars"] == 670
     assert [item["target_chars"] for item in contract["replacement_blocks"]] == [
         309,
         361,
     ]
     assert all(item["min_chars"] >= 247 for item in contract["replacement_blocks"])
+
+
+def test_short_chapter_repair_model_targets_only_the_replacement_budget():
+    blocks = [
+        {"block_id": "B01", "content_text": "甲" * 133},
+        {"block_id": "B02", "content_text": "乙" * 489},
+        {"block_id": "B03", "content_text": "丙" * 490},
+        {"block_id": "B04", "content_text": "丁" * 490},
+    ]
+    brief = {
+        "beats": [
+            {"beat_id": "B01", "target_chars": 620},
+            {"beat_id": "B02", "target_chars": 650},
+            {"beat_id": "B03", "target_chars": 650},
+            {"beat_id": "B04", "target_chars": 580},
+        ]
+    }
+
+    contract = replacement_length_contract(
+        blocks,
+        {"B01"},
+        {"min_chars": 2000, "target_chars": 2500, "max_chars": 3000},
+        brief,
+    )
+
+    assert contract["fixed_chars"] == 1469
+    assert contract["chapter_target_chars"] == 2500
+    assert contract["replacement_target_chars"] == 1031
+    assert contract["repair_model_target_chars"] == 1031
+    assert contract["replacement_blocks"] == [
+        {
+            "block_id": "B01",
+            "original_chars": 133,
+            "min_chars": 824,
+            "target_chars": 1031,
+            "max_chars": 1237,
+        }
+    ]
 
 
 def test_overlong_selection_expands_until_each_rewritten_beat_has_room():

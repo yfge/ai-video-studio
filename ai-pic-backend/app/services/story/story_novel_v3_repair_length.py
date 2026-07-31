@@ -41,7 +41,7 @@ def replacement_length_contract(
         "chapter_min_chars": minimum,
         "chapter_target_chars": target,
         "chapter_max_chars": maximum,
-        "repair_model_target_chars": repair_target,
+        "repair_model_target_chars": replacement_target,
         "repair_safety_margin_chars": safety_margin,
         "repair_chapter_ceiling_chars": repair_ceiling,
     }
