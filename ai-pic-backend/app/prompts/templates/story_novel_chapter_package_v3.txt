@@ -34,6 +34,9 @@
 7. execution_contracts 必须与 required_event_ids 同序一一对应。action_phase 只允许
    instant/start/progress/complete：瞬时动作写 instant，刚启动写 start，持续推进但未完成写 progress，
    key_event 明确完成才写 complete；activity、reaction、observation 等都不是合法值。
+   time_scope 只允许 instant/same_day/multi_day/unspecified；具体日期只能通过 timeline_ids 绑定，
+   绝对不得把“正月十八”等日期字符串写进 time_scope。effort 只允许
+   none/light/moderate/heavy/unspecified，不得改写成自然语言。
    由冻结 story_format 指定的节奏快慢不是硬冲突。
 8. 世界按章展开：current_visible_canon 中已有但本章才登场的主要实体必须复用现有 ID，不得重复创建。
    若当前 key_event 确实需要一个此前不存在于当前修订版世界、且后续仍会保留身份或状态的人物、地点、

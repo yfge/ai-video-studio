@@ -65,6 +65,10 @@ def test_chapter_package_prompt_separates_predicates_from_typed_effects():
     assert "服务端会确定性编译 effect manifest、expected delta" in prompt
     assert "instant/start/progress/complete" in prompt
     assert "activity、reaction、observation" in prompt
+    assert "time_scope 只允许 instant/same_day/multi_day/unspecified" in prompt
+    assert "具体日期只能通过 timeline_ids 绑定" in prompt
+    assert "effort 只允许" in prompt
+    assert "none/light/moderate/heavy/unspecified" in prompt
 
 
 def test_legacy_add_to_set_alias_is_normalized_from_exact_current_state():
