@@ -2,8 +2,9 @@
 
 import asyncio
 
-from app.services.providers.deepseek_models import is_v4_model
 from fastapi import HTTPException
+
+from app.services.providers.deepseek_models import is_v4_model
 
 from .story_novel_ai_prompts import SYSTEM_PROMPT
 from .story_novel_export_ai import TruncatedNovelOutput, generate_story_novel_text
@@ -56,8 +57,9 @@ async def generate_task_text(
     max_tokens: int | None,
     temperature: float | None = None,
     stage: str | None = None,
+    model_override: str | None = None,
 ) -> str:
-    selected_model = model_for_stage(revision, stage)
+    selected_model = model_override or model_for_stage(revision, stage)
     provider, model = _split_model(selected_model)
     chosen_temperature = (
         temperature if temperature is not None else revision.temperature or 0.7

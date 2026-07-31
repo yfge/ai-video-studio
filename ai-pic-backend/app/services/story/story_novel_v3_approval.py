@@ -2,8 +2,9 @@
 
 import re
 
-from app.services.narrative_memory.source_hash import novel_chapter_source_hash
 from fastapi import HTTPException
+
+from app.services.narrative_memory.source_hash import novel_chapter_source_hash
 
 from .story_novel_chapter_brief_contract import validate_chapter_brief
 from .story_novel_context_utils import prompt_chapter_contract, value_hash
@@ -53,9 +54,10 @@ def require_v3_quality(db, revision, chapters, ledger_rows) -> None:
     review = revision.continuity_report or {}
     invocations = review.get("review_invocations") or []
     audit_model = (plan.get("model_policy") or {}).get("audit_model")
+    reviewer_model = review.get("reviewer_model") or audit_model
     expected_reviews = (len(chapters) + 5) // 6 + 1
     if len(invocations) != expected_reviews or any(
-        not valid_invocation(item, audit_model, require_prompt_template=True)
+        not valid_invocation(item, reviewer_model, require_prompt_template=True)
         for item in invocations
     ):
         raise HTTPException(status_code=409, detail="v3 连续性审读调用证据不完整")

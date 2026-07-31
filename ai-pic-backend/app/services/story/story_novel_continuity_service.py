@@ -117,6 +117,7 @@ async def _review_global(
     task,
     payload: dict,
     generate_text: GenerateText,
+    reviewer_model: str | None = None,
 ) -> dict:
     task.description = "正在综合全书摘要、事实、角色状态与未闭合线索…"
     service.db.commit()
@@ -127,7 +128,12 @@ async def _review_global(
         issue_limit=40,
         include_editorial=True,
     )
-    budget = require_global_prompt_budget(revision, prompt, GLOBAL_REVIEW_MAX_TOKENS)
+    budget = require_global_prompt_budget(
+        revision,
+        prompt,
+        GLOBAL_REVIEW_MAX_TOKENS,
+        reviewer_model=reviewer_model,
+    )
     text = await generate_text(
         revision,
         prompt,
@@ -164,7 +170,13 @@ def _save_report(service, revision, chapters: list, report: dict) -> None:
     service.db.commit()
 
 
-async def run_layered_continuity(service, revision, task, generate_text: GenerateText):
+async def run_layered_continuity(
+    service,
+    revision,
+    task,
+    generate_text: GenerateText,
+    reviewer_model: str | None = None,
+):
     ensure_task_not_cancelled(service.db, task)
     chapters = active_chapters(revision)
     ledger_rows = (revision.continuity_ledger or {}).get("chapters") or {}
@@ -181,10 +193,22 @@ async def run_layered_continuity(service, revision, task, generate_text: Generat
         revision, chapters, ledger_rows, events, memories, window_reports
     )
     global_report = await _review_global(
-        service, revision, task, payload, generate_text
+        service,
+        revision,
+        task,
+        payload,
+        generate_text,
+        reviewer_model=reviewer_model,
     )
     metrics = quality_metrics(revision)
-    report = compile_report(revision, chapters, window_reports, global_report, metrics)
+    report = compile_report(
+        revision,
+        chapters,
+        window_reports,
+        global_report,
+        metrics,
+        reviewer_model=reviewer_model,
+    )
     ensure_task_not_cancelled(service.db, task)
     _save_report(service, revision, chapters, report)
     return revision.continuity_report

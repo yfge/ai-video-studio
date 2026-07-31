@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.user import User
@@ -10,6 +13,7 @@ from app.schemas.story_novel_export import (
     StoryNovelChapterReorderRequest,
     StoryNovelChapterResponse,
     StoryNovelChapterUpdateRequest,
+    StoryNovelContinuityCheckRequest,
     StoryNovelContinuityIssueAcceptRequest,
     StoryNovelCreateRevisionRequest,
     StoryNovelGenerateRevisionRequest,
@@ -18,8 +22,6 @@ from app.schemas.story_novel_export import (
     StoryNovelRevisionResponse,
 )
 from app.services.story.story_novel_revision_service import StoryNovelRevisionService
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 
 from .novel_task_queue import queue_novel_operation
 
@@ -183,13 +185,17 @@ def clone_novel_revision(
 @router.post("/novel/revisions/{revision_business_id}/continuity-check-async")
 def check_novel_continuity(
     revision_business_id: str,
+    request: StoryNovelContinuityCheckRequest | None = None,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     service = StoryNovelRevisionService(db, current_user)
     revision = service.revision(revision_business_id)
     service._ensure_draft(revision)
-    return queue_novel_operation(db, current_user, revision, "continuity_check")
+    payload = {"review_model": request.review_model} if request else {}
+    return queue_novel_operation(
+        db, current_user, revision, "continuity_check", **payload
+    )
 
 
 @router.post(

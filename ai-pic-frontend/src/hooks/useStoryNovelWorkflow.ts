@@ -1,5 +1,4 @@
 "use client";
-
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   acceptStoryNovelContinuityIssue,
@@ -101,7 +100,6 @@ export function useStoryNovelWorkflow(
     replaceRevision(response.data);
     return true;
   };
-
   const saveChapterAction = async (
     chapter: StoryNovelChapter,
     patch: Partial<StoryNovelChapter>,
@@ -195,10 +193,10 @@ export function useStoryNovelWorkflow(
         regenerateStoryNovelChapter(current.business_id, chapter.business_id),
         current.business_id,
       ),
-    continuity: () =>
+    continuity: (reviewModel?: string) =>
       current &&
       task.startTask(
-        checkStoryNovelContinuity(current.business_id),
+        checkStoryNovelContinuity(current.business_id, reviewModel),
         current.business_id,
       ),
     generatePlan: () =>

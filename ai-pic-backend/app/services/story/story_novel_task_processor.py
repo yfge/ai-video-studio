@@ -2,12 +2,13 @@ from functools import partial
 from types import SimpleNamespace
 
 import anyio
+from fastapi import HTTPException
+
 from app.core.database import SessionLocal
 from app.models.task import TaskStatus
 from app.repositories.story_novel_repository import StoryNovelRepository
 from app.services.providers.deepseek_models import DEEPSEEK_DEFAULT_MODEL
 from app.utils.json_utils import extract_json_block
-from fastapi import HTTPException
 
 from . import story_novel_task_guard as task_guard
 from .story_novel_ai_prompts import adaptation_prompt
@@ -76,15 +77,18 @@ async def _generate_missing_chapters(service, revision, task, *, only_position=N
     service.db.commit()
 
 
-async def _run_continuity(service, revision, task):
+async def _run_continuity(service, revision, task, *, review_model=None):
     generate = partial(
         task_guard.generate_text_unless_cancelled,
         service.db,
         task,
         _generate_text,
         stage="continuity",
+        model_override=review_model,
     )
-    await run_layered_continuity(service, revision, task, generate)
+    await run_layered_continuity(
+        service, revision, task, generate, reviewer_model=review_model
+    )
 
 
 async def _generate_adaptation(service, revision):
@@ -202,7 +206,15 @@ def _run_revision_operation(operation, service, revision, task, payload) -> None
         )
         anyio.run(runner)
     elif operation == "continuity_check":
-        anyio.run(_run_continuity, service, revision, task)
+        anyio.run(
+            partial(
+                _run_continuity,
+                service,
+                revision,
+                task,
+                review_model=payload.get("review_model"),
+            )
+        )
     elif operation == "generate_adaptation_plan":
         anyio.run(_generate_adaptation, service, revision)
     else:

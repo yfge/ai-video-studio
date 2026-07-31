@@ -3,8 +3,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, List, Literal, Optional
 
-from app.schemas.story_novel_longform import StoryNovelCanon
 from pydantic import BaseModel, Field, model_validator
+
+from app.schemas.story_novel_longform import StoryNovelCanon
 
 
 class NovelLengthRange(BaseModel):
@@ -89,6 +90,19 @@ class StoryNovelGenerateRevisionRequest(BaseModel):
             if getattr(self, name) is not None
         ]
         return ["prose 已忽略旧字段: " + ", ".join(ignored)] if ignored else []
+
+
+class StoryNovelContinuityCheckRequest(BaseModel):
+    review_model: Optional[str] = Field(None, min_length=1, max_length=128)
+
+    @model_validator(mode="after")
+    def normalize_review_model(self):
+        if self.review_model is None:
+            return self
+        self.review_model = self.review_model.strip()
+        if ":" not in self.review_model or not all(self.review_model.split(":", 1)):
+            raise ValueError("review_model must use provider:model")
+        return self
 
 
 class StoryNovelExportSummary(BaseModel):

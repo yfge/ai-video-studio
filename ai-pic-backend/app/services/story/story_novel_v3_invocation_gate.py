@@ -64,13 +64,14 @@ def persisted_invocation_issues(db, revision, entries: dict, report: dict) -> li
                     for attempt in (metrics[stage].get("attempts") or [])
                 )
     reviews = list(report.get("review_invocations") or [])
+    reviewer_model = report.get("reviewer_model") or policy.get("audit_model")
     for index, attempt in enumerate(reviews, start=1):
         scene = (
             "continuity.global"
             if index == len(reviews)
             else f"continuity.window.{index}"
         )
-        specs.append((scene, policy.get("audit_model"), attempt))
+        specs.append((scene, reviewer_model, attempt))
     return issues + [
         f"invocation:{attempt.get('invocation_id')}"
         for scene, model, attempt in specs

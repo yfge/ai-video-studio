@@ -19,6 +19,7 @@ import {
 } from "./StoryNovelGenerationStatus";
 import { StoryNovelLengthPanel } from "./StoryNovelLengthPanel";
 import { StoryNovelQualityPanel } from "./StoryNovelQualityPanel";
+import { StoryNovelReviewControls } from "./StoryNovelReviewControls";
 
 export function StoryNovelWorkflowPanel({
   story,
@@ -161,16 +162,12 @@ export function StoryNovelWorkflowPanel({
         </div>
         {current?.lifecycle_status === "draft" ? (
           <div className="flex flex-wrap gap-2 border-t border-gray-100 px-5 py-4">
-            <button
-              type="button"
+            <StoryNovelReviewControls
               disabled={
                 workflow.busy || workflow.activeTask || !current.chapters.length
               }
-              onClick={() => void workflow.continuity()}
-              className={operatorButtonClass("secondary")}
-            >
-              运行连续性检查
-            </button>
+              onRun={(model) => void workflow.continuity(model)}
+            />
             <button
               type="button"
               disabled={

@@ -10,8 +10,13 @@ _DEFAULT_CONTEXT_TOKENS = 64_000
 _SAFETY_RESERVE_TOKENS = 16_000
 
 
-def require_global_prompt_budget(revision, prompt: str, output_tokens: int) -> dict:
-    model = _audit_model(revision)
+def require_global_prompt_budget(
+    revision,
+    prompt: str,
+    output_tokens: int,
+    reviewer_model: str | None = None,
+) -> dict:
+    model = reviewer_model or _audit_model(revision)
     context_tokens = _context_window(model)
     input_budget = context_tokens - int(output_tokens) - _SAFETY_RESERVE_TOKENS
     estimated = conservative_token_estimate(prompt)

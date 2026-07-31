@@ -143,6 +143,7 @@ def compile_report(
     window_reports: list,
     global_report: dict,
     metrics: dict,
+    reviewer_model: str | None = None,
 ) -> dict:
     plan = revision.generation_plan or {}
     issues = [
@@ -182,7 +183,9 @@ def compile_report(
         "global_context_budget": global_report.get("context_budget") or {},
         "repair_groups": global_report.get("repair_groups") or [],
         "reviewer_model": (
-            (plan.get("model_policy") or {}).get("audit_model") or revision.model
+            reviewer_model
+            or (plan.get("model_policy") or {}).get("audit_model")
+            or revision.model
         ),
         "review_invocations": [
             report.get("invocation")
