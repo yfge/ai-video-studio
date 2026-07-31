@@ -45,6 +45,10 @@ def _entity_introduction_name_violations(
 ) -> list[dict]:
     result = []
     for entity in chapter_plan.get("entity_introductions") or []:
+        # Abstract concepts are established by their bound event proofs. Requiring
+        # their internal Canon label verbatim turns natural prose into a report.
+        if entity.get("kind") == "concept":
+            continue
         entity_id = str(entity.get("id") or "")
         names = [
             str(value).strip()

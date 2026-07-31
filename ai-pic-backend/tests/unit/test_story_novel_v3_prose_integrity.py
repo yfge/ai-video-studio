@@ -124,3 +124,27 @@ def test_gate_accepts_current_entity_alias_in_prose():
     }
 
     assert prose_violations(SimpleNamespace(), plan, prose, {"beats": []}) == []
+
+
+def test_gate_does_not_require_internal_concept_label_verbatim():
+    blocks = _blocks()
+    blocks[1]["content_text"] = "顾砚比较两次换货，明白粮食收拾干净便能少受压价。"
+    prose = {
+        "block_contents": blocks,
+        "content_text": "\n\n".join(item["content_text"] for item in blocks),
+        "char_count": 39,
+    }
+    plan = {
+        "min_chars": 10,
+        "target_chars": 30,
+        "max_chars": 100,
+        "entity_introductions": [
+            {
+                "id": "concept-clean-grain-price",
+                "kind": "concept",
+                "name": "整理成色能够改善交换条件",
+            }
+        ],
+    }
+
+    assert prose_violations(SimpleNamespace(), plan, prose, {"beats": []}) == []
