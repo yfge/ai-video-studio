@@ -13,7 +13,7 @@ def test_window_payload_uses_stable_sentence_index_instead_of_raw_duplicate_body
     chapter = SimpleNamespace(
         business_id="chapter-1",
         content_hash="body-hash",
-        position=1,
+        position=2,
         title="开荒",
         content_text="沈禾量完三亩地。顾砚记下水位。",
     )
@@ -34,7 +34,20 @@ def test_window_payload_uses_stable_sentence_index_instead_of_raw_duplicate_body
                 ],
                 "initial_state": {"char-shenhe": {"location": "loc-field"}},
             },
-            "chapters": [{"position": 1, "required_event_ids": ["event-1"]}],
+            "chapters": [
+                {
+                    "position": 2,
+                    "required_event_ids": ["event-1"],
+                    "preconditions": [
+                        {
+                            "subject_id": "concept-debt",
+                            "field": "status",
+                            "operator": "eq",
+                            "value": "managed",
+                        }
+                    ],
+                }
+            ],
         },
     )
 
@@ -43,9 +56,18 @@ def test_window_payload_uses_stable_sentence_index_instead_of_raw_duplicate_body
         [chapter],
         {
             "1": {
+                "state_after_hash": "prior-state-hash",
+                "state_after": {
+                    "subjects": {
+                        "concept-debt": {"status": "managed"},
+                        "irrelevant": {"status": "hidden"},
+                    }
+                },
+            },
+            "2": {
                 "state_delta": {"occurred_event_ids": ["event-1"]},
                 "state_validation": {"status": "passed"},
-            }
+            },
         },
     )
     row = payload["chapters"][0]
@@ -68,6 +90,11 @@ def test_window_payload_uses_stable_sentence_index_instead_of_raw_duplicate_body
     assert payload["story_contract"]["story_seed_invariants"]["title"] == "开荒记"
     assert row["checkpoint"]["state_delta"]["occurred_event_ids"] == ["event-1"]
     assert payload["state_chain_contract"]["state_before"].startswith("章节开始前")
+    assert payload["window_entry_state"] == {
+        "source_position": 1,
+        "state_after_hash": "prior-state-hash",
+        "subjects": {"concept-debt": {"status": "managed"}},
+    }
 
 
 def test_global_prompt_requires_grounding_without_auto_approval():

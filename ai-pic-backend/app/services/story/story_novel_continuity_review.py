@@ -28,8 +28,10 @@ def window_payload(revision, chapters: list, ledger_rows: dict | None = None) ->
             "state_before": "章节开始前的已验证状态，不是本章结束状态",
             "state_delta": "本章正文允许且已经验证的实际状态变化",
             "state_after": "应用本章 state_delta 后的已验证状态",
+            "window_entry_state": "窗口开始前一章的相关主体状态",
             "window_scope": "窗口外的状态变化由连续 hash 链证明，不得因正文未重演而判为缺失",
         },
+        "window_entry_state": _window_entry_state(plan, chapters, ledger_rows),
         "compiled_canon": plan.get("canon") or {},
         "valid_contract_refs": sorted(contract_reference_catalog(revision, chapters)),
         "chapters": [
@@ -73,6 +75,38 @@ def window_payload(revision, chapters: list, ledger_rows: dict | None = None) ->
             for row in chapters
         ],
     }
+
+
+def _window_entry_state(plan: dict, chapters: list, ledger_rows: dict) -> dict:
+    first_position = min((row.position for row in chapters), default=1)
+    if first_position <= 1:
+        return {}
+    prior = ledger_rows.get(str(first_position - 1)) or {}
+    subjects = (prior.get("state_after") or {}).get("subjects") or {}
+    relevant_ids = _window_subject_ids(plan, {row.position for row in chapters})
+    return {
+        "source_position": first_position - 1,
+        "state_after_hash": prior.get("state_after_hash"),
+        "subjects": {
+            subject_id: subjects[subject_id]
+            for subject_id in sorted(relevant_ids)
+            if subject_id in subjects
+        },
+    }
+
+
+def _window_subject_ids(plan: dict, positions: set[int]) -> set[str]:
+    result = set()
+    for chapter in plan.get("chapters") or []:
+        if int(chapter.get("position") or 0) not in positions:
+            continue
+        for key in ("preconditions", "state_transitions", "location_transitions"):
+            result.update(
+                str(item["subject_id"])
+                for item in chapter.get(key) or []
+                if item.get("subject_id")
+            )
+    return result
 
 
 def global_payload(
