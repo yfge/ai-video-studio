@@ -108,4 +108,6 @@ def test_canon_prompts_forbid_organization_knowledge():
     repair = canon_repair_prompt(prompt, json.dumps(_raw_canon()), "组织知识无效")
 
     assert "subject_id 只能是 kind=character" in prompt
+    assert "contains 只允许用于 initial_state 中真实为 JSON 数组的字段" in prompt
+    assert "status、identity、owner_id、location 等标量字段必须使用 eq" in prompt
     assert "禁止保留 organization knowledge" in repair
