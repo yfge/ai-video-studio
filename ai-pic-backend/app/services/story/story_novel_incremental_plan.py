@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import json
 
 from app.schemas.story_novel_longform import StoryNovelChapterPlan
 from pydantic import ValidationError
@@ -12,6 +11,7 @@ from .story_novel_brief_policy import BRIEF_POLICY_VERSION
 from .story_novel_chapter_effect_manifest import VERSION as EFFECT_MANIFEST_VERSION
 from .story_novel_chapter_effect_manifest import effect_manifest_checkpoint_valid
 from .story_novel_context_utils import CHAPTER_RUNTIME_FIELDS, value_hash
+from .story_novel_entity_mentions import visible_entity_ids
 from .story_novel_future_guard_index import (
     compile_future_guard_index,
     future_guard_index_matches,
@@ -75,7 +75,7 @@ def build_chapter_skeletons(
             f"event-{position}-{index}"
             for index, _ in enumerate(source.get("key_events") or [], start=1)
         ]
-        entity_ids = _visible_entity_ids(canon, source)
+        entity_ids = visible_entity_ids(canon, source, _OUTLINE_KEYS)
         row = {
             **{
                 key: copy.deepcopy(source[key])
@@ -216,23 +216,6 @@ def strip_runtime(row: dict) -> dict:
     return {
         key: value for key, value in row.items() if key not in CHAPTER_RUNTIME_FIELDS
     }
-
-
-def _visible_entity_ids(canon: dict, chapter: dict) -> list[str]:
-    surface = json.dumps(
-        {key: chapter.get(key) for key in _OUTLINE_KEYS},
-        ensure_ascii=False,
-        default=str,
-    )
-    return [
-        str(item["id"])
-        for item in canon.get("entities") or []
-        if any(
-            str(name) in surface
-            for name in [item.get("name"), *(item.get("aliases") or [])]
-            if str(name or "").strip()
-        )
-    ]
 
 
 def _require_contiguous(chapters: list[dict]) -> None:

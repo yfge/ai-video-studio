@@ -27,6 +27,10 @@
    field=location 绝对不得写入 state_transitions，人物移动只写 location_transitions；
    普通场景道具不得凭空获得 obj-* ID 或被登记为长期移动状态。
    物件所有权变化只写物件的 owner_id；人物 possessions 由服务端随 owner_id 确定性维护，绝对不得写入 state_transitions。
+   current_visible_canon 中若实体在 state_before 具有明确的未创建/不存在 status，而当前 key_event 或
+   end_state 首次让它成为可持续使用的真实人物、地点、组织、物件或概念，必须在本章写入唯一的
+   status 创建转换，from_value 逐字取 state_before，to_value 只表达本章已经成立的有限状态；
+   不得延后到后续使用章，也不得提前复制未来里程碑终态。已存在实体只记录当前事件实际造成的升级。
 7. execution_contracts 必须与 required_event_ids 同序一一对应。action_phase 只允许
    instant/start/progress/complete：瞬时动作写 instant，刚启动写 start，持续推进但未完成写 progress，
    key_event 明确完成才写 complete；activity、reaction、observation 等都不是合法值。
