@@ -3,6 +3,7 @@
 上一次 Canon 无效或被截断，请只修复并完整重输一次。
 所有字符串保持一句话，数组只保留会约束后文的项目。
 禁止新增、拆分、改名或顺带重写未报错的 milestone；临时权限的取得与到期不得创建 milestone。
+knowledge contains outcome 只能授予 kind=character；组织、群体、地点或概念的认知与信任必须改成其自身 status 或删除，禁止保留 organization knowledge。
 逐项复核所有 future outcomes：eq 的初态值必须不相等，contains 的初态数组必须不包含该值。
 校验错误中的重复 outcome 必须只保留 planned_position 最早的一条，从所有更晚 milestone 删除完全相同的 subject_id/field/operator/value。
 repair_context.delete_milestone_ids 中每个 ID 都必须从 milestones 数组整条删除，禁止只清空 outcomes 后保留空 milestone。

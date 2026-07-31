@@ -23,6 +23,7 @@ milestones 只收录大纲明示的、不可逆且只能发生一次的 typed �
 不得为了逐章对齐而每章都创建 milestone；若事件只是确认、验证或保持此前已经成立的状态，必须删除该 milestone。
 临时权限的取得、到期或撤销只属于章节状态变化，不得创建 Canon milestone；尤其不得让“取得”和“到期”重复使用同一个 contains outcome。
 每个 planned_position>=1 且 repeatable=false 的 milestone 必须提供至少一个 typed outcomes；outcomes 只允许 eq 或 contains，并用稳定实体/事实 ID 表达该里程碑完成后必然成立的状态。
+knowledge contains outcome 的 subject_id 只能是 kind=character；组织、群体、地点或概念的认知、信任与接纳必须写成其自身 status 或其他实际变化，绝不能写 organization knowledge。
 身份公开、身份揭露或合法身份变更必须用该角色的 identity eq 最终公开身份表达，不能只授予旁观者 knowledge。
 若 object 在事件后确实不再存在，终态 milestone 必须令 status 进入终态；仅当事件前存在非空 owner_id 时才同时写 owner_id eq null，原本无主时不得重复清空；事件后仍存在的 object 不得使用终止状态。
 终态 outcome 包含 owner_id eq null 时，initial_state 应写 StorySeed 明示的非空来源所有者；若第1章后另有更早 milestone 明确把 owner_id 从 null 改给持有人，则必须保留这条完整 null→持有人→null 状态链。

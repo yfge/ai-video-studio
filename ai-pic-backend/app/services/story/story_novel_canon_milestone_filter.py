@@ -8,7 +8,7 @@ from .story_novel_initial_state import owner_before_milestone
 from .story_novel_location_rules import TERMINAL_OBJECT_STATUS_LITERALS
 from .story_novel_owner_contract import memory_outcome_subject_valid
 
-CANON_MODEL_FILTER_VERSION = 6
+CANON_MODEL_FILTER_VERSION = 7
 
 
 def filter_model_milestone_outcomes(
@@ -17,7 +17,7 @@ def filter_model_milestone_outcomes(
     seed = planning_contract.get("story_seed") or {}
     chapters = (seed.get("structured_outline") or {}).get("chapters") or []
     entities = {item.get("id"): item for item in payload.get("entities") or []}
-    if not chapters or not entities:
+    if not entities:
         return payload, []
     diagnostics: list[dict] = []
     milestones = []
@@ -36,9 +36,10 @@ def filter_model_milestone_outcomes(
             diagnostic = diagnostic or _non_character_knowledge_diagnostic(
                 outcome, entities
             )
-            diagnostic = diagnostic or _location_outcome_diagnostic(
-                outcome, item, entities, chapters
-            )
+            if chapters:
+                diagnostic = diagnostic or _location_outcome_diagnostic(
+                    outcome, item, entities, chapters
+                )
             if diagnostic is None:
                 kept.append(outcome)
                 continue
