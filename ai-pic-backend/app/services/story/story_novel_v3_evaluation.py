@@ -34,7 +34,10 @@ async def evaluate_body(
     audit_stage,
     audit_call_budget,
     reserve_call,
+    frozen_plan=None,
+    before_call=None,
 ):
+    plan = frozen_plan or revision.generation_plan or {}
     position = int(chapter_plan["position"])
     deterministic = prose_violations(revision, chapter_plan, prose, brief)
     update_progress(service, task, position, revision, "audit")
@@ -52,9 +55,11 @@ async def evaluate_body(
         stage=audit_stage,
         max_calls=audit_call_budget,
         reserve_call=reserve_call,
+        frozen_plan=plan,
+        before_call=before_call,
     )
     evaluated = _evaluate(
-        audit, revision, chapter_plan, context, prose, brief, expected_delta
+        audit, plan, chapter_plan, context, prose, brief, expected_delta
     )
     evaluated = combine_violations(evaluated, deterministic)
     _attach_deterministic_blocks(evaluated, deterministic, prose, brief)
@@ -76,10 +81,12 @@ async def evaluate_body(
             repair_focus=[
                 item["message"] for item in evaluated["state_validation"]["violations"]
             ],
+            frozen_plan=plan,
+            before_call=before_call,
         )
         merged = merge_proof_audits(audit, retry)
         evaluated = _evaluate(
-            merged, revision, chapter_plan, context, prose, brief, expected_delta
+            merged, plan, chapter_plan, context, prose, brief, expected_delta
         )
         metrics = merge_stage_metrics(metrics, retry_metrics)
     return {"prose": prose, "audit": evaluated, "audit_metrics": metrics}
@@ -99,8 +106,10 @@ async def _audit_once(
     max_calls,
     reserve_call,
     repair_focus=None,
+    frozen_plan=None,
+    before_call=None,
 ):
-    plan = revision.generation_plan or {}
+    plan = frozen_plan or revision.generation_plan or {}
     effective_canon = canon_with_plan_expansion(
         plan.get("canon") or {}, [chapter_plan], context["state_before"]
     )
@@ -142,6 +151,7 @@ async def _audit_once(
             expected_delta,
             context["state_before"],
         ),
+        before_call=before_call,
     )
 
 
@@ -177,11 +187,11 @@ def _established_background(context: dict) -> list[dict]:
     )
 
 
-def _evaluate(audit, revision, chapter_plan, context, prose, brief, expected_delta):
+def _evaluate(audit, plan, chapter_plan, context, prose, brief, expected_delta):
     return evaluate_proof_audit(
         audit=audit,
         expected_delta=expected_delta,
-        canon=(revision.generation_plan or {}).get("canon") or {},
+        canon=plan.get("canon") or {},
         chapter_plan=chapter_plan,
         state_before=context["state_before"],
         content_text=prose["content_text"],

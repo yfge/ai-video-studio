@@ -3,9 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, List, Literal, Optional
 
-from pydantic import BaseModel, Field, model_validator
-
 from app.schemas.story_novel_longform import StoryNovelCanon
+from pydantic import BaseModel, Field, model_validator
 
 
 class NovelLengthRange(BaseModel):

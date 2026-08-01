@@ -5,7 +5,6 @@ from typing import Any, Dict, Optional
 
 from app.services.quality_gate_core import (
     MAX_QUALITY_GATE_REPAIRS,
-    NarrativeQualityGateError,
     build_quality_gate_report,
     make_quality_check,
 )

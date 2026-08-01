@@ -1,6 +1,6 @@
 ---
 id: 2026-02-03T22-00-00Z-dialogue-audio-agent
-date: 2026-02-03T22:00:00Z
+date: "2026-02-03T22:00:00Z"
 participants: [human, claude]
 models: [claude-opus-4-5]
 tags: [backend, agent, audio, tts, emotion]
@@ -31,9 +31,11 @@ summary: "创建Dialogue Audio Agent，实现角色音色注册表/情绪对白�
 ### 新增文件
 
 1. **`app/services/agents/__init__.py`**
+
    - 模块初始化，导出 Agent 相关类
 
 2. **`app/services/agents/dialogue_audio_agent.py`** (~550 行)
+
    - `DialogueAudioAgent`: 核心 Agent 类
      - `register_voice()`: 注册角色音色配置
      - `register_voices_from_config()`: 批量注册音色
@@ -54,6 +56,7 @@ summary: "创建Dialogue Audio Agent，实现角色音色注册表/情绪对白�
      - `DialogueAudioResult`: 处理结果
 
 3. **`tests/unit/services/agents/__init__.py`**
+
    - 测试模块初始化
 
 4. **`tests/unit/services/agents/test_dialogue_audio_agent.py`** (~380 行)
@@ -63,6 +66,7 @@ summary: "创建Dialogue Audio Agent，实现角色音色注册表/情绪对白�
 ### 关键实现细节
 
 - **情绪关键词映射**:
+
   ```python
   EMOTION_KEYWORDS = {
       HAPPY: ["开心", "高兴", "兴奋", "喜悦", ...],
@@ -73,15 +77,18 @@ summary: "创建Dialogue Audio Agent，实现角色音色注册表/情绪对白�
   ```
 
 - **情绪兼容性映射**:
+
   - happy → {HAPPY, SURPRISED, FLUENT}
   - sad → {SAD, CALM, WHISPER}
   - angry → {ANGRY, DISGUSTED}
 
 - **语速阈值** (字符/秒):
+
   - 中文: slow=2.5, normal=3.5-5.5, fast=7.0
   - 英文: slow=2.0, normal=2.8-4.0, fast=5.0
 
 - **轮流对话阈值**:
+
   - 最小换人间隔: 200ms
   - 最大重叠: 50ms
 

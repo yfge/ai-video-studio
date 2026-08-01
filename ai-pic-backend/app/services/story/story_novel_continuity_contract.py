@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import json
 
-from fastapi import HTTPException
-
 from app.utils.json_utils import extract_json_block
+from fastapi import HTTPException
 
 from .story_novel_continuity_grounding import ground_issue, normalize_repair_groups
 from .story_novel_prompt_renderer import render_novel_prompt

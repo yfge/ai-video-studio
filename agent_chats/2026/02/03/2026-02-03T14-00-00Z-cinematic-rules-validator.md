@@ -1,6 +1,6 @@
 ---
 id: 2026-02-03T14-00-00Z-cinematic-rules-validator
-date: 2026-02-03T14:00:00Z
+date: "2026-02-03T14:00:00Z"
 participants: [human, claude]
 models: [claude-opus-4-5]
 tags: [backend, validator, agent-fix, storyboard, cinematic]
@@ -31,6 +31,7 @@ summary: "创建影视语法规则校验器，检查180度规则、景别分布�
 ### 新增文件
 
 1. **`app/services/storyboard/validators/cinematic_rules_validator.py`** (约 420 行)
+
    - `CinematicRulesValidator`: 核心校验器
      - `_classify_shot_type()`: 景别分类（特写/中景/全景等）
      - `_detect_camera_position()`: 相机位置检测（左/右/中）
@@ -48,6 +49,7 @@ summary: "创建影视语法规则校验器，检查180度规则、景别分布�
 ### 修改文件
 
 1. **`app/services/storyboard/validators/__init__.py`**
+
    - 导出 `CinematicRulesValidator`
 
 2. **`app/services/storyboard/pipeline/storyboard_pipeline.py`**

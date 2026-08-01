@@ -87,6 +87,7 @@ def mark_revision_ledger_stale(
     *,
     from_position: int,
     edited_chapter=None,
+    archive_generation_calls: bool = False,
 ) -> None:
     ledger = dict(revision.continuity_ledger or {})
     chapters = dict(ledger.get("chapters") or {})
@@ -94,6 +95,10 @@ def mark_revision_ledger_stale(
         if int(key) < from_position:
             continue
         entry = dict(raw)
+        if archive_generation_calls and int(key) == from_position:
+            from .story_novel_v4_call_snapshot import archive_regenerated_chapter_calls
+
+            archive_regenerated_chapter_calls(entry, from_position)
         entry["status"] = "stale"
         entry["extraction_status"] = "stale"
         if edited_chapter is not None and int(key) == edited_chapter.position:

@@ -1,6 +1,6 @@
 ---
 id: 2026-01-30T14-19-44Z-validate-dialogue-beats
-date: 2026-01-30T14:19:44Z
+date: "2026-01-30T14:19:44Z"
 participants: [human, codex]
 models: [gpt-5]
 tags: [validation, storyboard, video]
@@ -59,4 +59,3 @@ summary: "Validated 2 dialogue beats have visible speaking motion and no burned-
 ## Linked Commits
 
 - (pending)
-

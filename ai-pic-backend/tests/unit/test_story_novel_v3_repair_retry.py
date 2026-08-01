@@ -146,49 +146,6 @@ def test_short_repair_retry_expands_previous_replacements():
     assert '"previous_replacements_to_compress":' not in prompt
 
 
-def test_underlength_repair_rewrites_from_brief_without_source():
-    repair_input = build_repair_input(
-        [{"block_id": "B01", "content_text": "过长原文" * 100}],
-        {"B01"},
-        [{"reason_code": "length_out_of_range"}],
-        {
-            "chapter_brief": {"beats": [{"beat_id": "B01", "purpose": "守住苗床"}]},
-            "current_chapter_context": {
-                "events": [{"event_id": "event-9-1", "event": "守住苗床"}]
-            },
-            "visible_canon": {
-                "compiled_canon": {
-                    "world_rules": [{"id": "rule-1", "statement": "损失不可消失"}]
-                },
-                "current_state": {"subjects": {"char-a": {"location": "loc-bed"}}},
-            },
-            "chapter_length": {
-                "min_chars": 2000,
-                "target_chars": 2500,
-                "max_chars": 3000,
-            },
-        },
-        {
-            "chapter_min_chars": 2000,
-            "chapter_max_chars": 3000,
-            "replacement_blocks": [],
-        },
-    )
-
-    assert repair_input["rewrite_mode"] == "length_contract_from_chapter_brief"
-    assert "content_text" not in repair_input["failed_blocks"][0]
-    assert repair_input["chapter_brief"]["beats"] == [
-        {"beat_id": "B01", "purpose": "守住苗床"}
-    ]
-    assert repair_input["current_chapter_context"]["events"][0]["event"] == "守住苗床"
-    assert repair_input["visible_canon"]["compiled_canon"]["world_rules"] == [
-        {"id": "rule-1", "statement": "损失不可消失"}
-    ]
-    assert repair_input["visible_canon"]["current_state"]["subjects"] == {
-        "char-a": {"location": "loc-bed"}
-    }
-
-
 def test_repair_neighbors_only_include_read_only_context():
     blocks = [
         {"block_id": "B01", "content_text": "前文"},

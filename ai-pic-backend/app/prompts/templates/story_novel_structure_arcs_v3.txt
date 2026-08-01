@@ -3,7 +3,8 @@ StorySeed：{{ story_seed_json }}
 系统已经确定分卷边界，必须逐项原样使用：{{ chapter_ranges_json }}
 
 每个 progression_arc 必须包含对应 arc_id、start_position、end_position，以及 title、
-narrative_goal、ending_state、growth、major_entries、world_scope_changes、threads。
+narrative_goal、ending_state、growth、major_entries、world_scope_changes、character_slots、
+scope_slots、threads。
 
 growth 是全书层面的软规划提示，不是逐章 KPI。它包含 cognition、capability、resources、
 activity_and_time_scale 四个可选字符串；题材或当前阶段不支持的项必须为 null。允许蓄势、失败、
@@ -14,9 +15,22 @@ major_entries 只列该阶段计划首次成为持续世界成员的主要人物
 world_scope_changes 只描述题材确实需要的世界边界变化。不得第一卷倾倒全部世界，也不得为了扩张
 凭空改题材或引入 StorySeed 未授权的特殊机制与尺度。
 
+core_character_routes 同时覆盖开篇核心人物和后续才登场的核心人物，冻结其叙事功能、关系目标、
+首次允许登场章、预定分卷、登场前 hidden_state 和弧线方向。不得把未来人物的具体行动或结局写入当前分卷章节。
+StorySeed.protagonists.virtual_ip_business_id 是本次调用的短局部句柄，不是数据库 ID。至少返回一项，并且必须逐一覆盖这些句柄；
+character_ref 和 relationship_targets 只能逐字复制句柄。relationship_targets 必须是字符串数组，例如 ["SC002"]，
+不得输出对象，也不得在句柄后拼接姓名、关系目标或说明。
+character_slots 只规划本阶段重要配角的功能和进入条件，尚未实例化时不命名；普通临时人物不建槽。
+
+scope_taxonomy 必须根据当前题材定义本书自己的空间/活动范围类型，不得套用固定行政区划或固定示例。
+initial_scope_nodes 用 parent_scope_id 与 depth 表示包含层级；initial_scope_edges 只表示道路、航线、入口、传送、
+网络或题材需要的其他跨节点连接。scope_slots 只规划当前阶段可能展开的新范围功能、尺度方向和进入条件，
+未进入对应阶段前不命名、不描述具体规则。
+scope_taxonomy 和 initial_scope_nodes 都至少返回一项；开篇实际发生地点必须成为 initial_scope_nodes 的已知或已访问节点。
+
 threads 是跨章硬伏笔方向。每项必须包含全书唯一 thread_id、question、open_position、
 payoff_position、payoff_intent；必须先开后收且位置位于给定总章数内。可以为空，不得为每章强造。
 
 只输出严格 JSON：
-{"progression_plan":{"planning_structure_version":1,"requested_chapter_count":{{ requested_chapter_count }},"progression_arcs":[{"arc_id":"arc-001","title":"阶段标题","start_position":1,"end_position":32,"narrative_goal":"阶段叙事目标","ending_state":"阶段结束状态","growth":{"cognition":null,"capability":null,"resources":null,"activity_and_time_scale":null},"major_entries":[],"world_scope_changes":[],"threads":[]}]}}
+{"progression_plan":{"roadmap_version":1,"core_character_routes":[{"character_ref":"SC001","narrative_function":"核心叙事功能","first_allowed_position":1,"planned_arc_id":"arc-001","relationship_targets":["SC002"],"start_direction":"开篇方向","turning_directions":[],"terminal_direction":"终局方向","hidden_state":{}}],"scope_taxonomy":[{"type_id":"opening_scope_type","display_name":"题材自定义开篇范围","parent_type_id":null}],"initial_scope_nodes":[{"scope_id":"scope-opening","scope_type":"opening_scope_type","display_name":"开篇实际范围","parent_scope_id":null,"depth":0,"first_allowed_position":1,"visibility":"visited","governing_entities":[],"local_rules":[],"state":{}}],"initial_scope_edges":[],"planning_structure_version":1,"requested_chapter_count":{{ requested_chapter_count }},"progression_arcs":[{"arc_id":"arc-001","title":"阶段标题","start_position":1,"end_position":32,"narrative_goal":"阶段叙事目标","ending_state":"阶段结束状态","growth":{"cognition":null,"capability":null,"resources":null,"activity_and_time_scale":null},"major_entries":[],"world_scope_changes":[],"character_slots":[],"scope_slots":[],"threads":[]}]}}
 不得修改边界、遗漏阶段或输出章节正文。

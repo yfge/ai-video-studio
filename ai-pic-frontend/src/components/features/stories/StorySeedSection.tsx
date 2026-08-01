@@ -25,6 +25,7 @@ import {
   StorySeedSaveActions,
 } from "./StorySeedSectionControls";
 import {
+  StorySeedPlanningAction,
   StorySeedPlanningInputs,
   suggestedStructureChapterCount,
   suggestedStructureModel,
@@ -121,11 +122,24 @@ export function StorySeedSection({
     seed.schema === "story_seed_v2" ? seed.structured_outline : null;
   const validation = structured ? validateStructuredOutline(structured) : null;
   const controlsLocked = locked || planning.active;
-  const startPlanning = () =>
-    planning.start({
+  const planningDisabled = controlsLocked || planning.requesting;
+  const showPlanning =
+    !structured || structured.thread_schedule_version !== 1 || editing;
+  const planningInputError = !Number.isInteger(planningChapterCount)
+    ? "结构化章节数必须是有限正整数"
+    : !planningModel.trim()
+    ? "请选择结构化规划模型"
+    : "";
+  const startPlanning = () => {
+    if (planningInputError) {
+      setNotice(planningInputError);
+      return;
+    }
+    void planning.start({
       chapter_count: planningChapterCount,
-      ...(planningModel.trim() ? { model: planningModel.trim() } : {}),
+      model: planningModel.trim(),
     });
+  };
   const toggleEditing = () => {
     if (controlsLocked) return;
     if (status === "confirmed" && seed.schema === "story_seed_v2") {
@@ -203,34 +217,22 @@ export function StorySeedSection({
             }}
           />
         ) : null}
-        {!structured || structured.thread_schedule_version !== 1 || editing ? (
-          <StorySeedPlanningInputs
-            chapterCount={planningChapterCount}
-            model={planningModel}
-            disabled={controlsLocked || planning.requesting}
-            onChapterCount={setPlanningChapterCount}
-            onModel={setPlanningModel}
-          />
-        ) : null}
-        {!structured ? (
-          <button
-            type="button"
-            disabled={controlsLocked || planning.requesting}
-            onClick={() => void startPlanning()}
-            className={operatorButtonClass("primary")}
-          >
-            AI 生成结构化章节计划
-          </button>
-        ) : null}
-        {structured && (structured.thread_schedule_version !== 1 || editing) ? (
-          <button
-            type="button"
-            disabled={controlsLocked || planning.requesting}
-            onClick={() => void startPlanning()}
-            className={operatorButtonClass("primary")}
-          >
-            AI 重新生成结构化章节计划
-          </button>
+        {showPlanning ? (
+          <>
+            <StorySeedPlanningInputs
+              chapterCount={planningChapterCount}
+              model={planningModel}
+              disabled={planningDisabled}
+              onChapterCount={setPlanningChapterCount}
+              onModel={setPlanningModel}
+            />
+            <StorySeedPlanningAction
+              hasStructuredOutline={Boolean(structured)}
+              error={planningInputError}
+              disabled={planningDisabled}
+              onStart={startPlanning}
+            />
+          </>
         ) : null}
         {editing ? (
           <StorySeedSaveActions

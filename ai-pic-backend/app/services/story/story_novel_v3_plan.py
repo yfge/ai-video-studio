@@ -7,12 +7,13 @@ from .story_novel_future_guard_index import (
 from .story_novel_incremental_plan import is_incremental_plan, valid_incremental_plan
 from .story_novel_plan_execution_contract import execution_contracts_valid
 from .story_novel_plan_state_compiler import STATE_COMPILER_VERSION
-from .story_novel_plan_versions import V2_SCHEMA, V3_SCHEMA
+from .story_novel_plan_versions import V2_SCHEMA, V3_SCHEMA, V4_SCHEMA
 from .story_novel_planning_invocations import valid as valid_planning_invocations
 from .story_novel_prompt_renderer import (
     v3_prompt_template_policy,
     valid_v3_prompt_template_policy,
 )
+from .story_novel_v4_plan import valid_v4_plan_fields
 
 
 def plan_schema(revision, frozen_spec) -> str:
@@ -40,6 +41,12 @@ def v3_plan_fields(schema: str, canon: dict, chapters: list[dict]) -> dict:
 
 
 def valid_v3_plan_fields(plan: dict) -> bool:
+    if plan.get("schema") == V4_SCHEMA:
+        return bool(
+            is_incremental_plan(plan)
+            and valid_incremental_plan(plan)
+            and valid_v4_plan_fields(plan)
+        )
     if plan.get("schema") != V3_SCHEMA:
         return True
     if is_incremental_plan(plan):

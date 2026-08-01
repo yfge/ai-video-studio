@@ -1,6 +1,6 @@
 ---
 id: 2026-02-05T02-55-00Z-p1-character-background-generator
-date: 2026-02-05T02:55:00Z
+date: "2026-02-05T02:55:00Z"
 participants: [human, claude-sonnet-4.5]
 models: [claude-sonnet-4-5-20250929]
 tags: [backend, script, episode-characters, ai-generation, auto-generation]
@@ -27,6 +27,7 @@ summary: "Created AI-powered character background generator with heuristic fallb
 ### Created: `ai-pic-backend/app/services/script/character_background_generator.py` (~270 lines)
 
 **1. Main Generation Function:**
+
 ```python
 async def generate_character_background(
     *,
@@ -43,6 +44,7 @@ async def generate_character_background(
 ```
 
 **2. AI Prompt Builder:**
+
 ```python
 def _build_generation_prompt(
     character_info: TemporaryCharacterInfo,
@@ -51,6 +53,7 @@ def _build_generation_prompt(
 ```
 
 **Prompt Structure:**
+
 ```
 请根据以下信息生成临时角色的详细背景资料：
 
@@ -82,6 +85,7 @@ def _build_generation_prompt(
 ```
 
 **3. AI-Powered Generation:**
+
 ```python
 async def _generate_with_ai(
     prompt: str,
@@ -90,6 +94,7 @@ async def _generate_with_ai(
 ```
 
 Features:
+
 - Async AI service call
 - JSON response parsing
 - Error handling with fallback to heuristics
@@ -97,6 +102,7 @@ Features:
 - Max 500 tokens for concise descriptions
 
 **4. Heuristic Fallback System:**
+
 ```python
 def _generate_with_heuristics(
     character_info: TemporaryCharacterInfo,
@@ -104,6 +110,7 @@ def _generate_with_heuristics(
 ```
 
 **Pre-defined Character Templates:**
+
 ```python
 role_hints = {
     "快递员": {
@@ -124,6 +131,7 @@ role_hints = {
 ```
 
 **Matching Logic:**
+
 1. Exact match: "快递员" → Use template
 2. Partial match: "李医生" → Match "医生" template
 3. Generic fallback: Unknown role → Generic template with appearance hints
@@ -133,6 +141,7 @@ role_hints = {
 ### Scenario 1: AI Generation (Success)
 
 **Input:**
+
 ```python
 character_info = TemporaryCharacterInfo(
     character_name="快递员",
@@ -149,6 +158,7 @@ ai_service = AIService(...)
 ```
 
 **AI Output:**
+
 ```json
 {
   "personality": "热情、专业、服务意识强",
@@ -162,6 +172,7 @@ ai_service = AIService(...)
 **Input:** Same as above, `ai_service=None`
 
 **Heuristic Output:**
+
 ```json
 {
   "personality": "热情、负责、有耐心",
@@ -173,6 +184,7 @@ ai_service = AIService(...)
 ### Scenario 3: Unknown Role with Appearance Hints
 
 **Input:**
+
 ```python
 character_info = TemporaryCharacterInfo(
     character_name="保安大叔",
@@ -184,6 +196,7 @@ ai_service = None
 ```
 
 **Output:**
+
 ```json
 {
   "personality": "普通、友好、礼貌",
@@ -195,12 +208,14 @@ ai_service = None
 ## Validation
 
 ✅ **Syntax Check:**
+
 ```bash
 python -m py_compile app/services/script/character_background_generator.py
 # Output: ✅ Syntax check passed
 ```
 
 ✅ **Code Quality:**
+
 - Async support for AI service integration
 - Graceful degradation (AI → Heuristics)
 - Comprehensive error handling
@@ -210,6 +225,7 @@ python -m py_compile app/services/script/character_background_generator.py
 ## Architecture Notes
 
 **AI vs. Heuristics Decision Tree:**
+
 ```
 generate_character_background()
     ├─ ai_service provided?
@@ -223,12 +239,14 @@ generate_character_background()
 ```
 
 **Why Heuristic Fallback:**
+
 - Reliability: Works even without AI service
 - Cost: Saves AI API calls for common characters
 - Speed: Instant response for known roles
 - Quality: Pre-defined templates are high-quality
 
 **Why AI Generation:**
+
 - Contextual: Analyzes actual dialogues
 - Creative: Generates unique descriptions
 - Adaptive: Handles unusual character types
@@ -237,6 +255,7 @@ generate_character_background()
 ## Integration with Auto Creator (P1.7)
 
 **Will be called by auto_character_creator.py:**
+
 ```python
 from app.services.script.character_background_generator import (
     generate_character_background
@@ -264,8 +283,10 @@ for char_info in extracted_characters:
 ## Next Steps
 
 ### P1.7: Auto Character Creator Service (~200 lines)
+
 - File: `app/services/script/auto_character_creator.py`
 - Orchestrate complete auto-creation workflow:
+
   1. Extract characters from script (P1.5)
   2. Generate backgrounds with AI (P1.6)
   3. Assign default VirtualIP

@@ -1,0 +1,7 @@
+description: Story Novel v4 current-arc slot instantiation
+category: story
+version: "1.0"
+variables:
+  arc_planner_input_json:
+    required: true
+    type: string

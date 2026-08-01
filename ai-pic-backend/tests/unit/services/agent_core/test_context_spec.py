@@ -1,7 +1,6 @@
 """Tests for Context Specification System."""
 
 import pytest
-
 from app.services.agent_core.context_spec import (
     ContextSpec,
     FieldPriority,
@@ -289,7 +288,9 @@ class TestContextSpec:
                     description="Critical",
                     priority=FieldPriority.CRITICAL,
                 ),
-                FieldSpec(name="medium", description="Medium", priority=FieldPriority.MEDIUM),
+                FieldSpec(
+                    name="medium", description="Medium", priority=FieldPriority.MEDIUM
+                ),
             ]
 
         ctx = TestContext(low="L", critical="C", medium="M")

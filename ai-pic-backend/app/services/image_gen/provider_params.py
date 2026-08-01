@@ -14,7 +14,6 @@ from .provider_param_tables import (
 from .types import ImageGenMode, ImageGenNormalized
 
 
-
 def supported_ai_manager_keys(provider: str, mode: ImageGenMode) -> set[str]:
     """Return supported AIServiceManager kwargs for a provider+mode."""
     provider_key = (provider or "").lower()

@@ -1,15 +1,12 @@
 from types import SimpleNamespace
 
 import pytest
-
 from app.services.story.story_novel_continuity_global_context import (
     GLOBAL_PAYLOAD_CHAR_BUDGET,
     build_global_context,
     global_context_chars,
 )
-from app.services.story.story_novel_continuity_grounding import (
-    payload_evidence_catalog,
-)
+from app.services.story.story_novel_continuity_grounding import payload_evidence_catalog
 
 
 def _chapter(position: int):

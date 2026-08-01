@@ -10,6 +10,7 @@ from .story_novel_sentence_spans import audit_sentence_index
 from .story_novel_v3_audit import audit_contracts, parse_proof_audit
 from .story_novel_v3_repair_input import build_repair_input
 from .story_novel_v3_truncation import recover_truncated_prose
+from .story_novel_v4_call_snapshot import frozen_prompt_and_replay
 
 
 async def generate_chapter_brief(revision, position, brief_input, generate_text):
@@ -85,6 +86,7 @@ async def audit_chapter(
     established_background=None,
     current_state_contract=None,
     future_state_boundaries=None,
+    before_call=None,
 ):
     contracts = audit_contracts(expected_delta, canon, chapter_plan)
     audit_input = {
@@ -116,6 +118,7 @@ async def audit_chapter(
         temperature=0.1,
         max_calls=max_calls,
         reserve_call=reserve_call,
+        before_call=before_call,
     )
 
 
@@ -129,10 +132,11 @@ async def repair_blocks(
     prose_input,
     generate_text,
     expected_delta=None,
+    before_call=None,
 ):
     failed = set(failed_block_ids)
-    length_contract = repair_length.replacement_length_contract(
-        blocks, failed, prose_input["chapter_length"], prose_input["chapter_brief"]
+    length_contract = repair_length.repair_contract(
+        blocks, failed, prose_input, violations
     )
     repair_input = build_repair_input(
         blocks,
@@ -156,6 +160,7 @@ async def repair_blocks(
         repair_prompt=lambda _prompt, raw, error: prompts.local_block_contract_retry_prompt(
             repair_input, raw, error
         ),
+        before_call=before_call,
     )
 
 
@@ -172,18 +177,21 @@ async def _generate_with_format_repair(
     reserve_call=None,
     repair_prompt=None,
     format_repair_max_tokens=4000,
+    before_call=None,
 ):
     if max_calls is not None and max_calls < 1:
         raise ValueError("当前正文审计调用预算已耗尽")
     calls = []
     call_stage = reserve_call(stage) if reserve_call else stage
-    text = await generate_text(
-        revision,
-        prompt,
-        stage=call_stage,
-        max_tokens=max_tokens,
-        **({"temperature": temperature} if temperature is not None else {}),
-    )
+    prompt, text = frozen_prompt_and_replay(before_call, call_stage, prompt)
+    if text is None:
+        text = await generate_text(
+            revision,
+            prompt,
+            stage=call_stage,
+            max_tokens=max_tokens,
+            **({"temperature": temperature} if temperature is not None else {}),
+        )
     calls.append(dict(getattr(text, "invocation_evidence", {}) or {}))
     try:
         value = parser(str(text))
@@ -195,13 +203,15 @@ async def _generate_with_format_repair(
         )
         repair_stage = f"{stage}.format_repair"
         call_stage = reserve_call(repair_stage) if reserve_call else repair_stage
-        text = await generate_text(
-            revision,
-            repair,
-            stage=call_stage,
-            max_tokens=format_repair_max_tokens,
-            temperature=0.1,
-        )
+        repair, text = frozen_prompt_and_replay(before_call, call_stage, repair)
+        if text is None:
+            text = await generate_text(
+                revision,
+                repair,
+                stage=call_stage,
+                max_tokens=format_repair_max_tokens,
+                temperature=0.1,
+            )
         calls.append(dict(getattr(text, "invocation_evidence", {}) or {}))
         value = parser(str(text))
     return value, _stage_metrics(calls)

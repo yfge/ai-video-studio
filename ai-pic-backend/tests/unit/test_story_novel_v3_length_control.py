@@ -26,7 +26,9 @@ def test_historical_overshoot_scales_only_the_model_facing_copy(monkeypatch):
     revision = _revision({})
     source = _prose_input()
 
-    control = build_length_control(object(), revision, 4, source)
+    control = build_length_control(
+        object(), revision, 4, source, prompt_contract_version=5
+    )
     prompt_input = controlled_prompt_input(source, control)
 
     assert control["schema"] == POLICY_SCHEMA
@@ -80,8 +82,8 @@ def test_fewer_than_three_historical_samples_leave_request_unchanged(monkeypatch
 def test_controlled_sample_takes_priority_and_recovers_without_oscillation(
     monkeypatch,
 ):
-    controlled = _sample(2, 1375, requested=1375, controlled=True)
-    controlled["request_scale"] = 0.55
+    controlled = _sample(2, 3357, requested=2500, controlled=True)
+    controlled["request_scale"] = 1.0
     monkeypatch.setattr(
         length_control,
         "length_observations",
@@ -89,15 +91,17 @@ def test_controlled_sample_takes_priority_and_recovers_without_oscillation(
     )
     revision = _revision({})
 
-    control = build_length_control(object(), revision, 3, _prose_input())
+    control = build_length_control(
+        object(), revision, 3, _prose_input(), prompt_contract_version=5
+    )
 
     assert control["sample_source"] == "controlled"
     assert control["sample_count"] == 1
-    assert control["request_scale"] == 0.825
+    assert control["request_scale"] == 0.9
     assert control["requested_length"] == {
-        "min_chars": 1855,
-        "target_chars": 2062,
-        "max_chars": 2268,
+        "min_chars": 2025,
+        "target_chars": 2250,
+        "max_chars": 2475,
     }
 
 

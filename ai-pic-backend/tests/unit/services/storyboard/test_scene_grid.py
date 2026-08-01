@@ -6,7 +6,6 @@ import json
 from types import SimpleNamespace
 
 import anyio
-
 from app.services.storyboard.scene_grid.layout import scene_grid_layout
 from app.services.storyboard.scene_grid.prompt_builder import (
     build_sheet_prompt,
@@ -114,7 +113,9 @@ def test_character_ref_resolved_from_virtual_ip_id():
 
 def test_auto_refs_from_scene_bindings_and_env_limit():
     ctx = make_ref_ctx()
-    refs, used = resolve_reference_images(1, ctx, character_refs=[], environment_refs=[])
+    refs, used = resolve_reference_images(
+        1, ctx, character_refs=[], environment_refs=[]
+    )
     assert "https://example.com/along.png" in refs
     env_used = [u for u in used if u["type"] == "environment"]
     assert len(env_used) == 2

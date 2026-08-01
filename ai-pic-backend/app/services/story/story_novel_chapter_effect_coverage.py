@@ -168,22 +168,26 @@ def effect_catalog(
     contract: dict, canon: dict
 ) -> dict[str, tuple[tuple, str | None, dict]]:
     result = {}
+    bindings = contract.get("effect_event_bindings") or {}
     for index, item in enumerate(contract.get("state_transitions") or [], 1):
-        result[f"state:{index}"] = (
+        ref = f"state:{index}"
+        result[ref] = (
             (item.get("subject_id"), item.get("field")),
-            None,
+            bindings.get(ref),
             {"operator": "eq", "value": item.get("to_value")},
         )
     for index, item in enumerate(contract.get("location_transitions") or [], 1):
-        result[f"location:{index}"] = (
+        ref = f"location:{index}"
+        result[ref] = (
             (item.get("subject_id"), "location"),
-            None,
+            bindings.get(ref),
             {"operator": "eq", "value": item.get("to_location_id")},
         )
     for index, item in enumerate(contract.get("knowledge_grants") or [], 1):
-        result[f"knowledge:{index}"] = (
+        ref = f"knowledge:{index}"
+        result[ref] = (
             (item.get("character_id"), "knowledge"),
-            item.get("source_event_id"),
+            bindings.get(ref) or item.get("source_event_id"),
             {"operator": "contains", "value": item.get("fact_id")},
         )
     milestones = {item.get("id"): item for item in canon.get("milestones") or []}

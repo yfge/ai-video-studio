@@ -71,7 +71,13 @@ def _allowed_templates(stage: str) -> set[str]:
     if stage.startswith("semantic_audit.batch."):
         return {"story_novel_plan_semantic_audit_v3"}
     if stage.startswith("chapter_package."):
-        return {"story_novel_chapter_package_v3", "story_novel_format_repair_v3"}
+        return {
+            "story_novel_chapter_package_v3",
+            "story_novel_chapter_intent_v4",
+            "story_novel_format_repair_v3",
+        }
+    if stage.startswith("arc_plan."):
+        return {"story_novel_arc_plan_v4", "story_novel_format_repair_v3"}
     return set()
 
 
@@ -96,6 +102,9 @@ def _expected_result_hash(plan: dict, stage: str, positions: list) -> str | None
             if int(item.get("position") or 0) in covered
         ]
         return value_hash(rows) if len(rows) == len(covered) else None
+    if stage.startswith("arc_plan."):
+        arc_id = stage.split(".", 1)[1]
+        return value_hash((plan.get("arc_plans") or {}).get(arc_id))
     return None
 
 

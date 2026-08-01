@@ -2,9 +2,8 @@
 
 import re
 
-from fastapi import HTTPException
-
 from app.services.narrative_memory.source_hash import novel_chapter_source_hash
+from fastapi import HTTPException
 
 from .story_novel_chapter_brief_contract import validate_chapter_brief
 from .story_novel_context_utils import prompt_chapter_contract, value_hash

@@ -1,0 +1,37 @@
+只为当前章节生成可执行的叙事意图，不写正文，不编写审计或数据库状态。
+输入：{{ planner_input_json }}
+
+输入是本次调用唯一、冻结且不可变的上下文。只使用局部 handle；不得猜测数据库 ID，
+不得补写未来章节、未来日期、未来结果、未获准人物或未获准世界范围。
+
+规则：
+1. current_chapter.events 是本章必须自然完成的事件，必须由 beats 完整覆盖，但同一事件不重复讲述。
+2. planning_evidence 只帮助形成因果、动机、关系和情绪延续；不得把其中的观察自动升级为事实、
+   状态变化或本章硬事件。
+3. 每个 beat 承担不同叙事任务，形成压力或欲望、选择、行动、结果或代价和章末牵引，
+   具体节奏服从题材、受众与当前章，不套用固定行业、文体或流程模板。
+4. character_handles 只能来自 allowed_entity_handles 或本响应 entity_proposals 的 proposal_handle；
+   新人物仅在其提案绑定的当前事件及相关 beat 中使用。人物简介、关系、能力和知识边界必须前后一致。
+5. 若当前事件确实需要此前不存在且会跨章持续的人物、地点、组织、物件或概念，可提出
+   entity_proposals；一次性路人 transient=true，不进入长期世界。不得为制造升级感强行扩张。
+   authorized_entity_slots 是 Arc Planner 已冻结且本章到达首次登场位置的实例；使用时必须原样
+   返回 slot_id、姓名、简介、功能、能力、资源、知情边界和弧线，不能改写。没有 slot_id 的
+   proposal 才是当前事件临时产生的动态提案。
+6. 新实体只描述叙事功能、名称与当前可见属性，不输出状态 from/to、owner、location、权限、
+   数据库 ID、证据、proof 或 quote。source_event_handle 必须是当前章事件 handle。
+   持久人物还必须给出 profile、与已授权 handle 的 relationship_intents、当前能力、资源、
+   knowledge_boundary 和本卷 arc_direction；不知道的数组写 []，不得编造未来才获得的内容。
+   持续地点若属于范围图，attributes 使用题材自定义 scope_type、parent_scope_id、depth；slot 实例的
+   parent_scope_handle、scope_type、depth、connection_type 必须原样落实到 attributes；
+   parent_scope_id 和 connections.to_scope_id 只能使用当前快照或本响应中的局部 handle。
+   connections 只描述本章实际建立的连接，不得借此命名或解释未来范围。
+7. effect_intents 只声明当前事件应在正文中造成的语义效果，使用 FX01 连续编号和当前局部 handle。
+   它不是状态自报，不得给出数据库 ID 或 from/to。kind 只允许 knowledge_gain、relationship_change、
+   capability_add/remove、resource_add/remove、permission_add/remove、status_change、state_change、
+   location_change、ownership_change。每项绑定一个 source_event_handle；location_change 还需 target_handle
+   和 means，relationship/ownership 需 target_handle；state_change 的 field 只能是 subject 当前已有的
+   普通状态字段。没有持久效果时返回 []，不得为了“成长”强造变化。
+8. beats 数量必须等于 expected_beat_count，从 B01 连续编号；target_chars 之和必须等于当前章目标。
+
+只输出 JSON：
+{"beats":[{"beat_id":"B01","purpose":"当前叙事动作","target_chars":400,"event_handles":["E01"],"character_handles":["C01"]}],"character_motivations":[{"character_handle":"C01","motivation":"当前动机"}],"emotional_continuity":"情绪延续","causal_bridge":"因果桥","summary":"本章摘要","cliffhanger":"章末钩子","entity_proposals":[],"effect_intents":[{"effect_handle":"FX01","kind":"knowledge_gain","subject_handle":"C01","source_event_handle":"E01","target_handle":null,"field":null,"value":"人物在本章实际获知的事实","means":null}]}

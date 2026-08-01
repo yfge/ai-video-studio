@@ -2,7 +2,8 @@
 
 V2_SCHEMA = "story_novel_generation_plan.v2"
 V3_SCHEMA = "story_novel_generation_plan.v3"
-STATE_GATED_SCHEMAS = frozenset({V2_SCHEMA, V3_SCHEMA})
+V4_SCHEMA = "story_novel_generation_plan.v4"
+STATE_GATED_SCHEMAS = frozenset({V2_SCHEMA, V3_SCHEMA, V4_SCHEMA})
 
 
 def is_state_gated_plan(plan: dict | None) -> bool:
@@ -11,3 +12,7 @@ def is_state_gated_plan(plan: dict | None) -> bool:
 
 def is_v3_plan(plan: dict | None) -> bool:
     return (plan or {}).get("schema") == V3_SCHEMA
+
+
+def is_v4_plan(plan: dict | None) -> bool:
+    return (plan or {}).get("schema") == V4_SCHEMA

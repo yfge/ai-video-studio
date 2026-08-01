@@ -29,7 +29,7 @@ def _blocks(count: int) -> list[dict]:
     return [
         {
             "block_id": f"B{index:02d}",
-            "content_text": passages[index - 1] * 20,
+            "content_text": passages[index - 1] * 13,
         }
         for index in range(1, count + 1)
     ]
@@ -107,7 +107,7 @@ def test_incremental_chapter_uses_package_prose_audit_and_ready_resume_is_free(
                 },
             }
         elif stage.startswith("prose"):
-            payload = {"blocks": _blocks(4)}
+            payload = {"blocks": _blocks(6)}
         else:
             payload = {
                 "proofs": [

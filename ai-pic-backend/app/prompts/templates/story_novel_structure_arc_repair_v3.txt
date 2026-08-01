@@ -5,3 +5,5 @@
 上一版输出：{{ previous_output }}
 
 严格按原始任务要求重新输出完整 JSON，不要解释，不得裁剪、补空章或更改系统给定的分卷边界。
+所有局部人物句柄必须逐字复制；character_ref/relationship_target 只能是单个句柄，
+relationship_targets 只能是句柄字符串数组，不得附加姓名、目标、解释或包装对象。

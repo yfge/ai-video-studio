@@ -26,7 +26,9 @@ def upgrade() -> None:
         # SQLite doesn't support ALTER TABLE ADD CONSTRAINT; use batch mode.
         with op.batch_alter_table("users") as batch_op:
             batch_op.add_column(
-                sa.Column("is_admin", sa.Boolean(), default=False, comment="是否为管理员")
+                sa.Column(
+                    "is_admin", sa.Boolean(), default=False, comment="是否为管理员"
+                )
             )
             batch_op.add_column(
                 sa.Column(
@@ -43,17 +45,26 @@ def upgrade() -> None:
             )
             batch_op.add_column(
                 sa.Column(
-                    "approved_by_user_id", sa.Integer(), nullable=True, comment="审批人ID"
+                    "approved_by_user_id",
+                    sa.Integer(),
+                    nullable=True,
+                    comment="审批人ID",
                 )
             )
             batch_op.add_column(
                 sa.Column(
-                    "email_verified", sa.Boolean(), default=False, comment="邮箱是否已验证"
+                    "email_verified",
+                    sa.Boolean(),
+                    default=False,
+                    comment="邮箱是否已验证",
                 )
             )
             batch_op.add_column(
                 sa.Column(
-                    "activation_token", sa.String(255), nullable=True, comment="激活令牌"
+                    "activation_token",
+                    sa.String(255),
+                    nullable=True,
+                    comment="激活令牌",
                 )
             )
             batch_op.add_column(
@@ -74,7 +85,10 @@ def upgrade() -> None:
             )
             batch_op.add_column(
                 sa.Column(
-                    "failed_login_attempts", sa.Integer(), default=0, comment="失败登录次数"
+                    "failed_login_attempts",
+                    sa.Integer(),
+                    default=0,
+                    comment="失败登录次数",
                 )
             )
             batch_op.add_column(
@@ -86,11 +100,16 @@ def upgrade() -> None:
                 )
             )
             batch_op.add_column(
-                sa.Column("language", sa.String(10), default="zh-CN", comment="用户语言偏好")
+                sa.Column(
+                    "language", sa.String(10), default="zh-CN", comment="用户语言偏好"
+                )
             )
             batch_op.add_column(
                 sa.Column(
-                    "timezone", sa.String(50), default="Asia/Shanghai", comment="用户时区"
+                    "timezone",
+                    sa.String(50),
+                    default="Asia/Shanghai",
+                    comment="用户时区",
                 )
             )
 
@@ -181,7 +200,9 @@ def upgrade() -> None:
         )
         op.add_column(
             "users",
-            sa.Column("language", sa.String(10), default="zh-CN", comment="用户语言偏好"),
+            sa.Column(
+                "language", sa.String(10), default="zh-CN", comment="用户语言偏好"
+            ),
         )
         op.add_column(
             "users",
@@ -260,9 +281,7 @@ def downgrade() -> None:
     is_sqlite = op.get_bind().dialect.name == "sqlite"
     if is_sqlite:
         with op.batch_alter_table("users") as batch_op:
-            batch_op.drop_constraint(
-                "fk_users_approved_by_user_id", type_="foreignkey"
-            )
+            batch_op.drop_constraint("fk_users_approved_by_user_id", type_="foreignkey")
             batch_op.drop_column("timezone")
             batch_op.drop_column("language")
             batch_op.drop_column("account_locked_until")

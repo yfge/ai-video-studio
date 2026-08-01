@@ -126,11 +126,13 @@ class CharacterPresenceValidator:
             missing = {c for c in missing if c not in {"旁白", "Narrator", "narrator"}}
 
             if missing:
-                missing_appearances.append({
-                    "scene_number": scene_num,
-                    "missing_characters": list(missing),
-                    "characters_in_frames": list(frame_chars),
-                })
+                missing_appearances.append(
+                    {
+                        "scene_number": scene_num,
+                        "missing_characters": list(missing),
+                        "characters_in_frames": list(frame_chars),
+                    }
+                )
 
         if missing_appearances:
             results.append(
@@ -187,7 +189,9 @@ class CharacterPresenceValidator:
             char_info = context.get_character(char_name)
             if char_info:
                 # Check if character has reference images
-                ref_images = char_info.get("reference_images") or char_info.get("image_url")
+                ref_images = char_info.get("reference_images") or char_info.get(
+                    "image_url"
+                )
                 if ref_images:
                     characters_with_refs.add(char_name)
                 else:
@@ -203,7 +207,11 @@ class CharacterPresenceValidator:
                 chars = frame.get("characters")
                 if isinstance(chars, list):
                     for c in chars:
-                        name = c if isinstance(c, str) else c.get("name") if isinstance(c, dict) else None
+                        name = (
+                            c
+                            if isinstance(c, str)
+                            else c.get("name") if isinstance(c, dict) else None
+                        )
                         if name:
                             characters_with_refs.add(str(name).strip())
 
@@ -250,10 +258,16 @@ class CharacterPresenceValidator:
             chars = frame.get("characters")
             if isinstance(chars, list):
                 for c in chars:
-                    name = c if isinstance(c, str) else c.get("name") if isinstance(c, dict) else None
+                    name = (
+                        c
+                        if isinstance(c, str)
+                        else c.get("name") if isinstance(c, dict) else None
+                    )
                     if name and isinstance(name, str):
                         clean_name = name.strip()
-                        name_occurrences[clean_name] = name_occurrences.get(clean_name, 0) + 1
+                        name_occurrences[clean_name] = (
+                            name_occurrences.get(clean_name, 0) + 1
+                        )
 
             # Also check description for character patterns
             desc = frame.get("description") or ""
@@ -270,15 +284,17 @@ class CharacterPresenceValidator:
         names = list(name_occurrences.keys())
 
         for i, name1 in enumerate(names):
-            for name2 in names[i + 1:]:
+            for name2 in names[i + 1 :]:
                 # Simple similarity check
                 if self._are_similar(name1, name2):
-                    potential_variations.append({
-                        "name1": name1,
-                        "count1": name_occurrences[name1],
-                        "name2": name2,
-                        "count2": name_occurrences[name2],
-                    })
+                    potential_variations.append(
+                        {
+                            "name1": name1,
+                            "count1": name_occurrences[name1],
+                            "name2": name2,
+                            "count2": name_occurrences[name2],
+                        }
+                    )
 
         if potential_variations:
             results.append(

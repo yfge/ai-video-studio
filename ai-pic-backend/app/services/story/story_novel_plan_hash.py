@@ -30,11 +30,44 @@ _INCREMENTAL_CHAPTER_KEYS = (
     "execution_contracts",
     "state_compiler",
     "contract_status",
+    "entity_introductions",
+    "effect_event_bindings",
+    "effect_semantics",
+    "effect_manifest",
+    "contract_schema",
+)
+
+_V4_PLAN_KEYS = (
+    "series_bible",
+    "series_bible_hash",
+    "series_roadmap",
+    "series_roadmap_hash",
+    "current_arc_plan",
+    "current_arc_plan_hash",
+    "arc_plans",
+    "arc_plans_hash",
+    "scope_graph",
+    "scope_graph_hash",
+    "world_reveal_index",
+    "world_reveal_hash",
+    "prompt_templates",
+    "event_execution_contract_version",
+    "prose_execution_boundary_version",
+    "chapter_effect_manifest_version",
+    "state_compiler_version",
+    "frozen_through_position",
+    "planner_snapshot_schema",
+    "chapter_intent_schema",
+    "chapter_contract_schema",
+    "audit_proof_schema",
 )
 
 
 def generation_plan_hash(plan: dict) -> str:
-    incremental = plan.get("chapter_contract_mode") == "just_in_time"
+    incremental = (
+        plan.get("chapter_contract_mode") == "just_in_time"
+        or plan.get("schema") == "story_novel_generation_plan.v4"
+    )
     chapter_keys = (
         (*_CHAPTER_KEYS, *_INCREMENTAL_CHAPTER_KEYS) if incremental else _CHAPTER_KEYS
     )
@@ -71,4 +104,6 @@ def generation_plan_hash(plan: dict) -> str:
         )
         if "brief_policy_version" in plan:
             contract["brief_policy_version"] = plan["brief_policy_version"]
+    if plan.get("schema") == "story_novel_generation_plan.v4":
+        contract.update({key: plan.get(key) for key in _V4_PLAN_KEYS})
     return content_hash(contract)

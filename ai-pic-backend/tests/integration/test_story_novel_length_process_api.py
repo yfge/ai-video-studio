@@ -11,6 +11,7 @@ def test_length_http_contract_and_legacy_generation_warnings(process_api):
     profiles = process_api.client.get("/api/v1/novel/length-profiles")
     assert profiles.status_code == 200
     assert [item["profile_id"] for item in profiles.json()["items"]] == [
+        "commercial_serial",
         "short_serial",
         "standard_serial",
         "long_chapter",

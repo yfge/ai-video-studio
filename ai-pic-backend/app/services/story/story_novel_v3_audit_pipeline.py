@@ -30,6 +30,8 @@ async def evaluate_and_repair(
     generate_text,
     *,
     entry,
+    frozen_plan=None,
+    before_call=None,
 ):
     position = int(chapter_plan["position"])
     audit_hash = audit_contract_hash(entry["body_hash"], expected_delta, entry)
@@ -96,6 +98,8 @@ async def evaluate_and_repair(
         audit_stage=logical_stage,
         audit_call_budget=first_budget,
         reserve_call=first_reserve,
+        frozen_plan=frozen_plan,
+        before_call=before_call,
     )
     return await repair_failed_body(
         service,
@@ -113,6 +117,8 @@ async def evaluate_and_repair(
         reserve_call=reserve_call,
         entry=entry,
         allow_repair=not entry.get("body_repair_count"),
+        frozen_plan=frozen_plan,
+        before_call=before_call,
     )
 
 

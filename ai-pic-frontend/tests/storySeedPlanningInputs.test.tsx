@@ -103,6 +103,30 @@ describe("StorySeed planning inputs", () => {
       globalThis.fetch = originalFetch;
     }
   });
+
+  it("requires an explicit planning model in the new UI", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => modelResponse();
+    try {
+      const utils = render(<StorySeedSection story={story} />, {
+        container: dom.window.document.body,
+      });
+
+      await waitFor(() =>
+        assert.equal(
+          utils
+            .getByRole("button", {
+              name: "AI 生成结构化章节计划",
+            })
+            .hasAttribute("disabled"),
+          true,
+        ),
+      );
+      assert.match(utils.getByRole("alert").textContent || "", /规划模型/);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });
 
 function jsonResponse(payload: unknown) {

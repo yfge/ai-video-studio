@@ -1,6 +1,6 @@
 ---
 id: 2026-01-31T06-30-00Z-duration-orchestrator-phase7
-date: 2026-01-31T06:30:00Z
+date: "2026-01-31T06:30:00Z"
 participants: [human, claude]
 models: [claude-opus-4-5-20251101]
 tags: [backend, duration-orchestrator, logging, callbacks]
@@ -28,6 +28,7 @@ Complete today's pending work - Duration Orchestrator Phase 7 (monitoring and ob
 ### 1. `docs/duration-orchestrator-guide.md` (NEW)
 
 Created comprehensive documentation covering:
+
 - Overview and core problem description
 - Architecture diagram (ASCII)
 - Node details with input/output state specs
@@ -40,6 +41,7 @@ Created comprehensive documentation covering:
 ### 2. `app/services/duration_orchestrator/agent.py`
 
 Enhanced with progress callback support:
+
 - Added `ProgressCallback` type alias
 - Added `progress_callback` parameter to `__init__` and `orchestrate`
 - Added `_emit_progress()` helper method
@@ -49,6 +51,7 @@ Enhanced with progress callback support:
 ### 3. `app/services/duration_orchestrator/nodes/generate_dialogue.py`
 
 Enhanced structured logging:
+
 - Changed from `logging.getLogger` to `get_logger()` for consistent formatting
 - Added `event` field (`dialogue_generation_started`, `dialogue_generation_completed`)
 - Added `episode_id` and `word_count_ratio` to log extras
@@ -56,6 +59,7 @@ Enhanced structured logging:
 ### 4. `app/services/duration_orchestrator/nodes/commit_scene.py`
 
 Enhanced structured logging:
+
 - Changed from `logging.getLogger` to `get_logger()`
 - Added `event` field (`scene_committed`, `budget_rebalanced`)
 - Added `episode_id` and `deviation_ratio` to log extras
@@ -75,14 +79,14 @@ All existing tests continue to pass with the logging and callback changes.
 
 ## Key Events Emitted
 
-| Event | Description |
-|-------|-------------|
-| `orchestration_started` | Agent begins processing |
-| `dialogue_generation_started` | Scene dialogue generation begins |
-| `dialogue_generation_completed` | Scene dialogue generated |
-| `scene_committed` | Scene validated and committed |
-| `budget_rebalanced` | Remaining budgets adjusted |
-| `orchestration_completed` | Agent finishes with final stats |
+| Event                           | Description                      |
+| ------------------------------- | -------------------------------- |
+| `orchestration_started`         | Agent begins processing          |
+| `dialogue_generation_started`   | Scene dialogue generation begins |
+| `dialogue_generation_completed` | Scene dialogue generated         |
+| `scene_committed`               | Scene validated and committed    |
+| `budget_rebalanced`             | Remaining budgets adjusted       |
+| `orchestration_completed`       | Agent finishes with final stats  |
 
 ## Next Steps
 

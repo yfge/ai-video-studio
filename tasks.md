@@ -204,6 +204,31 @@ Owner：小说生成质量链路。状态：v3 代码与 focused tests 已落地
 - [ ] 用 GPT-5.6 完成八批六章审读和一次全书综合；达到 75/100、结构/人物/世界观
       各至少 7/10 且无 blocking 后，才审批、提升 canonical 并核验下游/旧版本隔离。
 
+## P0: Frozen-snapshot Long-form Quality v4
+
+:link: `docs/exec-plans/active/story-novel-frozen-snapshot-v4.md`
+
+Owner：小说生成链路。状态：实现中；v3 真实失败作为输入/验证快照漂移证据保留，
+不得以证据优先级补丁代替架构修复。
+
+- [ ] 新 Revision 使用 `story_novel_generation_plan.v4`、
+      `story_novel_continuity.v5` 和 provider 调用前持久化的 immutable
+      `planner_snapshot`；parser/repair/Resume 不得重新查询并重建上下文。
+- [ ] Series Bible/Roadmap 支持核心人物路线、分卷角色槽、动态实体提案、题材自定义
+      scope taxonomy、包含层级与跨节点连接；未来卷只保存软目标和不可撤销承诺。
+- [ ] Event/Memory 只进入章前规划；Chapter Intent 不输出业务 ID/from/to/evidence，
+      服务器编译唯一合同和 expected delta，正文仅接收当前可见人物/关系/事件/世界。
+- [ ] 完成 800 章结构压力、快照确定性、未来隔离、动态实体回滚、语义时间、局部返修、
+      Cancel/Resume hash 和 v2/v3 兼容回归。
+- [ ] 完成 backend/frontend/contracts/pre-commit/镜像/真实浏览器；再通过正式 UI/API、
+      MySQL 和付费模型完成新 48 章、Cancel/Resume、GPT-5.6 审读、Word 导出与审批。
+
+真实验收状态（2026-08-01）：Task `6948` 已 fail-closed；前 24 章 ready，第 25 章因
+长度门禁失败，未完成 48/48。对前 20 章的独立审读约为 58/100，并发现第 13 章在
+第 16–18 章权限建立前使用水权的跨章授权漏洞。当前 Revision 不得审批或提升
+Canonical；本轮提交仅保存实现与失败证据，后续应先修复跨章语义授权和返修可靠性，
+再决定是否启动新的付费验收。
+
 ## 已完成基线
 
 - `timelines`、`render_jobs`、`media_assets` DB/API foundation 已落地。

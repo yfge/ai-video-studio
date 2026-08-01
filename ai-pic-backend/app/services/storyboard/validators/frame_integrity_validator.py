@@ -154,15 +154,15 @@ class FrameIntegrityValidator:
                         validator_name=self.name,
                         message=f"Field '{field}' missing in {count}/{len(frames)} frames",
                         details={"field": field, "missing_count": count},
-                        suggestions=[f"Consider populating '{field}' for better timeline accuracy"],
+                        suggestions=[
+                            f"Consider populating '{field}' for better timeline accuracy"
+                        ],
                     )
                 )
 
         return results
 
-    def _check_url_fields(
-        self, frames: list[dict[str, Any]]
-    ) -> list[ValidationResult]:
+    def _check_url_fields(self, frames: list[dict[str, Any]]) -> list[ValidationResult]:
         """Check that URL fields contain valid URLs when set."""
         results: list[ValidationResult] = []
         invalid_urls: list[dict[str, Any]] = []
@@ -172,24 +172,32 @@ class FrameIntegrityValidator:
                 url = frame.get(field)
                 if url and isinstance(url, str):
                     if not self.URL_PATTERN.match(url):
-                        invalid_urls.append({
-                            "frame_index": i + 1,
-                            "field": field,
-                            "url_preview": url[:100],
-                        })
+                        invalid_urls.append(
+                            {
+                                "frame_index": i + 1,
+                                "field": field,
+                                "url_preview": url[:100],
+                            }
+                        )
 
             # Check URL list fields
-            for list_field in ["reference_images", "start_image_urls", "end_image_urls"]:
+            for list_field in [
+                "reference_images",
+                "start_image_urls",
+                "end_image_urls",
+            ]:
                 urls = frame.get(list_field)
                 if isinstance(urls, list):
                     for j, url in enumerate(urls):
                         if url and isinstance(url, str):
                             if not self.URL_PATTERN.match(url):
-                                invalid_urls.append({
-                                    "frame_index": i + 1,
-                                    "field": f"{list_field}[{j}]",
-                                    "url_preview": url[:100],
-                                })
+                                invalid_urls.append(
+                                    {
+                                        "frame_index": i + 1,
+                                        "field": f"{list_field}[{j}]",
+                                        "url_preview": url[:100],
+                                    }
+                                )
 
         if invalid_urls:
             results.append(
@@ -318,11 +326,13 @@ class FrameIntegrityValidator:
         insufficient_scenes: list[dict[str, int]] = []
         for scene_num, count in sorted(frames_by_scene.items()):
             if count < min_frames:
-                insufficient_scenes.append({
-                    "scene_number": scene_num,
-                    "frame_count": count,
-                    "minimum": min_frames,
-                })
+                insufficient_scenes.append(
+                    {
+                        "scene_number": scene_num,
+                        "frame_count": count,
+                        "minimum": min_frames,
+                    }
+                )
 
         if insufficient_scenes:
             results.append(

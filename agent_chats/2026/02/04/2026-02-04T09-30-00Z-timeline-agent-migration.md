@@ -1,6 +1,6 @@
 ---
 id: 2026-02-04T09-30-00Z-timeline-agent-migration
-date: 2026-02-04T09:30:00Z
+date: "2026-02-04T09:30:00Z"
 participants: [human, claude]
 models: [claude-opus-4-5-20251101]
 tags: [backend, agent-migration, P2]
@@ -20,7 +20,7 @@ User requested full rewrite (option 1) to migrate Timeline Agent to the new Reac
 ## Goals
 
 1. Create TimelineReactAgent class inheriting from ReactAgentBase
-2. Implement _generate, _parse_result, _validate, _refine_input methods
+2. Implement \_generate, \_parse_result, \_validate, \_refine_input methods
 3. Integrate RepairMonitor for success rate tracking
 4. Update production code to use new agent
 5. Add comprehensive unit tests
@@ -30,6 +30,7 @@ User requested full rewrite (option 1) to migrate Timeline Agent to the new Reac
 ### New Files Created
 
 1. **`app/services/timeline_agent/react_agent.py`** (~350 lines)
+
    - `TimelineReactAgent(ReactAgentBase[TimingPlan])`: Main agent class
    - `compute_timing()`: Public API matching original interface
    - `_generate()`: LLM call with context building
@@ -50,10 +51,12 @@ User requested full rewrite (option 1) to migrate Timeline Agent to the new Reac
 ### Updated Files
 
 1. **`app/services/timeline_agent/__init__.py`**
+
    - Added export for `TimelineReactAgent`
    - Updated docstring to describe both implementations
 
 2. **`app/services/audio/dialogue_processing/segment_intelligent_planner.py`**
+
    - Changed import from `TimelineLangGraphAgent` to `TimelineReactAgent`
    - Production code now uses new framework
 
@@ -64,6 +67,7 @@ User requested full rewrite (option 1) to migrate Timeline Agent to the new Reac
 ## Architecture Changes
 
 ### Before (LangGraph)
+
 ```
 TimelineLangGraphAgent
 ├── StateGraph with 6 nodes
@@ -73,6 +77,7 @@ TimelineLangGraphAgent
 ```
 
 ### After (ReactAgentBase)
+
 ```
 TimelineReactAgent(ReactAgentBase[TimingPlan])
 ├── _generate(): LLM call

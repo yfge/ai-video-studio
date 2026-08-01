@@ -1,6 +1,6 @@
 ---
 id: 2026-02-03T12-00-00Z-info-gate-validator
-date: 2026-02-03T12:00:00Z
+date: "2026-02-03T12:00:00Z"
 participants: [human, claude]
 models: [claude-opus-4-5]
 tags: [backend, validator, agent-fix, info-gate]
@@ -32,6 +32,7 @@ summary: "创建信息门控校验器，防止对白引用未揭示的剧情信�
 ### 修改文件
 
 1. **`app/schemas/continuity.py`**
+
    - 新增 `RevealedInfoItem` 模型：记录信息揭示时间线
      - `info_key`: 信息唯一标识
      - `info_content`: 信息内容描述
@@ -43,6 +44,7 @@ summary: "创建信息门控校验器，防止对白引用未揭示的剧情信�
    - 在 `ContinuityLedger` 中新增 `revealed_info_timeline` 字段
 
 2. **`app/services/validators/__init__.py`**
+
    - 导出 `InfoGateValidator`, `InfoGateViolation`, `InfoGateContext` 等
 
 3. **`app/services/script_agent.py`**
@@ -54,6 +56,7 @@ summary: "创建信息门控校验器，防止对白引用未揭示的剧情信�
 ### 新增文件
 
 1. **`app/services/validators/info_gate_validator.py`** (约 280 行)
+
    - `InfoGateSeverity`: 违规严重度枚举（ERROR/WARNING/INFO）
    - `InfoGateViolationType`: 违规类型枚举
      - `CHARACTER_KNOWS_TOO_MUCH`: 角色知道太多

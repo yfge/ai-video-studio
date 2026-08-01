@@ -9,12 +9,12 @@ from . import story_novel_chapter_package_normalization as normalization
 from .story_novel_brief_location_scope import brief_allowed_entity_ids
 from .story_novel_chapter_brief_contract import validate_model_brief
 from .story_novel_chapter_effect_manifest import compile_effect_manifest
+from .story_novel_chapter_package_context import build_final_package_context
 from .story_novel_chapter_package_recovery import extract_chapter_package_payload
 from .story_novel_incremental_plan import chapter_skeleton
 from .story_novel_plan_effect_refs import chapter_actor_refs
 from .story_novel_plan_parser import parse_plan
 from .story_novel_planning_batches import batch_frozen_spec, batch_thread_payoffs
-from .story_novel_v3_context import build_v3_planning_context
 from .story_novel_world_expansion import (
     canon_with_plan_expansion,
     normalize_package_expansion,
@@ -76,8 +76,8 @@ def parse_chapter_package(
         skeleton,
         validation_canon,
     )
-    context = build_v3_planning_context(
-        service, revision, position, contract, persist_memory_snapshots=False
+    context = build_final_package_context(
+        service, revision, position, contract, model_brief
     )
     brief = _bound_brief(model_brief, context["brief_input"])
     return contract, brief, context

@@ -1,6 +1,6 @@
 ---
 id: 2026-02-02T07-22-26Z-phase3-readiness-check-api
-date: 2026-02-02T07:22:26Z
+date: "2026-02-02T07:22:26Z"
 participants: [human, claude-opus-4-5]
 models: [claude-opus-4-5-20251101]
 tags: [backend, api, readiness-check, generation]
@@ -40,22 +40,22 @@ Implement Phase 3 Readiness Check - a Story/Episode readiness check API that val
 
 ### New Files Created
 
-| File | Lines | Purpose |
-|------|-------|---------|
-| `app/schemas/readiness.py` | 78 | ReadinessCheck/ReadinessResult Pydantic models with computed fields |
-| `app/services/readiness/__init__.py` | 11 | Module exports for readiness services |
-| `app/services/readiness/story_readiness.py` | 215 | StoryReadinessChecker with all story-level checks |
-| `app/services/readiness/episode_readiness.py` | 143 | EpisodeReadinessChecker composing story checks |
-| `app/api/v1/endpoints/stories/readiness.py` | 85 | Two API endpoints for readiness checks |
-| `tests/unit/services/readiness/__init__.py` | 1 | Test module init |
-| `tests/unit/services/readiness/test_story_readiness.py` | 193 | 17 unit tests for story readiness |
-| `tests/unit/services/readiness/test_episode_readiness.py` | 182 | 10 unit tests for episode readiness |
-| `tests/integration/test_readiness_api.py` | 218 | 13 integration tests for API endpoints |
+| File                                                      | Lines | Purpose                                                             |
+| --------------------------------------------------------- | ----- | ------------------------------------------------------------------- |
+| `app/schemas/readiness.py`                                | 78    | ReadinessCheck/ReadinessResult Pydantic models with computed fields |
+| `app/services/readiness/__init__.py`                      | 11    | Module exports for readiness services                               |
+| `app/services/readiness/story_readiness.py`               | 215   | StoryReadinessChecker with all story-level checks                   |
+| `app/services/readiness/episode_readiness.py`             | 143   | EpisodeReadinessChecker composing story checks                      |
+| `app/api/v1/endpoints/stories/readiness.py`               | 85    | Two API endpoints for readiness checks                              |
+| `tests/unit/services/readiness/__init__.py`               | 1     | Test module init                                                    |
+| `tests/unit/services/readiness/test_story_readiness.py`   | 193   | 17 unit tests for story readiness                                   |
+| `tests/unit/services/readiness/test_episode_readiness.py` | 182   | 10 unit tests for episode readiness                                 |
+| `tests/integration/test_readiness_api.py`                 | 218   | 13 integration tests for API endpoints                              |
 
 ### Modified Files
 
-| File | Change |
-|------|--------|
+| File                                       | Change                                    |
+| ------------------------------------------ | ----------------------------------------- |
 | `app/api/v1/endpoints/stories/__init__.py` | Added readiness router to story endpoints |
 
 ### API Endpoints Added
@@ -66,6 +66,7 @@ POST /api/v1/stories/{story_id}/episodes/{episode_id}/readiness-check
 ```
 
 Both endpoints return `ReadinessResult` with:
+
 - `ready`: True if no CRITICAL/ERROR issues
 - `can_proceed`: True if no CRITICAL issues
 - `checks`: List of all check results with severity
@@ -75,18 +76,21 @@ Both endpoints return `ReadinessResult` with:
 ## Validation
 
 ### Unit Tests
+
 ```bash
 pytest tests/unit/services/readiness/ -v
 # 27 passed
 ```
 
 ### Integration Tests
+
 ```bash
 pytest tests/integration/test_readiness_api.py -v
 # 13 passed
 ```
 
 ### Linter
+
 ```bash
 ruff check app/schemas/readiness.py app/services/readiness/ app/api/v1/endpoints/stories/readiness.py
 # All checks passed!

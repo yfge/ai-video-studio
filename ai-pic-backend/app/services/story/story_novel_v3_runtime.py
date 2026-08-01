@@ -5,6 +5,7 @@ from app.services.narrative_memory.candidate_verification import (
 )
 
 from .story_novel_chapter_service import source_candidates
+from .story_novel_revision_local_memory import local_memory_rows_complete
 
 
 def candidate_checkpoint_ready(service, revision, chapter, entry) -> bool:
@@ -15,10 +16,11 @@ def candidate_checkpoint_ready(service, revision, chapter, entry) -> bool:
         entry.get("event_ids") == [item.business_id for item in events]
         and entry.get("memory_ids") == [item.business_id for item in memories]
         and complete_novel_candidate_set(entry, events, memories)
+        and local_memory_rows_complete(entry)
     )
 
 
-def update_progress(service, task, position, revision, stage):
+def update_progress(service, task, position, revision, stage, *, commit=True):
     labels = {
         "chapter_planning": "章前规划",
         "prose": "正文分块生成",
@@ -27,4 +29,5 @@ def update_progress(service, task, position, revision, stage):
         "memory_ready": "Narrative 落账",
     }
     task.description = f"第 {position}/{revision.chapter_count} 章：{labels[stage]}"
-    service.db.commit()
+    if commit:
+        service.db.commit()

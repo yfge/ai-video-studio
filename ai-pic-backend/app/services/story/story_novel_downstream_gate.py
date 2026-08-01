@@ -14,7 +14,7 @@ from pydantic import ValidationError
 
 from .story_novel_domain import active_chapters, materialize_content, sha256_text
 from .story_novel_length_service import generation_plan_hash
-from .story_novel_plan_versions import V3_SCHEMA
+from .story_novel_plan_versions import V3_SCHEMA, V4_SCHEMA
 from .story_novel_v3_plan import valid_v3_plan_fields
 
 
@@ -71,7 +71,7 @@ def require_canonical_revision(revision, *, expected_story=None):
 
     plan = dict(revision.generation_plan or {})
     if (
-        plan.get("schema") != V3_SCHEMA
+        plan.get("schema") not in {V3_SCHEMA, V4_SCHEMA}
         or plan.get("status") != "ready"
         or int(plan.get("version") or 0) < 1
         or not valid_v3_plan_fields(plan)
@@ -80,7 +80,7 @@ def require_canonical_revision(revision, *, expected_story=None):
         raise _error(
             409,
             "NOVEL_GENERATION_PLAN_STALE",
-            "剧集/剧本只接受已审批 canonical v3 小说，或 plan version/hash 已失效",
+            "剧集/剧本只接受已审批 canonical v3/v4 小说，或 plan version/hash 已失效",
         )
     plan_positions = [
         int(row.get("position") or 0) for row in plan.get("chapters") or []

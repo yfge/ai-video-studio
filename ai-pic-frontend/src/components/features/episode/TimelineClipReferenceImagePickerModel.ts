@@ -61,7 +61,9 @@ function characterLabelForVirtualIp(
   characters: EpisodeCharacter[],
   virtualIpId: number,
 ) {
-  const character = characters.find((item) => item.virtual_ip_id === virtualIpId);
+  const character = characters.find(
+    (item) => item.virtual_ip_id === virtualIpId,
+  );
   return character
     ? episodeCharacterDisplayName(character, `IP ${virtualIpId}`)
     : `IP ${virtualIpId}`;

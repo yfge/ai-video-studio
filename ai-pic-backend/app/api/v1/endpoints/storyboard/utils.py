@@ -4,11 +4,10 @@ from datetime import datetime
 from typing import Any, List, Optional
 from uuid import UUID, uuid4
 
-from fastapi import HTTPException
-from sqlalchemy.orm import Session
-
 from app.models.script import Episode, Script, Story
 from app.models.user import User
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
 
 
 def _not_deleted(query, model):
@@ -132,7 +131,9 @@ def enforce_storyboard_variety(frames: List[dict]) -> List[dict]:
         # Adjust duration for variety
         base_duration = frame.get("duration_seconds", 3)
         if isinstance(base_duration, (int, float)):
-            frame["duration_seconds"] = max(2, min(10, base_duration + (variety_index - 2)))
+            frame["duration_seconds"] = max(
+                2, min(10, base_duration + (variety_index - 2))
+            )
 
         # Update description with camera movement emphasis
         desc = frame.get("description", "")

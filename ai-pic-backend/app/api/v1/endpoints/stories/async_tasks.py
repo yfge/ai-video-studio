@@ -14,8 +14,7 @@ from app.services.narrative_quality_gate import (
 )
 from app.services.story.story_generation_service import StoryGenerationService
 from app.services.task_worker import story_generate_task
-from fastapi import APIRouter, Depends
-from fastapi import HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 router = APIRouter()

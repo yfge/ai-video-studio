@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from fastapi import HTTPException
-
 from app.api.v1.endpoints.stories.async_tasks import _story_generation_error_message
+from fastapi import HTTPException
 
 
 def test_story_generation_error_message_uses_http_exception_detail() -> None:

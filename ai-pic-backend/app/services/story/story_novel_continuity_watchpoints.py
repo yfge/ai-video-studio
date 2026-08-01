@@ -70,6 +70,19 @@ def validate_continuity_watchpoints(values, brief_input: dict) -> list[dict]:
     return result
 
 
+def watchpoint_evidence_ids(brief: dict | None) -> list[str]:
+    """Return the evidence IDs the planner actually bound into its brief."""
+    return list(
+        dict.fromkeys(
+            evidence_id
+            for item in (brief or {}).get("continuity_watchpoints") or []
+            if isinstance(item, dict)
+            for evidence_id in item.get("source_evidence_ids") or []
+            if isinstance(evidence_id, str) and evidence_id.strip()
+        )
+    )
+
+
 def _unique_ids(values, label: str) -> list[str]:
     rows = list(values or [])
     if any(not isinstance(item, str) or not item.strip() for item in rows):

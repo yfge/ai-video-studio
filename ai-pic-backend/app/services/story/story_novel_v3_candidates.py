@@ -26,7 +26,10 @@ from .story_novel_candidate_refresh import (
     lock_extraction_checkpoint,
     stale_replaced_candidates,
 )
-from .story_novel_revision_local_memory import local_memory_rows
+from .story_novel_revision_local_memory import (
+    local_memory_rows,
+    local_memory_rows_complete,
+)
 from .story_novel_v3_candidate_evidence import (
     event_evidence,
     memory_evidence,
@@ -69,7 +72,9 @@ def materialize_v3_candidates(service, revision, chapter, task, entry: dict) -> 
             "memory_grant_keys": [list(item) for item in sorted(memory_grant_keys)],
             "revision_local_memories": local_memory_rows(chapter, entry),
         }
-        if not complete_novel_candidate_set(candidate_entry, events, memories):
+        if not complete_novel_candidate_set(
+            candidate_entry, events, memories
+        ) or not local_memory_rows_complete(candidate_entry):
             raise ConflictError("v3 候选未完整覆盖 expected delta")
         replacement = {item.business_id for item in [*events, *memories]}
         stale_replaced_candidates(service.db, revision.story_id, previous, replacement)

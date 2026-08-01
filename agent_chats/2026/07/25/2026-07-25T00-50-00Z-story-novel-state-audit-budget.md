@@ -1,6 +1,6 @@
 ---
 id: 2026-07-25-story-novel-state-audit-budget
-date: 2026-07-25
+date: "2026-07-25T00:50:00Z"
 participants:
   - user
   - codex
@@ -42,11 +42,11 @@ output ceiling and preserve complete future-event auditing.
   tokens and 5,226 completion tokens, then failed the state gate. Chapter 1 and
   chapter 2 body hashes remained unchanged.
 - `cd ai-pic-backend && pytest -q --no-cov
-  tests/unit/test_story_novel_state_evidence_patch.py
-  tests/unit/test_story_novel_state_extraction_repair.py` -> 5 passed.
+tests/unit/test_story_novel_state_evidence_patch.py
+tests/unit/test_story_novel_state_extraction_repair.py` -> 5 passed.
 - `cd ai-pic-backend && pytest -q --no-cov
-  tests/unit/test_story_novel_*.py
-  tests/unit/services/test_narrative_memory_*.py` -> 428 passed, 1 skipped.
+tests/unit/test_story_novel_*.py
+tests/unit/services/test_narrative_memory_*.py` -> 428 passed, 1 skipped.
 - Exact `isort --check-only --profile=black` and `black --check` -> passed.
 - `python scripts/check_repo_docs.py` -> passed.
 - `python scripts/check_repo_contracts.py --mode diff ...` -> passed.

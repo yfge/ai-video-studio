@@ -339,9 +339,7 @@ class RepairMetrics:
             "total_attempts": self.total_attempts,
             "successful_repairs": self.successful_repairs,
             "success_rate": self.success_rate,
-            "by_failure_mode": {
-                k.value: v for k, v in self.by_failure_mode.items()
-            },
+            "by_failure_mode": {k.value: v for k, v in self.by_failure_mode.items()},
             "by_strategy": self.by_strategy,
             "avg_duration_ms": self.avg_duration_ms,
         }
@@ -386,7 +384,7 @@ class RepairMonitor:
 
         # Trim to window size
         if len(self._attempts) > self.window_size * 2:
-            self._attempts = self._attempts[-self.window_size:]
+            self._attempts = self._attempts[-self.window_size :]
 
         # Check SLO
         self._check_slo(attempt.failure_mode)
@@ -430,7 +428,7 @@ class RepairMonitor:
         Returns:
             Aggregated RepairMetrics
         """
-        attempts = self._attempts[-(window or len(self._attempts)):]
+        attempts = self._attempts[-(window or len(self._attempts)) :]
 
         if not attempts:
             return RepairMetrics()
@@ -460,7 +458,9 @@ class RepairMonitor:
 
         # Average duration
         if attempts:
-            metrics.avg_duration_ms = sum(a.duration_ms for a in attempts) / len(attempts)
+            metrics.avg_duration_ms = sum(a.duration_ms for a in attempts) / len(
+                attempts
+            )
 
         return metrics
 
@@ -478,7 +478,7 @@ class RepairMonitor:
         Returns:
             Success rate (0-1)
         """
-        attempts = self._attempts[-self.window_size:]
+        attempts = self._attempts[-self.window_size :]
 
         if failure_mode:
             attempts = [a for a in attempts if a.failure_mode == failure_mode]
@@ -538,22 +538,26 @@ class RepairMonitor:
             if stats["total"] >= 5:  # Minimum sample size
                 rate = stats["success"] / stats["total"]
                 if rate < self.slo_threshold:
-                    problematic.append({
-                        "type": "failure_mode",
-                        "name": mode.value,
-                        "success_rate": rate,
-                        "sample_size": stats["total"],
-                    })
+                    problematic.append(
+                        {
+                            "type": "failure_mode",
+                            "name": mode.value,
+                            "success_rate": rate,
+                            "sample_size": stats["total"],
+                        }
+                    )
 
         for strategy, stats in metrics.by_strategy.items():
             if stats["total"] >= 5:
                 rate = stats["success"] / stats["total"]
                 if rate < self.slo_threshold:
-                    problematic.append({
-                        "type": "strategy",
-                        "name": strategy,
-                        "success_rate": rate,
-                        "sample_size": stats["total"],
-                    })
+                    problematic.append(
+                        {
+                            "type": "strategy",
+                            "name": strategy,
+                            "success_rate": rate,
+                            "sample_size": stats["total"],
+                        }
+                    )
 
         return sorted(problematic, key=lambda x: x["success_rate"])

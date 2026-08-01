@@ -50,7 +50,9 @@ def test_timeline_clip_video_rework_requires_operator_review_when_gate_is_pendin
     )
 
     assert blocked.status_code == 400
-    assert blocked.json()["detail"] == "operator review required before video generation"
+    assert (
+        blocked.json()["detail"] == "operator review required before video generation"
+    )
 
     allowed = client.post(
         f"/api/v1/timelines/{timeline['id']}/clips/{clip_id}/rework/video",

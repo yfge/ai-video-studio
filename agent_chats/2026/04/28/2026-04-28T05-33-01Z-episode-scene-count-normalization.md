@@ -1,6 +1,6 @@
 ---
 id: 2026-04-28T05-33-01Z-episode-scene-count-normalization
-date: 2026-04-28T05:33:01Z
+date: "2026-04-28T05:33:01Z"
 participants:
   - user
   - codex
@@ -28,7 +28,7 @@ summary: Fix generated episodes collapsing scenes to 1 by centralizing scene nor
 
 ## User Prompt
 
-现在成生剧集以后  场景都为1
+现在成生剧集以后 场景都为1
 
 ## Goals
 

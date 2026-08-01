@@ -48,7 +48,7 @@ summary: Audit every planned event's typed effects before generating prose.
 ## Validation
 
 - `pytest -q --no-cov tests/unit/test_story_novel_plan_semantic_audit.py
-  tests/unit/test_story_novel_planning_batches.py` -> 9 passed。
+tests/unit/test_story_novel_planning_batches.py` -> 9 passed。
 - `pytest tests/unit/test_story_novel_*.py -q --no-cov`
   -> 383 passed, 1 skipped。
 - 精确路径 `pre-commit` isort、black -> passed。

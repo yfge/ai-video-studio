@@ -5,6 +5,10 @@ from __future__ import annotations
 import copy
 
 from .story_novel_initial_state import apply_subject_transition
+from .story_novel_scope_graph import (
+    apply_scope_introduction,
+    validate_scope_introduction,
+)
 from .story_novel_world_order import stable_entity_id, validate_world_expansion_order
 
 ENTITY_KINDS = {"character", "location", "object", "organization", "concept"}
@@ -33,6 +37,8 @@ def normalize_package_expansion(
     raw_rows = list(result.get("entity_introductions") or [])
     known = world_entities(canon, state_before)
     known_names = _entity_names(known.values())
+    known_functions = {_function_key(item) for item in known.values()} - {None}
+    scope_state = copy.deepcopy(state_before)
     refs: dict[str, str] = {}
     rows = []
     for index, raw in enumerate(raw_rows, start=1):
@@ -52,6 +58,9 @@ def normalize_package_expansion(
             raise ValueError(f"世界实体已存在，必须复用现有 ID: {name}")
         if local_ref in refs:
             raise ValueError(f"世界实体临时 ref 重复: {local_ref}")
+        function_key = _function_key(raw)
+        if function_key in known_functions:
+            raise ValueError(f"世界实体叙事功能重复，必须复用现有实体: {name}")
         entity_id = stable_entity_id(kind, position, name, source_event_id)
         refs[local_ref] = entity_id
         rows.append(
@@ -71,6 +80,7 @@ def normalize_package_expansion(
             }
         )
         known_names.update({name, *aliases})
+        known_functions.add(function_key)
     result["entity_introductions"] = _replace_refs(rows, refs)
     return _replace_refs(result, refs), _replace_refs(model_brief, refs)
 
@@ -118,6 +128,7 @@ def validate_entity_introductions(
         return ["正文状态增量的世界实体引入与章节合同不一致"]
     known = world_entities(canon, state_before)
     known_names = _entity_names(known.values())
+    scope_state = copy.deepcopy(state_before)
     errors = []
     for item in planned:
         entity_id = item.get("id")
@@ -132,8 +143,10 @@ def validate_entity_introductions(
             chapter_plan["position"]
         ):
             errors.append(f"世界实体首次出现章不匹配: {entity_id}")
+        errors.extend(validate_scope_introduction(scope_state, item))
         known[entity_id] = item
         known_names.update(names)
+        _apply_introduction(scope_state, item)
     return errors
 
 
@@ -162,6 +175,7 @@ def _apply_introduction(state: dict, item: dict) -> None:
     subjects[entity_id] = initial
     if owner_id is not None:
         apply_subject_transition(subjects, entity_id, "owner_id", owner_id)
+    apply_scope_introduction(state, item)
 
 
 def _plan_introductions(chapters) -> list[dict]:
@@ -218,3 +232,8 @@ def _entity_names(values) -> set[str]:
         for name in [item.get("name"), *(item.get("aliases") or [])]
         if str(name or "").strip()
     }
+
+
+def _function_key(item: dict):
+    function = str((item.get("attributes") or {}).get("narrative_function") or "")
+    return (item.get("kind"), function) if function else None

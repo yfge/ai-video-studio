@@ -5,7 +5,10 @@ import {
   availableEnvironmentOptions,
   uniqueEnvironmentLinks,
 } from "../src/components/features/virtual-ip-detail/virtualIPEnvironmentModel";
-import type { Environment, VirtualIPEnvironmentLink } from "../src/utils/api/types";
+import type {
+  Environment,
+  VirtualIPEnvironmentLink,
+} from "../src/utils/api/types";
 
 const env = (id: number, name: string): Environment => ({
   id,

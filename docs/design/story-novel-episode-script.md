@@ -219,7 +219,7 @@ planned_max_chars    = sum(chapter.max_chars)
 
 There is no independent whole-book target input.
 
-## generation_plan v4
+## Frozen length-plan version 4
 
 Before generation, the server materializes a reproducible snapshot in the
 existing `generation_plan` JSON:
@@ -248,6 +248,102 @@ IDs, and memory IDs. The plan version and hashes are approval evidence.
 freezes the StorySeed version, plan version, resolved ranges, and model. While a
 task is running, these fields cannot be changed. The user must cancel first and
 create a new plan version.
+
+## Frozen-snapshot long-form pipeline v4
+
+New revisions created after the v4 rollout use
+`story_novel_generation_plan.v4` and `story_novel_continuity.v5`. The schema
+version is distinct from the numeric optimistic-lock `version` above. Existing
+v2/v3 revisions remain readable and resumable under their original contracts;
+they are never silently migrated.
+
+The execution hierarchy is `Series Bible -> Series Roadmap -> current Arc Plan
+-> immutable Planner Snapshot -> Chapter Intent -> deterministic Chapter
+Contract -> prose blocks -> proof audit -> atomic world commit`.
+
+The non-negotiable runtime invariant is:
+
+> One provider call is evaluated only against the exact normalized input
+> snapshot persisted before that call. Parsing, format repair, checkpoint,
+> approval, and Resume must not rebuild a second context from live rows.
+
+The Series Bible freezes the audience, genre-neutral style boundary, exact
+`1..N` positions and arc boundaries, world laws, ending direction, core
+commitments, core-character roadmap, topic-specific scope taxonomy, initial
+scope graph, and four optional soft growth directions. It does not freeze a
+closed list of every later supporting character or a fixed administrative map.
+
+Core characters may be initial or hidden until `first_allowed_position`.
+Important future supporting roles are represented by arc-local character slots
+until the current Arc Plan instantiates them. A chapter planner may propose a
+new persistent character, place, organization, object, or concept, but the
+proposal remains Revision-local and provisional until the final body proves its
+introduction and the complete chapter gate passes. One-scene extras stay
+transient and never enter Narrative Memory.
+
+World scope is a containment hierarchy plus typed cross-node connections. Each
+StorySeed defines its own `scope_taxonomy`; no fixed village/county/city/country
+levels are embedded in schemas or prompts. Scope nodes record their parent,
+visibility, first allowed chapter, governing entities, local rules, and state.
+Edges record a story-defined connection type, direction, cost/duration,
+preconditions, and first availability. This supports physical routes, portals,
+network entrances, instances, worlds, planets, or other genres without turning
+one example into product policy.
+
+The Roadmap fixes count, positions, arc ranges, core commitments, and ending
+direction. It stores only soft goals for future arcs. At an arc boundary the
+Arc Planner instantiates authorized character/scope slots and freezes current
+relationship, capability, resource, knowledge, connection, and pacing
+directives from the real opening state. It does not rewrite chapter skeleton
+free text, because an untyped title/event rewrite could smuggle an entity
+around the proposal lifecycle. The per-chapter Intent Planner performs the
+actual current-state refinement into typed beats and proposals. Changing a
+confirmed title, event, setup/payoff promise, or end state requires a new
+Revision; count/positions, completed state, core-character terminal direction,
+and ending direction never change in place.
+
+Every chapter-planning call persists `story_novel_planner_snapshot.v1` before
+the provider request. The snapshot owns the current skeleton and arc goal,
+visible world projection, `state_before`, allowed effect handles, relevant
+source-hash-bound Event/Memory cards, due/open threads, recent summaries,
+previous tail, character/relationship/knowledge dossiers, scope topology,
+length/style contract, source manifest, budget decisions, and `snapshot_hash`.
+Future chapter titles, events, dates, end states, actions, and payoff prose are
+absent.
+
+The planning model returns `story_novel_chapter_intent.v1`: semantic beats,
+motivation/emotion/causal continuity, optional effect handles, a hook, and
+optional provisional-entity proposals. It never writes database IDs, evidence
+quotes, state `from` values, timeline literals, or authoritative deltas. The
+server maps local handles to frozen sources and compiles
+`story_novel_chapter_contract.v2` plus the only authoritative expected delta.
+Unknown, duplicated, or ambiguous handles fail before prose.
+
+The prose model receives only the current intent/contract, visible character
+introductions and relationships, current events and scene, authorized
+provisional entities, visible scope graph, previous tail, style, and length. It
+receives zero raw Event/Memory rows, future guard index, evidence rules,
+business IDs, or expected/state delta, and returns only body blocks.
+
+The audit model receives stable sentence IDs/Unicode offsets, opaque current
+contract handles, current visible state/rules, and only future claim cards
+matched by the body. It returns proof sentence IDs and unexpected/future/world
+issues; it cannot author IDs or state transitions. Time gates validate semantic
+ordering, duration, reachability, and explicit utterance requirements rather
+than demanding that a planning timestamp appear verbatim in prose.
+
+After a passing audit the server atomically applies the expected delta,
+materializes source-span-bound Events/Memories, commits body/ledger/hash chain,
+and promotes proved provisional entities into the Revision-local world. Failed
+chapters do not mutate current world state. Approval is the only boundary that
+promotes the valid Revision-local world into Story Canon.
+
+Hard gates are limited to snapshot/source/hash integrity, current required
+events, authorized state/knowledge/relationship/permission/ownership/location
+changes, direct world-rule contradictions, premature future outcomes, length,
+and parseability. Reader attraction, prose style, emotional intensity, romance
+density, growth speed, and map-expansion frequency are arc/full-book editorial
+signals and never per-chapter deterministic blockers.
 
 ## Chapter-planning quality pipeline v3
 

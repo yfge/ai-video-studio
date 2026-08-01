@@ -4,6 +4,7 @@ import type {
   NovelChapterLength,
   NovelChapterLengthOverrides,
   NovelGenerationLengthProfile,
+  StoryNovelV4PlanFields,
   StoryNovelModelPolicy,
 } from "./story-novel-planning.types";
 
@@ -119,8 +120,11 @@ export interface StoryNovelAdaptationPlan {
   applied_episode_ids?: number[];
 }
 
-export interface StoryNovelGenerationPlan {
-  schema?: "story_novel_generation_plan.v2" | "story_novel_generation_plan.v3";
+export interface StoryNovelGenerationPlan extends StoryNovelV4PlanFields {
+  schema?:
+    | "story_novel_generation_plan.v2"
+    | "story_novel_generation_plan.v3"
+    | "story_novel_generation_plan.v4";
   version?: number;
   status: "planning" | "ready" | "failed";
   phase?: "spec_ready" | "canon" | "chapters" | "ready";
@@ -146,7 +150,8 @@ export interface StoryNovelContinuityLedger {
   schema?:
     | "story_novel_continuity.v2"
     | "story_novel_continuity.v3"
-    | "story_novel_continuity.v4";
+    | "story_novel_continuity.v4"
+    | "story_novel_continuity.v5";
   state_status?: "empty" | "generating" | "ready" | "stale" | "failed";
   stale_from_position?: number;
   recovery_from_position?: number;

@@ -8,9 +8,8 @@ Create Date: 2026-05-07 22:18:00.000000
 
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision: str = "4c8f2e1d9a70"
 down_revision: Union[str, Sequence[str], None] = "3a9af7b70877"
@@ -31,19 +30,37 @@ def upgrade() -> None:
         sa.Column("virtual_ip_business_id", sa.String(length=32), nullable=True),
         sa.Column("environment_id", BIGINT_PK, nullable=False),
         sa.Column("environment_business_id", sa.String(length=32), nullable=True),
-        sa.Column("usage_type", sa.String(length=32), nullable=False, server_default="scene_pool"),
+        sa.Column(
+            "usage_type",
+            sa.String(length=32),
+            nullable=False,
+            server_default="scene_pool",
+        ),
         sa.Column("usage_note", sa.Text(), nullable=True),
         sa.Column("sort_order", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("is_default", sa.Boolean(), nullable=False, server_default=sa.text("0")),
-        sa.Column("is_deleted", sa.Boolean(), nullable=False, server_default=sa.text("0")),
+        sa.Column(
+            "is_default", sa.Boolean(), nullable=False, server_default=sa.text("0")
+        ),
+        sa.Column(
+            "is_deleted", sa.Boolean(), nullable=False, server_default=sa.text("0")
+        ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("deleted_by", sa.Integer(), nullable=True),
         sa.Column("deleted_reason", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
+        ),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
-        sa.ForeignKeyConstraint(["environment_id"], ["environments.id"], ondelete="RESTRICT"),
+        sa.ForeignKeyConstraint(
+            ["environment_id"], ["environments.id"], ondelete="RESTRICT"
+        ),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="SET NULL"),
-        sa.ForeignKeyConstraint(["virtual_ip_id"], ["virtual_ips.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["virtual_ip_id"], ["virtual_ips.id"], ondelete="CASCADE"
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(

@@ -1,3 +1,14 @@
+---
+id: 2026-07-24T22-29-00Z-story-novel-semantic-existing-effects
+date: "2026-07-24T22:29:00Z"
+participants: [user, codex]
+models: [gpt-5.6-sol]
+tags: [backend, story-novel, state, semantics]
+related_paths:
+  - ai-pic-backend/app/services/story/story_novel_plan_semantic_effects.py
+summary: Reconcile existing state effects with semantic chapter validation.
+---
+
 ## User Prompt
 
 继续通过真实系统 API + MySQL 完成 48 章长篇；任何质量门禁失败时停止付费，
@@ -25,7 +36,7 @@
 - Task 6644 / Invocation 1387 在最终复核中新造首轮未报告的
   `ev-ch17-1` knowledge grant，证明复核职责需要收窄。
 - `pytest tests/unit/test_story_novel_plan_semantic_audit.py
-  tests/unit/test_story_novel_plan_semantic_audit_movements.py -q --no-cov`：
+tests/unit/test_story_novel_plan_semantic_audit_movements.py -q --no-cov`：
   13 passed。
 - `pytest tests/unit/test_story_novel_*.py -q --no-cov`：409 passed，1 skipped。
 - 精确 `isort`、`black`、repo docs、repo contracts diff 与

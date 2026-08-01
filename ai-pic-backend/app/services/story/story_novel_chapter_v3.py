@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from .story_novel_block_contract import assemble_prose_blocks
 from .story_novel_chapter_package import generate_and_checkpoint_package
 from .story_novel_chapter_service import chapter_entry
+from .story_novel_continuity_watchpoints import watchpoint_evidence_ids
 from .story_novel_domain import active_chapters
 from .story_novel_incremental_plan import is_incremental_plan
 from .story_novel_prose_length_control import (
@@ -49,7 +50,14 @@ async def generate_or_resume_v3(
             service, revision, position, chapter_plan, entry, generate_text
         )
     else:
-        context = build_v3_planning_context(service, revision, position, chapter_plan)
+        priority_ids = watchpoint_evidence_ids(entry.get("chapter_brief"))
+        context = build_v3_planning_context(
+            service,
+            revision,
+            position,
+            chapter_plan,
+            **({"priority_evidence_ids": priority_ids} if priority_ids else {}),
+        )
         brief, entry = await _brief_for(
             service, revision, task, chapter_plan, context, entry, generate_text, force
         )

@@ -25,6 +25,8 @@ def build_length_plan(
     version: int = 4,
 ) -> dict:
     outline, chapters, positions = _confirmed_outline(story)
+    if request.model_policy is not None:
+        _require_v4_seed_contract(story, outline)
     profile = _resolve_profile(request.length_profile_id, request.custom_length_profile)
     overrides = _normalize_overrides(request.chapter_length_overrides, positions)
     planned = _apply_ranges(chapters, profile, overrides)
@@ -63,6 +65,38 @@ def build_length_plan(
         )
     plan["plan_hash"] = generation_plan_hash(plan)
     return plan
+
+
+def _require_v4_seed_contract(story, outline: dict) -> None:
+    required = (
+        "progression_arcs",
+        "core_character_routes",
+        "scope_taxonomy",
+        "initial_scope_nodes",
+    )
+    valid_versions = (
+        int(outline.get("planning_structure_version") or 0) == 1
+        and int(outline.get("roadmap_version") or 0) == 1
+    )
+    if not valid_versions or any(not outline.get(key) for key in required):
+        raise HTTPException(
+            status_code=409,
+            detail="v4 小说版本需要完整的分卷 Roadmap、核心人物路线与初始世界范围",
+        )
+    protagonists = {
+        str(item.get("virtual_ip_business_id") or "")
+        for item in (story.story_seed or {}).get("protagonists") or []
+    }
+    routed = {
+        str(item.get("character_ref") or "")
+        for item in outline.get("core_character_routes") or []
+    }
+    missing = sorted(item for item in protagonists - routed if item)
+    if not protagonists or missing:
+        raise HTTPException(
+            status_code=409,
+            detail=f"v4 核心人物路线未覆盖 StorySeed 主角: {missing}",
+        )
 
 
 def apply_length_spec(revision, request) -> dict:

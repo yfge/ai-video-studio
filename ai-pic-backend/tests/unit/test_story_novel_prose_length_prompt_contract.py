@@ -40,7 +40,9 @@ def test_v5_model_contract_may_undershoot_acceptance_to_cancel_provider_bias(
         lambda *_args: [_sample(1, 3900), _sample(2, 4000), _sample(3, 4100)],
     )
 
-    control = build_length_control(object(), _revision(), 4, _prose_input())
+    control = build_length_control(
+        object(), _revision(), 4, _prose_input(), prompt_contract_version=5
+    )
 
     assert control["acceptance_length"] == {
         "min_chars": 2000,
@@ -53,6 +55,28 @@ def test_v5_model_contract_may_undershoot_acceptance_to_cancel_provider_bias(
         "target_chars": 1562,
         "max_chars": 1718,
     }
+
+
+def test_v6_model_contract_never_undershoots_acceptance(monkeypatch):
+    monkeypatch.setattr(
+        length_control,
+        "length_observations",
+        lambda *_args: [_sample(1, 3900), _sample(2, 4000), _sample(3, 4100)],
+    )
+
+    control = build_length_control(object(), _revision(), 4, _prose_input())
+
+    assert control["request_scale"] == 1.0
+    assert (
+        control["requested_length"]
+        == control["acceptance_length"]
+        == {
+            "min_chars": 2000,
+            "target_chars": 2500,
+            "max_chars": 3000,
+        }
+    )
+    assert sum(item["target_chars"] for item in control["requested_blocks"]) == 2500
 
 
 def test_v1_persisted_prompt_evidence_remains_replayable(monkeypatch):

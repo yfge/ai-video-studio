@@ -5,6 +5,7 @@ import type {
   StoryNovelGenerationStage,
   StoryNovelRevision,
 } from "@/utils/api/types";
+import { StoryNovelV4SnapshotStatus } from "./StoryNovelV4SnapshotStatus";
 
 const LEGACY_STAGE_MAP: Record<string, StoryNovelGenerationStage> = {
   planning: "chapter_planning",
@@ -197,6 +198,7 @@ export function StoryNovelGenerationStatus({
           </div>
         </details>
       ) : null}
+      <StoryNovelV4SnapshotStatus revision={revision} />
     </div>
   );
 }

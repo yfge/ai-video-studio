@@ -69,6 +69,11 @@ def window_payload(revision, chapters: list, ledger_rows: dict | None = None) ->
                         "state_before_hash",
                         "state_after_hash",
                         "future_audit",
+                        "planner_snapshot_hash",
+                        "arc_planner_snapshot_hash",
+                        "chapter_intent_hash",
+                        "chapter_contract_hash",
+                        "model_call_snapshots",
                     }
                 },
             }

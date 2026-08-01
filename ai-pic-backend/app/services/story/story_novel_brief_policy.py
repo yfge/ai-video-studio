@@ -15,4 +15,4 @@ def expected_beat_count(target_chars: int, policy_version: str | None = None) ->
         return max(6, min(12, math.ceil(target_chars / 450)))
     if policy_version not in {None, BRIEF_POLICY_VERSION}:
         raise ValueError("chapter brief policy version 无效")
-    return max(4, min(6, math.ceil(target_chars / 650)))
+    return max(6, min(12, math.ceil(target_chars / 450)))

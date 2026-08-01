@@ -20,7 +20,9 @@ def test_frozen_prior_revision_samples_avoid_new_revision_cold_start():
     ]
 
     activate_length_control(revision, 1, baseline_samples=samples)
-    control = length_control.build_length_control(object(), revision, 1, _prose_input())
+    control = length_control.build_length_control(
+        object(), revision, 1, _prose_input(), prompt_contract_version=5
+    )
 
     assert control["sample_source"] == "controlled"
     assert control["sample_count"] == 3

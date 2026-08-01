@@ -14,7 +14,7 @@ from app.services.story.story_novel_length_service import (
     build_length_plan,
     generation_plan_hash,
 )
-from app.services.story.story_novel_plan_versions import is_v3_plan
+from app.services.story.story_novel_plan_versions import is_v4_plan
 from app.services.story.story_novel_revision_factory import create_platform_revision
 from app.services.story.story_novel_v3_prompts import prose_blocks_prompt
 from fastapi import HTTPException
@@ -24,9 +24,36 @@ from pydantic import ValidationError
 def _story():
     seed = {
         "schema": "story_seed_v2",
+        "protagonists": [
+            {"virtual_ip_business_id": "char-main", "initial_state": "开始追查"}
+        ],
         "structured_outline": {
             "status": "confirmed",
             "version": 3,
+            "roadmap_version": 1,
+            "planning_structure_version": 1,
+            "core_character_routes": [
+                {
+                    "character_ref": "char-main",
+                    "narrative_function": "主角",
+                    "planned_arc_id": "arc-1",
+                }
+            ],
+            "scope_taxonomy": [{"type_id": "zone", "display_name": "活动范围"}],
+            "initial_scope_nodes": [
+                {
+                    "scope_id": "scope-home",
+                    "scope_type": "zone",
+                    "display_name": "起点",
+                }
+            ],
+            "progression_arcs": [
+                {
+                    "arc_id": "arc-1",
+                    "start_position": 1,
+                    "end_position": 1,
+                }
+            ],
             "chapters": [
                 {
                     "position": 1,
@@ -81,7 +108,7 @@ def _update(plan, **values):
     )
 
 
-def test_explicit_policy_creates_v3_plan_and_hashes_all_three_models():
+def test_explicit_policy_creates_v4_plan_and_hashes_all_three_models():
     request = _request(
         model_policy=NovelModelPolicy(
             planning_model="deepseek:deepseek-v4-pro",
@@ -91,7 +118,7 @@ def test_explicit_policy_creates_v3_plan_and_hashes_all_three_models():
     )
     plan = build_length_plan(_story(), request)
 
-    assert is_v3_plan(plan)
+    assert is_v4_plan(plan)
     assert plan["model"] == "deepseek:deepseek-v4-flash"
     assert plan["model_policy"] == request.model_policy.model_dump()
     changed = {**plan, "model_policy": {**plan["model_policy"], "audit_model": "x"}}
@@ -161,7 +188,7 @@ def test_policy_update_mirrors_prose_and_is_frozen_after_task_or_chapter():
             apply_length_spec(frozen, update)
 
 
-def test_factory_persists_v3_policy_and_prose_mirror(monkeypatch):
+def test_factory_persists_v4_policy_and_prose_mirror(monkeypatch):
     added = []
     service = SimpleNamespace(
         user=SimpleNamespace(id=9),
@@ -185,7 +212,7 @@ def test_factory_persists_v3_policy_and_prose_mirror(monkeypatch):
     assert added == [revision]
     assert revision.model == "deepseek:prose"
     assert revision.generation_plan["model_policy"]["audit_model"] == "deepseek:audit"
-    assert revision.continuity_ledger["schema"] == "story_novel_continuity.v4"
+    assert revision.continuity_ledger["schema"] == "story_novel_continuity.v5"
 
 
 def test_deepseek_v4_planning_reserves_reasoning_transport_headroom(monkeypatch):

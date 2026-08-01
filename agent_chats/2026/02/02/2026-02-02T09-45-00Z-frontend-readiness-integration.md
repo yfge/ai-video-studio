@@ -1,6 +1,6 @@
 ---
 id: 2026-02-02T09-45-00Z-frontend-readiness-integration
-date: 2026-02-02T09:45:00Z
+date: "2026-02-02T09:45:00Z"
 participants: [human, claude-opus-4-5]
 models: [claude-opus-4-5-20251101]
 tags: [frontend, readiness-check, quick-fix, episode-generation]
@@ -34,22 +34,22 @@ Continue from previous conversation - integrate the readiness check and quick-fi
 
 ### New Files Created
 
-| File | Lines | Purpose |
-|------|-------|---------|
-| `src/components/features/story-detail/StoryReadinessPanel.tsx` | ~170 | Displays readiness check results with severity badges, quick-fix preview/apply |
-| `src/hooks/useStoryReadiness.ts` | ~90 | Hook for readiness check and quick-fix state management |
+| File                                                           | Lines | Purpose                                                                        |
+| -------------------------------------------------------------- | ----- | ------------------------------------------------------------------------------ |
+| `src/components/features/story-detail/StoryReadinessPanel.tsx` | ~170  | Displays readiness check results with severity badges, quick-fix preview/apply |
+| `src/hooks/useStoryReadiness.ts`                               | ~90   | Hook for readiness check and quick-fix state management                        |
 
 ### Modified Files
 
-| File | Change |
-|------|--------|
-| `src/utils/api/types/story.types.ts` | Added ReadinessCheck, ReadinessResult, QuickFix* types |
-| `src/utils/api/endpoints/story.endpoints.ts` | Added checkStoryReadiness, checkEpisodeReadiness, quickFixStory functions |
+| File                                                            | Change                                                                          |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `src/utils/api/types/story.types.ts`                            | Added ReadinessCheck, ReadinessResult, QuickFix\* types                         |
+| `src/utils/api/endpoints/story.endpoints.ts`                    | Added checkStoryReadiness, checkEpisodeReadiness, quickFixStory functions       |
 | `src/components/features/story-detail/EpisodeGeneratePanel.tsx` | Added canGenerate prop, readinessPanel slot, disabled state for generate button |
-| `src/components/features/story-detail/index.ts` | Export StoryReadinessPanel |
-| `src/components/features/index.ts` | Export StoryReadinessPanel |
-| `src/hooks/useStoryDetail.ts` | Integrated useStoryReadiness hook, auto-check on panel open |
-| `src/app/stories/[id]/page.tsx` | Added readiness state variables, passed to EpisodeGeneratePanel |
+| `src/components/features/story-detail/index.ts`                 | Export StoryReadinessPanel                                                      |
+| `src/components/features/index.ts`                              | Export StoryReadinessPanel                                                      |
+| `src/hooks/useStoryDetail.ts`                                   | Integrated useStoryReadiness hook, auto-check on panel open                     |
+| `src/app/stories/[id]/page.tsx`                                 | Added readiness state variables, passed to EpisodeGeneratePanel                 |
 
 ### API Endpoints Used
 
@@ -71,12 +71,14 @@ POST /api/v1/stories/{story_id}/quick-fix        - Auto-fix missing fields
 ## Validation
 
 ### Frontend Lint
+
 ```bash
 cd ai-pic-frontend && npm run lint
 # 0 errors, 7 pre-existing warnings
 ```
 
 ### Backend Tests
+
 ```bash
 cd ai-pic-backend && pytest tests/unit/services/readiness/ tests/integration/test_readiness_api.py -v
 # 58 passed

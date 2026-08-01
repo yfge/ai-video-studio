@@ -68,9 +68,7 @@ async def generate_prompts_for_scene(
     return {}
 
 
-def _parse_batch(
-    data: Any, expected_indexes: set
-) -> Dict[int, Dict[str, str]]:
+def _parse_batch(data: Any, expected_indexes: set) -> Dict[int, Dict[str, str]]:
     content = data if isinstance(data, str) else str(data)
     normalized = extract_json_block(content)
     if not normalized:

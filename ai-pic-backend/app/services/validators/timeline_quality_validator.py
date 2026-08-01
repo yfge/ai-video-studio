@@ -108,7 +108,9 @@ class TimelineQualityResult:
         return {
             "passed": self.passed,
             "issues": [issue.to_dict() for issue in self.issues],
-            "emotion_curve": self.emotion_curve.to_dict() if self.emotion_curve else None,
+            "emotion_curve": (
+                self.emotion_curve.to_dict() if self.emotion_curve else None
+            ),
             "average_wps": round(self.average_wps, 2),
             "detected_language": self.detected_language,
             "total_duration_ms": self.total_duration_ms,
@@ -131,16 +133,43 @@ class TimelineQualityValidator:
     # Emotion intensity keywords (Chinese)
     EMOTION_KEYWORDS = {
         "high_intensity": [
-            "震惊", "愤怒", "恐惧", "绝望", "狂喜", "爆发", "崩溃",
-            "激动", "紧张", "危机", "高潮", "对决", "冲突",
+            "震惊",
+            "愤怒",
+            "恐惧",
+            "绝望",
+            "狂喜",
+            "爆发",
+            "崩溃",
+            "激动",
+            "紧张",
+            "危机",
+            "高潮",
+            "对决",
+            "冲突",
         ],
         "medium_intensity": [
-            "焦虑", "担忧", "疑惑", "期待", "好奇", "惊讶",
-            "兴奋", "不安", "紧迫", "悬念",
+            "焦虑",
+            "担忧",
+            "疑惑",
+            "期待",
+            "好奇",
+            "惊讶",
+            "兴奋",
+            "不安",
+            "紧迫",
+            "悬念",
         ],
         "low_intensity": [
-            "平静", "冷静", "沉默", "思考", "淡然", "轻松",
-            "温馨", "舒缓", "宁静", "放松",
+            "平静",
+            "冷静",
+            "沉默",
+            "思考",
+            "淡然",
+            "轻松",
+            "温馨",
+            "舒缓",
+            "宁静",
+            "放松",
         ],
     }
 
@@ -204,9 +233,7 @@ class TimelineQualityValidator:
         result.average_wps = self._calculate_average_wps(
             beats, result.detected_language
         )
-        wps_issues = self._check_rhythm(
-            result.average_wps, result.detected_language
-        )
+        wps_issues = self._check_rhythm(result.average_wps, result.detected_language)
         result.issues.extend(wps_issues)
 
         # Analyze emotion curve
@@ -228,7 +255,8 @@ class TimelineQualityValidator:
 
         # Determine overall pass/fail
         error_count = sum(
-            1 for issue in result.issues
+            1
+            for issue in result.issues
             if issue.severity == TimelineQualitySeverity.ERROR
         )
         result.passed = error_count == 0
@@ -409,9 +437,7 @@ class TimelineQualityValidator:
 
         return analysis
 
-    def _calculate_emotion_intensity(
-        self, text: str, emotion_label: str
-    ) -> float:
+    def _calculate_emotion_intensity(self, text: str, emotion_label: str) -> float:
         """Calculate emotion intensity from text and label."""
         intensity = 0.0
 
@@ -536,9 +562,7 @@ class TimelineQualityValidator:
                     break
                 next_beat = beats[idx + look_ahead]
                 if next_beat.get("beat_type") == "pause":
-                    duration = (
-                        next_beat.get("end_ms", 0) - next_beat.get("start_ms", 0)
-                    )
+                    duration = next_beat.get("end_ms", 0) - next_beat.get("start_ms", 0)
                     if duration >= self.MIN_DRAMATIC_PAUSE_MS:
                         found_pause = True
                         break

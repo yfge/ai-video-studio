@@ -33,6 +33,9 @@ This directory holds design notes, API references, and testing guides. Keep this
   for roughly two-million-character serials, progressive Revision-local world
   expansion, soft growth/reader-appeal review, cancel/Resume proof, and a new
   48-chapter GPT-5.6 acceptance sample.
+- `docs/exec-plans/active/story-novel-frozen-snapshot-v4.md` — immutable
+  provider-call snapshots, current-arc planning, deterministic chapter
+  contracts, dynamic character/world scope graphs, and v4 real acceptance.
 - `docs/exec-plans/active/narrative-world-character-agents.md` — optional
   character-agent scene rehearsal with isolated perspective packets, central
   world resolution, unified narration, A/B decision gate, Resume evidence, and

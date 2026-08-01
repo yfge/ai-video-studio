@@ -10,9 +10,7 @@ from app.core.database import SessionLocal
 from app.core.logging import get_logger
 from app.repositories.llm_invocation_repository import LLMInvocationRepository
 from app.services.llm_invocation_payload import json_safe as _json_safe
-from app.services.llm_invocation_payload import (
-    normalize_token_usage,
-)
+from app.services.llm_invocation_payload import normalize_token_usage
 from app.services.llm_invocation_payload import serialize_text as _serialize_text
 
 logger = get_logger(__name__)

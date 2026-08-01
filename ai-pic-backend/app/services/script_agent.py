@@ -5,11 +5,11 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from app.core.logging import get_logger
+from app.core.validators.character_registry import normalize_generic_role
 from app.core.validators.script_dialogue_quality import (
     find_reused_short_dialogues,
     validate_scene_dialogues,
 )
-from app.core.validators.character_registry import normalize_generic_role
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
 from app.repositories.script_lookup_repository import (

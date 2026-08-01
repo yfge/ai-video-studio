@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import anyio
-
 from app.core.celery_app import celery_app
 from app.core.database import get_task_db
 from app.services.storyboard.grid_storyboard_sheet_processor import (

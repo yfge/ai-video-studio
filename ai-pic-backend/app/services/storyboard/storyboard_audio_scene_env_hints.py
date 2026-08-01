@@ -52,7 +52,9 @@ def load_scene_environment_hints(
             scene_number_int = 0
 
         env = getattr(scene, "environment", None)
-        env_url = pick_first_url(getattr(env, "reference_images", None) if env else None)
+        env_url = pick_first_url(
+            getattr(env, "reference_images", None) if env else None
+        )
         env_name = str(getattr(env, "name", "") or "").strip() if env else ""
 
         location = str(getattr(scene, "location", "") or "").strip()
@@ -68,4 +70,3 @@ def load_scene_environment_hints(
             by_number.setdefault(scene_number_int, (env_url, env_hint))
 
     return by_id, by_number
-

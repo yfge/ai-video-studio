@@ -12,7 +12,7 @@ from .story_novel_plan_checkpoint import (
     frozen_generation_spec,
     reusable_generation_plan,
 )
-from .story_novel_plan_versions import is_v3_plan
+from .story_novel_plan_versions import is_v3_plan, is_v4_plan
 from .story_novel_planning_phases import (
     checkpoint_canon,
     compile_canon,
@@ -55,6 +55,10 @@ def canon_planning_contract(snapshot: dict) -> dict:
                 "requested_chapter_count",
                 "planning_model",
                 "planning_structure_version",
+                "core_character_routes",
+                "scope_taxonomy",
+                "initial_scope_nodes",
+                "initial_scope_edges",
                 "progression_arcs",
             )
         }
@@ -96,7 +100,7 @@ async def ensure_generation_plan(
         current.get("canon") if resumed else None,
     )
     checkpoint_canon(service, revision, task, canon, timeline_filter)
-    if frozen_spec is not None and is_v3_plan(frozen_spec):
+    if frozen_spec is not None and (is_v3_plan(frozen_spec) or is_v4_plan(frozen_spec)):
         return await prepare_incremental_plan(
             service, revision, task, generate_text, frozen_spec, canon
         )

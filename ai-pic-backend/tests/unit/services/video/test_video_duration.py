@@ -1,5 +1,4 @@
 import pytest
-
 from app.services.providers.google_provider.video_helpers import resolve_duration
 from app.services.video.video_duration import resolve_duration_ceil
 from app.services.video.video_task_utils import coerce_duration
@@ -35,4 +34,3 @@ def test_google_resolve_duration_uses_ceil_strategy() -> None:
 @pytest.mark.unit
 def test_video_task_utils_coerce_duration_uses_ceil() -> None:
     assert coerce_duration(4.1) == 5
-

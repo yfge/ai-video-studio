@@ -1,7 +1,6 @@
 """Tests for FrameIntegrityValidator."""
 
 import pytest
-
 from app.services.storyboard.pipeline.pipeline_context import PipelineContext
 from app.services.storyboard.pipeline.pipeline_state import (
     PipelineState,
@@ -85,7 +84,9 @@ class TestNoFramesValidation:
 class TestRequiredFieldsValidation:
     """Test required fields validation."""
 
-    def test_all_required_fields_pass(self, validator, state_with_valid_frames, empty_context):
+    def test_all_required_fields_pass(
+        self, validator, state_with_valid_frames, empty_context
+    ):
         """Test validation passes when all required fields present."""
         results = validator.validate(state_with_valid_frames, empty_context)
         required_results = [r for r in results if "required" in r.message.lower()]
@@ -122,7 +123,11 @@ class TestRequiredFieldsValidation:
         """Test empty description generates error."""
         state = PipelineState(script_id=1)
         state.frames = [
-            {"frame_id": "f1", "frame_number": 1, "description": "   "},  # Empty/whitespace
+            {
+                "frame_id": "f1",
+                "frame_number": 1,
+                "description": "   ",
+            },  # Empty/whitespace
         ]
 
         results = validator.validate(state, empty_context)
@@ -141,7 +146,9 @@ class TestUrlValidation:
         url_results = [r for r in results if "url" in r.message.lower()]
 
         # Valid URLs should pass
-        assert all(r.passed for r in url_results if r.severity != ValidationSeverity.INFO)
+        assert all(
+            r.passed for r in url_results if r.severity != ValidationSeverity.INFO
+        )
 
     def test_invalid_url_warning(self, validator, empty_context):
         """Test invalid URL generates warning."""
@@ -155,7 +162,11 @@ class TestUrlValidation:
         ]
 
         results = validator.validate(state, empty_context)
-        url_results = [r for r in results if "url" in r.message.lower() and "invalid" in r.message.lower()]
+        url_results = [
+            r
+            for r in results
+            if "url" in r.message.lower() and "invalid" in r.message.lower()
+        ]
 
         assert len(url_results) > 0
         assert url_results[0].severity == ValidationSeverity.WARNING
@@ -172,7 +183,11 @@ class TestUrlValidation:
         ]
 
         results = validator.validate(state, empty_context)
-        url_results = [r for r in results if "invalid" in r.message.lower() and "url" in r.message.lower()]
+        url_results = [
+            r
+            for r in results
+            if "invalid" in r.message.lower() and "url" in r.message.lower()
+        ]
 
         # Data URL should be valid
         assert len(url_results) == 0
@@ -181,10 +196,16 @@ class TestUrlValidation:
 class TestFrameNumberingValidation:
     """Test frame numbering validation."""
 
-    def test_sequential_numbering_passes(self, validator, state_with_valid_frames, empty_context):
+    def test_sequential_numbering_passes(
+        self, validator, state_with_valid_frames, empty_context
+    ):
         """Test sequential numbering passes."""
         results = validator.validate(state_with_valid_frames, empty_context)
-        numbering_results = [r for r in results if "numbering" in r.message.lower() or "sequential" in r.message.lower()]
+        numbering_results = [
+            r
+            for r in results
+            if "numbering" in r.message.lower() or "sequential" in r.message.lower()
+        ]
 
         assert any(r.passed for r in numbering_results)
 
@@ -193,7 +214,11 @@ class TestFrameNumberingValidation:
         state = PipelineState(script_id=1)
         state.frames = [
             {"frame_id": "f1", "frame_number": 1, "description": "Test 1"},
-            {"frame_id": "f1", "frame_number": 2, "description": "Test 2"},  # Duplicate ID
+            {
+                "frame_id": "f1",
+                "frame_number": 2,
+                "description": "Test 2",
+            },  # Duplicate ID
         ]
 
         results = validator.validate(state, empty_context)
@@ -212,7 +237,11 @@ class TestFrameNumberingValidation:
         ]
 
         results = validator.validate(state, empty_context)
-        numbering_results = [r for r in results if "sequential" in r.message.lower() or "numbering" in r.message.lower()]
+        numbering_results = [
+            r
+            for r in results
+            if "sequential" in r.message.lower() or "numbering" in r.message.lower()
+        ]
 
         # Should have warning about non-sequential
         assert any(r.severity == ValidationSeverity.WARNING for r in numbering_results)
@@ -221,12 +250,18 @@ class TestFrameNumberingValidation:
 class TestFramesPerSceneValidation:
     """Test minimum frames per scene validation."""
 
-    def test_sufficient_frames_pass(self, validator, state_with_valid_frames, empty_context):
+    def test_sufficient_frames_pass(
+        self, validator, state_with_valid_frames, empty_context
+    ):
         """Test sufficient frames per scene passes."""
         results = validator.validate(
             state_with_valid_frames, empty_context, min_frames_per_scene=1
         )
-        scene_results = [r for r in results if "scene" in r.message.lower() and "frame" in r.message.lower()]
+        scene_results = [
+            r
+            for r in results
+            if "scene" in r.message.lower() and "frame" in r.message.lower()
+        ]
 
         assert any(r.passed for r in scene_results)
 
@@ -234,11 +269,20 @@ class TestFramesPerSceneValidation:
         """Test insufficient frames per scene generates warning."""
         state = PipelineState(script_id=1)
         state.frames = [
-            {"frame_id": "f1", "frame_number": 1, "scene_number": 1, "description": "Test"},
+            {
+                "frame_id": "f1",
+                "frame_number": 1,
+                "scene_number": 1,
+                "description": "Test",
+            },
         ]
 
         results = validator.validate(state, empty_context, min_frames_per_scene=3)
-        insufficient_results = [r for r in results if "fewer" in r.message.lower() or "insufficient" in r.message.lower()]
+        insufficient_results = [
+            r
+            for r in results
+            if "fewer" in r.message.lower() or "insufficient" in r.message.lower()
+        ]
 
         assert len(insufficient_results) > 0
         assert insufficient_results[0].severity == ValidationSeverity.WARNING

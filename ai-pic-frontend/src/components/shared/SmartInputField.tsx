@@ -67,28 +67,31 @@ export default function SmartInputField({
     }
   };
 
-  const field = type === "textarea" ? (
-    <textarea
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      className={operatorTextareaClass("w-full")}
-      rows={rows}
-      placeholder={placeholder}
-    />
-  ) : (
-    <input
-      type="text"
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      className={operatorInputClass("w-full")}
-      placeholder={placeholder}
-    />
-  );
+  const field =
+    type === "textarea" ? (
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className={operatorTextareaClass("w-full")}
+        rows={rows}
+        placeholder={placeholder}
+      />
+    ) : (
+      <input
+        type="text"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className={operatorInputClass("w-full")}
+        placeholder={placeholder}
+      />
+    );
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-3">
-        <label className="block text-sm font-medium text-gray-700">{label}</label>
+        <label className="block text-sm font-medium text-gray-700">
+          {label}
+        </label>
         {showAIAssist && aiSuggestType && contextData?.name ? (
           <button
             type="button"

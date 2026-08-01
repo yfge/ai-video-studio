@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.services.validators.scene_transition_validator import (
     SceneInfo,
     SceneTransitionValidator,
@@ -88,14 +87,18 @@ class TestSceneTransitionValidator:
         assert validator._extract_city("某个小镇") is None
         assert validator._extract_city(None) is None
 
-    def test_check_time_transition_valid(self, validator: SceneTransitionValidator) -> None:
+    def test_check_time_transition_valid(
+        self, validator: SceneTransitionValidator
+    ) -> None:
         """Test valid time transitions."""
         from_scene = SceneInfo(scene_number=1, time_of_day="早上")
         to_scene = SceneInfo(scene_number=2, time_of_day="中午")
         issue = validator._check_time_transition(from_scene, to_scene)
         assert issue is None
 
-    def test_check_time_transition_invalid(self, validator: SceneTransitionValidator) -> None:
+    def test_check_time_transition_invalid(
+        self, validator: SceneTransitionValidator
+    ) -> None:
         """Test invalid time transition (afternoon to morning)."""
         from_scene = SceneInfo(scene_number=1, time_of_day="下午")
         to_scene = SceneInfo(scene_number=2, time_of_day="早上")
@@ -129,9 +132,7 @@ class TestSceneTransitionValidator:
         from_scene = SceneInfo(
             scene_number=1, location="北京市朝阳区", time_of_day="早上"
         )
-        to_scene = SceneInfo(
-            scene_number=2, location="上海市浦东", time_of_day="早上"
-        )
+        to_scene = SceneInfo(scene_number=2, location="上海市浦东", time_of_day="早上")
         issue = validator._check_geographic_transition(from_scene, to_scene)
         assert issue is not None
         assert issue.issue_type == TransitionIssueType.GEOGRAPHIC_IMPOSSIBILITY
@@ -144,9 +145,7 @@ class TestSceneTransitionValidator:
         from_scene = SceneInfo(
             scene_number=1, location="北京市朝阳区", time_of_day="早上"
         )
-        to_scene = SceneInfo(
-            scene_number=2, location="上海市浦东", time_of_day="傍晚"
-        )
+        to_scene = SceneInfo(scene_number=2, location="上海市浦东", time_of_day="傍晚")
         issue = validator._check_geographic_transition(from_scene, to_scene)
         # With enough time difference, it should be OK (5 hours Beijing to Shanghai)
         assert issue is None
@@ -230,7 +229,9 @@ class TestSceneTransitionValidator:
         ]
         issues = validator.validate_transitions(scenes)
         assert len(issues) > 0
-        assert any(i.issue_type == TransitionIssueType.TIME_DISCONTINUITY for i in issues)
+        assert any(
+            i.issue_type == TransitionIssueType.TIME_DISCONTINUITY for i in issues
+        )
 
     def test_validate_transitions_geographic_issue(
         self, validator: SceneTransitionValidator

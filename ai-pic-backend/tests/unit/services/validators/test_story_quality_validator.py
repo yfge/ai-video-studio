@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.services.validators.story_quality_validator import (
     PacingAnalysis,
     StoryQualityIssue,
@@ -108,9 +107,7 @@ class TestStoryQualityValidator:
         assert not analysis.is_balanced
         assert "第二幕" in analysis.imbalance_details
 
-    def test_analyze_pacing_good(
-        self, validator: StoryQualityValidator
-    ) -> None:
+    def test_analyze_pacing_good(self, validator: StoryQualityValidator) -> None:
         """Test pacing analysis with good pacing."""
         story = {
             "summary": "突然发现一个神秘的危机正在逼近",
@@ -135,9 +132,7 @@ class TestStoryQualityValidator:
         score = validator._evaluate_hook_quality(story, None)
         assert score > 0.5
 
-    def test_evaluate_hook_quality_weak(
-        self, validator: StoryQualityValidator
-    ) -> None:
+    def test_evaluate_hook_quality_weak(self, validator: StoryQualityValidator) -> None:
         """Test hook evaluation with weak hook."""
         story = {
             "opening": "这是一个平静的日常生活故事",
@@ -230,14 +225,10 @@ class TestStoryQualityValidator:
         story = {
             "summary": "一个关于魔法的故事",
         }
-        passed, issues = validator._check_content_restrictions(
-            story, ["魔法", "巫术"]
-        )
+        passed, issues = validator._check_content_restrictions(story, ["魔法", "巫术"])
         assert len(issues) > 0
 
-    def test_validate_full_story_good(
-        self, validator: StoryQualityValidator
-    ) -> None:
+    def test_validate_full_story_good(self, validator: StoryQualityValidator) -> None:
         """Test full validation with good story."""
         story = {
             "summary": "突然发现神秘危机，紧张冲突不断",
@@ -254,9 +245,7 @@ class TestStoryQualityValidator:
         assert result.three_act_analysis is not None
         assert result.pacing_analysis is not None
 
-    def test_validate_full_story_issues(
-        self, validator: StoryQualityValidator
-    ) -> None:
+    def test_validate_full_story_issues(self, validator: StoryQualityValidator) -> None:
         """Test full validation with story that has issues."""
         story = {
             "summary": "普通的日常生活故事",
@@ -270,9 +259,7 @@ class TestStoryQualityValidator:
         # Should have issues but not necessarily fail
         assert len(result.issues) > 0
 
-    def test_score_text_engagement(
-        self, validator: StoryQualityValidator
-    ) -> None:
+    def test_score_text_engagement(self, validator: StoryQualityValidator) -> None:
         """Test text engagement scoring."""
         high_engagement = "突然发现神秘的危机，震惊了所有人"
         low_engagement = "普通的日常生活"
@@ -282,18 +269,14 @@ class TestStoryQualityValidator:
 
         assert high_score > low_score
 
-    def test_count_keyword_density(
-        self, validator: StoryQualityValidator
-    ) -> None:
+    def test_count_keyword_density(self, validator: StoryQualityValidator) -> None:
         """Test keyword density counting."""
         text = "紧张的冲突不断升级，压力越来越大"
         keywords = ["紧张", "冲突", "压力", "升级"]
         density = validator._count_keyword_density(text, keywords)
         assert density > 0
 
-    def test_get_pacing_suggestions(
-        self, validator: StoryQualityValidator
-    ) -> None:
+    def test_get_pacing_suggestions(self, validator: StoryQualityValidator) -> None:
         """Test pacing suggestion generation."""
         poor_pacing = PacingAnalysis(
             opening_score=0.3,

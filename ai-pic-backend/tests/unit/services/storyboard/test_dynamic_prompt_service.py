@@ -22,8 +22,6 @@ def enable_feature(monkeypatch):
     monkeypatch.setattr(settings, "STORYBOARD_DYNAMIC_PROMPT_ENABLED", True)
 
 
-
-
 def test_disabled_feature_returns_empty(monkeypatch):
     monkeypatch.setattr(settings, "STORYBOARD_DYNAMIC_PROMPT_ENABLED", False)
     result = build_dynamic_prompt_bundles(
@@ -104,7 +102,9 @@ def test_bad_json_retries_once_then_falls_back(monkeypatch):
 
         async def generate_text(self, **kwargs):
             self.calls += 1
-            return SimpleNamespace(success=True, data="not json at all {", provider="f", model="m")
+            return SimpleNamespace(
+                success=True, data="not json at all {", provider="f", model="m"
+            )
 
     manager = BadManager()
     result = build_dynamic_prompt_bundles(

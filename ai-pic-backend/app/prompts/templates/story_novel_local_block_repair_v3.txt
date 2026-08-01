@@ -13,8 +13,12 @@
 只可返回 failed_block_ids 中的 block；其他 block 不得重写、摘要或复制。
 current_contract_requirements.proof_contracts 是本次返修唯一必须兑现的效果合同；
 current_chapter_context.events 只包含这些可编辑 blocks 已绑定的当前事件，不得扩写其他事件；
-scene_participants 是当前章已授权的非状态称谓，只能在事件原文明示它时参与。
-events[].execution.actor_ids 之外的人物不得自行赶来或协助，返修不得遗漏原事件明示的参与者。
+scene_participants 是当前章已授权的非状态称谓；事件原文明示的匿名群体或职能角色也可作为
+transient 参与者出现，但不得因此注册为长期人物。actor_ids、scene_participants 和事件原文之外的
+人物不得自行赶来或协助。返修必须让事件原文明示的每个参与者、群体、动作和结果实际发生，
+不得把应当参与或留痕的人改写为只旁观、未参与、未留名或没有到场。
+unexpected_claim 的 sentence_ids/spans 是未满足当前事件的失败位置；须在同一 block 内正面修复，
+不能只换说法、增加否定句，或删除事件要求来规避审计。
 typed_execution_boundary 是穷尽的当前章硬合同，优先于自由文本；空的状态或地点变化列表表示不得新增
 该类变化，unchanged_location_subject_ids 不得在返修后离开或到达其他地点，start/progress 不得升级为完成。
 neighbor_blocks 中 editable=false 的前后块只用于校对因果、时间、地点和语气衔接；

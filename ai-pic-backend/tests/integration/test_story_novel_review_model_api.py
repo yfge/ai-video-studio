@@ -1,9 +1,8 @@
 import json
 
-from sqlalchemy import select
-
 from app.models.story_novel_export import StoryNovelExport
 from app.models.task import Task
+from sqlalchemy import select
 from tests.integration.story_novel_process_support import persist_confirmed_seed
 from tests.integration.story_novel_process_support import process_api as process_api
 

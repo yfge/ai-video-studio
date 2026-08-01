@@ -1,7 +1,6 @@
 import json
 
 import anyio
-
 from app.services.story import story_novel_planning_invocations
 from app.services.story.story_novel_brief_policy import expected_beat_count
 from app.services.story.story_novel_canon_milestone_filter import (

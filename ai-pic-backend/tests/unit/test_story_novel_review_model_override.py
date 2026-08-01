@@ -3,8 +3,6 @@ from types import SimpleNamespace
 
 import anyio
 import pytest
-from pydantic import ValidationError
-
 from app.models.llm_invocation import LLMInvocation
 from app.schemas.story_novel_export import StoryNovelContinuityCheckRequest
 from app.services.story import story_novel_task_generation as generation
@@ -13,6 +11,7 @@ from app.services.story.story_novel_continuity_budget import (
 )
 from app.services.story.story_novel_continuity_review import compile_report
 from app.services.story.story_novel_v3_approval import require_v3_quality
+from pydantic import ValidationError
 from tests.unit.test_story_novel_v3_approval import _ready_v3
 
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.services.narrative_context import extract_story_characters
 
 

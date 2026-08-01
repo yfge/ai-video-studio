@@ -48,8 +48,8 @@ summary: Keep chapter movement inside the current contract without invalidating 
 - 真实 Task 6631：provider 前因 Ch2 context hash 漂移失败，0 次新模型调用、
   Ch1–Ch6 正文 hash 全部未变；据此撤回会改变历史 context hash 的方案。
 - `pytest tests/unit/test_story_novel_future_outline_isolation.py
-  tests/unit/test_story_novel_chapter_contract.py
-  tests/unit/test_story_novel_future_repair_policy.py -q --no-cov`
+tests/unit/test_story_novel_chapter_contract.py
+tests/unit/test_story_novel_future_repair_policy.py -q --no-cov`
   -> 15 passed。
 - `pytest tests/unit/test_story_novel_*.py -q --no-cov`
   -> 377 passed, 1 skipped。

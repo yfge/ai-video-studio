@@ -57,16 +57,16 @@ export function buildShotPlanPromptLayerPatch(
 
   const supportViews = asRecord(spec.support_views);
   if (supportViews) {
-      const nextSupportViews = { ...supportViews };
-      delete nextSupportViews.storyboard_grid;
-      const clipStoryboards = asRecord(nextSupportViews.clip_storyboards);
-      if (clipStoryboards) {
-        const nextClipStoryboards = { ...clipStoryboards };
-        delete nextClipStoryboards[clipId];
-        nextSupportViews.clip_storyboards = nextClipStoryboards;
-      }
-      spec.support_views = nextSupportViews;
+    const nextSupportViews = { ...supportViews };
+    delete nextSupportViews.storyboard_grid;
+    const clipStoryboards = asRecord(nextSupportViews.clip_storyboards);
+    if (clipStoryboards) {
+      const nextClipStoryboards = { ...clipStoryboards };
+      delete nextClipStoryboards[clipId];
+      nextSupportViews.clip_storyboards = nextClipStoryboards;
     }
+    spec.support_views = nextSupportViews;
+  }
   return spec;
 }
 

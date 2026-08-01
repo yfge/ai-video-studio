@@ -13,8 +13,9 @@ from .story_novel_canon_service import (
 from .story_novel_length_service import generation_plan_hash
 from .story_novel_memory_context import mark_revision_ledger_stale
 from .story_novel_plan_checkpoint import validated_canon_checkpoint
-from .story_novel_plan_versions import is_state_gated_plan, is_v3_plan
+from .story_novel_plan_versions import is_state_gated_plan, is_v3_plan, is_v4_plan
 from .story_novel_v3_plan import v3_plan_fields
+from .story_novel_v4_plan import v4_plan_fields
 
 
 def update_revision_canon(service, revision, request):
@@ -67,6 +68,12 @@ def update_revision_canon(service, revision, request):
         plan["error"] = None
     if is_v3_plan(plan):
         plan.update(v3_plan_fields(plan["schema"], after, plan.get("chapters") or []))
+    elif is_v4_plan(plan):
+        plan.update(
+            v4_plan_fields(
+                revision.story_snapshot or {}, after, plan.get("chapters") or []
+            )
+        )
     plan["plan_hash"] = generation_plan_hash(plan)
     revision.generation_plan = plan
     if stale_from is not None:

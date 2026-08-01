@@ -181,9 +181,7 @@ def test_create_script(test_db_session: Session):
         content="Test script content",
         format_type="screenplay",
         scenes=[{"scene_number": 1, "slug_line": "INT. ROOM - DAY", "summary": "Test"}],
-        dialogues=[
-            {"scene_number": 1, "character": "Character1", "content": "Hello!"}
-        ],
+        dialogues=[{"scene_number": 1, "character": "Character1", "content": "Hello!"}],
         stage_directions=[{"scene_number": 1, "direction": "Camera pans."}],
         word_count=500,
         character_count=2500,

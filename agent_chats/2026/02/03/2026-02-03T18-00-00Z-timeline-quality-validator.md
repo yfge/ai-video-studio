@@ -1,6 +1,6 @@
 ---
 id: 2026-02-03T18-00-00Z-timeline-quality-validator
-date: 2026-02-03T18:00:00Z
+date: "2026-02-03T18:00:00Z"
 participants: [human, claude]
 models: [claude-opus-4-5]
 tags: [backend, validator, agent-fix, timeline, rhythm]
@@ -30,6 +30,7 @@ summary: "创建Timeline质量校验器，实现情绪曲线/多语言节奏/戏
 ### 新增文件
 
 1. **`app/services/validators/timeline_quality_validator.py`** (~500 行)
+
    - `TimelineQualityValidator`: 核心校验器
      - `_detect_language()`: 多语言检测（中/英/日/韩）
      - `_calculate_average_wps()`: 计算平均语速
@@ -68,6 +69,7 @@ summary: "创建Timeline质量校验器，实现情绪曲线/多语言节奏/戏
 ### 关键实现细节
 
 - **多语言 WPS 配置**:
+
   - 中文: slow=3.8, normal=4.7, fast=5.6 字/秒
   - 英文: slow=2.5, normal=3.2, fast=4.0 词/秒
   - 日语: slow=4.0, normal=5.0, fast=6.0 音节/秒

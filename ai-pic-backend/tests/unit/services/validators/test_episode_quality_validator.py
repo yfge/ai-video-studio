@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.services.validators.episode_quality_validator import (
     CharacterArc,
     EpisodeQualityIssue,
@@ -130,17 +129,13 @@ class TestEpisodeQualityResult:
 class TestEpisodeQualityValidator:
     """Tests for EpisodeQualityValidator."""
 
-    def test_validate_empty_episodes(
-        self, validator: EpisodeQualityValidator
-    ) -> None:
+    def test_validate_empty_episodes(self, validator: EpisodeQualityValidator) -> None:
         """Test validation with empty episodes."""
         result = validator.validate([])
         assert result.passed is True
         assert len(result.issues) == 0
 
-    def test_track_character_arcs(
-        self, validator: EpisodeQualityValidator
-    ) -> None:
+    def test_track_character_arcs(self, validator: EpisodeQualityValidator) -> None:
         """Test character arc tracking."""
         episodes = [
             {
@@ -199,9 +194,7 @@ class TestEpisodeQualityValidator:
         assert len(issues) == 1
         assert issues[0].issue_type == EpisodeQualityIssueType.CHARACTER_ARC_STAGNANT
 
-    def test_analyze_subplot_balance(
-        self, validator: EpisodeQualityValidator
-    ) -> None:
+    def test_analyze_subplot_balance(self, validator: EpisodeQualityValidator) -> None:
         """Test subplot balance analysis."""
         episodes = [
             {"summary": "主角核心任务的关键突破"},
@@ -217,7 +210,13 @@ class TestEpisodeQualityValidator:
         self, validator: EpisodeQualityValidator
     ) -> None:
         """Test subplot imbalance detection when main plot is low."""
-        ratios = {"main": 0.1, "romance": 0.5, "conflict": 0.2, "mystery": 0.1, "growth": 0.1}
+        ratios = {
+            "main": 0.1,
+            "romance": 0.5,
+            "conflict": 0.2,
+            "mystery": 0.1,
+            "growth": 0.1,
+        }
         issues = validator._check_subplot_balance(ratios)
         assert len(issues) == 1
         assert issues[0].issue_type == EpisodeQualityIssueType.SUBPLOT_IMBALANCE
@@ -227,7 +226,13 @@ class TestEpisodeQualityValidator:
         self, validator: EpisodeQualityValidator
     ) -> None:
         """Test subplot imbalance detection when no subplots."""
-        ratios = {"main": 0.9, "romance": 0.02, "conflict": 0.02, "mystery": 0.03, "growth": 0.03}
+        ratios = {
+            "main": 0.9,
+            "romance": 0.02,
+            "conflict": 0.02,
+            "mystery": 0.03,
+            "growth": 0.03,
+        }
         issues = validator._check_subplot_balance(ratios)
         assert len(issues) == 1
         assert "支线" in issues[0].message
@@ -263,27 +268,21 @@ class TestEpisodeQualityValidator:
         # Should generally increase
         assert scores[2] >= scores[0]
 
-    def test_check_tension_plateau(
-        self, validator: EpisodeQualityValidator
-    ) -> None:
+    def test_check_tension_plateau(self, validator: EpisodeQualityValidator) -> None:
         """Test tension plateau detection."""
         tension_scores = [0.5, 0.5, 0.5, 0.5]
         issues = validator._check_tension_progression(tension_scores)
         plateau_issues = [
-            i for i in issues
-            if i.issue_type == EpisodeQualityIssueType.TENSION_PLATEAU
+            i for i in issues if i.issue_type == EpisodeQualityIssueType.TENSION_PLATEAU
         ]
         assert len(plateau_issues) > 0
 
-    def test_check_tension_drop(
-        self, validator: EpisodeQualityValidator
-    ) -> None:
+    def test_check_tension_drop(self, validator: EpisodeQualityValidator) -> None:
         """Test tension drop detection."""
         tension_scores = [0.3, 0.7, 0.3, 0.6]  # Significant drop at position 2
         issues = validator._check_tension_progression(tension_scores)
         drop_issues = [
-            i for i in issues
-            if i.issue_type == EpisodeQualityIssueType.TENSION_DROP
+            i for i in issues if i.issue_type == EpisodeQualityIssueType.TENSION_DROP
         ]
         assert len(drop_issues) > 0
 
@@ -329,8 +328,7 @@ class TestEpisodeQualityValidator:
         ]
         issues = validator._check_foreshadowing(items)
         chekhov_issues = [
-            i for i in issues
-            if i.issue_type == EpisodeQualityIssueType.UNFIRED_CHEKHOV
+            i for i in issues if i.issue_type == EpisodeQualityIssueType.UNFIRED_CHEKHOV
         ]
         assert len(chekhov_issues) > 0
 
@@ -349,7 +347,8 @@ class TestEpisodeQualityValidator:
         ]
         issues = validator._check_foreshadowing(items)
         premature_issues = [
-            i for i in issues
+            i
+            for i in issues
             if i.issue_type == EpisodeQualityIssueType.PREMATURE_PAYOFF
         ]
         assert len(premature_issues) > 0

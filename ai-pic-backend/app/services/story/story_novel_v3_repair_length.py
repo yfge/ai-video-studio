@@ -9,8 +9,18 @@ from .story_novel_block_contract import assemble_prose_blocks, replace_prose_blo
 from .story_novel_prose_integrity import prose_integrity_violations
 
 
+def repair_contract(blocks, failed_ids, prose_input, violations):
+    return replacement_length_contract(
+        blocks,
+        failed_ids,
+        prose_input["chapter_length"],
+        prose_input["chapter_brief"],
+        violations,
+    )
+
+
 def replacement_length_contract(
-    blocks, failed_ids: set[str], chapter_length, brief=None
+    blocks, failed_ids: set[str], chapter_length, brief=None, violations=None
 ) -> dict:
     fixed = [item for item in blocks if item["block_id"] not in failed_ids]
     fixed_chars = sum(len(re.sub(r"\s+", "", item["content_text"])) for item in fixed)
@@ -19,6 +29,9 @@ def replacement_length_contract(
     maximum = int(chapter_length["max_chars"])
     current_chars = sum(_chars(item["content_text"]) for item in blocks)
     repair_target = target
+    if current_chars < minimum:
+        headroom = max(0, target - minimum)
+        repair_target = min(target, minimum + min(128, max(32, headroom // 5)))
     safety_margin = (
         min(max(32, target // 20), max(0, maximum - target))
         if current_chars > maximum
@@ -49,6 +62,9 @@ def replacement_length_contract(
         contract["replacement_blocks"] = _block_budgets(
             blocks, failed_ids, brief, replacement_target
         )
+    codes = {item.get("reason_code") or item.get("code") for item in violations or []}
+    if codes == {"length_out_of_range"}:
+        contract["selection_policy"] = "complete_failed_blocks_first_v2"
     return contract
 
 
@@ -125,6 +141,42 @@ def assemble_hybrid_repair(blocks, first, second, contract: dict) -> dict:
     return min(candidates, key=lambda item: (item[0], item[1]))[2]
 
 
+def assemble_minimal_change_repair(blocks, attempts, contract: dict) -> dict:
+    """Prefer all failed-block replacements, then minimize fallback changes."""
+    maps = [{item.get("block_id"): item for item in rows} for rows in attempts]
+    block_ids = sorted(maps[0])
+    if any(set(value) != set(block_ids) for value in maps):
+        raise ValueError("local repair 多次响应的 block ID 不一致")
+    target, candidates = int(contract["chapter_target_chars"]), []
+    fallback_error = None
+    try:
+        return assemble_valid_repair(
+            blocks, [maps[-1][block_id] for block_id in block_ids], contract
+        )
+    except ValueError as exc:
+        fallback_error = exc
+    for choices in product(range(len(maps) + 1), repeat=len(block_ids)):
+        replacements = [
+            maps[choice - 1][block_id]
+            for block_id, choice in zip(block_ids, choices, strict=True)
+            if choice
+        ]
+        if not replacements:
+            continue
+        try:
+            value = assemble_valid_repair(blocks, replacements, contract)
+        except ValueError:
+            continue
+        candidates.append(
+            (len(replacements), abs(int(value["char_count"]) - target), choices, value)
+        )
+    if not candidates:
+        if fallback_error:
+            raise fallback_error
+        raise ValueError("local repair 没有满足长度区间的最小改动组合")
+    return min(candidates, key=lambda item: item[:3])[3]
+
+
 def repair_response_parser(blocks, failed_ids: set[str], contract: dict):
     """Build a two-attempt parser that may combine complete replacement blocks."""
     prior = None
@@ -139,6 +191,10 @@ def repair_response_parser(blocks, failed_ids: set[str], contract: dict):
         ):
             raise ValueError("local repair 未精确覆盖失败 blocks")
         try:
+            if contract.get("selection_policy") == "complete_failed_blocks_first_v2":
+                return assemble_minimal_change_repair(
+                    blocks, [*([prior] if prior else []), replacements], contract
+                )
             return assemble_valid_repair(blocks, replacements, contract)
         except ValueError:
             if prior is not None:

@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import json
 
-from sqlalchemy.orm import Session
-
 from app.models.task import Task, TaskType
 from app.models.user import User
 from app.prompts.template_audit import build_prompt_template_audit
@@ -30,6 +28,7 @@ from app.services.task_worker_assets import (
     virtual_ip_image_generate_task,
 )
 from app.utils.model_utils import DEFAULT_OPENAI_IMAGE_MODEL
+from sqlalchemy.orm import Session
 
 
 def _image_model(request: ProductionCanvasSkillExecuteRequest) -> str:

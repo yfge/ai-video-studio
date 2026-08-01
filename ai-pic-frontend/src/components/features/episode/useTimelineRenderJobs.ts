@@ -33,7 +33,9 @@ export function useTimelineRenderJobs({
     }
     setLoading(true);
     try {
-      const res = await timelineAPI.listTimelineRenderJobs(selectedTimelineSpec.id);
+      const res = await timelineAPI.listTimelineRenderJobs(
+        selectedTimelineSpec.id,
+      );
       if (res.success && res.data) {
         setRenderJobs(res.data.items || []);
         setError(null);
@@ -100,15 +102,18 @@ export function useTimelineRenderJobs({
 
       setBusy(true);
       try {
-        const res = await timelineAPI.queueTimelineRender(selectedTimelineSpec.id, {
-          timeline_version: selectedTimelineSpec.version,
-          render_type: renderType,
-          preset: {
-            fps: selectedTimelineSpec.spec?.fps ?? 24,
-            resolution: selectedTimelineSpec.spec?.resolution ?? "1080x1920",
+        const res = await timelineAPI.queueTimelineRender(
+          selectedTimelineSpec.id,
+          {
+            timeline_version: selectedTimelineSpec.version,
+            render_type: renderType,
+            preset: {
+              fps: selectedTimelineSpec.spec?.fps ?? 24,
+              resolution: selectedTimelineSpec.spec?.resolution ?? "1080x1920",
+            },
+            force_new_attempt: forceNewAttempt,
           },
-          force_new_attempt: forceNewAttempt,
-        });
+        );
         if (res.success && res.data) {
           setRenderJobs((prev) => [
             res.data as TimelineRenderJobResponse,

@@ -5,7 +5,6 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import anyio
-
 from app.models.script import Script
 from app.models.task import Task, TaskStatus, TaskType
 from tests.factories import ScriptFactory, UserFactory, setup_factories
@@ -48,8 +47,16 @@ def test_scene_grid_sheet_task_persists_grid(db_session, monkeypatch):
         extra_metadata={
             "storyboard": {
                 "frames": [
-                    {"scene_number": 1, "description": "醉步入场", "duration_seconds": 1.0},
-                    {"scene_number": 1, "description": "仰头喝酒", "duration_seconds": 0.9},
+                    {
+                        "scene_number": 1,
+                        "description": "醉步入场",
+                        "duration_seconds": 1.0,
+                    },
+                    {
+                        "scene_number": 1,
+                        "description": "仰头喝酒",
+                        "duration_seconds": 0.9,
+                    },
                     {"scene_number": 2, "description": "其他场景"},
                 ]
             }
@@ -87,7 +94,9 @@ def test_scene_grid_sheet_task_persists_grid(db_session, monkeypatch):
         "character_refs": [],
         "environment_refs": [],
     }
-    anyio.run(processor.process_scene_grid_sheet_task, db_session, task.id, payload, user.id)
+    anyio.run(
+        processor.process_scene_grid_sheet_task, db_session, task.id, payload, user.id
+    )
 
     db_session.expire_all()
     refreshed_task = db_session.query(Task).filter_by(id=task.id).first()
@@ -117,8 +126,18 @@ def test_scene_grid_video_task_persists_video(db_session, monkeypatch):
                         "image_url": "https://oss.example.com/grid.png",
                         "aspect_ratio": "16:9",
                         "cells": [
-                            {"panel_index": 1, "title": "醉步入场", "caption": "醉步入场", "duration": 6.0},
-                            {"panel_index": 2, "title": "重拳轰尘", "caption": "重拳轰尘", "duration": 6.0},
+                            {
+                                "panel_index": 1,
+                                "title": "醉步入场",
+                                "caption": "醉步入场",
+                                "duration": 6.0,
+                            },
+                            {
+                                "panel_index": 2,
+                                "title": "重拳轰尘",
+                                "caption": "重拳轰尘",
+                                "duration": 6.0,
+                            },
                         ],
                     }
                 },
@@ -164,7 +183,9 @@ def test_scene_grid_video_task_persists_video(db_session, monkeypatch):
         "model": "seedance-2.0",
         "resolution": "720p",
     }
-    anyio.run(processor.process_scene_grid_video_task, db_session, task.id, payload, user.id)
+    anyio.run(
+        processor.process_scene_grid_video_task, db_session, task.id, payload, user.id
+    )
 
     db_session.expire_all()
     refreshed_task = db_session.query(Task).filter_by(id=task.id).first()
@@ -188,7 +209,9 @@ def test_scene_grid_video_task_fails_without_sheet(db_session, monkeypatch):
     import app.services.storyboard.scene_grid.processor as processor
 
     payload = {"script_id": script.id, "scene_number": 1}
-    anyio.run(processor.process_scene_grid_video_task, db_session, task.id, payload, user.id)
+    anyio.run(
+        processor.process_scene_grid_video_task, db_session, task.id, payload, user.id
+    )
 
     db_session.expire_all()
     refreshed_task = db_session.query(Task).filter_by(id=task.id).first()

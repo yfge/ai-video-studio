@@ -238,10 +238,7 @@ export function ScriptGenerationForm({
         >
           {generating ? "生成中..." : "开始生成"}
         </button>
-        <button
-          onClick={onCancel}
-          className={operatorButtonClass("secondary")}
-        >
+        <button onClick={onCancel} className={operatorButtonClass("secondary")}>
           取消
         </button>
       </div>

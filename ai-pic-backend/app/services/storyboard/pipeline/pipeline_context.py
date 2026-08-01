@@ -11,10 +11,9 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Sequence
 
 if TYPE_CHECKING:
-    from sqlalchemy.orm import Session
-
     from app.models.script import Episode, Script
     from app.models.story_structure import Scene, SceneBeat
+    from sqlalchemy.orm import Session
 
 
 @dataclass
@@ -192,9 +191,11 @@ def build_pipeline_context(
             scene_number=scene_num,
             json_scene=_find_json_scene(json_scenes, scene_num),
             structure_scene=structure_scene_map.get(scene_num),
-            beats=beats_by_scene.get(
-                structure_scene_map[scene_num].id, []
-            ) if scene_num in structure_scene_map else [],
+            beats=(
+                beats_by_scene.get(structure_scene_map[scene_num].id, [])
+                if scene_num in structure_scene_map
+                else []
+            ),
             dialogues=dialogue_map.get(scene_num, []),
         )
         ctx.scenes.append(scene_ctx)
@@ -283,7 +284,9 @@ def _build_scene_context(
             "beat_type": beat.beat_type,
             "beat_summary": beat.beat_summary,
             "dialogue_excerpt": beat.dialogue_excerpt,
-            "duration_seconds": float(beat.duration_seconds) if beat.duration_seconds else None,
+            "duration_seconds": (
+                float(beat.duration_seconds) if beat.duration_seconds else None
+            ),
             "characters_involved": beat.characters_involved,
         }
         ctx.beats.append(beat_dict)
@@ -306,7 +309,9 @@ def _check_sync_status(ctx: PipelineContext) -> bool:
         )
 
     # Check for scenes missing from either source
-    json_scene_nums = {s.scene_number for s in ctx.scenes if s.location or s.description}
+    json_scene_nums = {
+        s.scene_number for s in ctx.scenes if s.location or s.description
+    }
     struct_scene_nums = {s.scene_number for s in ctx.scenes if s.scene_id}
 
     json_only = json_scene_nums - struct_scene_nums

@@ -35,6 +35,7 @@ def test_progression_curves_are_optional_soft_arc_fields():
     positions = list(range(1, 65))
     payload = {
         "progression_plan": {
+            **_roadmap(),
             "planning_structure_version": 1,
             "requested_chapter_count": 64,
             "progression_arcs": [
@@ -64,6 +65,21 @@ def test_progression_curves_are_optional_soft_arc_fields():
         "activity_and_time_scale": None,
     }
     assert parsed.progression_arcs[1].growth.capability is None
+
+
+def test_progression_rejects_empty_character_and_world_roots():
+    payload = {
+        "progression_plan": {
+            "planning_structure_version": 1,
+            "requested_chapter_count": 1,
+            "progression_arcs": [_arc("arc-001", 1, 1)],
+        }
+    }
+
+    parsed, error = parse_progression(json.dumps(payload, ensure_ascii=False), [1])
+
+    assert parsed is None
+    assert "requires core character routes" in error
 
 
 def test_arc_chapter_prompt_excludes_other_arc_details():
@@ -107,6 +123,7 @@ def test_arc_batch_binds_planned_threads_without_kpis():
         json.dumps(
             {
                 "progression_plan": {
+                    **_roadmap(),
                     "planning_structure_version": 1,
                     "requested_chapter_count": 2,
                     "progression_arcs": [first],
@@ -143,6 +160,7 @@ def test_arc_batch_binds_planned_threads_without_kpis():
             "status": "draft",
             "version": 1,
             "requested_chapter_count": 2,
+            **_roadmap(),
             "planning_structure_version": 1,
             "progression_arcs": [first],
             "chapters": chapters,
@@ -170,6 +188,30 @@ def _arc(arc_id: str, start: int, end: int) -> dict:
         "major_entries": [],
         "world_scope_changes": [],
         "threads": [],
+    }
+
+
+def _roadmap() -> dict:
+    return {
+        "roadmap_version": 1,
+        "core_character_routes": [
+            {
+                "character_ref": "char-main",
+                "narrative_function": "主角",
+                "first_allowed_position": 1,
+                "planned_arc_id": "arc-001",
+                "start_direction": "作出选择",
+                "terminal_direction": "承担结果",
+            }
+        ],
+        "scope_taxonomy": [{"type_id": "zone", "display_name": "活动范围"}],
+        "initial_scope_nodes": [
+            {
+                "scope_id": "scope-opening",
+                "scope_type": "zone",
+                "display_name": "开篇范围",
+            }
+        ],
     }
 
 

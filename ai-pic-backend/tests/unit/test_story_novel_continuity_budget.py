@@ -1,7 +1,6 @@
 from types import SimpleNamespace
 
 import pytest
-
 from app.services.story.story_novel_continuity_budget import (
     conservative_token_estimate,
     require_global_prompt_budget,

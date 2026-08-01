@@ -156,7 +156,7 @@ def test_combined_repair_switches_to_pure_compression_on_length_retry():
     assert '"genre":"drama"' in prompt
 
 
-def test_repair_keeps_length_valid_body_for_evidence_only_resume():
+def test_repair_cannot_swap_length_failure_for_new_evidence_failure():
     first = {
         "audit": {
             "passed": False,
@@ -186,7 +186,7 @@ def test_repair_keeps_length_valid_body_for_evidence_only_resume():
         }
     }
 
-    assert select_failed_result(first, repaired) is repaired
+    assert select_failed_result(first, repaired) is first
 
 
 def test_repaired_body_can_spend_remaining_budget_on_evidence_retry(monkeypatch):
@@ -202,6 +202,7 @@ def test_repaired_body_can_spend_remaining_budget_on_evidence_retry(monkeypatch)
         "audit_metrics": {"calls": 1, "attempts": []},
     }
     seen = {}
+    entry = {"body_hash": "safe-first-body", "audit_contract_hash": "first"}
 
     async def repair_blocks(*_args, **_kwargs):
         return {
@@ -219,9 +220,6 @@ def test_repaired_body_can_spend_remaining_budget_on_evidence_retry(monkeypatch)
 
     monkeypatch.setattr(repair_flow, "update_progress", lambda *_args: None)
     monkeypatch.setattr(repair_flow, "repair_blocks", repair_blocks)
-    monkeypatch.setattr(
-        repair_flow, "checkpoint_prose", lambda *_args, **_kwargs: (None, {})
-    )
     monkeypatch.setattr(repair_flow, "evaluate_body", evaluate_body)
 
     async def run():
@@ -239,7 +237,7 @@ def test_repaired_body_can_spend_remaining_budget_on_evidence_retry(monkeypatch)
             audit_stage="audit.11",
             audit_call_budget=3,
             reserve_call=None,
-            entry={},
+            entry=entry,
         )
 
     selected, _metrics, repair_count = anyio.run(run)
@@ -247,4 +245,5 @@ def test_repaired_body_can_spend_remaining_budget_on_evidence_retry(monkeypatch)
     assert selected["audit"]["passed"] is True
     assert seen["allow_evidence_retry"] is True
     assert seen["audit_call_budget"] == 2
+    assert entry == {"body_hash": "safe-first-body", "audit_contract_hash": "first"}
     assert repair_count == 1

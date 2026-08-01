@@ -126,9 +126,11 @@ async def generate_dialogue_node(state: Dict[str, Any]) -> Dict[str, Any]:
                 "dialogue_count": len(scene_dialogues),
                 "actual_word_count": actual_word_count,
                 "target_word_count": budget.target_word_count,
-                "word_count_ratio": round(actual_word_count / budget.target_word_count, 2)
-                if budget.target_word_count > 0
-                else 0,
+                "word_count_ratio": (
+                    round(actual_word_count / budget.target_word_count, 2)
+                    if budget.target_word_count > 0
+                    else 0
+                ),
             },
         )
 

@@ -163,16 +163,11 @@ def select_failed_result(first: dict, repaired: dict) -> dict:
         return repaired
     if first["audit"]["passed"]:
         return first
-    if (
-        repaired["audit"].get("failure_kind") == "evidence_only"
-        and first["audit"].get("failure_kind") != "evidence_only"
-    ):
-        return repaired
     if _hard_safety_regressed(first["audit"], repaired["audit"]):
         return first
     before = _violation_keys(first["audit"])
     after = _violation_keys(repaired["audit"])
-    return repaired if after < before or len(after) < len(before) else first
+    return repaired if after < before else first
 
 
 def _hard_safety_regressed(first: dict, repaired: dict) -> bool:
@@ -217,10 +212,16 @@ def _violation_keys(audit: dict) -> set[tuple[str, str]]:
     return {
         (
             str(item.get("code") or ""),
-            str(item.get("reason_code") or item.get("message") or ""),
+            _normalized_violation_message(item),
         )
         for item in (audit.get("state_validation") or {}).get("violations") or []
     }
+
+
+def _normalized_violation_message(item: dict) -> str:
+    if item.get("reason_code") == "length_out_of_range":
+        return "length_out_of_range"
+    return " ".join(str(item.get("message") or "").split())
 
 
 def _message_tokens(message: str) -> list[str]:

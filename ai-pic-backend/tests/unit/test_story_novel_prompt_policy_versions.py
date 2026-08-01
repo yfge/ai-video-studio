@@ -78,6 +78,33 @@ def test_v10_policy_must_match_current_template_sources():
     assert not valid_v3_prompt_template_policy(policy)
 
 
+def test_v12_policy_remains_readable_as_a_frozen_v4_snapshot():
+    policy = v3_prompt_template_policy(version=12)
+
+    assert valid_v3_prompt_template_policy(policy)
+    policy["templates"]["story_novel_arc_plan_v4"]["sources_hash"] = "changed"
+    policy["hash"] = _policy_hash(policy["templates"])
+    assert valid_v3_prompt_template_policy(policy)
+
+
+def test_v13_policy_remains_readable_as_a_frozen_v4_snapshot():
+    policy = v3_prompt_template_policy(version=13)
+
+    assert valid_v3_prompt_template_policy(policy)
+    policy["templates"]["story_novel_arc_plan_v4"]["sources_hash"] = "changed"
+    policy["hash"] = _policy_hash(policy["templates"])
+    assert valid_v3_prompt_template_policy(policy)
+
+
+def test_v14_policy_must_match_current_v4_template_sources():
+    policy = v3_prompt_template_policy(version=14)
+
+    assert valid_v3_prompt_template_policy(policy)
+    policy["templates"]["story_novel_arc_plan_v4"]["sources_hash"] = "changed"
+    policy["hash"] = _policy_hash(policy["templates"])
+    assert not valid_v3_prompt_template_policy(policy)
+
+
 def _policy_hash(templates):
     return sha256_text(
         "\n".join(

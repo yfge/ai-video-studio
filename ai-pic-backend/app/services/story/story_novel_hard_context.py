@@ -22,7 +22,9 @@ from .story_novel_world_expansion import (
     state_with_pending_expansion,
 )
 
-SAFE_ENTITY_ATTRIBUTES = set("age occupation type gender pronouns family_role".split())
+SAFE_ENTITY_ATTRIBUTES = set(
+    "age occupation type gender pronouns family_role scope_type parent_scope_id depth".split()
+)
 
 
 def build_hard_constraints(

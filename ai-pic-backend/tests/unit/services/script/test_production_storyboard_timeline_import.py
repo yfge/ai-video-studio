@@ -3,7 +3,6 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
-
 from app.models.script import Episode, Script, Story
 from app.models.story_structure import Scene, SceneBeat
 from app.models.task import Task, TaskType

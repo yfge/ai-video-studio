@@ -1,6 +1,6 @@
 ---
 id: 2026-02-04T08-30-00Z-p2-context-injection
-date: 2026-02-04T08:30:00Z
+date: "2026-02-04T08:30:00Z"
 participants: [human, claude]
 models: [claude-opus-4-5-20251101]
 tags: [backend, context-injection, P2]
@@ -31,6 +31,7 @@ Continue working through the Agent optimization task list. Complete P2.14 Contex
 ### New Files Created
 
 1. **`app/services/agent_core/context_spec.py`** (~250 lines)
+
    - `FieldPriority` enum: CRITICAL, HIGH, MEDIUM, LOW
    - `TruncationStrategy` enum: NONE, TAIL, HEAD, MIDDLE, SUMMARIZE
    - `FieldSpec` dataclass: Field definition with validation/transform
@@ -41,6 +42,7 @@ Continue working through the Agent optimization task list. Complete P2.14 Contex
    - Common transformers: `strip_whitespace`, `normalize_newlines`
 
 2. **`app/services/agent_core/context_specs.py`** (~230 lines)
+
    - `StoryContext`: 10 fields for story generation
    - `EpisodeContext`: 9 fields for episode generation
    - `ScriptContext`: 9 fields for script generation
@@ -48,6 +50,7 @@ Continue working through the Agent optimization task list. Complete P2.14 Contex
    - `StoryboardContext`: 7 fields for storyboard generation
 
 3. **`tests/unit/services/agent_core/test_context_spec.py`** (31 tests)
+
    - Token estimation tests (Chinese, English, mixed)
    - Truncation strategy tests
    - FieldSpec validation/transform tests

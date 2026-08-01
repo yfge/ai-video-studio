@@ -1166,7 +1166,30 @@ UI 必须区分：
 - 所有模型输出先做 schema、长度、business ID ownership 和 source hash 校验。
 - 审批、拒绝、合并、基线同步和 supersede 记录操作者、时间与理由。
 
-## 20. Compatibility
+## 20. Immutable novel-planning snapshots
+
+Generation-plan v4 treats Narrative Event and Character Memory as planning
+evidence, not prose instructions. A chapter-planning call selects eligible
+earlier candidates, projects them into opaque local evidence cards, records
+their business IDs/source hashes in `story_novel_planner_snapshot.v1`, and
+persists the complete snapshot before the provider request. The response is
+parsed only against that stored snapshot; live candidate rows are not queried
+again during parsing or format repair.
+
+The prose packet contains no raw Event/Memory candidate and no Story-scoped
+business ID. The proof audit binds current contract handles to stable body
+sentence spans. Only after the chapter passes do those spans deterministically
+materialize new Revision-local Event/Memory candidates. Body hash changes stale
+all derived spans and candidates.
+
+Persistent character, scope, organization, object, and concept proposals share
+the same candidate lifecycle. A proposal is provisional for one Revision and
+one chapter until its introduction is proved and the chapter commits. Failed
+chapters roll it back; one-scene transient entities never enter the long-term
+ledger. Whole-novel approval remains the only promotion boundary into Story
+Canon or shared character memory.
+
+## 21. Compatibility
 
 - 新 narrative-series Story 可启用 `story_scoped_memory_v1`。
 - 新 Story 目标格式为 `story_seed_v2`；`story_seed_v1` 和现有
@@ -1178,7 +1201,7 @@ UI 必须区分：
 - Dramatic State 缺失时不阻断旧 Script。
 - Timeline API、clip 顺序和媒体 lineage 不因本设计改变。
 
-## 21. Observability and audit
+## 22. Observability and audit
 
 每次生成 Task 的 agent run 记录：
 
@@ -1198,7 +1221,7 @@ delta、状态校验问题、硬约束引用/截断证据、逐章 repair 次数
 禁止只记录拼接后的大段 prompt 而丢失结构化来源。浏览器证据和测试 artifact 仍写入
 `artifacts/runs/<run_id>/`。
 
-## 22. Validation matrix
+## 23. Validation matrix
 
 ### 22.1 Backend
 
@@ -1258,7 +1281,7 @@ delta、状态校验问题、硬约束引用/截断证据、逐章 repair 次数
 7. 修改来源章节 hash，确认 Story memory、Episode snapshot 和相关 Script 显示 stale，
    Timeline 内容不被自动替换。
 
-## 23. Acceptance criteria
+## 24. Acceptance criteria
 
 设计实现完成时必须满足：
 
@@ -1274,7 +1297,7 @@ delta、状态校验问题、硬约束引用/截断证据、逐章 repair 次数
 - Story、Novel、Episode、Script 和 Virtual IP UI 都有清晰但不过载的入口与状态。
 - 不引入新的存储依赖，不自动产生付费模型调用，不改变 Timeline SSOT。
 
-## 24. Implemented delivery slices
+## 25. Implemented delivery slices
 
 以下五个切片已在 v1 落地；后续扩展仍遵守本设计的不变量和兼容边界。
 
@@ -1314,7 +1337,7 @@ delta、状态校验问题、硬约束引用/截断证据、逐章 repair 次数
 - Knowledge/reveal/subtext quality gates。
 - Full non-paid browser validation and artifacts。
 
-## 25. Deferred upgrade signals
+## 26. Deferred upgrade signals
 
 只有出现以下可测信号后才考虑向量或图检索：
 
@@ -1326,9 +1349,9 @@ delta、状态校验问题、硬约束引用/截断证据、逐章 repair 次数
 即使升级，Story scope、character access、anchor gating、source version 和人工公共记忆
 审批仍是检索前置条件，不能由相似度绕过。
 
-## 26. V1 implementation record
+## 27. V1 implementation record
 
-### 26.1 Backend
+### 27.1 Backend
 
 - Alembic 新增 Narrative Anchor、Narrative Event、Character Memory、不可变 Snapshot、
   Promotion 以及 Story/Episode 的快照证据和 stale 字段。
@@ -1343,7 +1366,7 @@ delta、状态校验问题、硬约束引用/截断证据、逐章 repair 次数
 - offscreen event、audience disclosure 和 Dramatic State 分开存储；Script gate 阻止
   `must_not_reveal` 或 `subtext_only` 内容被直接说破。
 
-### 26.2 API and UI
+### 27.2 API and UI
 
 - 已落地第 16 节列出的 Story memory、Virtual IP public memory/promotion 和 Script
   Dramatic State API。
@@ -1353,7 +1376,7 @@ delta、状态校验问题、硬约束引用/截断证据、逐章 repair 次数
 - Novel 章节、Episode 展开区、Script Inspector 和 Virtual IP 页面均显示本阶段需要的
   记忆、stale、显隐或公共资产状态；Timeline 入口不会因 stale 被隐藏。
 
-### 26.3 Validation evidence
+### 27.3 Validation evidence
 
 - Story A/B 时间锚点、确定性 snapshot、来源失效、人工公共提升、canon branch 隔离、
   offscreen disclosure 和潜台词 gate 均有后端单元测试；最终后端集合为

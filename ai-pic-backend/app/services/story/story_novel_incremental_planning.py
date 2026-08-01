@@ -53,7 +53,14 @@ async def prepare_incremental_plan(
         "chapters": chapters,
         "thread_payoffs": list(thread_payoffs or []),
     }
-    plan.update(incremental_plan_fields(canon, chapters))
+    plan.update(
+        incremental_plan_fields(
+            canon,
+            chapters,
+            schema=frozen_spec.get("schema"),
+            snapshot=revision.story_snapshot or {},
+        )
+    )
     planning_invocations.finalize(plan, canon, chapters, source_manifest=manifest)
     plan["plan_hash"] = generation_plan_hash(plan)
     for key in (

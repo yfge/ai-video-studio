@@ -1,5 +1,4 @@
 import pytest
-
 from app.services.story.story_outline_quality import validate_story_outline_quality
 
 

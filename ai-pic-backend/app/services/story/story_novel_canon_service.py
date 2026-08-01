@@ -21,6 +21,7 @@ from .story_novel_plan_quality import plan_quality_diagnostics
 from .story_novel_plan_validator import (
     validate_generation_plan as _validate_generation_plan,
 )
+from .story_novel_v4_canon_contract import bind_seed_roadmap
 
 CANON_GATE_VERSION = 2
 CANON_SECTIONS = (
@@ -96,6 +97,7 @@ def parse_model_canon(
             raise ValueError("Canon JSON 必须是 object")
         payload.setdefault("gate_version", CANON_GATE_VERSION)
         if planning_contract is not None:
+            payload = bind_seed_roadmap(payload, planning_contract)
             payload["world_rules"] = _sourced_world_rules(planning_contract)
             payload, timeline_diagnostics = filter_model_timeline_sources(
                 payload, planning_contract

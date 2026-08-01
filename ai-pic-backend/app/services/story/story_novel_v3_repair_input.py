@@ -25,19 +25,22 @@ def build_repair_input(
         for item in repair_block_context(blocks, failed)
         if not item.get("editable")
     ]
+    chapter_context = _failed_chapter_context(
+        prose_input.get("current_chapter_context") or {},
+        prose_input["chapter_brief"],
+        failed,
+    )
+    if pure_length and _is_v4(prose_input):
+        chapter_context = _source_free_event_context(chapter_context)
     result = {
         "failed_block_ids": sorted(failed),
         "failed_blocks": failed_blocks,
         "neighbor_blocks": neighbors,
         "violations": violations,
         "chapter_brief": prose_input["chapter_brief"],
-        "current_chapter_context": _failed_chapter_context(
-            prose_input.get("current_chapter_context") or {},
-            prose_input["chapter_brief"],
-            failed,
-        ),
-        "current_contract_requirements": _current_contract_requirements(
-            prose_input["chapter_brief"], failed, expected_delta or {}
+        "current_chapter_context": chapter_context,
+        "current_contract_requirements": _repair_contract_requirements(
+            prose_input, failed, expected_delta or {}
         ),
         "visible_canon": prose_input["visible_canon"],
         "chapter_length": prose_input["chapter_length"],
@@ -72,6 +75,43 @@ def build_repair_input(
             _neighbor_excerpt(item, blocks, failed) for item in neighbors
         ],
     }
+
+
+def _repair_contract_requirements(
+    prose_input: dict, failed: set[str], expected_delta: dict
+) -> dict:
+    brief = prose_input["chapter_brief"]
+    if _is_v4(prose_input):
+        handles = [
+            handle
+            for beat in brief.get("beats") or []
+            if beat.get("beat_id") in failed
+            for handle in beat.get("bound_event_ids") or []
+        ]
+        return {
+            "scope": "current_blocks_only",
+            "event_handles": list(dict.fromkeys(handles)),
+        }
+    return copy.deepcopy(prose_input.get("repair_contract")) or (
+        _current_contract_requirements(brief, failed, expected_delta)
+    )
+
+
+def _is_v4(prose_input: dict) -> bool:
+    return prose_input.get("schema") == "story_novel_prose_packet.v2"
+
+
+def _source_free_event_context(context: dict) -> dict:
+    value = copy.deepcopy(context)
+    value["events"] = [
+        {
+            key: copy.deepcopy(item[key])
+            for key in ("event_id", "execution", "scene_participants")
+            if key in item
+        }
+        for item in value.get("events") or []
+    ]
+    return value
 
 
 def _length_action(violations, blocks: list[dict], prose_input: dict) -> str | None:

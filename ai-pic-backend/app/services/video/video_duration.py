@@ -99,4 +99,3 @@ def resolve_duration_ceil(
         allowed_durations=allowed,
         needs_split=needs_split,
     )
-

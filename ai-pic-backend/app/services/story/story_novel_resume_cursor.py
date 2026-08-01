@@ -5,6 +5,7 @@ from fastapi import HTTPException
 
 from .story_novel_context_utils import prompt_chapter_contract, value_hash
 from .story_novel_domain import active_chapters, sha256_text
+from .story_novel_plan_versions import is_v4_plan
 from .story_novel_state_service import state_hash
 from .story_novel_v3_resume import proofs_match_body
 from .story_novel_v3_runtime import candidate_checkpoint_ready
@@ -18,7 +19,24 @@ def resume_suffix_plan_rows(service, revision, plan_rows: list[dict]) -> list[di
         ledger.get("stale_from_position")
         or _first_non_ready_position(entries, plan_rows)
     )
+    resume_checkpoint_changed = False
+    if is_v4_plan(revision.generation_plan):
+        from .story_novel_v4_call_snapshot import archive_failed_chapter_planning_calls
+        from .story_novel_v4_plan_reset import reset_stale_snapshot_suffix
+
+        current = entries.get(str(cursor)) or {}
+        if archive_failed_chapter_planning_calls(current, cursor):
+            entries[str(cursor)] = current
+            ledger["chapters"] = entries
+            revision.continuity_ledger = ledger
+            resume_checkpoint_changed = True
+        reset_position = reset_stale_snapshot_suffix(revision, cursor)
+        if reset_position is not None:
+            cursor = reset_position
+            resume_checkpoint_changed = True
     if cursor <= 1:
+        if resume_checkpoint_changed:
+            service.db.commit()
         return plan_rows
     chapters = {item.position: item for item in active_chapters(revision)}
     canon_hash = (revision.generation_plan or {}).get("canon_hash")
@@ -67,6 +85,8 @@ def resume_suffix_plan_rows(service, revision, plan_rows: list[dict]) -> list[di
     if ledger.get("stale_from_position") is None:
         ledger.update(state_status="stale", stale_from_position=cursor)
         revision.continuity_ledger = ledger
+    if resume_checkpoint_changed:
+        service.db.commit()
     return [row for row in plan_rows if int(row["position"]) >= cursor]
 
 

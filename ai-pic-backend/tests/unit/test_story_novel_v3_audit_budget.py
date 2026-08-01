@@ -199,21 +199,18 @@ def test_local_reaudit_stage_binds_repaired_body_hash(monkeypatch):
 
     async def fake_evaluate(*_args, **kwargs):
         captured["stage"] = kwargs["audit_stage"]
+        captured["candidate_body_hash"] = entry["body_hash"]
         return {
             "prose": repaired_prose,
             "audit": {"passed": True},
             "audit_metrics": {"calls": 1, "attempts": [{"invocation_id": 3}]},
         }
 
-    def fake_checkpoint(*args, **kwargs):
-        captured["checkpoint"] = (args[8], kwargs["repair_resume"])
-        return None, args[4]
-
     monkeypatch.setattr(repair_module, "update_progress", lambda *_args: None)
     monkeypatch.setattr(repair_module, "repair_blocks", fake_repair)
     monkeypatch.setattr(repair_module, "evaluate_body", fake_evaluate)
-    monkeypatch.setattr(repair_module, "checkpoint_prose", fake_checkpoint)
     entry = {
+        "body_hash": "safe-first-body",
         "chapter_contract_hash": "contract",
         "canon_hash": "canon",
         "context_hash": "context",
@@ -245,6 +242,5 @@ def test_local_reaudit_stage_binds_repaired_body_hash(monkeypatch):
         entry,
     )
     assert f".body.{repaired_hash}.local_repair" in captured["stage"]
-    assert captured["checkpoint"][0] is repaired_prose
-    assert captured["checkpoint"][1]["budget_hash"] is None
-    assert captured["checkpoint"][1]["audit_metrics"] == first["audit_metrics"]
+    assert captured["candidate_body_hash"] != "safe-first-body"
+    assert entry["body_hash"] == "safe-first-body"

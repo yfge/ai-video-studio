@@ -98,5 +98,7 @@ def test_video_task_success_records_provider_rework_lineage(client, db_session):
     assert replacement["clip_id"] == clip_id
     assert replacement["asset_role"] == "generated_video"
     assert replacement["replacement_of_id"] == original_link["id"]
-    assert replacement["media_asset"]["file_url"] == "https://example.com/generated-v2.mp4"
+    assert (
+        replacement["media_asset"]["file_url"] == "https://example.com/generated-v2.mp4"
+    )
     assert replacement["source_ref"]["preserves_clip_id"] is True

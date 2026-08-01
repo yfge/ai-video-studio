@@ -5,10 +5,22 @@ from __future__ import annotations
 import copy
 
 from .story_novel_context_utils import value_hash
+from .story_novel_continuity_watchpoints import watchpoint_evidence_ids
 from .story_novel_incremental_plan import chapter_skeleton
 from .story_novel_v3_context import build_v3_planning_context
 
 SCHEMA = "story_novel_chapter_package_input.v3"
+
+
+def build_final_package_context(service, revision, position, contract, brief):
+    return build_v3_planning_context(
+        service,
+        revision,
+        position,
+        contract,
+        persist_memory_snapshots=False,
+        priority_evidence_ids=watchpoint_evidence_ids(brief),
+    )
 
 
 def build_package_input(service, revision, position: int, skeleton: dict) -> dict:

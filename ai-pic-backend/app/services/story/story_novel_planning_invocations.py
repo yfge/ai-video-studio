@@ -138,6 +138,10 @@ def valid(plan: dict) -> bool:
         "story_novel_prompt_policy.v8",
         "story_novel_prompt_policy.v9",
         "story_novel_prompt_policy.v10",
+        "story_novel_prompt_policy.v11",
+        "story_novel_prompt_policy.v12",
+        "story_novel_prompt_policy.v13",
+        "story_novel_prompt_policy.v14",
     }:
         return True
     manifest = plan.get("planning_invocations") or {}

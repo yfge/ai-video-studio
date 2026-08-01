@@ -134,9 +134,7 @@ def _build_storyboard_image_payload(db, script, script_id: int, request):
 
 
 def _build_storyboard_video_payload(db, script, script_id: int, request):
-    ratio = resolve_storyboard_aspect_ratio(
-        db, script=script, requested=request.ratio
-    )
+    ratio = resolve_storyboard_aspect_ratio(db, script=script, requested=request.ratio)
     return {
         "script_id": script_id,
         "frame_indexes": request.frames,

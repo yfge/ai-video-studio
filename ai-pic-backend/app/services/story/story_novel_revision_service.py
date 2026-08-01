@@ -18,13 +18,12 @@ from .story_novel_domain import (
     sha256_text,
 )
 from .story_novel_length_service import apply_length_spec
-from .story_novel_plan_versions import is_v3_plan
 from .story_novel_revision_edits import ensure_draft, reorder_chapters, save_chapter
 from .story_novel_revision_factory import (
     create_legacy_revision,
     create_platform_revision,
 )
-from .story_novel_v3_clone import clone_generation_plan
+from .story_novel_v3_clone import clone_generation_plan, clone_ledger_schema
 
 
 class StoryNovelRevisionService:
@@ -151,9 +150,10 @@ class StoryNovelRevisionService:
         clone = self.create_draft(story.business_id, request)
         clone.story_snapshot = build_story_snapshot(story)
         clone.generation_plan = clone_generation_plan(source.generation_plan)
-        if is_v3_plan(source.generation_plan):
+        ledger_schema = clone_ledger_schema(source.generation_plan)
+        if ledger_schema:
             clone.continuity_ledger = {
-                "schema": "story_novel_continuity.v4",
+                "schema": ledger_schema,
                 "state_status": "stale",
                 "stale_from_position": 1,
                 "chapters": {},

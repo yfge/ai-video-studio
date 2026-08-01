@@ -45,7 +45,7 @@ def persisted_stage_text(
     rendered_template: dict | None = None,
     prompt_text: str = "prompt",
 ):
-    if stage.startswith("chapter_planning"):
+    if stage.startswith(("arc_planning", "chapter_planning")):
         model = "planning"
     elif stage.startswith(("prose", "local_repair")):
         model = "prose"

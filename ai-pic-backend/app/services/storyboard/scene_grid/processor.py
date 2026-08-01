@@ -18,11 +18,7 @@ from app.services.storyboard.scene_grid.prompt_builder import (
     cell_durations,
 )
 from app.services.storyboard.scene_grid.refs import resolve_reference_images
-from app.services.storyboard.scene_grid.shared import (
-    load_ref_context,
-    to_int,
-    utc_now,
-)
+from app.services.storyboard.scene_grid.shared import load_ref_context, to_int, utc_now
 from app.services.storyboard.scene_grid.video_processor import generate_video
 
 logger = get_logger("storyboard_scene_grid")

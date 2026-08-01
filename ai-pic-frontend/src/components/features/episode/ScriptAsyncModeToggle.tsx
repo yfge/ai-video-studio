@@ -25,7 +25,7 @@ export function ScriptAsyncModeToggle({
             ...prev,
             generation_mode: nextUseAsync ? "production" : "standard",
             auto_timeline_pipeline: nextUseAsync
-              ? (prev.auto_timeline_pipeline ?? true)
+              ? prev.auto_timeline_pipeline ?? true
               : false,
           }));
         }}

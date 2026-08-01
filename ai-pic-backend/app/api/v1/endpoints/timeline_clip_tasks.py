@@ -2,9 +2,7 @@ from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.user import User
 from app.schemas.timeline_clip_tasks import TimelineClipTaskListResponse
-from app.services.timeline_clip_task_status_service import (
-    TimelineClipTaskStatusService,
-)
+from app.services.timeline_clip_task_status_service import TimelineClipTaskStatusService
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 

@@ -2,9 +2,8 @@
 
 import asyncio
 
-from fastapi import HTTPException
-
 from app.services.providers.deepseek_models import is_v4_model
+from fastapi import HTTPException
 
 from .story_novel_ai_prompts import SYSTEM_PROMPT
 from .story_novel_export_ai import TruncatedNovelOutput, generate_story_novel_text
@@ -65,7 +64,7 @@ async def generate_task_text(
         temperature if temperature is not None else revision.temperature or 0.7
     )
     planning_stage = stage == "planning" or str(stage or "").startswith(
-        "chapter_planning."
+        ("arc_planning.", "chapter_planning.")
     )
     template_required = _template_required(stage)
     template = _combined_prompt_template(prompt)
@@ -162,6 +161,7 @@ def _template_required(stage: str | None) -> bool:
         "planning",
         "canon",
         "chapters",
+        "arc_planning",
         "chapter_planning",
         "prose",
         "audit",

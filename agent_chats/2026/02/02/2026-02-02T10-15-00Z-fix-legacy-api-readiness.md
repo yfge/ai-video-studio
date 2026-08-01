@@ -1,6 +1,6 @@
 ---
 id: 2026-02-02T10-15-00Z-fix-legacy-api-readiness
-date: 2026-02-02T10:15:00Z
+date: "2026-02-02T10:15:00Z"
 participants: [human, claude-opus-4-5]
 models: [claude-opus-4-5-20251101]
 tags: [frontend, bugfix, api, readiness-check]
@@ -22,8 +22,8 @@ Continue from previous conversation - fix the runtime error where `storyAPI.chec
 
 ### Modified Files
 
-| File | Change |
-|------|--------|
+| File                               | Change                                                                                                         |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `ai-pic-frontend/src/utils/api.ts` | Added checkStoryReadiness, checkEpisodeReadiness, quickFixStory methods to apiClient class and storyAPI export |
 
 ### Methods Added
@@ -43,6 +43,7 @@ quickFixStory: (id, request) => apiClient.quickFixStory(id, request)
 ## Validation
 
 ### Frontend Lint
+
 ```bash
 cd ai-pic-frontend && npm run lint
 # 0 errors, 7 pre-existing warnings

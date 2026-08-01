@@ -2,13 +2,12 @@ from functools import partial
 from types import SimpleNamespace
 
 import anyio
-from fastapi import HTTPException
-
 from app.core.database import SessionLocal
 from app.models.task import TaskStatus
 from app.repositories.story_novel_repository import StoryNovelRepository
 from app.services.providers.deepseek_models import DEEPSEEK_DEFAULT_MODEL
 from app.utils.json_utils import extract_json_block
+from fastapi import HTTPException
 
 from . import story_novel_task_guard as task_guard
 from .story_novel_ai_prompts import adaptation_prompt
@@ -21,7 +20,7 @@ from .story_novel_downstream_gate import (
 )
 from .story_novel_legacy_task import run_legacy_export
 from .story_novel_memory_context import mark_revision_ledger_stale
-from .story_novel_plan_versions import is_v3_plan
+from .story_novel_plan_versions import is_v3_plan, is_v4_plan
 from .story_novel_planning_service import ensure_generation_plan
 from .story_novel_resume_cursor import advance_resume_cursor, resume_suffix_plan_rows
 from .story_novel_revision_service import StoryNovelRevisionService
@@ -38,10 +37,14 @@ async def _generate_missing_chapters(service, revision, task, *, only_position=N
         service, revision, task, partial(generate, stage="planning")
     )
     plan_rows = plan["chapters"]
-    if only_position is None and is_v3_plan(plan):
+    if only_position is None and (is_v3_plan(plan) or is_v4_plan(plan)):
         plan_rows = resume_suffix_plan_rows(service, revision, plan_rows)
     if only_position is not None:
-        mark_revision_ledger_stale(revision, from_position=only_position)
+        mark_revision_ledger_stale(
+            revision,
+            from_position=only_position,
+            archive_generation_calls=True,
+        )
         for row in service.repo.chapters_from_position(revision.id, only_position + 1):
             row.review_status = "review_required"
         revision.continuity_status = "review_required"

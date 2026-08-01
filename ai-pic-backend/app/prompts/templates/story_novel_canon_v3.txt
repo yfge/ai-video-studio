@@ -5,6 +5,13 @@ entities 只允许 character、location、object、organization、concept；规�
 全书大纲已明确的主要人物、持久地点、组织、关键物件和跨章复用的世界概念应提前注册为唯一实体，
 即使到后续章节才首次登场；首次登场前它们不会进入正文上下文。只在单场出现、没有后续状态的
 路人、室内角落和普通用品不要注册。大纲未提供依据的未来实体仍不得发明。
+structured_outline.core_character_routes 中的后续核心人物必须以 character_ref 作为稳定实体 ID 注册，
+其 hidden_state 只表示第1章前真实状态，不得写入未来登场后的行动或结果。路线中的叙事功能、
+最早登场章、预定卷、关系目标和弧线方向由服务器按冻结 StorySeed 绑定，禁止另行改写。
+structured_outline.initial_scope_nodes 中会持续存在的范围必须以 scope_id 注册为 location；
+scope_type、parent_scope_id 与 depth 属于静态 attributes。initial_scope_edges 按 from_scope_id 挂到
+对应 location 的 attributes.connections，保留 edge_id、to_scope_id、connection_type、direction、cost、
+duration、available_from_position；连接不是新的 location 实体。
 entities.attributes 只允许年龄、职业、类型、性别、稳定人称和家庭角色等不会随剧情改变的静态元数据；location、owner_id、status、identity、knowledge、permissions、injuries、destroyed_at 等可变或未来字段一律写入 initial_state 的事件前值，禁止提前写入 attributes。
 人物档案中若明确使用“她/他”、女/男性身份或明确家庭角色，必须用稳定英文键 gender、pronouns、family_role 保存这些不变事实；来源未明示时必须省略，不得猜测。
 world_rules 只能逐字复制 StorySeed.world_constraints 中不含章号或未来剧情的独立静态约束；不得从 structured_outline、结局、未来事件、里程碑或角色弧推导世界规则。

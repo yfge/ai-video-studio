@@ -1,6 +1,6 @@
 ---
 id: 2026-02-04T18-06-41Z-episode-character-migration-execution
-date: 2026-02-04T18:06:41Z
+date: "2026-02-04T18:06:41Z"
 participants: [human, claude-sonnet-4.5]
 models: [claude-sonnet-4-5-20250929]
 tags: [database, migration, docker, devops]
@@ -25,6 +25,7 @@ Run the database migration.
 ### Docker Configuration
 
 **Modified `docker/docker-compose.dev.yml`**
+
 - Added port mapping `13306:3306` to ai-video-mysql service
 - Allows local Alembic migrations from host machine
 - Enables direct MySQL client connections for debugging
@@ -32,20 +33,24 @@ Run the database migration.
 ### Database Migration Execution
 
 **Restarted MySQL container:**
+
 ```bash
 cd docker && docker-compose -f docker-compose.dev.yml up -d ai-video-mysql
 ```
 
 **Fixed .env password mismatch:**
+
 - Changed DATABASE_URL password from `Pa88word` to `ai-video` to match Docker configuration
 - Note: .env is not tracked in git (correctly gitignored)
 
 **Executed migration:**
+
 ```bash
 cd ai-pic-backend && alembic upgrade head
 ```
 
 **Migration output:**
+
 ```
 INFO  [alembic.runtime.migration] Context impl MySQLImpl.
 INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
@@ -57,11 +62,13 @@ INFO  [alembic.runtime.migration] Running upgrade b4d2c8f1a7e9 -> 3a9af7b70877, 
 ### Table Structure Verification
 
 **Verified table schema:**
+
 ```sql
 DESCRIBE episode_characters;
 ```
 
 **Result:** All 23 fields present with correct types:
+
 - Primary key: `id` (auto_increment)
 - Business key: `business_id` (unique)
 - Foreign keys: `episode_id`, `virtual_ip_id`
@@ -74,11 +81,13 @@ DESCRIBE episode_characters;
 ### Index Verification
 
 **Verified indexes:**
+
 ```sql
 SHOW INDEX FROM episode_characters;
 ```
 
 **Result:** All 7 indexes created:
+
 1. PRIMARY (id) - unique
 2. ix_episode_characters_business_id (business_id) - unique
 3. idx_episode_id (episode_id) - non-unique
@@ -90,6 +99,7 @@ SHOW INDEX FROM episode_characters;
 ### Foreign Key Verification
 
 **Verified constraints:**
+
 ```sql
 SELECT kcu.CONSTRAINT_NAME, kcu.COLUMN_NAME, kcu.REFERENCED_TABLE_NAME,
        kcu.REFERENCED_COLUMN_NAME, rc.DELETE_RULE
@@ -99,10 +109,12 @@ WHERE kcu.TABLE_NAME='episode_characters';
 ```
 
 **Result:** Both foreign keys correctly configured:
+
 1. `episode_characters_ibfk_1`: episode_id → episodes.id (DELETE CASCADE)
 2. `episode_characters_ibfk_2`: virtual_ip_id → virtual_ips.id (DELETE RESTRICT)
 
 **Validation summary:**
+
 - ✅ Table created with correct schema
 - ✅ All indexes in place
 - ✅ Foreign keys with correct DELETE rules
@@ -114,6 +126,7 @@ WHERE kcu.TABLE_NAME='episode_characters';
 ### Immediate Testing
 
 1. **Test API endpoints** (ready to use):
+
    ```bash
    # Create episode character
    curl -X POST http://localhost:8000/api/v1/episodes/1/characters \
@@ -141,14 +154,17 @@ WHERE kcu.TABLE_NAME='episode_characters';
 Now that the database migration is complete, these features can be implemented:
 
 1. **Script Agent Integration** (~50 lines)
+
    - File: `app/services/script_agent.py`
    - Update `_validate_script_characters()` to include Episode characters
 
 2. **Script Character Policy** (~50 lines)
+
    - File: `app/services/script/script_character_policy.py`
    - Add `build_episode_alias_map()` function
 
 3. **Context Pack Integration** (~80 lines)
+
    - File: `app/services/context_pack/story_context_pack_builder.py`
    - Add `build_episode_context_pack()` with budget allocation
 
@@ -161,6 +177,7 @@ Now that the database migration is complete, these features can be implemented:
 ### Docker Setup
 
 The development environment now supports:
+
 - Host-to-container MySQL connections (port 13306)
 - Local migration execution without entering containers
 - Direct database inspection and debugging
@@ -168,6 +185,7 @@ The development environment now supports:
 ### Password Configuration
 
 **Important:** The .env file uses password `ai-video` to match Docker Compose:
+
 - Docker Compose: `MYSQL_ROOT_PASSWORD: ai-video`
 - .env: `DATABASE_URL=mysql+pymysql://root:ai-video@127.0.0.1:13306/...`
 
@@ -176,6 +194,7 @@ This password should NOT be changed in Docker Compose without updating local .en
 ### Migration Safety
 
 The migration is backwards compatible:
+
 - No data loss risk (new table only)
 - No impact on existing tables
 - Can be safely rolled back: `alembic downgrade -1`
@@ -190,11 +209,13 @@ The migration is backwards compatible:
 If migration fails in future:
 
 1. **Connection refused:**
+
    - Check MySQL is running: `docker ps | grep mysql`
    - Verify port mapping: `lsof -i :13306`
    - Restart if needed: `cd docker && docker-compose -f docker-compose.dev.yml restart ai-video-mysql`
 
 2. **Password error:**
+
    - Verify .env password matches Docker Compose
    - Check DATABASE_URL format: `mysql+pymysql://root:PASSWORD@127.0.0.1:13306/ai_video_studio`
 
@@ -220,6 +241,7 @@ The Episode temporary character management system is now fully operational at th
 ✅ **Testing:** 8 unit tests passing
 
 **System is ready for:**
+
 - API endpoint testing
 - Frontend integration
 - P1 feature development (Script Agent, Context Pack, etc.)

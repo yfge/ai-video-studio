@@ -1,6 +1,10 @@
 "use client";
 
-import { ModelSelector, operatorInputClass } from "@/components/shared";
+import {
+  ModelSelector,
+  operatorButtonClass,
+  operatorInputClass,
+} from "@/components/shared";
 import type { StorySeed } from "@/utils/api/types";
 import { storySeedOutlineText } from "./StorySeedFields";
 
@@ -45,6 +49,38 @@ export function StorySeedPlanningInputs({
         cacheKey="story-seed-structure-models"
       />
     </div>
+  );
+}
+
+export function StorySeedPlanningAction({
+  hasStructuredOutline,
+  error,
+  disabled,
+  onStart,
+}: {
+  hasStructuredOutline: boolean;
+  error: string;
+  disabled: boolean;
+  onStart: () => void;
+}) {
+  return (
+    <>
+      {error ? (
+        <p className="text-xs text-amber-700" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <button
+        type="button"
+        disabled={disabled || Boolean(error)}
+        onClick={onStart}
+        className={operatorButtonClass("primary")}
+      >
+        {hasStructuredOutline
+          ? "AI 重新生成结构化章节计划"
+          : "AI 生成结构化章节计划"}
+      </button>
+    </>
   );
 }
 

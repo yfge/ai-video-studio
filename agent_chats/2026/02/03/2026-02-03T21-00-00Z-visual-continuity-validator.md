@@ -1,6 +1,6 @@
 ---
 id: 2026-02-03T21-00-00Z-visual-continuity-validator
-date: 2026-02-03T21:00:00Z
+date: "2026-02-03T21:00:00Z"
 participants: [human, claude]
 models: [claude-opus-4-5]
 tags: [backend, validator, agent-fix, storyboard, visual]
@@ -30,6 +30,7 @@ summary: "创建视觉连续性校验器，实现服装/道具/发型跨帧一�
 ### 新增文件
 
 1. **`app/services/storyboard/validators/visual_continuity_validator.py`** (~500 行)
+
    - `VisualContinuityValidator`: 核心校验器
      - `_check_costume_continuity()`: 服装连续性检测
      - `_check_hairstyle_continuity()`: 发型连续性检测
@@ -59,6 +60,7 @@ summary: "创建视觉连续性校验器，实现服装/道具/发型跨帧一�
 ### 关键实现细节
 
 - **视觉元素关键词**:
+
   - 服装: 穿着/衣服/裙子/西装/T恤/衬衫...
   - 发型: 长发/短发/卷发/直发/马尾...
   - 道具: 手持/拿着/戴着/眼镜/帽子/包...
@@ -68,11 +70,13 @@ summary: "创建视觉连续性校验器，实现服装/道具/发型跨帧一�
 - **姿态关键词**: 坐着/站着/躺着/走动/奔跑...
 
 - **无效姿态转换**:
+
   - 躺着 → 奔跑 (需要中间过渡)
   - 奔跑 → 躺着
   - 坐着 → 奔跑
 
 - **构图规则检测**:
+
   - 三分法 (rule of thirds)
   - 引导线 (leading lines)
   - 景深 (depth of field)

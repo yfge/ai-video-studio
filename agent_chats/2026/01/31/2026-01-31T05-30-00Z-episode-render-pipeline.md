@@ -1,6 +1,6 @@
 ---
 id: 2026-01-31T05-30-00Z-episode-render-pipeline
-date: 2026-01-31T05:30:00Z
+date: "2026-01-31T05:30:00Z"
 participants: [human, claude]
 models: [claude-opus-4-5-20251101]
 tags: [backend, render, video, ffmpeg]
@@ -32,6 +32,7 @@ Continue work on episode133-render-mp4 task - upgrade "concat + audio replace" t
 
 1. **`app/services/render/__init__.py`** - Module exports for render services
 2. **`app/services/render/video_concat.py`** (285 lines) - FFmpeg utilities:
+
    - `VideoClip` dataclass for clip metadata
    - `download_all_clips()` - async video download
    - `trim_clip_to_duration()` - trim/pad clips to target duration
@@ -41,6 +42,7 @@ Continue work on episode133-render-mp4 task - upgrade "concat + audio replace" t
    - `concat_video_clips()` - main async function orchestrating the pipeline
 
 3. **`app/services/render/episode_render_service.py`** (229 lines) - Service class:
+
    - `get_storyboard_clips()` - extract VideoClip list from script storyboard
    - `get_episode_audio_url()` - get TTS dialogue audio URL
    - `render_episode()` - main render method (video_audio + tts_audio versions)
@@ -48,6 +50,7 @@ Continue work on episode133-render-mp4 task - upgrade "concat + audio replace" t
    - `_save_render_results()` - persist results to episode metadata
 
 4. **`tests/unit/services/render/test_video_concat.py`** (221 lines) - Unit tests:
+
    - TestVideoClip (2 tests)
    - TestCreateConcatFile (2 tests)
    - TestTrimClipToDuration (2 tests)
@@ -78,6 +81,7 @@ python -c "from app.services.render import EpisodeRenderService; print('Import O
 ```
 
 All 23 unit tests pass covering:
+
 - VideoClip dataclass creation
 - Concat file creation with path escaping
 - Clip trimming/padding logic

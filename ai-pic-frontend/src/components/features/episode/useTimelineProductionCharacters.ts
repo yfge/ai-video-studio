@@ -2,10 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { episodeAPI, storyAPI } from "@/utils/api/endpoints";
-import type {
-  EpisodeCharacter,
-  StoryCharacter,
-} from "@/utils/api/types";
+import type { EpisodeCharacter, StoryCharacter } from "@/utils/api/types";
 
 export function useTimelineProductionCharacters({
   episodeId,
@@ -47,7 +44,9 @@ export function useTimelineProductionCharacters({
         if (!episodeResponse.success || !episode?.story_id) {
           return [];
         }
-        const storyResponse = await storyAPI.getStoryCharacters(episode.story_id);
+        const storyResponse = await storyAPI.getStoryCharacters(
+          episode.story_id,
+        );
         if (!storyResponse.success || !storyResponse.data) return [];
         return storyResponse.data.map((character) =>
           storyCharacterToEpisodeCharacter(character, episode.id),
@@ -73,10 +72,7 @@ export function useTimelineProductionCharacters({
 
   const characters = useMemo(
     () =>
-      mergeCharactersByVirtualIpId([
-        ...episodeCharacters,
-        ...storyCharacters,
-      ]),
+      mergeCharactersByVirtualIpId([...episodeCharacters, ...storyCharacters]),
     [episodeCharacters, storyCharacters],
   );
 

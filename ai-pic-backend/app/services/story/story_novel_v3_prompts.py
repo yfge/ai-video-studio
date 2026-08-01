@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import copy
 import re
 
 from app.utils.json_utils import extract_json_block
 
+from .story_novel_audit_contract_context import audit_contract_context  # noqa: F401
 from .story_novel_domain import json_prompt_payload
 from .story_novel_prompt_renderer import render_novel_prompt
-from .story_novel_v3_audit_semantics import current_timeline_context
 from .story_novel_v3_repair_guidance import safe_repair_issues
 
 
@@ -52,70 +53,6 @@ def chapter_audit_prompt(audit_input: dict) -> str:
     )
 
 
-def audit_contract_context(
-    chapter_plan: dict,
-    brief: dict | None,
-    expected_delta: dict,
-    canon: dict,
-    established_background=None,
-) -> dict:
-    event_ids = list(chapter_plan.get("required_event_ids") or [])
-    event_texts = list(chapter_plan.get("key_events") or [])
-    if len(event_ids) != len(event_texts):
-        raise ValueError("当前章 event ID 与 key_event 未一一对应")
-    characters = {
-        item.get("id"): item
-        for item in canon.get("entities") or []
-        if item.get("kind") == "character"
-    }
-    event_text = dict(zip(event_ids, event_texts, strict=True))
-    return {
-        "established_background": list(established_background or []),
-        "current_timeline": current_timeline_context(canon, chapter_plan),
-        "execution_contracts": list(chapter_plan.get("execution_contracts") or []),
-        "current_events": [
-            {"event_id": event_id, "key_event": event_text[event_id]}
-            for event_id in event_ids
-        ],
-        "knowledge_semantics": [
-            {
-                "contract_id": f"knowledge:{index}",
-                **grant,
-                "character_names": _character_names(
-                    characters.get(grant.get("character_id")) or {}
-                ),
-                "source_key_event": event_text.get(grant.get("source_event_id")),
-            }
-            for index, grant in enumerate(
-                expected_delta.get("knowledge_grants") or [], start=1
-            )
-        ],
-        "current_beats": [
-            {
-                key: beat.get(key)
-                for key in (
-                    "beat_id",
-                    "purpose",
-                    "bound_event_ids",
-                    "effect_contract_ids",
-                )
-            }
-            for beat in (brief or {}).get("beats") or []
-        ],
-        "continuity_watchpoints": list(
-            (brief or {}).get("continuity_watchpoints") or []
-        ),
-    }
-
-
-def _character_names(entity: dict) -> list[str]:
-    return [
-        str(value)
-        for value in [entity.get("name"), *(entity.get("aliases") or [])]
-        if str(value or "").strip()
-    ]
-
-
 def local_block_repair_prompt(repair_input: dict) -> str:
     return render_novel_prompt(
         "story_novel_local_block_repair_v3",
@@ -138,6 +75,7 @@ def local_block_contract_retry_prompt(
     )
     feedback = {"validation_error": error}
     if length_retry:
+        retry_contract = _calibrated_retry_contract(length_contract, diagnostics)
         feedback.update(
             required_action=(
                 "上一响应未满足正文合同。逐项查看 block_length_diagnostics："
@@ -156,7 +94,7 @@ def local_block_contract_retry_prompt(
             "rewrite_mode": f"{length_action}_previous_replacements",
             "failed_block_ids": repair_input.get("failed_block_ids") or [],
             "retry_feedback": feedback,
-            "replacement_length": length_contract,
+            "replacement_length": retry_contract,
             "current_chapter_context": current_context,
             "current_contract_requirements": current_requirements,
             "current_issue_constraints": safe_repair_issues(
@@ -203,6 +141,45 @@ def _replacement_retry_action(diagnostics: list[dict], contract: dict) -> str:
     if actual < int(contract.get("chapter_min_chars") or 0):
         return "expand"
     return "compress"
+
+
+def _calibrated_retry_contract(contract: dict, diagnostics: list[dict]) -> dict:
+    """Counter observed model bias while preserving the parser's hard contract."""
+    result = copy.deepcopy(contract)
+    requested = int(contract.get("repair_model_target_chars") or 0)
+    actual = sum(int(item.get("actual_chars") or 0) for item in diagnostics)
+    if not requested or not actual:
+        return result
+    minimum = max(1, int(contract.get("replacement_min_chars") or 1))
+    maximum = max(minimum, int(contract.get("replacement_max_chars") or minimum))
+    retry_target = min(maximum, max(minimum, round(requested * requested / actual)))
+    result.update(
+        replacement_target_chars=retry_target,
+        repair_model_target_chars=retry_target,
+        retry_source_actual_chars=actual,
+        retry_model_target_chars=retry_target,
+    )
+    result["replacement_blocks"] = _retry_block_budgets(
+        contract.get("replacement_blocks") or [], retry_target
+    )
+    return result
+
+
+def _retry_block_budgets(blocks: list[dict], total: int) -> list[dict]:
+    weights = [max(1, int(item.get("target_chars") or 0)) for item in blocks]
+    weight_sum, remaining, result = sum(weights) or 1, total, []
+    for index, (item, weight) in enumerate(zip(blocks, weights, strict=True)):
+        target = remaining if index == len(blocks) - 1 else total * weight // weight_sum
+        remaining -= target
+        result.append(
+            {
+                **item,
+                "min_chars": max(1, target * 80 // 100),
+                "target_chars": target,
+                "max_chars": max(1, target * 120 // 100),
+            }
+        )
+    return result
 
 
 def _retry_instruction(action: str) -> str:

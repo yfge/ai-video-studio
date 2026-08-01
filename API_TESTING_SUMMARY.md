@@ -9,23 +9,28 @@
 ### 1. 核心实现 (Core Implementation)
 
 ✅ **数据层 (Data Layer)**
+
 - 创建 `EpisodeCharacter` 模型 (90 lines)
 - Alembic 迁移 `3a9af7b70877_add_episode_characters_table.py`
 - 数据库表已创建并验证
 
 ✅ **Schema 层 (Schema Layer)**
+
 - 5 个 Pydantic schemas (Create, Update, Response, WithResources, ListResponse)
 
 ✅ **服务层 (Service Layer)**
+
 - `episode_character_service.py` - 资源解析逻辑
 - `voice_binding_service.py` - 新增 Episode 角色映射函数
 - 8 个单元测试全部通过
 
 ✅ **API 层 (API Layer)**
+
 - 6 个 RESTful 端点
 - 所有端点已测试并正常工作
 
 ✅ **数据库迁移**
+
 - MySQL 端口映射配置 (13306:3306)
 - 迁移成功执行
 - 表结构、索引、外键全部验证通过
@@ -33,6 +38,7 @@
 ### 2. Bug 修复 (Bug Fixes)
 
 **问题**: `get_episode_by_identifier()` 函数签名不匹配
+
 - **错误**: TypeError: missing 1 required positional argument: 'current_user'
 - **原因**: 函数需要 4 个参数 (db, episode_id, episode_business_id, current_user)
 - **修复**: 添加 `_parse_episode_identifier()` 辅助函数，更新所有调用
@@ -40,10 +46,13 @@
 ## API 端点测试结果 (API Testing Results)
 
 ### ✅ Test 1: 创建临时角色 (Create)
+
 ```bash
 POST /api/v1/episodes/4/characters
 ```
+
 **结果**: 成功创建，返回完整角色信息
+
 - ID: 1
 - business_id: 4e8ff28e0d9a44ec9ec9ff3b57585237
 - character_name: "快递员"
@@ -51,70 +60,95 @@ POST /api/v1/episodes/4/characters
 - importance: 2
 
 ### ✅ Test 2: 列表查询 (List)
+
 ```bash
 GET /api/v1/episodes/4/characters?page=1&page_size=10
 ```
+
 **结果**: 返回分页列表
+
 - total: 1
 - has_more: false
 - 按 importance 降序排序 ✓
 
 ### ✅ Test 3: 获取详情 (Get Detail)
+
 ```bash
 GET /api/v1/episodes/4/characters/1
 ```
+
 **结果**: 返回完整角色信息 ✓
 
 ### ✅ Test 4: 获取已解析资源 (Get Resolved Resources)
+
 ```bash
 GET /api/v1/episodes/4/characters/1/resources
 ```
+
 **结果**:
+
 - display_name: "快递员"
 - resolved_voice_config: 从 VirtualIP 继承 (provider: "minimax", voice_id: "male-qn-jingying")
 - resolved_appearance_prompt: "穿着快递制服,背着快递包"
 - image_count: 41 (从 VirtualIP 继承)
 
 ### ✅ Test 5: 更新角色 (Update)
+
 ```bash
 PUT /api/v1/episodes/4/characters/1
 ```
+
 **结果**: 成功更新
+
 - importance: 2 → 3
 - 新增 voice_config_override
 
 ### ✅ Test 6: 验证声音覆盖 (Voice Override Verification)
+
 ```bash
 GET /api/v1/episodes/4/characters/1/resources
 ```
+
 **结果**: 覆盖生效 ✓
+
 - 原始: voice_id: "male-qn-jingying"
 - 覆盖后: voice_id: "male-qn-qingse"
 
 ### ✅ Test 7: 软删除 (Soft Delete)
+
 ```bash
 DELETE /api/v1/episodes/4/characters/1?reason=Test+deletion
 ```
+
 **结果**: 成功删除
+
 - 返回确认消息 ✓
 
 ### ✅ Test 8: 验证删除 (Verify Deletion)
+
 ```bash
 GET /api/v1/episodes/4/characters
 ```
+
 **结果**: 列表为空 ✓
+
 - total: 0
 
 ### ✅ Test 9: 数据库验证 (Database Verification)
+
 ```sql
 SELECT id, character_name, is_deleted, deleted_reason FROM episode_characters WHERE id=1;
 ```
+
 **结果**: 软删除验证通过
+
 - is_deleted: 1
 - deleted_reason: "Test deletion"
 
 ### ✅ Test 10: Business ID 查询 (Business ID Lookup)
+
 **结果**: 创建第二个角色，business_id 查询正常 ✓
+
 - 创建角色: character_name: "医生"
 - business_id: 0c11d94ec2124809b008dcee4ef76985
 
@@ -137,6 +171,7 @@ SELECT id, character_name, is_deleted, deleted_reason FROM episode_characters WH
 ## 环境配置 (Environment Setup)
 
 ### 数据库连接
+
 - Host: 127.0.0.1
 - Port: 13306
 - Database: ai_video_studio
@@ -144,11 +179,13 @@ SELECT id, character_name, is_deleted, deleted_reason FROM episode_characters WH
 - Password: ai-video
 
 ### 后端服务
+
 - URL: http://localhost:8000
 - Container: ai-video-backend
 - Status: Running (已重启并加载新代码)
 
 ### 测试账户
+
 - Username: geyunfei
 - Password: Gyf@845261
 
@@ -157,14 +194,17 @@ SELECT id, character_name, is_deleted, deleted_reason FROM episode_characters WH
 ### P1 Features (准备实施)
 
 1. **Script Agent 集成** (~50 lines)
+
    - 文件: `app/services/script_agent.py`
    - 更新 `_validate_script_characters()` 包含 Episode 角色
 
 2. **Script Character Policy** (~50 lines)
+
    - 文件: `app/services/script/script_character_policy.py`
    - 新增 `build_episode_alias_map()` 函数
 
 3. **Context Pack 集成** (~80 lines)
+
    - 文件: `app/services/context_pack/story_context_pack_builder.py`
    - 新增 `build_episode_context_pack()` 函数
    - 实现预算分配 (50% Story 主角 + 50% Episode 临时角色)
@@ -177,10 +217,12 @@ SELECT id, character_name, is_deleted, deleted_reason FROM episode_characters WH
 ### P1.5 Features (自动生成)
 
 1. **临时角色提取** (~150 lines)
+
    - 从脚本对白中提取角色名
    - 解析舞台指示获取外观描述
 
 2. **AI 角色背景生成** (~120 lines)
+
    - 根据对白生成性格描述
    - 根据上下文生成背景故事
 
@@ -192,6 +234,7 @@ SELECT id, character_name, is_deleted, deleted_reason FROM episode_characters WH
 ## 快速测试命令 (Quick Test Commands)
 
 ### 获取 Token
+
 ```bash
 TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/x-www-form-urlencoded" \
@@ -199,6 +242,7 @@ TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
 ```
 
 ### 创建角色
+
 ```bash
 curl -X POST "http://localhost:8000/api/v1/episodes/4/characters" \
   -H "Authorization: Bearer $TOKEN" \
@@ -207,12 +251,14 @@ curl -X POST "http://localhost:8000/api/v1/episodes/4/characters" \
 ```
 
 ### 列表查询
+
 ```bash
 curl "http://localhost:8000/api/v1/episodes/4/characters" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 ### 获取资源
+
 ```bash
 curl "http://localhost:8000/api/v1/episodes/4/characters/1/resources" \
   -H "Authorization: Bearer $TOKEN"
@@ -221,6 +267,7 @@ curl "http://localhost:8000/api/v1/episodes/4/characters/1/resources" \
 ## 文件清单 (Files Modified/Created)
 
 ### 新增文件 (10 个)
+
 1. `app/models/episode_character.py` (~90 lines)
 2. `app/schemas/episode_character.py` (~90 lines)
 3. `app/services/episode_character_service.py` (~120 lines)
@@ -233,6 +280,7 @@ curl "http://localhost:8000/api/v1/episodes/4/characters/1/resources" \
 10. `API_TESTING_SUMMARY.md` (本文件)
 
 ### 修改文件 (5 个)
+
 1. `app/models/__init__.py` (新增 EpisodeCharacter 导入)
 2. `app/models/script.py` (新增 episode_characters 关系)
 3. `app/services/voice_binding_service.py` (+80 lines)
@@ -242,11 +290,13 @@ curl "http://localhost:8000/api/v1/episodes/4/characters/1/resources" \
 ## 数据库状态 (Database State)
 
 ### 表: episode_characters
+
 - 总行数: 2
 - 活跃角色: 1 (id=2, "医生")
 - 已删除角色: 1 (id=1, "快递员")
 
 ### 验证命令
+
 ```bash
 # 查看表结构
 mysql -h 127.0.0.1 -P 13306 -u root -pai-video ai_video_studio \

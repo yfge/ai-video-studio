@@ -6,7 +6,7 @@ from app.schemas.story_novel_export import NovelModelPolicy
 from app.services.providers.deepseek_models import DEEPSEEK_DEFAULT_MODEL
 from fastapi import HTTPException
 
-from .story_novel_plan_versions import V2_SCHEMA, V3_SCHEMA
+from .story_novel_plan_versions import V2_SCHEMA, V4_SCHEMA
 
 DEFAULT_NOVEL_MODEL = f"deepseek:{DEEPSEEK_DEFAULT_MODEL}"
 
@@ -66,7 +66,7 @@ def _resolve(policy: NovelModelPolicy | None, fallback: str | None) -> NovelMode
 
 def generation_plan_schema(request) -> str:
     if request.model_policy is not None:
-        return V3_SCHEMA
+        return V4_SCHEMA
     return V2_SCHEMA
 
 
@@ -77,7 +77,13 @@ def model_for_stage(revision, stage: str | None) -> str | None:
         getattr(revision, "generation_plan", None) or {}, revision.model
     )
     prefix = stage.split(".", 1)[0]
-    if prefix in {"planning", "canon", "chapters", "chapter_planning"}:
+    if prefix in {
+        "planning",
+        "canon",
+        "chapters",
+        "arc_planning",
+        "chapter_planning",
+    }:
         return policy.planning_model
     if prefix in {"audit", "continuity"}:
         return policy.audit_model
@@ -91,5 +97,6 @@ def reasoning_for_stage(stage: str | None) -> bool | None:
         "planning",
         "canon",
         "chapters",
+        "arc_planning",
         "chapter_planning",
     }

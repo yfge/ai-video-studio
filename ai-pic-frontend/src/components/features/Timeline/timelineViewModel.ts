@@ -11,7 +11,9 @@ export function resolveTimelineSelection(
 ): TimelineSelection {
   if (!selectedItemId) return { item: null, track: null };
   for (const track of tracks) {
-    const item = track.items.find((candidate) => candidate.id === selectedItemId);
+    const item = track.items.find(
+      (candidate) => candidate.id === selectedItemId,
+    );
     if (item) return { item, track };
   }
   return { item: null, track: null };

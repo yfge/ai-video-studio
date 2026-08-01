@@ -67,3 +67,64 @@ def prior_local_memories(revision, prior_chapters) -> list[dict]:
             and item.get("source_hash") == source_hash
         )
     return result
+
+
+def local_memory_rows_complete(entry: dict) -> bool:
+    local_ids = set(
+        ((entry.get("state_after") or {}).get("revision_local_entities") or {})
+    )
+    delta = entry.get("state_delta") or {}
+    grants = [
+        item
+        for item in delta.get("knowledge_grants") or []
+        if item.get("character_id") in local_ids
+    ]
+    expected = {
+        (item.get("character_id"), item.get("fact_id"), item.get("source_event_id"))
+        for item in grants
+    }
+    rows = list(entry.get("revision_local_memories") or [])
+    actual = {
+        (
+            item.get("character_business_id"),
+            item.get("typed_fact_id"),
+            item.get("typed_source_event_id"),
+        )
+        for item in rows
+    }
+    return bool(
+        expected == actual
+        and len(actual) == len(rows)
+        and all(
+            item.get("revision_local") is True
+            and item.get("source_hash") == entry.get("source_hash")
+            and item.get("source_chapter_business_id")
+            == entry.get("chapter_business_id")
+            and item.get("source_quote") == item.get("content")
+            and item.get("content") == _knowledge_quote(delta, item)
+            and item.get("business_id") == _memory_business_id(entry, item)
+            for item in rows
+        )
+    )
+
+
+def _knowledge_quote(delta: dict, row: dict) -> str:
+    grant = {
+        "character_id": row.get("character_business_id"),
+        "fact_id": row.get("typed_fact_id"),
+        "source_event_id": row.get("typed_source_event_id"),
+    }
+    return str(
+        (delta.get("knowledge_evidence") or {}).get(knowledge_evidence_key(grant)) or ""
+    ).strip()
+
+
+def _memory_business_id(entry: dict, row: dict) -> str:
+    identity = {
+        "chapter": entry.get("chapter_business_id"),
+        "character_id": row.get("character_business_id"),
+        "fact_id": row.get("typed_fact_id"),
+        "source_event_id": row.get("typed_source_event_id"),
+        "source_hash": entry.get("source_hash"),
+    }
+    return f"revision-memory-{value_hash(identity)[:24]}"

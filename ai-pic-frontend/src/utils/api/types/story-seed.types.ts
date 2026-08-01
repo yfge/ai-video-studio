@@ -26,6 +26,55 @@ export interface StorySeedGrowthCurves {
   activity_and_time_scale?: string | null;
 }
 
+export interface StorySeedCoreCharacterRoute {
+  character_ref: string;
+  narrative_function: string;
+  first_allowed_position: number;
+  planned_arc_id: string;
+  relationship_targets: string[];
+  start_direction: string;
+  turning_directions: string[];
+  terminal_direction: string;
+  hidden_state: Record<string, unknown>;
+}
+
+export interface StorySeedCharacterSlot {
+  slot_id: string;
+  narrative_function: string;
+  relationship_target?: string | null;
+  entrance_preconditions: string[];
+  required_capabilities: string[];
+  mandatory: boolean;
+}
+
+export interface StorySeedScopeSlot {
+  slot_id: string;
+  narrative_function: string;
+  parent_scope_id?: string | null;
+  scale_direction: "deeper" | "broader" | "parallel" | "higher";
+  entrance_preconditions: string[];
+  mandatory: boolean;
+}
+
+export interface StorySeedScopeNode {
+  scope_id: string;
+  scope_type: string;
+  display_name: string;
+  parent_scope_id?: string | null;
+  depth: number;
+  first_allowed_position: number;
+  visibility: "hidden" | "known" | "visited";
+}
+
+export interface StorySeedScopeEdge {
+  edge_id: string;
+  from_scope_id: string;
+  to_scope_id: string;
+  connection_type: string;
+  direction: "one_way" | "two_way";
+  available_from_position: number;
+}
+
 export interface StorySeedProgressionArc {
   arc_id: string;
   title: string;
@@ -36,6 +85,8 @@ export interface StorySeedProgressionArc {
   growth: StorySeedGrowthCurves;
   major_entries: string[];
   world_scope_changes: string[];
+  character_slots?: StorySeedCharacterSlot[];
+  scope_slots?: StorySeedScopeSlot[];
   threads: Array<{
     thread_id: string;
     question: string;
@@ -50,8 +101,17 @@ export interface StorySeedStructuredOutline {
   version: number;
   requested_chapter_count?: number | null;
   planning_model?: string | null;
+  roadmap_version?: 0 | 1;
   planning_structure_version?: 0 | 1;
   progression_arcs?: StorySeedProgressionArc[];
+  core_character_routes?: StorySeedCoreCharacterRoute[];
+  scope_taxonomy?: Array<{
+    type_id: string;
+    display_name: string;
+    parent_type_id?: string | null;
+  }>;
+  initial_scope_nodes?: StorySeedScopeNode[];
+  initial_scope_edges?: StorySeedScopeEdge[];
   chapters: StorySeedStructuredChapter[];
   thread_schedule_version: number;
   thread_payoffs: StorySeedThreadPayoff[];

@@ -121,6 +121,27 @@ async def test_structure_repair_runs_when_first_result_misses_ending(monkeypatch
     )
     arcs = {
         "progression_plan": {
+            "roadmap_version": 1,
+            "core_character_routes": [
+                {
+                    "character_ref": "vip-1",
+                    "narrative_function": "主角",
+                    "first_allowed_position": 1,
+                    "planned_arc_id": "arc-001",
+                    "start_direction": "尚未掌握风钥",
+                    "terminal_direction": "公开拆分权限",
+                }
+            ],
+            "scope_taxonomy": [
+                {"type_id": "route-zone", "display_name": "路线活动范围"}
+            ],
+            "initial_scope_nodes": [
+                {
+                    "scope_id": "scope-six-cities",
+                    "scope_type": "route-zone",
+                    "display_name": "六城邮路",
+                }
+            ],
             "planning_structure_version": 1,
             "requested_chapter_count": 48,
             "progression_arcs": [

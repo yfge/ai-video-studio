@@ -15,6 +15,8 @@ from datetime import datetime, timezone
 def _utcnow() -> datetime:
     """Return current UTC time with timezone info."""
     return datetime.now(timezone.utc)
+
+
 from enum import Enum
 from typing import Any, Callable, TypeVar
 
@@ -56,13 +58,15 @@ class RetryContext:
     ) -> None:
         """Record an attempt."""
         self.attempt += 1
-        self.attempts_history.append({
-            "attempt": self.attempt,
-            "success": success,
-            "error": error,
-            "duration_ms": duration_ms,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
+        self.attempts_history.append(
+            {
+                "attempt": self.attempt,
+                "success": success,
+                "error": error,
+                "duration_ms": duration_ms,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        )
         if error:
             self.last_error = error
 
@@ -74,7 +78,7 @@ class RetryContext:
         """Get delay before next retry with exponential backoff."""
         base_delay = 1.0
         max_delay = 30.0
-        delay = min(base_delay * (2 ** self.attempt), max_delay)
+        delay = min(base_delay * (2**self.attempt), max_delay)
         return delay
 
 
@@ -229,12 +233,16 @@ class RetryStrategy:
                 else:
                     result = func(*args, **kwargs)
 
-                duration = int((datetime.now(timezone.utc) - start).total_seconds() * 1000)
+                duration = int(
+                    (datetime.now(timezone.utc) - start).total_seconds() * 1000
+                )
                 context.record_attempt(success=True, duration_ms=duration)
                 return result, context
 
             except Exception as e:
-                duration = int((datetime.now(timezone.utc) - start).total_seconds() * 1000)
+                duration = int(
+                    (datetime.now(timezone.utc) - start).total_seconds() * 1000
+                )
                 error_str = str(e)
                 context.record_attempt(
                     success=False, error=error_str, duration_ms=duration

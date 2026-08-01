@@ -114,3 +114,7 @@ def test_audit_repair_overage_retries_as_compression_with_block_budgets():
     assert "compress_previous_replacements" in prompt
     assert '"actual_chars":635' in prompt
     assert '"actual_chars":639' in prompt
+    assert contract["replacement_target_chars"] == 741
+    assert '"retry_source_actual_chars":1274' in prompt
+    assert '"retry_model_target_chars":431' in prompt
+    assert '"replacement_target_chars":431' in prompt

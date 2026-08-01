@@ -1,6 +1,6 @@
 ---
 id: 2026-01-30T08-17-19Z-storyboard-audio-prompt-b
-date: 2026-01-30T08:17:19Z
+date: "2026-01-30T08:17:19Z"
 participants: [human, codex]
 models: [gpt-5]
 tags: [tasks, storyboard, backend]
@@ -35,4 +35,3 @@ summary: "Plan B: add tasks for audio_timeline storyboard visual prompt separati
 ## Linked Commits
 
 - (pending) 提交将与本 ledger 同步落库。
-

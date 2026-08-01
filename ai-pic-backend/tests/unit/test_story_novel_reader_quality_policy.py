@@ -22,7 +22,7 @@ def test_new_commercial_profile_targets_two_to_three_thousand_chars():
 
 def test_legacy_brief_density_remains_available_for_frozen_revisions():
     assert BRIEF_POLICY_VERSION.endswith(".v4")
-    assert expected_beat_count(2500, BRIEF_POLICY_VERSION) == 4
+    assert expected_beat_count(2500, BRIEF_POLICY_VERSION) == 6
     assert expected_beat_count(2500, LEGACY_BRIEF_POLICY_VERSION) == 6
 
 

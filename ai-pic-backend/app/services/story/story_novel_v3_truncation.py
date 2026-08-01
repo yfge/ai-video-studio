@@ -22,15 +22,20 @@ async def recover_truncated_prose(
     error,
     generate_text,
     max_tokens,
+    *,
+    before_call=None,
 ):
     if not is_recoverable_length_finish_reason(error.finish_reason):
         raise error
     complete = recover_complete_prose_blocks(error.partial_text)
     attempts = [dict(error.invocation_evidence or {})]
     if not complete:
+        retry_prompt = original_prompt
+        if before_call:
+            before_call(f"prose.{position}.truncation_retry", retry_prompt)
         retry = await generate_text(
             revision,
-            original_prompt,
+            retry_prompt,
             stage=f"prose.{position}.truncation_retry",
             max_tokens=max_tokens,
         )
@@ -43,9 +48,14 @@ async def recover_truncated_prose(
     missing = expected_ids[len(complete) :]
     if not missing:
         return _result(complete, attempts)
+    continuation_prompt = prose_blocks_continuation_prompt(
+        prose_input, complete, missing
+    )
+    if before_call:
+        before_call(f"prose.{position}.truncation_continue", continuation_prompt)
     continuation = await generate_text(
         revision,
-        prose_blocks_continuation_prompt(prose_input, complete, missing),
+        continuation_prompt,
         stage=f"prose.{position}.truncation_continue",
         max_tokens=max_tokens,
         temperature=0.2,

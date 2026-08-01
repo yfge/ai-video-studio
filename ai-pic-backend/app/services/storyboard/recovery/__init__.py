@@ -8,10 +8,7 @@ from app.services.storyboard.recovery.incremental_repair import (
     IncrementalRepair,
     RepairResult,
 )
-from app.services.storyboard.recovery.retry_strategy import (
-    RetryContext,
-    RetryStrategy,
-)
+from app.services.storyboard.recovery.retry_strategy import RetryContext, RetryStrategy
 
 __all__ = [
     "IncrementalRepair",

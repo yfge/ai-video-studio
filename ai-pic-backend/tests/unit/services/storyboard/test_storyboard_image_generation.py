@@ -183,8 +183,19 @@ async def test_storyboard_codex_overload_falls_back_to_seedream():
     model_id = "doubao-seedream-4-5-251128"
     ai_service = _DummyAIService(
         [
-            _DummyResponse(success=False, data={}, provider="codex", model="gpt-image-2", error=overloaded),
-            _DummyResponse(success=True, data={"images": [image]}, provider="volcengine", model=model_id),
+            _DummyResponse(
+                success=False,
+                data={},
+                provider="codex",
+                model="gpt-image-2",
+                error=overloaded,
+            ),
+            _DummyResponse(
+                success=True,
+                data={"images": [image]},
+                provider="volcengine",
+                model=model_id,
+            ),
         ]
     )
 
@@ -192,13 +203,22 @@ async def test_storyboard_codex_overload_falls_back_to_seedream():
         prompt="test prompt",
         refs=["http://backend.local/uploads/ref-1.png"],
         model="codex:gpt-image-2",
-        count=1, size="1536x1536", aspect_ratio="1:1", width=None, height=None,
-        style="realistic", style_preset_id=None, style_spec=None,
+        count=1,
+        size="1536x1536",
+        aspect_ratio="1:1",
+        width=None,
+        height=None,
+        style="realistic",
+        style_preset_id=None,
+        style_spec=None,
         ai_service=ai_service,
         backend_base="http://backend.local",
     )
 
-    calls = [(kwargs["prefer_provider"], kwargs["model"]) for _, kwargs in ai_service.ai_manager.calls]
+    calls = [
+        (kwargs["prefer_provider"], kwargs["model"])
+        for _, kwargs in ai_service.ai_manager.calls
+    ]
     assert calls == [("codex", "gpt-image-2"), ("volcengine", model_id)]
     assert result["urls"] == [image]
     assert result["provider"] == "volcengine"

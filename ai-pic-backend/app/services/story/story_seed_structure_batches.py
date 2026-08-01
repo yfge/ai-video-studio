@@ -4,12 +4,16 @@ from __future__ import annotations
 
 from app.schemas.story_seed import (
     StorySeedProgressionArc,
-    StorySeedProgressionPlan,
     StorySeedStructuredChapter,
     StorySeedStructuredOutline,
 )
 from app.utils.json_utils import extract_json_block
 
+from .story_seed_progression_parser import (
+    localize_progression,
+    localize_story_seed,
+    parse_progression,
+)
 from .story_seed_service import ending_is_covered
 from .story_seed_structure_policy import (
     chapter_batch_token_budget,
@@ -35,6 +39,7 @@ async def generate_hierarchical_outline(
     ensure_active,
 ) -> StorySeedStructuredOutline:
     ranges = structure_ranges(expected_positions)
+    prompt_seed, handle_to_source = localize_story_seed(prompt_seed)
     prompt = structured_progression_prompt(
         story_seed=prompt_seed,
         chapter_ranges=[
@@ -42,7 +47,12 @@ async def generate_hierarchical_outline(
         ],
     )
     arcs = await _generate_progression(
-        carrier, prompt, expected_positions, generate_text, ensure_active
+        carrier,
+        prompt,
+        expected_positions,
+        generate_text,
+        ensure_active,
+        handle_to_source,
     )
     await ensure_active()
     batches, payoffs = [], []
@@ -52,8 +62,8 @@ async def generate_hierarchical_outline(
         db.commit()
         prompt = structured_arc_chapters_prompt(
             story_seed=prompt_seed,
-            progression_plan=arcs.model_dump(),
-            arc=arc.model_dump(),
+            progression_plan=localize_progression(arcs.model_dump(), handle_to_source),
+            arc=localize_progression(arc.model_dump(), handle_to_source),
             positions=positions,
             is_final=index == len(arcs.progression_arcs),
         )
@@ -78,6 +88,17 @@ async def generate_hierarchical_outline(
             "status": "draft",
             "version": 1,
             "requested_chapter_count": len(expected_positions),
+            "roadmap_version": arcs.roadmap_version,
+            "core_character_routes": [
+                item.model_dump() for item in arcs.core_character_routes
+            ],
+            "scope_taxonomy": [item.model_dump() for item in arcs.scope_taxonomy],
+            "initial_scope_nodes": [
+                item.model_dump() for item in arcs.initial_scope_nodes
+            ],
+            "initial_scope_edges": [
+                item.model_dump() for item in arcs.initial_scope_edges
+            ],
             "planning_structure_version": 1,
             "progression_arcs": [item.model_dump() for item in arcs.progression_arcs],
             "chapters": batches,
@@ -90,18 +111,18 @@ async def generate_hierarchical_outline(
 
 
 async def _generate_progression(
-    carrier, prompt, positions, generate_text, ensure_active
+    carrier, prompt, positions, generate_text, ensure_active, handle_to_source
 ):
     budget = progression_token_budget(positions)
     text = await generate_text(carrier, prompt, max_tokens=budget)
     await ensure_active()
-    parsed, error = parse_progression(text, positions)
+    parsed, error = parse_progression(text, positions, handle_to_source)
     if parsed:
         return parsed
     repair = structured_arc_repair_prompt(prompt, text, error or "分卷规划无效")
     text = await generate_text(carrier, repair, max_tokens=budget)
     await ensure_active()
-    parsed, error = parse_progression(text, positions)
+    parsed, error = parse_progression(text, positions, handle_to_source)
     if not parsed:
         raise ValueError(f"分卷规划无效: {error}")
     return parsed
@@ -135,29 +156,6 @@ async def _generate_chapter_batch(
     if not parsed:
         raise ValueError(f"第 {positions[0]}–{positions[-1]} 章无效: {error}")
     return parsed
-
-
-def parse_progression(text, expected_positions):
-    try:
-        payload = extract_json_block(text) or {}
-        raw = payload.get("progression_plan") or payload
-        plan = StorySeedProgressionPlan.model_validate(raw)
-        expected = [
-            (f"arc-{index:03d}", rows[0], rows[-1])
-            for index, rows in enumerate(structure_ranges(expected_positions), 1)
-        ]
-        actual = [
-            (item.arc_id, item.start_position, item.end_position)
-            for item in plan.progression_arcs
-        ]
-        if (
-            plan.requested_chapter_count != len(expected_positions)
-            or actual != expected
-        ):
-            raise ValueError(f"分卷覆盖不匹配: expected={expected}, actual={actual}")
-        return plan, None
-    except (KeyError, TypeError, ValueError) as exc:
-        return None, str(exc)
 
 
 def parse_chapter_batch(

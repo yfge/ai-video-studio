@@ -4,7 +4,6 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
-
 from app.services.narrative_quality_gate import (
     NarrativeQualityGateError,
     attach_quality_gate_failure_to_task,
@@ -104,11 +103,7 @@ class _RepairManager:
         schema = kwargs.get("json_schema") or {}
         if schema.get("name") == "script_cliffhanger_judgement":
             self.cliffhanger_calls += 1
-            passed = (
-                self.cliffhanger_passes.pop(0)
-                if self.cliffhanger_passes
-                else True
-            )
+            passed = self.cliffhanger_passes.pop(0) if self.cliffhanger_passes else True
             return SimpleNamespace(
                 success=True,
                 provider=kwargs.get("prefer_provider") or "fake",

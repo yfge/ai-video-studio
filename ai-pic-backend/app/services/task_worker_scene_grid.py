@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any, Dict
 
 import anyio
-
 from app.core.celery_app import celery_app
 
 

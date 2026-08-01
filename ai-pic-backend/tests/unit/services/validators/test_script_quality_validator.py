@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.services.validators.script_quality_validator import (
     SceneEmotionalArc,
     ScriptQualityIssue,
@@ -101,9 +100,7 @@ class TestScriptQualityResult:
 class TestScriptQualityValidator:
     """Tests for ScriptQualityValidator."""
 
-    def test_validate_empty_content(
-        self, validator: ScriptQualityValidator
-    ) -> None:
+    def test_validate_empty_content(self, validator: ScriptQualityValidator) -> None:
         """Test validation with empty content."""
         result = validator.validate({"dialogues": []})
         assert result.passed is True
@@ -126,7 +123,9 @@ class TestScriptQualityValidator:
     ) -> None:
         """Test authenticity scoring with expository dialogue."""
         dialogues = [
-            {"content": "正如你所知，我们的任务是非常重要的，因为它关系到整个计划的成败。"},
+            {
+                "content": "正如你所知，我们的任务是非常重要的，因为它关系到整个计划的成败。"
+            },
             {"content": "让我解释一下，事情是这样的，在很久以前发生了一件事情。"},
         ]
         score = validator._score_dialogue_authenticity(dialogues)
@@ -157,16 +156,12 @@ class TestScriptQualityValidator:
         ratio = validator._calculate_exposition_ratio(dialogues)
         assert ratio == 0.5  # 2 out of 4 are expository
 
-    def test_is_expository_true(
-        self, validator: ScriptQualityValidator
-    ) -> None:
+    def test_is_expository_true(self, validator: ScriptQualityValidator) -> None:
         """Test expository detection with expository content."""
         content = "正如你所知，让我解释一下这件事情。"
         assert validator._is_expository(content) is True
 
-    def test_is_expository_false(
-        self, validator: ScriptQualityValidator
-    ) -> None:
+    def test_is_expository_false(self, validator: ScriptQualityValidator) -> None:
         """Test expository detection with natural content."""
         content = "你怎么了？发生什么事了？"
         assert validator._is_expository(content) is False
@@ -211,9 +206,7 @@ class TestScriptQualityValidator:
         issues = validator._check_dialogue_action_ratio(2.0, [])
         assert len(issues) == 0
 
-    def test_analyze_emotional_arcs(
-        self, validator: ScriptQualityValidator
-    ) -> None:
+    def test_analyze_emotional_arcs(self, validator: ScriptQualityValidator) -> None:
         """Test emotional arc analysis."""
         scenes = [{"scene_number": 1}, {"scene_number": 2}]
         dialogues = [
@@ -230,9 +223,7 @@ class TestScriptQualityValidator:
         assert arcs[0].has_progression is True  # Scene 1 has progression
         assert arcs[1].has_progression is False  # Scene 2 is flat
 
-    def test_check_emotional_arcs_flat(
-        self, validator: ScriptQualityValidator
-    ) -> None:
+    def test_check_emotional_arcs_flat(self, validator: ScriptQualityValidator) -> None:
         """Test emotional arc check with flat emotion."""
         arcs = [
             SceneEmotionalArc(
@@ -247,9 +238,7 @@ class TestScriptQualityValidator:
         assert len(issues) > 0
         assert issues[0].issue_type == ScriptQualityIssueType.EMOTIONAL_ARC_FLAT
 
-    def test_check_emotional_arcs_jump(
-        self, validator: ScriptQualityValidator
-    ) -> None:
+    def test_check_emotional_arcs_jump(self, validator: ScriptQualityValidator) -> None:
         """Test emotional arc check with unreasonable jump."""
         arcs = [
             SceneEmotionalArc(
@@ -262,14 +251,13 @@ class TestScriptQualityValidator:
         ]
         issues = validator._check_emotional_arcs(arcs)
         jump_issues = [
-            i for i in issues
+            i
+            for i in issues
             if i.issue_type == ScriptQualityIssueType.EMOTIONAL_ARC_JUMP
         ]
         assert len(jump_issues) > 0
 
-    def test_categorize_emotion(
-        self, validator: ScriptQualityValidator
-    ) -> None:
+    def test_categorize_emotion(self, validator: ScriptQualityValidator) -> None:
         """Test emotion categorization."""
         assert validator._categorize_emotion("开心") == "positive"
         assert validator._categorize_emotion("愤怒") == "intense"
@@ -277,24 +265,17 @@ class TestScriptQualityValidator:
         assert validator._categorize_emotion("悲伤") == "negative"
         assert validator._categorize_emotion("未知") == "neutral"
 
-    def test_check_subtext_missing(
-        self, validator: ScriptQualityValidator
-    ) -> None:
+    def test_check_subtext_missing(self, validator: ScriptQualityValidator) -> None:
         """Test subtext check with missing subtext."""
         # Create 15 direct dialogues with no subtext
-        dialogues = [
-            {"content": f"直接表达 {i}。"} for i in range(15)
-        ]
+        dialogues = [{"content": f"直接表达 {i}。"} for i in range(15)]
         issues = validator._check_subtext(dialogues)
         subtext_issues = [
-            i for i in issues
-            if i.issue_type == ScriptQualityIssueType.MISSING_SUBTEXT
+            i for i in issues if i.issue_type == ScriptQualityIssueType.MISSING_SUBTEXT
         ]
         assert len(subtext_issues) > 0
 
-    def test_check_subtext_present(
-        self, validator: ScriptQualityValidator
-    ) -> None:
+    def test_check_subtext_present(self, validator: ScriptQualityValidator) -> None:
         """Test subtext check with subtext present."""
         dialogues = [
             {"content": "没事，很好。但是..."},  # Has subtext
@@ -304,14 +285,11 @@ class TestScriptQualityValidator:
         issues = validator._check_subtext(dialogues)
         # Should not report missing subtext
         subtext_issues = [
-            i for i in issues
-            if i.issue_type == ScriptQualityIssueType.MISSING_SUBTEXT
+            i for i in issues if i.issue_type == ScriptQualityIssueType.MISSING_SUBTEXT
         ]
         assert len(subtext_issues) == 0
 
-    def test_check_repetitive_dialogue(
-        self, validator: ScriptQualityValidator
-    ) -> None:
+    def test_check_repetitive_dialogue(self, validator: ScriptQualityValidator) -> None:
         """Test repetitive dialogue detection."""
         dialogues = [
             {"content": "你好啊，今天天气真好"},
@@ -323,15 +301,17 @@ class TestScriptQualityValidator:
         assert len(issues) > 0
         assert issues[0].issue_type == ScriptQualityIssueType.REPETITIVE_DIALOGUE
 
-    def test_validate_full_script_good(
-        self, validator: ScriptQualityValidator
-    ) -> None:
+    def test_validate_full_script_good(self, validator: ScriptQualityValidator) -> None:
         """Test full validation with good script."""
         content = {
             "scenes": [{"scene_number": 1}],
             "dialogues": [
                 {"scene_number": 1, "content": "嗯...你怎么看？", "emotion": "好奇"},
-                {"scene_number": 1, "content": "我觉得...不太对劲！", "emotion": "疑惑"},
+                {
+                    "scene_number": 1,
+                    "content": "我觉得...不太对劲！",
+                    "emotion": "疑惑",
+                },
                 {"scene_number": 1, "content": "天啊！原来是这样？", "emotion": "震惊"},
             ],
             "stage_directions": [
@@ -353,9 +333,21 @@ class TestScriptQualityValidator:
         content = {
             "scenes": [{"scene_number": 1}],
             "dialogues": [
-                {"scene_number": 1, "content": "正如你所知，让我解释一下事情是这样的。", "emotion": "平静"},
-                {"scene_number": 1, "content": "事实上简单来说，我来告诉你原因。", "emotion": "平静"},
-                {"scene_number": 1, "content": "你可能不知道，其实原来是这样的。", "emotion": "平静"},
+                {
+                    "scene_number": 1,
+                    "content": "正如你所知，让我解释一下事情是这样的。",
+                    "emotion": "平静",
+                },
+                {
+                    "scene_number": 1,
+                    "content": "事实上简单来说，我来告诉你原因。",
+                    "emotion": "平静",
+                },
+                {
+                    "scene_number": 1,
+                    "content": "你可能不知道，其实原来是这样的。",
+                    "emotion": "平静",
+                },
             ],
             "stage_directions": [],
         }

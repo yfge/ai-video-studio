@@ -25,10 +25,7 @@ __all__ = [
 
 def __getattr__(name: str) -> Any:
     if name in {"ScriptService", "get_script_service"}:
-        from app.services.script.script_service import (
-            ScriptService,
-            get_script_service,
-        )
+        from app.services.script.script_service import ScriptService, get_script_service
 
         return {
             "ScriptService": ScriptService,

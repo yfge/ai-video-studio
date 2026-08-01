@@ -143,6 +143,7 @@ def checkpoint_body(
     metrics,
     *,
     repair_count,
+    commit=True,
 ):
     from .story_novel_chapter_service import (
         save_ledger_entry,
@@ -244,5 +245,5 @@ def checkpoint_body(
         ledger.update(state_status="failed", stale_from_position=position)
         revision.continuity_ledger = ledger
         revision.continuity_status = "review_required"
-    service.db.commit()
+    (service.db.commit if commit else service.db.flush)()
     return chapter, entry

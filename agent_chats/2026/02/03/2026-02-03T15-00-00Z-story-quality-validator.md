@@ -1,6 +1,6 @@
 ---
 id: 2026-02-03T15-00-00Z-story-quality-validator
-date: 2026-02-03T15:00:00Z
+date: "2026-02-03T15:00:00Z"
 participants: [human, claude]
 models: [claude-opus-4-5]
 tags: [backend, validator, agent-fix, story, quality]
@@ -33,6 +33,7 @@ summary: "创建Story质量校验器，实现三幕结构/节奏分析/Hook评�
 ### 新增文件
 
 1. **`app/services/validators/story_quality_validator.py`** (~500 行)
+
    - `StoryQualityValidator`: 核心校验器
      - `_analyze_three_act_structure()`: 三幕结构分析
        - 理想比例: Act1 25%, Act2 50%, Act3 25%
@@ -63,6 +64,7 @@ summary: "创建Story质量校验器，实现三幕结构/节奏分析/Hook评�
 ### 修改文件
 
 1. **`app/services/validators/__init__.py`**
+
    - 导出 StoryQualityValidator 相关类
 
 2. **`app/services/story_agent.py`**

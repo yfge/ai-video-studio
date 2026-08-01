@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import copy
 
-from pydantic import ValidationError
-
 from app.schemas.story_novel_longform import StoryNovelChapterPlan
+from pydantic import ValidationError
 
 from .story_novel_brief_policy import BRIEF_POLICY_VERSION
 from .story_novel_chapter_effect_manifest import VERSION as EFFECT_MANIFEST_VERSION
@@ -28,6 +27,7 @@ from .story_novel_prompt_renderer import (
 from .story_novel_prose_context import PROSE_EXECUTION_BOUNDARY_VERSION
 from .story_novel_thread_schedule import payoffs_by_position
 from .story_novel_timeline_contract import compile_timeline_bindings
+from .story_novel_v4_plan import v4_plan_fields, valid_v4_plan_fields
 from .story_novel_world_expansion import canon_with_plan_expansion
 from .story_novel_world_reveal import (
     compile_world_reveal_index,
@@ -103,14 +103,20 @@ def build_chapter_skeletons(
     return rows
 
 
-def incremental_plan_fields(canon: dict, chapters: list[dict]) -> dict:
+def incremental_plan_fields(
+    canon: dict,
+    chapters: list[dict],
+    *,
+    schema: str | None = None,
+    snapshot: dict | None = None,
+) -> dict:
     future = compile_future_guard_index(
         chapters,
         milestones=canon.get("milestones") or [],
         entities=canon.get("entities") or [],
     )
     reveal = compile_world_reveal_index(canon, chapters)
-    return {
+    result = {
         "chapter_contract_mode": MODE,
         "incremental_planning_version": VERSION,
         "planning_contract_version": PLANNING_CONTRACT_VERSION,
@@ -125,8 +131,13 @@ def incremental_plan_fields(canon: dict, chapters: list[dict]) -> dict:
         "future_guard_hash": future["index_hash"],
         "world_reveal_index": reveal,
         "world_reveal_hash": reveal["index_hash"],
-        "prompt_templates": v3_prompt_template_policy(version=10),
+        "prompt_templates": v3_prompt_template_policy(
+            version=14 if str(schema or "").endswith(".v4") else 10
+        ),
     }
+    if str(schema or "").endswith(".v4"):
+        result.update(v4_plan_fields(snapshot or {}, canon, chapters))
+    return result
 
 
 def skeleton_hash(chapters: list[dict]) -> str:
@@ -209,6 +220,7 @@ def valid_incremental_plan(plan: dict) -> bool:
         == (plan.get("world_reveal_index") or {}).get("index_hash")
         and isinstance(plan.get("model_policy"), dict)
         and valid_v3_prompt_template_policy(plan.get("prompt_templates") or {})
+        and valid_v4_plan_fields(plan)
         and valid_planning_invocations(plan)
     )
 

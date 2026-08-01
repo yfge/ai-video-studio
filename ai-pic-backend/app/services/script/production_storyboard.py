@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, Optional
 
-from sqlalchemy.orm import Session
-
 from app.models.script import Episode, Script, Story
 from app.services.audio.storyboard_from_timeline_spec import (
     generate_storyboard_support_from_timeline_spec,
@@ -15,6 +13,7 @@ from app.services.storyboard.storyboard_image_autogen import (
     queue_storyboard_image_generation,
 )
 from app.services.timeline_pipeline_runner import run_timeline_main_chain
+from sqlalchemy.orm import Session
 
 ProgressCallback = Callable[[str], None]
 

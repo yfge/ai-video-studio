@@ -22,6 +22,10 @@ from .story_novel_context_utils import (
 from .story_novel_hard_context import build_hard_constraints, hard_constraints_hash
 from .story_novel_memory_context import chapter_memory_context
 from .story_novel_planning_evidence import rank_planning_evidence
+from .story_novel_priority_evidence import (
+    add_priority_evidence,
+    append_unpinned_evidence,
+)
 from .story_novel_state_service import state_before_position, state_hash
 from .story_novel_v3_prose_input import build_v3_prose_input as build_v3_prose_input
 
@@ -33,6 +37,7 @@ def build_v3_planning_context(
     chapter_plan: dict,
     *,
     persist_memory_snapshots: bool = True,
+    priority_evidence_ids=(),
 ):
     db = getattr(service_or_db, "db", service_or_db)
     plan = dict(revision.generation_plan or {})
@@ -69,6 +74,16 @@ def build_v3_planning_context(
     events, memories = revision_local_candidates(
         db, revision, position, prior_chapters=previous
     )
+    candidate_universe = {
+        "world_events": [
+            {"id": item.get("business_id"), "source_hash": item.get("source_hash")}
+            for item in events
+        ],
+        "character_memories": [
+            {"id": item.get("business_id"), "source_hash": item.get("source_hash")}
+            for item in memories
+        ],
+    }
     events = rank_planning_evidence(
         events,
         kind="world_event",
@@ -84,6 +99,9 @@ def build_v3_planning_context(
         prior_chapters=previous,
     )
     truncations: list[dict] = []
+    priority_ids = set(priority_evidence_ids or [])
+    if priority_ids:
+        add_priority_evidence(base, events, memories, priority_ids, truncations)
     _add_rows(base, "recent_chapters", recent_chapter_rows(previous), truncations)
     tail = previous[-1].content_text[-2400:] if previous else ""
     _add_tail(base, tail, truncations)
@@ -97,8 +115,16 @@ def build_v3_planning_context(
         }
     )
     _add_ledger(base, prior_ledger, truncations)
-    _add_rows(base, "world_events", events, truncations)
-    _add_rows(base, "character_memories", memories, truncations)
+    if priority_ids:
+        append_unpinned_evidence(
+            base, "world_events", events, priority_ids, truncations
+        )
+        append_unpinned_evidence(
+            base, "character_memories", memories, priority_ids, truncations
+        )
+    else:
+        _add_rows(base, "world_events", events, truncations)
+        _add_rows(base, "character_memories", memories, truncations)
     allowed_ids = [
         item["id"] for item in (hard.get("compiled_canon") or {}).get("entities") or []
     ]
@@ -150,6 +176,7 @@ def build_v3_planning_context(
         "state_before": state_before,
         "hard_constraints": hard,
         "evidence": evidence,
+        "candidate_universe": candidate_universe,
     }
 
 

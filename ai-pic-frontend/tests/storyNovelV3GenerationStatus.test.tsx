@@ -82,4 +82,67 @@ describe("StoryNovelGenerationStatus v3", () => {
     assert.match(html, /延迟 3\.0s/);
     assert.match(html, /失败 blocks B03/);
   });
+
+  it("renders the v4 current arc, frozen snapshots, and dynamic proposals", () => {
+    const revision = {
+      id: 41,
+      business_id: "revision-v4",
+      style: "prose",
+      target_words: 0,
+      revision_number: 1,
+      lifecycle_status: "draft",
+      continuity_status: "review_required",
+      adaptation_plan_status: "empty",
+      generation_plan: {
+        schema: "story_novel_generation_plan.v4",
+        status: "ready",
+        chapter_count: 1,
+        frozen_through_position: 16,
+        current_arc_plan: {
+          arc_id: "arc-1",
+          title: "开篇卷",
+          start_position: 1,
+          end_position: 16,
+          instantiated_character_slots: [{ slot_id: "slot-rival" }],
+          instantiated_scope_slots: [{ slot_id: "slot-market" }],
+        },
+        scope_graph: { nodes: [{ scope_id: "scope-home" }] },
+        chapters: [
+          { position: 1, title: "初见", goal: "推进", target_chars: 2500 },
+        ],
+      },
+      continuity_ledger: {
+        schema: "story_novel_continuity.v5",
+        chapters: {
+          "1": {
+            status: "ready",
+            planner_snapshot_hash: "planner1234567890",
+            arc_planner_snapshot_hash: "arc1234567890",
+            model_call_snapshots: {
+              "chapter_planning.1": {
+                snapshot_hash: "call",
+                input_hash: "input",
+              },
+            },
+            chapter_intent: {
+              entity_proposals: [
+                { kind: "character", name: "迟岚", transient: false },
+              ],
+            },
+          },
+        },
+      },
+      chapters: [],
+      created_at: "2026-07-31T00:00:00Z",
+    } as StoryNovelRevision;
+    const html = renderToStaticMarkup(
+      <StoryNovelGenerationStatus revision={revision} />,
+    );
+    assert.match(html, /当前卷 开篇卷/);
+    assert.match(html, /第 1–16 章/);
+    assert.match(html, /调用快照 1/);
+    assert.match(html, /动态提案 1（已落账 1）/);
+    assert.match(html, /本卷角色槽 1 · 范围槽 1 · 初始范围 1/);
+    assert.match(html, /迟岚\(character，已进入 Revision 世界\)/);
+  });
 });

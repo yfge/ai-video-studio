@@ -19,6 +19,7 @@ from .story_novel_prose_length_policy import (
 )
 from .story_novel_prose_length_prompt import controlled_prompt_input
 from .story_novel_v3_prompts import prose_blocks_prompt
+from .story_novel_v4_generation import prose_blocks_v4_prompt
 
 _LEGACY_WINDOW = 8
 _CONTROLLED_WINDOW = 3
@@ -26,7 +27,7 @@ _MIN_LEGACY_SAMPLES = 3
 _MIN_SCALE = 0.30
 _MAX_SCALE = 1.25
 _REQUEST_VARIANCE = 0.10
-PROMPT_CONTRACT_VERSION = 5
+PROMPT_CONTRACT_VERSION = 6
 
 
 def build_length_control(
@@ -64,9 +65,15 @@ def build_length_control(
     scale = _bounded(1.0 / response_ratio, _MIN_SCALE, _MAX_SCALE)
     if controlled:
         prior = float(controlled[-1].get("request_scale") or 1.0)
-        scale = _bounded(scale, prior * 0.67, prior * 1.5)
+        scale = _bounded(
+            scale,
+            prior * (1.0 - _REQUEST_VARIANCE),
+            prior * (1.0 + _REQUEST_VARIANCE),
+        )
         scale = _bounded(scale, _MIN_SCALE, _MAX_SCALE)
     acceptance = copy.deepcopy(prose_input["chapter_length"])
+    if prompt_contract_version >= 6:
+        scale = 1.0
     requested = max(1, round(int(acceptance["target_chars"]) * scale))
     if 3 <= prompt_contract_version < 5:
         requested = _safe_v3_target(acceptance, requested)
@@ -135,7 +142,7 @@ def valid_length_control(
     prompt_input = controlled_prompt_input(prose_input, expected)
     requested = int(expected["requested_length"]["target_chars"])
     attempts = prose_metric.get("attempts") or []
-    expected_template = prompt_template_evidence(prose_blocks_prompt(prompt_input))
+    expected_template = prompt_template_evidence(_prose_prompt(prompt_input))
     actual_template = (attempts[0].get("prompt_template") or {}) if attempts else {}
     reconstructed = reconstruct_initial_prose(
         db,
@@ -165,6 +172,12 @@ def _prose_model(revision) -> str | None:
     return ((revision.generation_plan or {}).get("model_policy") or {}).get(
         "prose_model"
     ) or revision.model
+
+
+def _prose_prompt(prose_input: dict):
+    if prose_input.get("schema") == "story_novel_prose_packet.v2":
+        return prose_blocks_v4_prompt(prose_input)
+    return prose_blocks_prompt(prose_input)
 
 
 def _sample_ref(item: dict) -> dict:
@@ -216,6 +229,8 @@ def _safe_v3_target(acceptance: dict, requested: int) -> int:
 
 
 def _requested_length(acceptance: dict, requested: int, version: int) -> dict:
+    if version >= 6:
+        return copy.deepcopy(acceptance)
     if version >= 5:
         return {
             "min_chars": max(1, requested * 90 // 100),

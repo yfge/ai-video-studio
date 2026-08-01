@@ -190,9 +190,7 @@ def test_workbench_summary_aggregates_user_state(client, db_session):
 
 
 @pytest.mark.integration
-def test_workbench_summary_ignores_stale_audio_timeline_metadata(
-    client, db_session
-):
+def test_workbench_summary_ignores_stale_audio_timeline_metadata(client, db_session):
     """旧 episode.extra_metadata.audio_timeline 不再让 timeline_ready 为真。"""
     user = _admin_user(db_session)
     _create_story_episode_script(db_session, user, with_timeline=True)

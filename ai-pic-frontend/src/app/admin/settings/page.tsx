@@ -12,9 +12,15 @@ export default function AdminSettingsPage() {
     <OperatorAdminShell title="系统设置" subtitle="运行策略和系统配置">
       <div className="space-y-6">
         <OperatorPanel>
-          <OperatorSectionHeader title="系统设置" subtitle="配置项占位和后续接入入口" />
+          <OperatorSectionHeader
+            title="系统设置"
+            subtitle="配置项占位和后续接入入口"
+          />
           <div className="p-4">
-            <OperatorState title="系统配置功能正在开发中" detail="当前页面保留为管理配置入口。" />
+            <OperatorState
+              title="系统配置功能正在开发中"
+              detail="当前页面保留为管理配置入口。"
+            />
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {[
                 "用户注册设置",

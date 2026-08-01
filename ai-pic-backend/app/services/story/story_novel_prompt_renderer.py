@@ -60,6 +60,17 @@ V3_PROMPT_TEMPLATES_V9 = (
     "story_novel_structure_arc_repair_v3",
 )
 V3_PROMPT_TEMPLATES_V10 = V3_PROMPT_TEMPLATES_V9
+V3_PROMPT_TEMPLATES_V11 = (
+    *V3_PROMPT_TEMPLATES_V10,
+    "story_novel_chapter_intent_v4",
+    "story_novel_prose_blocks_v4",
+)
+V3_PROMPT_TEMPLATES_V12 = (
+    *V3_PROMPT_TEMPLATES_V11,
+    "story_novel_arc_plan_v4",
+)
+V3_PROMPT_TEMPLATES_V13 = V3_PROMPT_TEMPLATES_V12
+V3_PROMPT_TEMPLATES_V14 = V3_PROMPT_TEMPLATES_V13
 
 
 class RenderedNovelPrompt(str):
@@ -111,6 +122,10 @@ def valid_v3_prompt_template_policy(policy: dict[str, Any]) -> bool:
         "story_novel_prompt_policy.v8",
         "story_novel_prompt_policy.v9",
         "story_novel_prompt_policy.v10",
+        "story_novel_prompt_policy.v11",
+        "story_novel_prompt_policy.v12",
+        "story_novel_prompt_policy.v13",
+        "story_novel_prompt_policy.v14",
     }:
         return False
     version = int(schema.rsplit("v", 1)[-1])
@@ -129,9 +144,22 @@ def valid_v3_prompt_template_policy(policy: dict[str, Any]) -> bool:
     ):
         return False
     structurally_valid = policy.get("hash") == _policy_hash(templates)
-    if not structurally_valid or version in {1, 2, 3, 4, 5, 6, 7, 8, 9}:
+    if not structurally_valid or version in {
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        11,
+        12,
+        13,
+    }:
         return structurally_valid
-    return policy == v3_prompt_template_policy(version=10)
+    return policy == v3_prompt_template_policy(version=version)
 
 
 def _policy_names(version: int) -> tuple[str, ...]:
@@ -155,6 +183,14 @@ def _policy_names(version: int) -> tuple[str, ...]:
         return V3_PROMPT_TEMPLATES_V9
     if version == 10:
         return V3_PROMPT_TEMPLATES_V10
+    if version == 11:
+        return V3_PROMPT_TEMPLATES_V11
+    if version == 12:
+        return V3_PROMPT_TEMPLATES_V12
+    if version == 13:
+        return V3_PROMPT_TEMPLATES_V13
+    if version == 14:
+        return V3_PROMPT_TEMPLATES_V14
     raise ValueError(f"unsupported Story Novel prompt policy version: {version}")
 
 

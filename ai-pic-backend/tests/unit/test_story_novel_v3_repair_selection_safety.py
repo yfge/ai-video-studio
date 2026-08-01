@@ -17,7 +17,7 @@ def _result(violations, *, future=None, world=None, state_contract_failed=False)
     }
 
 
-def test_repair_with_fewer_current_contract_failures_replaces_worse_first_body():
+def test_repair_with_fewer_but_different_failures_keeps_first_body():
     first = _result(
         [
             {
@@ -33,7 +33,7 @@ def test_repair_with_fewer_current_contract_failures_replaces_worse_first_body()
         [{"code": "canon_violation", "message": "遗漏当前事件明示参与者"}]
     )
 
-    assert select_failed_result(first, repaired) is repaired
+    assert select_failed_result(first, repaired) is first
 
 
 def test_repair_cannot_trade_safe_failures_for_new_future_or_world_violation():
@@ -79,7 +79,7 @@ def test_repair_cannot_introduce_typed_state_contract_failure():
     assert select_failed_result(first, repaired) is first
 
 
-def test_repair_uses_stable_reason_codes_instead_of_rephrased_messages():
+def test_repair_cannot_replace_failures_with_a_different_reason_set():
     first = _result(
         [
             {
@@ -108,5 +108,13 @@ def test_repair_uses_stable_reason_codes_instead_of_rephrased_messages():
             }
         ]
     )
+
+    assert select_failed_result(first, repaired) is first
+
+
+def test_repair_is_selected_only_when_violation_keys_are_a_strict_subset():
+    retained = {"code": "canon_violation", "message": "遗漏当前事件"}
+    first = _result([retained, {"code": "canon_violation", "message": "地点冲突"}])
+    repaired = _result([retained])
 
     assert select_failed_result(first, repaired) is repaired

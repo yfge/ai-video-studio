@@ -1,4 +1,5 @@
 export type StoryNovelGenerationStage =
+  | "arc_planning"
   | "chapter_planning"
   | "prose"
   | "audit"
@@ -21,6 +22,7 @@ export interface StoryNovelChapterLedger {
     | "memory_ready"
     | "ready"
     | "stale"
+    | "snapshot_stale"
     | "state_pending"
     | "gate_failed";
   stage?: StoryNovelGenerationStage;
@@ -43,4 +45,19 @@ export interface StoryNovelChapterLedger {
   };
   body_repair_count?: number;
   state_extraction_repair_count?: number;
+  planner_snapshot_hash?: string;
+  arc_planner_snapshot_hash?: string;
+  chapter_intent_hash?: string;
+  chapter_intent?: {
+    entity_proposals?: Array<{
+      proposal_handle?: string;
+      kind?: string;
+      name?: string;
+      transient?: boolean;
+    }>;
+  };
+  model_call_snapshots?: Record<
+    string,
+    { snapshot_hash?: string; input_hash?: string }
+  >;
 }

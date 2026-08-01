@@ -140,6 +140,4 @@ class QuickFixResponse(BaseModel):
     final_readiness: ReadinessResult = Field(
         ..., description="Readiness state after fixes"
     )
-    improvement: QuickFixImprovement = Field(
-        ..., description="Summary of improvement"
-    )
+    improvement: QuickFixImprovement = Field(..., description="Summary of improvement")

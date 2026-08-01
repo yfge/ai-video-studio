@@ -75,7 +75,8 @@ class TimelineValidator:
 
         # Filter frames with valid time data and sort by start_ms
         timed_frames = [
-            f for f in frames
+            f
+            for f in frames
             if f.get("start_ms") is not None and f.get("end_ms") is not None
         ]
 
@@ -94,13 +95,15 @@ class TimelineValidator:
 
             if curr_start < prev_end:
                 overlap_ms = prev_end - curr_start
-                overlaps.append({
-                    "frame_a": prev.get("frame_id") or prev.get("frame_number"),
-                    "frame_b": curr.get("frame_id") or curr.get("frame_number"),
-                    "frame_a_end_ms": prev_end,
-                    "frame_b_start_ms": curr_start,
-                    "overlap_ms": overlap_ms,
-                })
+                overlaps.append(
+                    {
+                        "frame_a": prev.get("frame_id") or prev.get("frame_number"),
+                        "frame_b": curr.get("frame_id") or curr.get("frame_number"),
+                        "frame_a_end_ms": prev_end,
+                        "frame_b_start_ms": curr_start,
+                        "overlap_ms": overlap_ms,
+                    }
+                )
 
         if overlaps:
             results.append(
@@ -146,14 +149,19 @@ class TimelineValidator:
             if duration_sec is not None:
                 diff_ms = abs(calculated_duration_ms - duration_sec * 1000)
                 if diff_ms > self.DURATION_TOLERANCE_MS:
-                    inconsistencies.append({
-                        "frame_id": frame.get("frame_id") or frame.get("frame_number"),
-                        "start_ms": start_ms,
-                        "end_ms": end_ms,
-                        "stored_duration_sec": duration_sec,
-                        "calculated_duration_sec": round(calculated_duration_sec, 3),
-                        "diff_ms": round(diff_ms, 1),
-                    })
+                    inconsistencies.append(
+                        {
+                            "frame_id": frame.get("frame_id")
+                            or frame.get("frame_number"),
+                            "start_ms": start_ms,
+                            "end_ms": end_ms,
+                            "stored_duration_sec": duration_sec,
+                            "calculated_duration_sec": round(
+                                calculated_duration_sec, 3
+                            ),
+                            "diff_ms": round(diff_ms, 1),
+                        }
+                    )
 
         if inconsistencies:
             results.append(
@@ -184,7 +192,8 @@ class TimelineValidator:
         results: list[ValidationResult] = []
 
         timed_frames = [
-            f for f in frames
+            f
+            for f in frames
             if f.get("start_ms") is not None and f.get("end_ms") is not None
         ]
 
@@ -204,19 +213,23 @@ class TimelineValidator:
 
             gap_ms = curr_start - prev_end
             if gap_ms > max_allowed_gap_ms:
-                gaps.append({
-                    "after_frame": prev.get("frame_id") or prev.get("frame_number"),
-                    "before_frame": curr.get("frame_id") or curr.get("frame_number"),
-                    "gap_start_ms": prev_end,
-                    "gap_end_ms": curr_start,
-                    "gap_ms": gap_ms,
-                })
+                gaps.append(
+                    {
+                        "after_frame": prev.get("frame_id") or prev.get("frame_number"),
+                        "before_frame": curr.get("frame_id")
+                        or curr.get("frame_number"),
+                        "gap_start_ms": prev_end,
+                        "gap_end_ms": curr_start,
+                        "gap_ms": gap_ms,
+                    }
+                )
 
         if gaps:
             total_gap_ms = sum(g["gap_ms"] for g in gaps)
             severity = "warning" if total_gap_ms < 2000 else "error"
             result_method = (
-                ValidationResult.warning if severity == "warning"
+                ValidationResult.warning
+                if severity == "warning"
                 else ValidationResult.error
             )
             results.append(
@@ -247,9 +260,7 @@ class TimelineValidator:
         """Check that scene transitions are properly indicated."""
         results: list[ValidationResult] = []
 
-        timed_frames = [
-            f for f in frames if f.get("scene_number") is not None
-        ]
+        timed_frames = [f for f in frames if f.get("scene_number") is not None]
 
         if len(timed_frames) < 2:
             return results
@@ -268,12 +279,14 @@ class TimelineValidator:
             curr_scene = curr.get("scene_number")
 
             if prev_scene != curr_scene:
-                transitions.append({
-                    "from_scene": prev_scene,
-                    "to_scene": curr_scene,
-                    "at_frame": curr.get("frame_id") or curr.get("frame_number"),
-                    "transition_ms": curr.get("start_ms"),
-                })
+                transitions.append(
+                    {
+                        "from_scene": prev_scene,
+                        "to_scene": curr_scene,
+                        "at_frame": curr.get("frame_id") or curr.get("frame_number"),
+                        "transition_ms": curr.get("start_ms"),
+                    }
+                )
 
         if transitions:
             results.append(
@@ -295,7 +308,8 @@ class TimelineValidator:
         results: list[ValidationResult] = []
 
         timed_frames = [
-            f for f in frames
+            f
+            for f in frames
             if f.get("start_ms") is not None and f.get("end_ms") is not None
         ]
 
@@ -324,7 +338,9 @@ class TimelineValidator:
         )
 
         if expected_duration and expected_duration > 0:
-            diff_percent = abs(actual_duration_sec - expected_duration) / expected_duration * 100
+            diff_percent = (
+                abs(actual_duration_sec - expected_duration) / expected_duration * 100
+            )
             if diff_percent > 20:
                 results.append(
                     ValidationResult.warning(

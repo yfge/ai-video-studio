@@ -1,6 +1,6 @@
 ---
 id: 2026-02-03T16-00-00Z-episode-quality-validator
-date: 2026-02-03T16:00:00Z
+date: "2026-02-03T16:00:00Z"
 participants: [human, claude]
 models: [claude-opus-4-5]
 tags: [backend, validator, agent-fix, episode, quality]
@@ -32,6 +32,7 @@ summary: "创建Episode质量校验器，实现角色弧线/子情节平衡/戏�
 ### 新增文件
 
 1. **`app/services/validators/episode_quality_validator.py`** (~450 行)
+
    - `EpisodeQualityValidator`: 核心校验器
      - `_track_character_arcs()`: 角色弧线追踪
        - 从 episode characters 和 continuity 提取目标/状态
@@ -66,6 +67,7 @@ summary: "创建Episode质量校验器，实现角色弧线/子情节平衡/戏�
 ### 修改文件
 
 1. **`app/services/validators/__init__.py`**
+
    - 导出 EpisodeQualityValidator 相关类
 
 2. **`app/services/episode_agent.py`**

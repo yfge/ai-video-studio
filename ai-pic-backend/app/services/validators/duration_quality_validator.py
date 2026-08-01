@@ -10,10 +10,10 @@ Provides advanced duration validation capabilities including:
 
 from __future__ import annotations
 
+import statistics
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
-import statistics
 
 
 class DurationQualityIssueType(Enum):
@@ -141,9 +141,7 @@ class DurationQualityResult:
             "passed": self.passed,
             "issues": [i.to_dict() for i in self.issues],
             "word_distribution": (
-                self.word_distribution.to_dict()
-                if self.word_distribution
-                else None
+                self.word_distribution.to_dict() if self.word_distribution else None
             ),
             "retry_analyses": [r.to_dict() for r in self.retry_analyses],
             "episode_balance": self.episode_balance,
@@ -323,7 +321,10 @@ class DurationQualityValidator:
         duration_ms = int(duration_seconds * 1000)
 
         result = DurationQualityResult(
-            passed=len([i for i in issues if i.severity == DurationQualitySeverity.ERROR]) == 0,
+            passed=len(
+                [i for i in issues if i.severity == DurationQualitySeverity.ERROR]
+            )
+            == 0,
             issues=issues,
             calibrated_wps=wps,
             provider_used=actual_provider,
@@ -750,9 +751,7 @@ class DurationQualityValidator:
         result = DurationQualityResult()
 
         # Get calibrated WPS
-        wps, actual_provider, wps_issues = self.get_calibrated_wps(
-            provider, language
-        )
+        wps, actual_provider, wps_issues = self.get_calibrated_wps(provider, language)
         result.calibrated_wps = wps
         result.provider_used = actual_provider
         result.issues.extend(wps_issues)
@@ -777,8 +776,7 @@ class DurationQualityValidator:
 
         # Determine overall pass/fail
         error_count = sum(
-            1 for i in result.issues
-            if i.severity == DurationQualitySeverity.ERROR
+            1 for i in result.issues if i.severity == DurationQualitySeverity.ERROR
         )
         result.passed = error_count == 0
 

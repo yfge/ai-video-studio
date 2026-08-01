@@ -4,12 +4,11 @@ import re
 from typing import Any, Dict, List
 
 from app.services.validators.character_consistency_validator import (
-    CharacterValidationResult,
     CharacterConsistencyValidator,
     CharacterProfile,
+    CharacterValidationResult,
     ValidationSeverity,
 )
-
 
 _GENERIC_STORY_ROLE_NAMES = {
     "客户",

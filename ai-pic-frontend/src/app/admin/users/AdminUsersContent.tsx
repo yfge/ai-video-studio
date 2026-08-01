@@ -32,7 +32,9 @@ export function AdminUsersContent() {
   const [userList, setUserList] = useState<UserListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [processingUsers, setProcessingUsers] = useState<Set<number>>(new Set());
+  const [processingUsers, setProcessingUsers] = useState<Set<number>>(
+    new Set(),
+  );
   const [detailUser, setDetailUser] = useState<AdminUser | null>(null);
   const [approvalUser, setApprovalUser] = useState<AdminUser | null>(null);
   const [filters, setFilters] = useState<UserFilters>({
@@ -81,7 +83,12 @@ export function AdminUsersContent() {
   const updateUser = (updated: AdminUser) => {
     setUserList((prev) =>
       prev
-        ? { ...prev, users: prev.users.map((user) => (user.id === updated.id ? updated : user)) }
+        ? {
+            ...prev,
+            users: prev.users.map((user) =>
+              user.id === updated.id ? updated : user,
+            ),
+          }
         : prev,
     );
     setDetailUser((prev) => (prev?.id === updated.id ? updated : prev));
@@ -108,7 +115,11 @@ export function AdminUsersContent() {
             <input
               value={filters.search || ""}
               onChange={(event) =>
-                setFilters((prev) => ({ ...prev, page: 1, search: event.target.value || undefined }))
+                setFilters((prev) => ({
+                  ...prev,
+                  page: 1,
+                  search: event.target.value || undefined,
+                }))
               }
               className={operatorInputClass("w-full")}
               placeholder="搜索用户名、邮箱或姓名"
@@ -116,7 +127,11 @@ export function AdminUsersContent() {
             <select
               value={filters.status_filter || ""}
               onChange={(event) =>
-                setFilters((prev) => ({ ...prev, page: 1, status_filter: event.target.value || undefined }))
+                setFilters((prev) => ({
+                  ...prev,
+                  page: 1,
+                  status_filter: event.target.value || undefined,
+                }))
               }
               className={operatorSelectClass("w-full")}
             >
@@ -129,7 +144,11 @@ export function AdminUsersContent() {
             <select
               value={filters.role_filter || ""}
               onChange={(event) =>
-                setFilters((prev) => ({ ...prev, page: 1, role_filter: event.target.value || undefined }))
+                setFilters((prev) => ({
+                  ...prev,
+                  page: 1,
+                  role_filter: event.target.value || undefined,
+                }))
               }
               className={operatorSelectClass("w-full")}
             >
@@ -142,10 +161,15 @@ export function AdminUsersContent() {
         </OperatorPanel>
 
         {error ? <OperatorState title={error} tone="red" /> : null}
-        {loading && !userList ? <OperatorState title="加载用户列表..." /> : null}
+        {loading && !userList ? (
+          <OperatorState title="加载用户列表..." />
+        ) : null}
 
         <OperatorPanel>
-          <OperatorSectionHeader title="用户列表" subtitle="审批、邮箱验证和详情管理" />
+          <OperatorSectionHeader
+            title="用户列表"
+            subtitle="审批、邮箱验证和详情管理"
+          />
           <div className="divide-y divide-gray-100">
             {userList?.users.length ? (
               userList.users.map((user) => (
@@ -159,7 +183,9 @@ export function AdminUsersContent() {
                 />
               ))
             ) : (
-              <div className="p-6 text-sm text-gray-500">没有符合条件的用户。</div>
+              <div className="p-6 text-sm text-gray-500">
+                没有符合条件的用户。
+              </div>
             )}
           </div>
           {userList && userList.pages > 1 ? (

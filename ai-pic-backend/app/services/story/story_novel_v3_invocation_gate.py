@@ -31,6 +31,8 @@ def persisted_invocation_issues(db, revision, entries: dict, report: dict) -> li
         "story_novel_prompt_policy.v7",
         "story_novel_prompt_policy.v8",
         "story_novel_prompt_policy.v9",
+        "story_novel_prompt_policy.v13",
+        "story_novel_prompt_policy.v14",
     }
     if not valid_planning_invocations(plan):
         issues.append("planning_manifest")

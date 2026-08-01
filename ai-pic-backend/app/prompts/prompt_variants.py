@@ -109,10 +109,14 @@ class PromptVariants:
         Returns:
             Template name string
         """
-        return cls._TEMPLATES["episode_generation"].get(format_type, "episode_generation")
+        return cls._TEMPLATES["episode_generation"].get(
+            format_type, "episode_generation"
+        )
 
     @classmethod
-    def episode_from_outline(cls, format_type: StoryFormat = StoryFormat.DEFAULT) -> str:
+    def episode_from_outline(
+        cls, format_type: StoryFormat = StoryFormat.DEFAULT
+    ) -> str:
         """Get episode from outline template name for the given format.
 
         Args:
@@ -151,9 +155,7 @@ class PromptVariants:
         Returns:
             Template name string
         """
-        return cls._TEMPLATES["script_generation"].get(
-            format_type, "script_generation"
-        )
+        return cls._TEMPLATES["script_generation"].get(format_type, "script_generation")
 
     @classmethod
     def resolve(cls, base_name: str, variant: Optional[str] = None) -> str:

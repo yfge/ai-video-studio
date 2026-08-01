@@ -1,6 +1,6 @@
 ---
 id: 2026-02-03T20-00-00Z-duration-quality-validator
-date: 2026-02-03T20:00:00Z
+date: "2026-02-03T20:00:00Z"
 participants: [human, claude]
 models: [claude-opus-4-5]
 tags: [backend, validator, agent-fix, duration, tts]
@@ -30,6 +30,7 @@ summary: "创建Duration质量校验器，实现多TTS Provider WPS校准/跨剧
 ### 新增文件
 
 1. **`app/services/validators/duration_quality_validator.py`** (~500 行)
+
    - `DurationQualityValidator`: 核心校验器
      - `get_calibrated_wps()`: 获取 Provider/语言/语速组合的 WPS
      - `estimate_duration_with_provider()`: 基于 Provider 的时长估算
@@ -59,6 +60,7 @@ summary: "创建Duration质量校验器，实现多TTS Provider WPS校准/跨剧
 ### 关键实现细节
 
 - **多 TTS Provider WPS 配置**:
+
   ```python
   WPS_BY_PROVIDER = {
       "volcengine": {
@@ -82,11 +84,13 @@ summary: "创建Duration质量校验器，实现多TTS Provider WPS校准/跨剧
   ```
 
 - **词数分布阈值**:
+
   - 前重阈值: >65% 在前半部分
   - 后重阈值: <35% 在前半部分
   - Z-score 异常检测: > 2.0
 
 - **重试收敛检测**:
+
   - 振荡阈值: >3 次方向变化
   - 收敛率阈值: <10% 改善 = 未收敛
   - 病态场景: 达到重试上限但未收敛

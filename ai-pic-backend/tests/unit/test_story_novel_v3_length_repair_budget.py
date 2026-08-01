@@ -69,15 +69,49 @@ def test_short_chapter_repair_model_targets_only_the_replacement_budget():
 
     assert contract["fixed_chars"] == 1469
     assert contract["chapter_target_chars"] == 2500
-    assert contract["replacement_target_chars"] == 1031
-    assert contract["repair_model_target_chars"] == 1031
+    assert contract["replacement_target_chars"] == 631
+    assert contract["repair_model_target_chars"] == 631
     assert contract["replacement_blocks"] == [
         {
             "block_id": "B01",
             "original_chars": 133,
-            "min_chars": 824,
-            "target_chars": 1031,
-            "max_chars": 1237,
+            "min_chars": 504,
+            "target_chars": 631,
+            "max_chars": 757,
+        }
+    ]
+
+
+def test_real_six_block_shortfall_repairs_near_minimum_not_full_target():
+    sizes = [270, 319, 296, 301, 318, 314]
+    blocks = [
+        {"block_id": f"B{index:02d}", "content_text": "文" * size}
+        for index, size in enumerate(sizes, 1)
+    ]
+    brief = {
+        "beats": [
+            {"beat_id": f"B{index:02d}", "target_chars": target}
+            for index, target in enumerate([360, 420, 430, 430, 460, 400], 1)
+        ]
+    }
+
+    contract = replacement_length_contract(
+        blocks,
+        {"B05"},
+        {"min_chars": 2000, "target_chars": 2500, "max_chars": 3000},
+        brief,
+    )
+
+    assert contract["fixed_chars"] == 1500
+    assert contract["replacement_min_chars"] == 500
+    assert contract["replacement_target_chars"] == 600
+    assert contract["replacement_blocks"] == [
+        {
+            "block_id": "B05",
+            "original_chars": 318,
+            "min_chars": 480,
+            "target_chars": 600,
+            "max_chars": 720,
         }
     ]
 

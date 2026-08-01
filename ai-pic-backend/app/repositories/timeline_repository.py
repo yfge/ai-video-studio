@@ -1,7 +1,5 @@
 from typing import List, Optional
 
-from sqlalchemy.orm import Session, joinedload
-
 from app.models.script import Episode, Story
 from app.models.timeline import (
     MediaAsset,
@@ -11,6 +9,7 @@ from app.models.timeline import (
     TimelineRevision,
 )
 from app.repositories.base import BaseRepository
+from sqlalchemy.orm import Session, joinedload
 
 
 class TimelineRepository(BaseRepository[Timeline]):

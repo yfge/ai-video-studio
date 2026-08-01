@@ -136,7 +136,9 @@ export function StoryReadinessPanel({
           onClick={() => setShowAllChecks((value) => !value)}
           className={operatorButtonClass("ghost")}
         >
-          {showAllChecks ? "只显示失败项" : `显示全部 ${readiness.checks.length} 项`}
+          {showAllChecks
+            ? "只显示失败项"
+            : `显示全部 ${readiness.checks.length} 项`}
         </button>
       ) : null}
 
@@ -170,7 +172,9 @@ function CheckItem({ check }: { check: ReadinessCheck }) {
     <div className="rounded-md border border-gray-200 bg-white p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-sm font-medium text-gray-900">{check.message}</div>
+          <div className="text-sm font-medium text-gray-900">
+            {check.message}
+          </div>
           {!check.passed && check.suggestion ? (
             <div className="mt-1 text-xs text-gray-500">{check.suggestion}</div>
           ) : null}

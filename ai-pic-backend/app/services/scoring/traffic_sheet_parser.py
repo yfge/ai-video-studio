@@ -62,9 +62,7 @@ def _parse_assets(raw_assets: Any) -> list[TrafficSheetAsset]:
                 market_region=asset_data.get("market_region"),
                 micro_genre=asset_data.get("micro_genre"),
                 hook_type=asset_data.get("hook_type", "reveal"),
-                source_episode=_coerce_int(
-                    asset_data.get("source_episode"), default=1
-                ),
+                source_episode=_coerce_int(asset_data.get("source_episode"), default=1),
                 source_timecode_start=asset_data.get("source_timecode_start"),
                 source_timecode_end=asset_data.get("source_timecode_end"),
                 key_line=asset_data.get("key_line", ""),

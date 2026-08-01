@@ -1,6 +1,6 @@
 ---
 id: 2026-02-06T08-00-00Z-fix-generation-pipeline-issues
-date: 2026-02-06T08:00:00Z
+date: "2026-02-06T08:00:00Z"
 participants: [human, claude-code]
 models: [claude-opus-4-6]
 tags: [backend, bugfix, pipeline, reliability]
@@ -40,10 +40,12 @@ Check all generation pipelines for problems, then fix all identified issues in p
 ### P0 Fixes
 
 **1. generate_video / text_to_speech missing last_error tracking** (`ai_service_manager.py`)
+
 - Added `last_error`/`last_provider` variables to track which provider failed and why
 - When all providers fail, the error message now includes the actual last error instead of a generic message
 
 **2. start_task endpoint was a stub** (`tasks.py`)
+
 - Implemented `_dispatch_celery_task()` with a dispatch map covering all 14 TaskType values
 - Rewrote `start_task` to actually dispatch tasks to Celery workers
 - Added support for retrying FAILED tasks
@@ -51,11 +53,13 @@ Check all generation pipelines for problems, then fix all identified issues in p
 ### P1 Fixes
 
 **3. Provider polling used print() and returned None for all failures** (`jimeng_provider.py`, `volcengine_provider/video.py`, `volcengine_provider/tts.py`, `minimax_provider/video.py`)
+
 - Replaced all `print()` calls with `logger.warning()`
 - Polling functions now raise `RuntimeError` with descriptive messages instead of silently returning `None`
 - Removed dead `if result:` checks in callers
 
 **4. No Celery task timeout config** (`celery_app.py`, `task_worker.py`)
+
 - Added global `task_time_limit=1800` and `task_soft_time_limit=1500` (30min/25min)
 - Added per-task timeout for video polling: `soft_time_limit=120, time_limit=180`
 
@@ -66,27 +70,32 @@ Check all generation pipelines for problems, then fix all identified issues in p
 ### P2 Fixes
 
 **7. Manual DB session management in task processors** (`database.py`, 6 async_tasks files)
+
 - Created `get_task_db()` context manager in `app/core/database.py`
 - Migrated all 6 Celery task processor files from manual `SessionLocal()`/`try`/`finally` to `with get_task_db() as db:`
 - Extracted large inline functions to dedicated helpers for readability
 
 **8. Task status machine has no validation** (`tasks.py`)
+
 - Added `_VALID_TRANSITIONS` dict defining legal status transitions
 - Added validation in `update_task` endpoint with clear error messages
 
 ### P3 Fixes
 
 **9. Video generation response format inconsistency** (`ai/video.py`)
+
 - Added missing `"success": True` to success response dict
 - Replaced `print()` with `logger.warning()`
 - Removed unreachable dead code
 
 **10. Google Auth token refresh has no retry** (`vertex_auth.py`)
-- Added retry loop with linear backoff (max 3 retries, 1s * attempt delay)
+
+- Added retry loop with linear backoff (max 3 retries, 1s \* attempt delay)
 
 ### Bug fix during validation
 
-**aspect_ratio normalization in _build_generation_params** (`async_tasks.py`)
+**aspect_ratio normalization in \_build_generation_params** (`async_tasks.py`)
+
 - Fixed logic that incorrectly fell back to payload value when result explicitly contained `None`
 - Now correctly preserves provider-normalized values (e.g., `aspect_ratio: None` when provider doesn't support it)
 

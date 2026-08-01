@@ -5,13 +5,16 @@ from __future__ import annotations
 import copy
 
 from .story_novel_context_utils import CHAPTER_RUNTIME_FIELDS
-from .story_novel_plan_versions import is_v3_plan
+from .story_novel_plan_versions import is_v3_plan, is_v4_plan
+from .story_novel_v4_plan_reset import reset_v4_plan_from
 
 
 def clone_generation_plan(source: dict | None) -> dict:
     plan = copy.deepcopy(source or {})
-    if not is_v3_plan(plan):
+    if not (is_v3_plan(plan) or is_v4_plan(plan)):
         return plan
+    if is_v4_plan(plan):
+        return reset_v4_plan_from(plan, 1)
     plan["chapters"] = [
         {
             key: value
@@ -21,3 +24,11 @@ def clone_generation_plan(source: dict | None) -> dict:
         for row in plan.get("chapters") or []
     ]
     return plan
+
+
+def clone_ledger_schema(source: dict | None) -> str | None:
+    if is_v4_plan(source):
+        return "story_novel_continuity.v5"
+    if is_v3_plan(source):
+        return "story_novel_continuity.v4"
+    return None

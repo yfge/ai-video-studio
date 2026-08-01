@@ -57,8 +57,8 @@ def test_parser_strips_derived_location_before_service_manifest(monkeypatch):
     monkeypatch.setattr(package_contract, "_finalize_contract", finalize)
     monkeypatch.setattr(
         package_contract,
-        "build_v3_planning_context",
-        lambda *_args, **_kwargs: {"brief_input": {}},
+        "build_final_package_context",
+        lambda *_args: {"brief_input": {}},
     )
     monkeypatch.setattr(package_contract, "_bound_brief", lambda *_args: {})
     revision = SimpleNamespace(

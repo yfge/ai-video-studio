@@ -1,7 +1,6 @@
 """Tests for CharacterPresenceValidator."""
 
 import pytest
-
 from app.services.storyboard.pipeline.pipeline_context import (
     PipelineContext,
     SceneContext,
@@ -43,7 +42,10 @@ def context_with_characters():
         ),
     ]
     ctx.character_map = {
-        "Alice": {"name": "Alice", "reference_images": ["https://example.com/alice.jpg"]},
+        "Alice": {
+            "name": "Alice",
+            "reference_images": ["https://example.com/alice.jpg"],
+        },
         "Bob": {"name": "Bob", "reference_images": ["https://example.com/bob.jpg"]},
     }
     return ctx
@@ -112,8 +114,14 @@ class TestDialogueCharacterPresence:
         self, validator, state_with_character_frames, context_with_characters
     ):
         """Test validation passes when all speaking characters appear."""
-        results = validator.validate(state_with_character_frames, context_with_characters)
-        presence_results = [r for r in results if "speaking" in r.message.lower() or "character" in r.message.lower()]
+        results = validator.validate(
+            state_with_character_frames, context_with_characters
+        )
+        presence_results = [
+            r
+            for r in results
+            if "speaking" in r.message.lower() or "character" in r.message.lower()
+        ]
 
         assert any(r.passed for r in presence_results)
 
@@ -142,7 +150,11 @@ class TestDialogueCharacterPresence:
             SceneContext(
                 scene_number=1,
                 dialogues=[
-                    {"scene_number": 1, "character": "旁白", "content": "Narrator speaks"},
+                    {
+                        "scene_number": 1,
+                        "character": "旁白",
+                        "content": "Narrator speaks",
+                    },
                     {"scene_number": 1, "character": "Alice", "content": "Hello"},
                 ],
             ),
@@ -160,7 +172,8 @@ class TestDialogueCharacterPresence:
 
         results = validator.validate(state, ctx)
         missing_results = [
-            r for r in results
+            r
+            for r in results
             if "missing" in r.message.lower() and "旁白" in str(r.details)
         ]
 
@@ -175,7 +188,9 @@ class TestReferenceImageValidation:
         self, validator, state_with_character_frames, context_with_characters
     ):
         """Test validation passes when all characters have references."""
-        results = validator.validate(state_with_character_frames, context_with_characters)
+        results = validator.validate(
+            state_with_character_frames, context_with_characters
+        )
         ref_results = [r for r in results if "reference" in r.message.lower()]
 
         # All characters have references
@@ -200,7 +215,11 @@ class TestReferenceImageValidation:
         ]
 
         results = validator.validate(state, ctx)
-        ref_results = [r for r in results if "reference" in r.message.lower() and "lack" in r.message.lower()]
+        ref_results = [
+            r
+            for r in results
+            if "reference" in r.message.lower() and "lack" in r.message.lower()
+        ]
 
         assert len(ref_results) > 0
         assert ref_results[0].severity == ValidationSeverity.WARNING
@@ -213,7 +232,9 @@ class TestCharacterNameConsistency:
         self, validator, state_with_character_frames, context_with_characters
     ):
         """Test validation passes with consistent character names."""
-        results = validator.validate(state_with_character_frames, context_with_characters)
+        results = validator.validate(
+            state_with_character_frames, context_with_characters
+        )
         consistency_results = [r for r in results if "consistent" in r.message.lower()]
 
         assert any(r.passed for r in consistency_results)

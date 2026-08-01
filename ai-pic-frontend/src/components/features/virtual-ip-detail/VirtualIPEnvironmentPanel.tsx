@@ -50,7 +50,10 @@ export function VirtualIPEnvironmentPanel({
         setLinks(linksRes.data);
         onLinkedCountChange?.(linksRes.data.length);
       } else {
-        showAlert({ message: linksRes.error || "加载 IP 环境失败", variant: "error" });
+        showAlert({
+          message: linksRes.error || "加载 IP 环境失败",
+          variant: "error",
+        });
       }
       setEnvironments(envRes.success && envRes.data ? envRes.data : []);
     } finally {
@@ -81,7 +84,10 @@ export function VirtualIPEnvironmentPanel({
         environment_id: environmentId,
       });
       if (res.success && res.data) {
-        refreshLinks([...links.filter((item) => item.environment_id !== environmentId), res.data]);
+        refreshLinks([
+          ...links.filter((item) => item.environment_id !== environmentId),
+          res.data,
+        ]);
         setSelectedEnvId("");
         showAlert({ message: "环境已接入 IP", variant: "success" });
       } else {
@@ -102,7 +108,10 @@ export function VirtualIPEnvironmentPanel({
         category: quickCategory,
       });
       if (!created.success || !created.data) {
-        showAlert({ message: created.error || "创建环境失败", variant: "error" });
+        showAlert({
+          message: created.error || "创建环境失败",
+          variant: "error",
+        });
         return;
       }
       const linked = await virtualIPAPI.linkVirtualIPEnvironment(ipKey, {
@@ -114,7 +123,10 @@ export function VirtualIPEnvironmentPanel({
         setQuickName("");
         showAlert({ message: "环境已创建并接入 IP", variant: "success" });
       } else {
-        showAlert({ message: linked.error || "环境创建成功，关联失败", variant: "error" });
+        showAlert({
+          message: linked.error || "环境创建成功，关联失败",
+          variant: "error",
+        });
       }
     } finally {
       setLinking(false);
@@ -122,7 +134,10 @@ export function VirtualIPEnvironmentPanel({
   };
 
   const handleUnlink = async (link: VirtualIPEnvironmentLink) => {
-    const res = await virtualIPAPI.unlinkVirtualIPEnvironment(ipKey, link.environment_id);
+    const res = await virtualIPAPI.unlinkVirtualIPEnvironment(
+      ipKey,
+      link.environment_id,
+    );
     if (res.success) {
       refreshLinks(links.filter((item) => item.id !== link.id));
       showAlert({ message: "已从 IP 移除环境关联", variant: "success" });
@@ -136,7 +151,11 @@ export function VirtualIPEnvironmentPanel({
       <OperatorSectionHeader
         title="环境资产"
         subtitle="接入当前 IP 的可复用场景、地点和背景图池"
-        action={<StatusPill tone={links.length ? "green" : "amber"}>{links.length} 个</StatusPill>}
+        action={
+          <StatusPill tone={links.length ? "green" : "amber"}>
+            {links.length} 个
+          </StatusPill>
+        }
       />
       <div className="space-y-4 p-4">
         {loading ? (
@@ -144,14 +163,18 @@ export function VirtualIPEnvironmentPanel({
         ) : links.length ? (
           <div className="grid gap-3 md:grid-cols-2">
             {links.map((link) => (
-              <div key={link.id} className="rounded-lg border border-gray-200 p-3">
+              <div
+                key={link.id}
+                className="rounded-lg border border-gray-200 p-3"
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="truncate text-sm font-semibold text-gray-950">
                       {link.environment.name}
                     </div>
                     <div className="mt-1 text-xs text-gray-500">
-                      {link.environment.category || "未分类"} · {link.usage_type}
+                      {link.environment.category || "未分类"} ·{" "}
+                      {link.usage_type}
                     </div>
                   </div>
                   <StatusPill tone={link.is_default ? "blue" : "gray"}>
@@ -165,7 +188,9 @@ export function VirtualIPEnvironmentPanel({
                 ) : null}
                 <div className="mt-3 flex gap-2">
                   <Link
-                    href={`/environments/${link.environment.business_id || link.environment_id}`}
+                    href={`/environments/${
+                      link.environment.business_id || link.environment_id
+                    }`}
                     className={operatorButtonClass("secondary")}
                   >
                     管理图片

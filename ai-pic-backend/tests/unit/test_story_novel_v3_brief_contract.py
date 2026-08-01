@@ -93,12 +93,12 @@ def _brief(planning_input):
     }
 
 
-def test_expected_beat_count_is_ceil_bounded_to_four_and_six():
-    assert expected_beat_count(100) == 4
-    assert expected_beat_count(2000) == 4
-    assert expected_beat_count(2500) == 4
-    assert expected_beat_count(3000) == 5
-    assert expected_beat_count(10000) == 6
+def test_expected_beat_count_is_ceil_bounded_to_six_and_twelve():
+    assert expected_beat_count(100) == 6
+    assert expected_beat_count(2000) == 6
+    assert expected_beat_count(2500) == 6
+    assert expected_beat_count(3000) == 7
+    assert expected_beat_count(10000) == 12
 
 
 def test_brief_prompt_requests_every_required_narrative_field_and_exact_threads():

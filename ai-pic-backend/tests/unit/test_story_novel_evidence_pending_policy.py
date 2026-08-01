@@ -31,7 +31,7 @@ def _evaluation(body: str, message: str, *, evidence_only: bool = False) -> dict
     }
 
 
-def test_valid_length_repair_with_evidence_only_failure_is_preserved():
+def test_evidence_only_failure_cannot_replace_a_different_first_failure():
     short_first = _evaluation("短首稿", "章节长度为 2369，要求 3000–5000")
     valid_repair = _evaluation(
         "合格长度返修稿",
@@ -39,7 +39,7 @@ def test_valid_length_repair_with_evidence_only_failure_is_preserved():
         evidence_only=True,
     )
 
-    assert select_repair_evaluation(short_first, valid_repair) is valid_repair
+    assert select_repair_evaluation(short_first, valid_repair) is short_first
 
 
 def test_knowledge_evidence_failure_is_extraction_only():

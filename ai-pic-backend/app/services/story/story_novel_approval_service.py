@@ -19,10 +19,11 @@ from .story_novel_chapter_gate import chapter_length_range
 from .story_novel_chapter_service import non_whitespace_chars, source_candidates
 from .story_novel_domain import active_chapters
 from .story_novel_length_service import generation_plan_hash
-from .story_novel_plan_versions import is_state_gated_plan, is_v3_plan
+from .story_novel_plan_versions import is_state_gated_plan, is_v3_plan, is_v4_plan
 from .story_novel_v2_approval import require_v2_quality
 from .story_novel_v3_approval import require_v3_quality
 from .story_novel_v3_plan import valid_v3_plan_fields
+from .story_novel_v4_approval import require_v4_quality
 from .story_novel_world_expansion import canon_with_plan_expansion
 
 
@@ -37,7 +38,9 @@ def approve_revision(service, revision):
     if is_state_gated_plan(plan):
         _require_current_frozen_plan(revision, plan)
         require_v2_quality(revision, chapters, ledger_rows)
-    if is_v3_plan(plan):
+    if is_v4_plan(plan):
+        require_v4_quality(service.db, revision, chapters, ledger_rows)
+    elif is_v3_plan(plan):
         require_v3_quality(service.db, revision, chapters, ledger_rows)
     _require_current_report(revision, chapters)
     _promote_revision(service, revision, chapters, eligible_candidate_ids)
@@ -126,7 +129,7 @@ def _require_current_report(revision, chapters) -> None:
     expected_coverage = {row.business_id: row.content_hash for row in chapters}
     if coverage != expected_coverage:
         raise HTTPException(status_code=409, detail="连续性报告未覆盖全部当前章节")
-    if is_v3_plan(revision.generation_plan):
+    if is_v3_plan(revision.generation_plan) or is_v4_plan(revision.generation_plan):
         source_coverage = {
             item.get("business_id"): item.get("source_hash")
             for item in (revision.continuity_report or {}).get("coverage") or []

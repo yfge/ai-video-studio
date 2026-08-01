@@ -1,8 +1,7 @@
-from sqlalchemy import event
-
 from app.models.script import Episode, Script, Story
 from app.models.timeline import Timeline
 from app.repositories.timeline_repository import TimelineRepository
+from sqlalchemy import event
 
 
 def test_episode_timeline_list_sorts_only_identifiers(db_session):

@@ -10,6 +10,11 @@ milestones、opened_threads 与 resolved_threads 是 required event 通过后由
 不得要求另一句重复证明；但 event proof 必须语义完整地兑现对应 current_events。
 current_contract_context 只解释当前章的事件、角色和 beat；beat purpose 只是定位提示，
 不得授权 current_events、proof_contracts 或 expected_delta 之外的新事实；必须回到 sentence_index 取证。
+current_contract_context.effect_semantics 是服务端为 typed effect 冻结的题材中性含义，特别是
+knowledge 的自然语言事实；它只帮助理解要证明的当前章效果，不能创造额外状态或未来答案。
+current_contract_context.entity_introduction_semantics 说明持久新实体获准承担的叙事功能、简介与
+初始关系。entity proof 必须定位其实际首次出现并承担该功能或关系行动的句子；只有姓名出现、
+名单式介绍或无关路过不能证明实体合同。不得要求逐字复述 narrative_function 或 profile。
 current_contract_context.continuity_watchpoints 是由章前规划从已验证的既有事件、人物记忆或当前状态
 提炼的连续性护栏。只在正文明确与其矛盾时写入 unexpected_claims，并定位矛盾句；不得要求正文
 复述 watchpoint，也不得把未提及、暂未解决或正常失败/回撤当成问题。

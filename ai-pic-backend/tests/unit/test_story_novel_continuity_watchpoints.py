@@ -1,11 +1,15 @@
 import copy
 
 import pytest
-
+from app.services.story import story_novel_chapter_package_context as package_context
+from app.services.story import story_novel_priority_evidence as priority_evidence
 from app.services.story.story_novel_brief_policy import BRIEF_POLICY_VERSION
 from app.services.story.story_novel_chapter_brief_contract import (
     compile_chapter_brief_input,
     validate_chapter_brief,
+)
+from app.services.story.story_novel_continuity_watchpoints import (
+    watchpoint_evidence_ids,
 )
 from app.services.story.story_novel_v3_prompts import (
     audit_contract_context,
@@ -82,6 +86,52 @@ def test_watchpoints_are_optional_soft_guards_not_growth_kpis():
     assert "不得在本章逐项兑现" in package_prompt
     assert "没有相关约束时输出 []" in package_prompt
     assert "不得要求正文\n复述 watchpoint" in audit_prompt
+
+
+def test_package_rebuild_prioritizes_the_exact_prompt_watchpoint_sources(monkeypatch):
+    captured = {}
+
+    def build(*_args, **kwargs):
+        captured.update(kwargs)
+        return {"brief_input": {}}
+
+    monkeypatch.setattr(package_context, "build_v3_planning_context", build)
+    brief = {
+        "continuity_watchpoints": [
+            {
+                "source_evidence_ids": ["memory-long", "event-bound"],
+            },
+            {"source_evidence_ids": ["memory-long"]},
+        ]
+    }
+
+    package_context.build_final_package_context(None, None, 5, {}, brief)
+
+    assert watchpoint_evidence_ids(brief) == ["memory-long", "event-bound"]
+    assert captured["priority_evidence_ids"] == ["memory-long", "event-bound"]
+    assert captured["persist_memory_snapshots"] is False
+
+
+def test_priority_evidence_survives_when_optional_context_is_truncated(monkeypatch):
+    monkeypatch.setattr(priority_evidence, "CONTEXT_CHAR_BUDGET", 320)
+    pack, truncations = {}, []
+    memory = {"business_id": "memory-long", "content": "记" * 80}
+    optional = {"business_id": "event-optional", "summary": "事" * 400}
+
+    priority_evidence.add_priority_evidence(
+        pack, [], [memory], {"memory-long"}, truncations
+    )
+    priority_evidence.append_unpinned_evidence(
+        pack, "world_events", [optional], {"memory-long"}, truncations
+    )
+
+    assert pack["character_memories"] == [memory]
+    assert pack["world_events"] == []
+    assert truncations[-1] == {
+        "section": "world_events",
+        "original_items": 1,
+        "kept_items": 0,
+    }
 
 
 def _brief_input() -> dict:

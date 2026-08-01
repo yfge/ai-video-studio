@@ -11,10 +11,9 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from sqlalchemy.orm import Session
-
     from app.models.script import Episode, Script
     from app.services.storyboard.pipeline.pipeline_context import PipelineContext
+    from sqlalchemy.orm import Session
 
 
 @dataclass
@@ -201,7 +200,9 @@ class DataPrecheck:
         result: PrecheckResult,
     ) -> None:
         """Check audio timeline availability and validity."""
-        ep_meta = episode.extra_metadata if isinstance(episode.extra_metadata, dict) else {}
+        ep_meta = (
+            episode.extra_metadata if isinstance(episode.extra_metadata, dict) else {}
+        )
         audio_timeline = ep_meta.get("audio_timeline")
 
         if not isinstance(audio_timeline, dict):
@@ -238,7 +239,10 @@ class DataPrecheck:
             valid_beats = 0
             for beat in beats:
                 if isinstance(beat, dict):
-                    if beat.get("start_ms") is not None and beat.get("end_ms") is not None:
+                    if (
+                        beat.get("start_ms") is not None
+                        and beat.get("end_ms") is not None
+                    ):
                         valid_beats += 1
 
             if valid_beats == 0:
@@ -267,9 +271,7 @@ class DataPrecheck:
 
             # Check if JSON has scenes
             if result.checks.get("has_json_scenes"):
-                result.suggestions.append(
-                    "Run json_to_structure sync to create scenes"
-                )
+                result.suggestions.append("Run json_to_structure sync to create scenes")
         else:
             result.checks["has_structure_scenes"] = True
             result.checks["structure_scene_count"] = scene_count

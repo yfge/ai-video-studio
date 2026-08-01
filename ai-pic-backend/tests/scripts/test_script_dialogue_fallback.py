@@ -2,8 +2,8 @@ import json
 from types import SimpleNamespace
 
 from app.models.story_structure import Scene
-from tests.fixtures.mock_ai_script_payloads import mock_passing_script_payload
 from tests.factories import EpisodeFactory, setup_factories
+from tests.fixtures.mock_ai_script_payloads import mock_passing_script_payload
 
 
 def test_generate_script_dialogue_fallback(client, db_session, monkeypatch):

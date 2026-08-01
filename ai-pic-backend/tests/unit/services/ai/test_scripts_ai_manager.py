@@ -8,9 +8,7 @@ from app.services.ai.scripts_ai_manager import (
     _SCENE_PLAN_MAX_TOKENS,
     ScriptManagerMixin,
 )
-from app.services.ai.scripts_ai_manager_payloads import (
-    _BEAT_CONTRACT_MAX_TOKENS,
-)
+from app.services.ai.scripts_ai_manager_payloads import _BEAT_CONTRACT_MAX_TOKENS
 
 
 class _DummyResponse:
