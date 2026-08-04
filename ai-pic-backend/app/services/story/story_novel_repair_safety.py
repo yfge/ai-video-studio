@@ -115,7 +115,11 @@ def can_reuse_prior_result(
 
 def select_repair_evaluation(first: dict, repair: dict) -> dict:
     """Never replace parseable prose unless repair strictly reduces failures."""
-    if repair.get("passed") or not first.get("result"):
+    if (
+        repair.get("passed")
+        or repair.get("state_extraction_evidence_only")
+        or not first.get("result")
+    ):
         return repair
     first_violations = _normalized_violations(first)
     repair_violations = _normalized_violations(repair)

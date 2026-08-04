@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import re
 
+from app.services.narrative_memory.knowledge_evidence import knowledge_evidence_key
 from app.services.narrative_memory.source_evidence import (
     align_source_evidence,
     source_contains_evidence,
 )
+
+from .story_novel_knowledge_prompt import knowledge_sentence_prefixes
 
 DATE_ANCHOR_PATTERN = re.compile(
     r"(?:(?P<year>\d{2,4}|[〇零一二三四五六七八九十百]{2,5})年)?"
@@ -59,6 +62,8 @@ def normalize_extracted_evidence(
         quotes = delta.get(field) or {}
         for item_id, quote in list(quotes.items()):
             quotes[item_id] = align_source_evidence(content_text, str(quote))
+    _select_contract_knowledge_evidence(content_text, canon, chapter_plan, delta)
+    _bind_knowledge_evidence(content_text, delta)
     timeline = {item["id"]: item for item in canon.get("timeline") or []}
     for item_id in chapter_plan.get("canon_refs") or []:
         item = timeline.get(item_id) or {}
@@ -68,6 +73,50 @@ def normalize_extracted_evidence(
             delta["timeline_evidence"][item_id] = _quote_with_date(
                 content_text, quote, date
             )
+
+
+def _select_contract_knowledge_evidence(
+    content_text: str, canon: dict, chapter_plan: dict, delta: dict
+) -> None:
+    evidence = delta.get("knowledge_evidence") or {}
+    for contract in knowledge_sentence_prefixes(
+        {"chapter_contract": chapter_plan, "compiled_canon": canon}
+    ):
+        if not contract["source_event_text"]:
+            continue
+        candidate = contract["required_prefix"] + contract["source_event_text"]
+        if source_contains_evidence(content_text, candidate):
+            evidence[contract["grant_key"]] = candidate
+
+
+def _bind_knowledge_evidence(content_text: str, delta: dict) -> None:
+    events = delta.get("evidence") or {}
+    knowledge = delta.get("knowledge_evidence") or {}
+    source = semantic_text(content_text)
+    for grant in delta.get("knowledge_grants") or []:
+        event_id = str(grant.get("source_event_id") or "")
+        event_quote = str(events.get(event_id) or "")
+        quote = str(knowledge.get(knowledge_evidence_key(grant)) or "")
+        sections = [
+            item.strip()
+            for item in QUOTE_SPLIT_PATTERN.split(event_quote)
+            if item.strip()
+        ]
+        exact = semantic_text(quote)
+        if (
+            not sections
+            or not exact
+            or any(exact in semantic_text(item) for item in sections)
+            or not source_contains_evidence(content_text, quote)
+        ):
+            continue
+        parts = [*sections, quote]
+        positions = [(source.find(semantic_text(item)), item) for item in parts]
+        if any(position < 0 for position, _item in positions):
+            continue
+        candidate = "……".join(item for _position, item in sorted(positions))
+        if source_contains_evidence(content_text, candidate):
+            events[event_id] = candidate
 
 
 def exact_date_anchor(value: str) -> str | None:

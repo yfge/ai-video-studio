@@ -1,5 +1,3 @@
-"""Verify model evidence against the immutable source text."""
-
 import re
 
 _ELLIPSIS_PATTERN = re.compile(r"(?:…+|\.{3,})")
@@ -135,6 +133,15 @@ def _matched_parts(semantic_source: str, evidence: str) -> list[tuple[int, str]]
                 for item in _CLAUSE_PATTERN.split(section)
                 if _semantic_text(item)
             ]
+            missing = [
+                index
+                for index, item in enumerate(clauses)
+                if semantic_source.find(_semantic_text(item)) < 0
+            ]
+            if missing == [0] and _rewritten_actor_lead(semantic_source, clauses[0]):
+                clauses = clauses[1:]
+            elif missing:
+                return []
             if len(clauses) < 2:
                 return []
             candidates.extend(clauses)
@@ -191,6 +198,15 @@ def _occurrences(source: str, value: str) -> list[int]:
         positions.append(position)
         start = position + 1
     return positions
+
+
+def _rewritten_actor_lead(source: str, clause: str) -> bool:
+    value = _semantic_text(clause)
+    for prefix_length in range(2, min(20, len(value) - 12) + 1):
+        tail = value[prefix_length:]
+        if len(tail) >= 12 and source.count(tail) == 1:
+            return True
+    return False
 
 
 def _semantic_source(value: str) -> tuple[str, list[int]]:

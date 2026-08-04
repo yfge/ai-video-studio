@@ -91,6 +91,7 @@ async def extract_chapter_state(
                 chapter_plan=chapter_plan,
                 content_text=content_text,
                 current_timeline=current_timeline or [],
+                canon=canon,
                 delta=normalized,
                 diagnostics=diagnostics,
                 error=error,
@@ -100,7 +101,7 @@ async def extract_chapter_state(
             raise StateExtractionError(
                 f"章节状态证据返修失败: {exc}",
                 repair_count=1,
-                evidence_only=not _knowledge_evidence_issues(issues),
+                evidence_only=_only_evidence_issues(issues),
             ) from exc
         normalized, error, issues = _validation_result(
             text,
@@ -114,7 +115,7 @@ async def extract_chapter_state(
             raise StateExtractionError(
                 f"章节状态提取失败: {error}",
                 repair_count=1,
-                evidence_only=not _knowledge_evidence_issues(issues),
+                evidence_only=_only_evidence_issues(issues),
             )
         return normalized, 1
     repair = (
@@ -240,7 +241,3 @@ def _only_audit_output_issues(issues: list[dict]) -> bool:
         _only_evidence_issues([issue]) or is_future_audit_id_issue(issue)
         for issue in issues
     )
-
-
-def _knowledge_evidence_issues(issues: list[dict]) -> bool:
-    return any(str(item.get("message") or "").startswith("角色获知") for item in issues)

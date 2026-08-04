@@ -4,8 +4,10 @@ from typing import Any
 
 from .story_novel_adaptation_prompt import adaptation_prompt as adaptation_prompt
 from .story_novel_domain import json_prompt_payload
+from .story_novel_knowledge_prompt import knowledge_sentence_prefixes
 from .story_novel_planning_prompt import planning_prompt as planning_prompt
 from .story_novel_repair_safety import fixed_date_repair_action
+from .story_novel_state_prompt import locked_state_subjects
 
 SYSTEM_PROMPT = (
     "你是严谨的中文长篇叙事编辑。只使用提供的故事合同，不得引用任何既有剧集。"
@@ -24,9 +26,18 @@ UNRESOLVED_THREAD_RULE = (
 )
 KNOWLEDGE_EVIDENCE_RULE = (
     "chapter_contract.knowledge_grants 中每一项都必须在正文里有一条连续、独立的获知句："
-    "使用 compiled_canon 中该 character_id 的明确姓名，只出现一次得知、获悉、确认、"
-    "听见、看见、收到、告诉、告知、通知、透露、说明或宣布等获知关系，并清楚指向"
-    "该 source_event_id 对应事实。不要用省略拼接、隐含在场或旁人对话代替。"
+    "使用 compiled_canon 中该 character_id 的明确姓名，并让该姓名直接建立得知、"
+    "获悉、确认、听见、看见、收到、告诉、告知、通知、透露、说明或宣布等获知关系，"
+    "source_event_text 自身含有其他事实动词时不得删改，并清楚指向"
+    "该 source_event_id 对应事实。句首必须逐字使用 Canon entity.name 并立刻紧接获知词，"
+    "姓名与获知词之间不得插入动作、代词、标点或其他角色；不得用自行生成的人名、职位别称、"
+    "省略拼接、隐含在场或旁人对话代替。"
+)
+STATE_LOCK_RULE = (
+    "下列主体没有本章状态或地点转移授权，location、owner_id、status 必须保持逐字所列值；"
+    "canon_refs 只提供背景，不授权携带、部署、激活或转移。key_events 中名称相近的普通物件"
+    "不得映射成这些 Canon 主体。若列有 location_rule，物件只可随 owner 的已授权移动同行，"
+    "不得自报额外地点转移或把同行写成部署、放置或留下。"
 )
 
 
@@ -125,7 +136,9 @@ def chapter_prompt(
 输出前必须自检 content_text 的非空白字符数；低于 {safe_min} 时不得结束输出。
 必须遵守 Canon、角色知情边界、当前角色状态与未闭合线索；不得读取或预告未来章节。
 必须逐项真实呈现当前 chapter_contract 的 key_events、state_transitions、milestones_consumed、open_threads 与 payoffs_due。
+{STATE_LOCK_RULE} 锁定主体：{json_prompt_payload(locked_state_subjects(context_pack))}
 {KNOWLEDGE_EVIDENCE_RULE}
+逐项必备获知句合同（source_event_text 是该 grant 必须表达的当前事件事实）：{json_prompt_payload(knowledge_sentence_prefixes(context_pack))}
 chapter_contract.location_transitions 是本章允许发生的全部地点移动；为空时所有人物和物件必须保持 current_state 地点，“准备转移”不等于出发、登船、起锚或抵达；非空时只能逐项发生清单中的移动。
 每个 open_threads 必须在正文中明确提出对应疑问或可追查异常，并逐字复制到 plot_delta.unresolved_threads；每个 payoffs_due 必须在正文中明确解决并逐字复制到 plot_delta.resolved_threads。
 {UNRESOLVED_THREAD_RULE}
@@ -160,7 +173,9 @@ def chapter_length_repair_prompt(
 计数时去除全部空格与换行；正文必须落在 {min_chars}–{max_chars}，绝对不要超过 {safe_ceiling}。
 上下文包：{json_prompt_payload(context_pack)}
 {STATIC_WORLD_RULES}
+{STATE_LOCK_RULE} 锁定主体：{json_prompt_payload(locked_state_subjects(context_pack))}
 {KNOWLEDGE_EVIDENCE_RULE}
+逐项必备获知句合同（source_event_text 是该 grant 必须表达的当前事件事实）：{json_prompt_payload(knowledge_sentence_prefixes(context_pack))}
 上一版结构与首尾参考：{json_prompt_payload(repair_reference)}
 只输出以下结构的严格 JSON，不要解释；完整正文必须放在 content_text，禁止改名为 body、content 或 text：
 {{"title":"章节标题","content_text":"完整正文","summary":"200字内摘要","cliffhanger":"章末卡点","plot_delta":{{"key_events":["本章事件"],"unresolved_threads":["未闭合线索"],"resolved_threads":["回收线索"],"character_states":{{"角色":"章末状态"}}}}}}"""
@@ -182,7 +197,7 @@ def chapter_gate_repair_prompt(
     safe_target = min(max(target_chars, safe_min), safe_max)
     if actual_chars < min_chars:
         safe_target = min(safe_max, safe_target + safe_min - actual_chars)
-    paragraph_count = max(4, round(safe_target / 160))
+    paragraph_count = max(6, round(safe_target / 110))
     if actual_chars < min_chars:
         length_action = (
             f"必须在不删减已有有效叙事的前提下净增至少 "
@@ -206,11 +221,13 @@ def chapter_gate_repair_prompt(
     return f"""上一版章节未通过长篇硬门禁，只允许完整返修一次。
 失败项：{json_prompt_payload(violations)}
 上一版有 {actual_chars} 个非空白字符；必须按非空白字符计数，去除全部空格、换行与制表符。
-返修正文硬性范围 {min_chars}–{max_chars}，安全目标约 {safe_target}；建议约 {paragraph_count} 个完整叙事段落，每段约 140–180 个非空白字符。
+返修正文硬性范围 {min_chars}–{max_chars}，安全目标约 {safe_target}；正文必须写满 {paragraph_count}–{paragraph_count + 3} 个完整叙事段落，每段 100–110 个非空白字符，单句对白必须并入叙事段，不得用短段凑数。
 {length_action}
 输出前必须自检 content_text 的非空白字符数；低于 {safe_min} 时不得结束输出。
 必须在正文中真实呈现计划事件、移动过程、知识来源、权限变化和因果桥；不得只在摘要声明。
+{STATE_LOCK_RULE} 锁定主体：{json_prompt_payload(locked_state_subjects(context_pack))}
 {KNOWLEDGE_EVIDENCE_RULE}
+逐项必备获知句合同（source_event_text 是该 grant 必须表达的当前事件事实）：{json_prompt_payload(knowledge_sentence_prefixes(context_pack))}
 chapter_contract.location_transitions 是本章允许发生的全部地点移动；为空时删除全部出发、登船、起锚、离开或抵达情节并保持 current_state 地点；非空时只能逐项发生清单中的移动。
 必须逐项补齐当前 chapter_contract 的 open_threads 与 payoffs_due：前者在正文中明确提出对应疑问或可追查异常，后者在正文中明确解决；并同步写入 plot_delta。
 {UNRESOLVED_THREAD_RULE}
