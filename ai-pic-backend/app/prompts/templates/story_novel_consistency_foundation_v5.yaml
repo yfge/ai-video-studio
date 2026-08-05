@@ -1,0 +1,5 @@
+description: Compile the frozen schema and initial fact graph for a long V5 story
+category: story
+version: "1.0"
+variables:
+  contract_json: {required: true, type: string}

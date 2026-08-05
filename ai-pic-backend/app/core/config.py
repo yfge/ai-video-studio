@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     CODEX_DEFAULT_MODEL: Optional[str] = "gpt-5.4"
     AI_FORCE_MOCK: bool = False
 
+    # New Story Novel revisions remain on v4 unless an environment explicitly
+    # opts into the topic-neutral v5 pipeline.
+    STORY_NOVEL_DEFAULT_PLAN_VERSION: str = "v4"
+
     # Stability AI配置
     STABILITY_API_KEY: Optional[str] = None
 

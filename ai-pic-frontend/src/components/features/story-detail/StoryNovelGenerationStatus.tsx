@@ -68,6 +68,8 @@ export function storyNovelChapterProgress(revision: StoryNovelRevision) {
       stage: chapterStage(checkpoint, chapter.generation_status),
       usage: chapterUsage(checkpoint),
       failedBlocks: checkpoint.failed_block_ids || [],
+      consistencyStatus: checkpoint.consistency_report?.status || "pending",
+      readabilityStatus: checkpoint.readability_report?.status || "pending",
     };
   });
 }
@@ -98,9 +100,15 @@ export function StoryNovelGenerationStatus({
     (item) => item.extraction_status === "ready",
   ).length;
   const bodyCompleted = ledgerRows.filter((item) =>
-    ["body_ready", "audit", "memory_ready", "ready", "state_pending"].includes(
-      item.status || "",
-    ),
+    [
+      "body_ready",
+      "audit",
+      "auditing",
+      "memory_ready",
+      "ready",
+      "review_required",
+      "state_pending",
+    ].includes(item.status || ""),
   ).length;
   const statePending = ledgerRows.filter(
     (item) => item.status === "state_pending",
@@ -110,7 +118,9 @@ export function StoryNovelGenerationStatus({
     0,
   );
   const validated = ledgerRows.filter(
-    (item) => item.state_validation?.status === "passed",
+    (item) =>
+      item.state_validation?.status === "passed" ||
+      item.consistency_report?.status === "passed",
   ).length;
   const usage = ledgerRows.reduce(
     (total, item) => {
@@ -123,7 +133,9 @@ export function StoryNovelGenerationStatus({
     },
     { calls: 0, tokens: 0, latencyMs: 0 },
   );
-  const failedRows = ledgerRows.filter((item) => item.status === "gate_failed");
+  const failedRows = ledgerRows.filter((item) =>
+    ["gate_failed", "review_required"].includes(item.status || ""),
+  );
   const failures = failedRows.flatMap(
     (item) =>
       item.state_validation?.violations?.map(({ message }) => message) || [],
@@ -181,6 +193,9 @@ export function StoryNovelGenerationStatus({
                 {chapter.bodyStatus} · 提取 {chapter.extractionStatus} ·{" "}
                 {chapter.actualChars}/{chapter.targetChars} 字符 · 阶段{" "}
                 {chapter.stage}
+                {plan?.schema === "story_novel_generation_plan.v5"
+                  ? ` · 一致性 ${chapter.consistencyStatus} · 可读性 ${chapter.readabilityStatus}`
+                  : ""}
                 {chapter.usage.calls ||
                 chapter.usage.tokens ||
                 chapter.usage.latencyMs

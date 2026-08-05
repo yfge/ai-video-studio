@@ -1,0 +1,2 @@
+只修复当前 JSON 响应的结构或确定性校验错误：{{ input_json }}
+不得扩大原输入、增加新叙事内容或改写已正确字段。只输出 repaired_response 对应的完整 JSON 对象。

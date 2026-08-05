@@ -1,0 +1,12 @@
+从冻结输入编译本 Story 专属的一致性模型，不写正文：{{ contract_json }}
+
+要求：
+1. 只抽象正文后续因果真正依赖的动态实体类型、谓词、事件、约束和视角；描写、气氛、服饰、短暂情绪使用 observational 谓词，不能进入事件前置条件或效果。
+2. 条件 op 只允许 all/any/not/exists/equals/contains/event_before；效果 op 只允许 assert/retract/replace/reveal/conceal。
+3. 每章至少有一个 causal event；dependency_event_ids 只能指向同章更早事件或前章事件。所有角色、类型、谓词、视角引用必须闭合。
+4. 伏笔、回收、人物弧、场景任务、章末牵引写入 obligations，不能伪装成事实。
+5. initial_fact_graph 只放 causal facts。若未来事件依赖一个观察，必须把对应谓词提升为 causal，否则本次编译应失败。
+6. 不输出 canon_view、hash、状态或诊断，这些由程序确定性生成。
+
+只输出 JSON：
+{"consistency_schema":{"schema":"story_novel_consistency_schema.v1","version":1,"entity_types":[],"predicates":[],"event_types":[],"constraints":[],"perspectives":[],"source_manifest":{}},"initial_fact_graph":{"schema":"story_novel_fact_graph.v1","entities":[],"facts":[],"evidence":[],"occurred_event_ids":[]},"causal_event_graph":{"schema":"story_novel_causal_event_graph.v1","events":[],"obligations":[]}}

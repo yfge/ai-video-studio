@@ -5,7 +5,7 @@ from fastapi import HTTPException
 
 from .story_novel_context_utils import prompt_chapter_contract, value_hash
 from .story_novel_domain import active_chapters, sha256_text
-from .story_novel_plan_versions import is_v4_plan
+from .story_novel_plan_versions import is_v4_plan, is_v5_plan
 from .story_novel_state_service import state_hash
 from .story_novel_v3_resume import proofs_match_body
 from .story_novel_v3_runtime import candidate_checkpoint_ready
@@ -13,6 +13,10 @@ from .story_novel_v3_runtime import candidate_checkpoint_ready
 
 def resume_suffix_plan_rows(service, revision, plan_rows: list[dict]) -> list[dict]:
     """Skip an immutable ready prefix or fail before any provider call."""
+    if is_v5_plan(revision.generation_plan):
+        from .story_novel_v5_resume import resume_v5_suffix
+
+        return resume_v5_suffix(service, revision, plan_rows)
     ledger = dict(revision.continuity_ledger or {})
     entries = ledger.get("chapters") or {}
     cursor = int(

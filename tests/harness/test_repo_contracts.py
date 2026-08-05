@@ -117,6 +117,28 @@ def test_diff_collectors_allow_legacy_baseline_debt(tmp_path, monkeypatch) -> No
     ]
 
 
+def test_narrative_core_boundary_rejects_app_imports_and_legacy_state(
+    tmp_path, monkeypatch
+) -> None:
+    monkeypatch.setattr(contract_audit_core, "REPO_ROOT", tmp_path)
+    path = _write_source(
+        tmp_path,
+        "ai-pic-backend/app/services/narrative_consistency/bad.py",
+        [
+            "from app.services.story.story_novel_state_service import replay",
+            "location_transitions = []",
+        ],
+    )
+
+    assert contract_audit_core.collect_narrative_core_boundaries([path]) == [
+        {
+            "path": "ai-pic-backend/app/services/narrative_consistency/bad.py",
+            "forbidden_imports": ["app.services.story.story_novel_state_service"],
+            "legacy_state_terms": ["location_transitions"],
+        }
+    ]
+
+
 def test_contract_report_attaches_standard_metadata(monkeypatch) -> None:
     monkeypatch.setattr(contract_audit_reporting, "collect_doc_errors", lambda: [])
     monkeypatch.setattr(
@@ -193,9 +215,7 @@ def test_contract_report_attaches_docs_standard_metadata(monkeypatch) -> None:
     )
 
     assert report["docs_drift"]["standard_id"] == "STD-DOCS-001"
-    assert report["docs_drift"]["standard_doc"] == (
-        "docs/standards/STD-DOCS-001.md"
-    )
+    assert report["docs_drift"]["standard_doc"] == ("docs/standards/STD-DOCS-001.md")
 
 
 def _write_source(repo_root: Path, rel: str, lines: list[str]) -> Path:

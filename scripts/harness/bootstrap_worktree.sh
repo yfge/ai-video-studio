@@ -5,6 +5,7 @@ ROOT_DIR=$(cd -- "$(dirname "$0")/../.." && pwd)
 DOCKER_DIR="$ROOT_DIR/docker"
 MODE="lite"
 PROVIDER_MODE="${HARNESS_PROVIDER_MODE:-mock}"
+NOVEL_PLAN_VERSION="${STORY_NOVEL_DEFAULT_PLAN_VERSION:-v4}"
 NO_START=0
 
 usage() {
@@ -58,12 +59,12 @@ fi
 mkdir -p "$ARTIFACT_DIR/screenshots"
 cp "$SOURCE_ENV" "$ENV_FILE"
 
-python3 - <<'PY' "$ENV_FILE" "$RUN_ID" "$HARNESS_WEB_PORT" "$HARNESS_API_PORT" "$HARNESS_NGINX_PORT" "$MODE" "$PROVIDER_MODE"
+python3 - <<'PY' "$ENV_FILE" "$RUN_ID" "$HARNESS_WEB_PORT" "$HARNESS_API_PORT" "$HARNESS_NGINX_PORT" "$MODE" "$PROVIDER_MODE" "$NOVEL_PLAN_VERSION"
 from pathlib import Path
 import sys
 
 env_file = Path(sys.argv[1])
-run_id, web_port, api_port, nginx_port, mode, provider_mode = sys.argv[2:]
+run_id, web_port, api_port, nginx_port, mode, provider_mode, novel_plan_version = sys.argv[2:]
 lines = env_file.read_text(encoding="utf-8").splitlines()
 replacements = {
     "HARNESS_RUN_ID": run_id,
@@ -72,8 +73,10 @@ replacements = {
     "HARNESS_NGINX_PORT": nginx_port,
     "HARNESS_MODE": mode,
     "HARNESS_PROVIDER_MODE": provider_mode,
+    "HARNESS_ENV_FILE": env_file.name,
     "NEXT_PUBLIC_API_URL": f"http://localhost:{nginx_port}",
     "NEXT_PUBLIC_HARNESS_RUN_ID": run_id,
+    "STORY_NOVEL_DEFAULT_PLAN_VERSION": novel_plan_version,
 }
 output = []
 seen = set()

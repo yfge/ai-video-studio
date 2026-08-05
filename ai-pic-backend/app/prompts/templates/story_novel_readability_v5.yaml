@@ -1,0 +1,5 @@
+description: Evidence-bound v5 prose readability review
+category: story
+version: "1.0"
+variables:
+  input_json: {required: true, type: string}

@@ -1,0 +1,5 @@
+description: Repair one malformed v5 JSON stage response
+category: story
+version: "1.0"
+variables:
+  input_json: {required: true, type: string}

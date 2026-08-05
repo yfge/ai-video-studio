@@ -82,6 +82,11 @@
   资源、义务、耗时、因果和关系约束提炼为来源绑定的 continuity watchpoints；正文
   无需复述，只有实际矛盾才由审计阻断。执行计划见
   `docs/exec-plans/active/story-novel-planning-quality-v3.md`。
+- P0（进行中）：新建 V5 题材无关一致性内核。每个 Story 自动冻结动态 Schema、
+  初始事实图和因果图；正文改为整章连续生成，再做证据绑定的 claim 校验、最小句段
+  返修和一次整章重写。V2-V4 保持原样，不新增数据库。设计与验收见
+  `docs/design/story-novel-generic-consistency-v5.md` 和
+  `docs/exec-plans/active/story-novel-generic-consistency-v5.md`。
 - P0：无限画布已有交互、保存恢复、动态节点、类型化端口与边、按图输入解析、
   Run Node、Run Downstream、stale descendants、故事板/视频候选评审和显式
   `timeline.place` 回填。当前缺口是 clip-storyboard v2 的当前环境
@@ -228,6 +233,26 @@ Owner：小说生成链路。状态：实现中；v3 真实失败作为输入/�
 第 16–18 章权限建立前使用水权的跨章授权漏洞。当前 Revision 不得审批或提升
 Canonical；本轮提交仅保存实现与失败证据，后续应先修复跨章语义授权和返修可靠性，
 再决定是否启动新的付费验收。
+
+## P0: Generic Consistency And Readability V5
+
+:link: `docs/exec-plans/active/story-novel-generic-consistency-v5.md`
+
+Owner：小说生成链路。状态：实现已落地，灰度/付费验收未完成；默认版本保持 V4，
+V5 只在内部开关启用后用于新 Revision。
+
+- [x] 设计文档、active exec plan 和任务板边界已建立。
+- [x] 题材无关 Schema、事实图、事件图、Perspective、Evidence、Obligation 内核及
+      仓库依赖检查落地。
+- [x] V5 自动编译/冻结、全书模拟、整章正文、claim 抽取、可读性门禁、句段返修、
+      整章重写和 continuity v6 checkpoint 落地。
+- [x] V5 审批/下游门禁、Narrative 投影和只读一致性 UI 落地。
+- [x] 完成 V5 聚焦测试、文档/契约、前端 lint/build、本地非推送生产镜像和
+      Playwright 页面证据。
+- [ ] 清理或豁免仓库既有的 backend `story_parser`、whole-repo Ruff 与 Production
+      Canvas 测试失败后，补齐全仓绿灯。
+- [ ] 获得明确付费授权后完成多题材 6 章小样、V4/V5 盲测、provider-backed
+      返修/恢复浏览器路径与全新 48 章 GPT-5.6 验收；通过前不得切换默认版本。
 
 ## 已完成基线
 

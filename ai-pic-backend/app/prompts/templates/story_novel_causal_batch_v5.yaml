@@ -1,0 +1,5 @@
+description: Compile one bounded causal-event batch for a long V5 story
+category: story
+version: "1.0"
+variables:
+  contract_json: {required: true, type: string}

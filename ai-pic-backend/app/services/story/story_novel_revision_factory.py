@@ -5,7 +5,7 @@ from app.schemas.story_novel_export import StoryNovelCreateRevisionRequest
 
 from .story_novel_domain import build_story_snapshot
 from .story_novel_length_service import build_length_plan
-from .story_novel_plan_versions import is_v3_plan, is_v4_plan
+from .story_novel_plan_versions import is_v3_plan, is_v4_plan, is_v5_plan
 
 
 def create_legacy_revision(service, story, request, task_id: int | None):
@@ -71,12 +71,16 @@ def create_platform_revision(
         generation_plan=plan,
         continuity_ledger={
             "schema": (
-                "story_novel_continuity.v5"
-                if is_v4_plan(plan)
+                "story_novel_continuity.v6"
+                if is_v5_plan(plan)
                 else (
-                    "story_novel_continuity.v4"
-                    if is_v3_plan(plan)
-                    else "story_novel_continuity.v3"
+                    "story_novel_continuity.v5"
+                    if is_v4_plan(plan)
+                    else (
+                        "story_novel_continuity.v4"
+                        if is_v3_plan(plan)
+                        else "story_novel_continuity.v3"
+                    )
                 )
             ),
             "state_status": "empty",

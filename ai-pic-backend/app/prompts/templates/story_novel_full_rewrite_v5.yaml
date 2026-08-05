@@ -1,0 +1,5 @@
+description: Rewrite a v5 chapter from its frozen plan
+category: story
+version: "1.0"
+variables:
+  input_json: {required: true, type: string}

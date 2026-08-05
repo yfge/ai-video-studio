@@ -1,0 +1,7 @@
+description: Repair one bounded causal-event batch for a long V5 story
+category: story
+version: "1.0"
+variables:
+  contract_json: {required: true, type: string}
+  previous_json: {required: true, type: string}
+  diagnostics_json: {required: true, type: string}

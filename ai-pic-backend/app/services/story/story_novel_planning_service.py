@@ -12,7 +12,7 @@ from .story_novel_plan_checkpoint import (
     frozen_generation_spec,
     reusable_generation_plan,
 )
-from .story_novel_plan_versions import is_v3_plan, is_v4_plan
+from .story_novel_plan_versions import is_v3_plan, is_v4_plan, is_v5_plan
 from .story_novel_planning_phases import (
     checkpoint_canon,
     compile_canon,
@@ -72,6 +72,10 @@ async def ensure_generation_plan(
     generate_text: GenerateText,
 ) -> dict:
     current = dict(revision.generation_plan or {})
+    if is_v5_plan(current):
+        from .story_novel_v5_planning import ensure_v5_generation_plan
+
+        return await ensure_v5_generation_plan(service, revision, task, generate_text)
     frozen_spec = frozen_generation_spec(current)
     if reusable_generation_plan(current, frozen_spec):
         return current

@@ -7,6 +7,22 @@ import type {
   StoryNovelV4PlanFields,
   StoryNovelModelPolicy,
 } from "./story-novel-planning.types";
+import type {
+  StoryNovelCanonView,
+  StoryNovelConsistencySchema,
+} from "./story-novel-v5.types";
+import type { StoryNovelContinuityReport } from "./story-novel-review.types";
+
+export type {
+  StoryNovelCanonView,
+  StoryNovelConsistencySchema,
+} from "./story-novel-v5.types";
+export type {
+  ContinuityIssue,
+  StoryNovelContinuityReport,
+  StoryNovelQualityScore,
+  StoryNovelRepairGroup,
+} from "./story-novel-review.types";
 
 export type NovelLifecycle = "legacy" | "draft" | "approved" | "superseded";
 export type ContinuityStatus =
@@ -39,15 +55,6 @@ export interface StoryNovelChapter {
   extraction_status?: string | null;
   content_hash?: string | null;
   updated_at: string;
-}
-
-export interface ContinuityIssue {
-  id: string;
-  severity: "blocking" | "warning";
-  chapter_business_ids?: string[];
-  message: string;
-  suggestion?: string;
-  accepted_reason?: string;
 }
 
 export interface StoryNovelCanonItem {
@@ -99,6 +106,11 @@ export interface StoryNovelChapterPlan {
   canon_refs?: string[];
   timeline_event_bindings?: Record<string, string>;
   entity_introductions?: Array<Record<string, unknown>>;
+  obligation_ids?: string[];
+  contract_status?: string;
+  snapshot_before_hash?: string;
+  snapshot_after_hash?: string;
+  readability_status?: "passed" | "failed";
 }
 
 export interface AdaptationPlanEpisode {
@@ -124,10 +136,11 @@ export interface StoryNovelGenerationPlan extends StoryNovelV4PlanFields {
   schema?:
     | "story_novel_generation_plan.v2"
     | "story_novel_generation_plan.v3"
-    | "story_novel_generation_plan.v4";
+    | "story_novel_generation_plan.v4"
+    | "story_novel_generation_plan.v5";
   version?: number;
   status: "planning" | "ready" | "failed";
-  phase?: "spec_ready" | "canon" | "chapters" | "ready";
+  phase?: "spec_ready" | "canon" | "chapters" | "consistency_schema" | "ready";
   canon?: StoryNovelCanon;
   canon_hash?: string;
   chapter_count?: number;
@@ -144,6 +157,13 @@ export interface StoryNovelGenerationPlan extends StoryNovelV4PlanFields {
   length_profile?: NovelGenerationLengthProfile;
   chapter_length_overrides?: NovelChapterLengthOverrides;
   chapters: StoryNovelChapterPlan[];
+  consistency_schema?: StoryNovelConsistencySchema;
+  consistency_schema_hash?: string;
+  initial_snapshot_hash?: string;
+  causal_graph_hash?: string;
+  schema_compile_status?: "compiling" | "repairing" | "frozen" | "failed";
+  schema_compile_diagnostics?: Array<{ code: string; message: string }>;
+  canon_view?: StoryNovelCanonView;
 }
 
 export interface StoryNovelContinuityLedger {
@@ -151,54 +171,14 @@ export interface StoryNovelContinuityLedger {
     | "story_novel_continuity.v2"
     | "story_novel_continuity.v3"
     | "story_novel_continuity.v4"
-    | "story_novel_continuity.v5";
+    | "story_novel_continuity.v5"
+    | "story_novel_continuity.v6";
   state_status?: "empty" | "generating" | "ready" | "stale" | "failed";
   stale_from_position?: number;
   recovery_from_position?: number;
   current_state?: Record<string, unknown>;
+  current_fact_graph?: Record<string, unknown>;
   chapters?: Record<string, StoryNovelChapterLedger>;
-}
-
-export interface StoryNovelQualityScore {
-  score: number;
-  rationale: string;
-}
-
-export interface StoryNovelRepairGroup {
-  id: string;
-  title?: string;
-  issue_ids?: string[];
-  canon_target?: {
-    section:
-      | "timeline"
-      | "entities"
-      | "world_rules"
-      | "milestones"
-      | "character_arcs"
-      | "initial_state";
-    item_id?: string;
-    field?: string;
-  };
-  suggested_value?: unknown;
-  affected_chapter_business_ids?: string[];
-  earliest_position?: number;
-}
-
-export interface StoryNovelContinuityReport {
-  schema?:
-    | "story_novel_continuity_review.v2"
-    | "story_novel_continuity_review.v3";
-  summary?: string;
-  issues?: ContinuityIssue[];
-  hard_metrics?: Record<string, number>;
-  quality_scores?: Record<string, StoryNovelQualityScore>;
-  repair_groups?: StoryNovelRepairGroup[];
-  report_hash?: string;
-  canon_hash?: string;
-  plan_version?: number;
-  plan_hash?: string;
-  status?: "stale";
-  stale?: boolean;
 }
 
 export interface StoryNovelRevision {

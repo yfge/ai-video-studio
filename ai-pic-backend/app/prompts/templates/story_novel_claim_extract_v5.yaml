@@ -1,0 +1,5 @@
+description: Extract source-bound v5 claims
+category: story
+version: "1.0"
+variables:
+  input_json: {required: true, type: string}

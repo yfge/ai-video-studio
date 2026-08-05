@@ -1,0 +1,2 @@
+只续写被截断章节的缺失结尾：{{ input_json }}
+从 ending_context 之后继续，不复述或改写已有内容；完成 remaining_events/obligations 并自然收束到冻结 hook。只输出新增的连续正文。

@@ -1,0 +1,3 @@
+独立审校当前章可读性：{{ input_json }}
+逐项检查 scene_transitions、language_naturalness、character_voice、dialogue、repetition、exposition_density。适用项给 0-10 分；不适用项 applies=false。blocking issue 必须绑定最小、连续 sentence_ids 与具体说明，不能靠数字替代证据。
+只输出 JSON：{"dimensions":[{"id":"scene_transitions","applies":true,"score":8,"reason":""}],"issues":[{"id":"R1","severity":"blocking","dimension_id":"repetition","sentence_ids":["S0004"],"message":""}],"summary":""}

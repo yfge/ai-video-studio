@@ -1,0 +1,2 @@
+写当前章的一段连续小说正文：{{ input_json }}
+场景卡只控制叙事，不作为分块标题或清单。自然完成全部 allowed_events 和 obligations，保持人物动机、因果桥、视角边界与前章余波。正文长度必须落入 min_chars/max_chars。只输出纯正文，不输出章名、Markdown、JSON、状态、自评、证据或说明。

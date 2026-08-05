@@ -12,7 +12,12 @@ from app.services.narrative_memory.extraction_service import (  # noqa: F401
 from app.services.narrative_memory.source_hash import novel_chapter_source_hash
 
 from .story_novel_chapter_gate import non_whitespace_chars, parse_chapter
-from .story_novel_plan_versions import is_state_gated_plan, is_v3_plan, is_v4_plan
+from .story_novel_plan_versions import (
+    is_state_gated_plan,
+    is_v3_plan,
+    is_v4_plan,
+    is_v5_plan,
+)
 
 __all__ = [
     "_parse_chapter",
@@ -37,15 +42,19 @@ def save_ledger_entry(revision, position: int, entry: dict) -> None:
     chapters = dict(ledger.get("chapters") or {})
     chapters[str(position)] = entry
     schema = (
-        "story_novel_continuity.v5"
-        if is_v4_plan(revision.generation_plan)
+        "story_novel_continuity.v6"
+        if is_v5_plan(revision.generation_plan)
         else (
-            "story_novel_continuity.v4"
-            if is_v3_plan(revision.generation_plan)
+            "story_novel_continuity.v5"
+            if is_v4_plan(revision.generation_plan)
             else (
-                "story_novel_continuity.v3"
-                if is_state_gated_plan(revision.generation_plan)
-                else "story_novel_continuity.v2"
+                "story_novel_continuity.v4"
+                if is_v3_plan(revision.generation_plan)
+                else (
+                    "story_novel_continuity.v3"
+                    if is_state_gated_plan(revision.generation_plan)
+                    else "story_novel_continuity.v2"
+                )
             )
         )
     )
@@ -113,11 +122,17 @@ def sync_plan_chapter_runtime(revision, position: int, entry: dict) -> None:
         "extraction_status",
         "event_ids",
         "memory_ids",
+        "snapshot_before_hash",
+        "snapshot_after_hash",
+        "readability_status",
     ):
         if key in entry:
             row[key] = entry[key]
     if "event_ids" in entry:
         row["fact_ids"] = entry["event_ids"]
+    report = entry.get("readability_report") or {}
+    if report:
+        row["readability_status"] = report.get("status")
     plan["chapters"] = rows
     revision.generation_plan = plan
 
@@ -163,6 +178,17 @@ async def generate_or_resume_chapter(
     *,
     force: bool = False,
 ):
+    if is_v5_plan(revision.generation_plan):
+        from .story_novel_chapter_v5 import generate_or_resume_v5
+
+        return await generate_or_resume_v5(
+            service,
+            revision,
+            task,
+            chapter_plan,
+            generate_text,
+            force=force,
+        )
     if is_v4_plan(revision.generation_plan):
         from .story_novel_chapter_v4 import generate_or_resume_v4
 

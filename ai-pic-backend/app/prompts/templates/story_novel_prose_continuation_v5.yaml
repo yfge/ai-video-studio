@@ -1,0 +1,5 @@
+description: Continue one truncated v5 chapter
+category: story
+version: "1.0"
+variables:
+  input_json: {required: true, type: string}

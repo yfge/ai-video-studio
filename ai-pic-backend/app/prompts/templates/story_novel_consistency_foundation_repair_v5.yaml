@@ -1,0 +1,7 @@
+description: Repair the frozen schema and initial graph for a long V5 story
+category: story
+version: "1.0"
+variables:
+  contract_json: {required: true, type: string}
+  previous_json: {required: true, type: string}
+  diagnostics_json: {required: true, type: string}

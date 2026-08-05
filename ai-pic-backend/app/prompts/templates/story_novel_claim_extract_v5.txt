@@ -1,0 +1,3 @@
+从正文逐句提取 Schema 可表达的 claims、occurred_events 和 perspective_changes：{{ input_json }}
+不得推断正文未明说的事实。每项都必须绑定 evidence_ids；Evidence 的 sentence_ids 必须连续，quote 必须是这些句子的连续原文片段。causal claim 必须用 source_event_id 绑定 allowed_events 中真正造成该变化的事件；时间谓词按 Schema 填 valid_from/valid_until；视角 claim 必须填 known/believed/suspected/hidden 之一的 perspective_state。observational 谓词可以提取为证据，但不会进入硬状态。事件 id、类型和角色绑定必须逐字来自 allowed_events。
+只输出 story_novel_claim_delta.v1 JSON：{"schema":"story_novel_claim_delta.v1","claims":[],"perspective_changes":[],"occurred_events":[],"evidence":[]}

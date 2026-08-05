@@ -9,6 +9,7 @@ from .story_novel_ai_prompts import SYSTEM_PROMPT
 from .story_novel_export_ai import TruncatedNovelOutput, generate_story_novel_text
 from .story_novel_invocation_evidence import bind_invocation_prompt_template
 from .story_novel_model_policy import model_for_stage, reasoning_for_stage
+from .story_novel_plan_versions import is_v5_plan
 from .story_novel_prompt_renderer import prompt_template_evidence
 
 _REASONING_HEADROOM_MULTIPLIER = 3
@@ -64,10 +65,20 @@ async def generate_task_text(
         temperature if temperature is not None else revision.temperature or 0.7
     )
     planning_stage = stage == "planning" or str(stage or "").startswith(
-        ("arc_planning.", "chapter_planning.")
+        (
+            "arc_planning.",
+            "chapter_planning.",
+            "consistency_schema.",
+            "scene_planning.",
+        )
     )
+    system_prompt = _system_prompt(revision)
     template_required = _template_required(stage)
-    template = _combined_prompt_template(prompt)
+    template = (
+        _combined_prompt_template(prompt, system_prompt)
+        if is_v5_plan(getattr(revision, "generation_plan", None))
+        else _combined_prompt_template(prompt)
+    )
     if template_required and not template:
         raise HTTPException(
             status_code=500,
@@ -77,7 +88,7 @@ async def generate_task_text(
     for attempt in range(attempts):
         request = generate_story_novel_text(
             prompt=prompt,
-            system_prompt=SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             model=model,
             prefer_provider=provider,
             temperature=chosen_temperature,
@@ -97,10 +108,10 @@ async def generate_task_text(
                 result = await asyncio.wait_for(
                     request, timeout=_CHAPTER_PLANNING_TIMEOUT_SECONDS
                 )
-            _bind_prompt_template(result, prompt)
+            _bind_prompt_template(result, prompt, system_prompt)
             return result
         except TruncatedNovelOutput as exc:
-            _bind_prompt_evidence(exc.invocation_evidence, prompt)
+            _bind_prompt_evidence(exc.invocation_evidence, prompt, system_prompt)
             raise
         except TimeoutError as exc:
             if planning_stage and attempt + 1 < attempts:
@@ -133,14 +144,22 @@ async def _retry_pause() -> None:
     await asyncio.sleep(_RETRY_BACKOFF_SECONDS)
 
 
-def _bind_prompt_template(result: str, prompt: str) -> None:
+def _bind_prompt_template(
+    result: str, prompt: str, system_prompt: str = SYSTEM_PROMPT
+) -> None:
     evidence = getattr(result, "invocation_evidence", None)
     if isinstance(evidence, dict):
-        _bind_prompt_evidence(evidence, prompt)
+        _bind_prompt_evidence(evidence, prompt, system_prompt)
 
 
-def _bind_prompt_evidence(evidence: dict, prompt: str) -> None:
-    template = _combined_prompt_template(prompt)
+def _bind_prompt_evidence(
+    evidence: dict, prompt: str, system_prompt: str = SYSTEM_PROMPT
+) -> None:
+    template = (
+        _combined_prompt_template(prompt)
+        if system_prompt == SYSTEM_PROMPT
+        else _combined_prompt_template(prompt, system_prompt)
+    )
     if template:
         stored = bind_invocation_prompt_template(
             evidence.get("invocation_id"), template
@@ -148,12 +167,20 @@ def _bind_prompt_evidence(evidence: dict, prompt: str) -> None:
         evidence["prompt_template"] = stored or template
 
 
-def _combined_prompt_template(prompt: str) -> dict:
+def _combined_prompt_template(prompt: str, system_prompt: str = SYSTEM_PROMPT) -> dict:
     user_template = prompt_template_evidence(prompt)
-    system_template = prompt_template_evidence(SYSTEM_PROMPT)
+    system_template = prompt_template_evidence(system_prompt)
     if not user_template or not system_template:
         return {}
     return {**user_template, "system_prompt": system_template}
+
+
+def _system_prompt(revision):
+    if is_v5_plan(getattr(revision, "generation_plan", None)):
+        from .story_novel_v5_prompts import system_prompt
+
+        return system_prompt()
+    return SYSTEM_PROMPT
 
 
 def _template_required(stage: str | None) -> bool:
@@ -166,5 +193,11 @@ def _template_required(stage: str | None) -> bool:
         "prose",
         "audit",
         "local_repair",
+        "claim_extraction",
+        "readability",
+        "full_rewrite",
+        "span_repair",
+        "scene_planning",
+        "consistency_schema",
         "continuity",
     }

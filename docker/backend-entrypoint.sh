@@ -38,7 +38,9 @@ PY
 
 echo "[backend-entrypoint] Applying migrations via alembic upgrade head..."
 if ! alembic upgrade head; then
-  if [[ "$is_sqlite" == "1" && "${SQLITE_MIGRATION_FALLBACK_CREATE_ALL:-1}" == "1" ]]; then
+  sqlite_fallback="${SQLITE_MIGRATION_FALLBACK_CREATE_ALL:-1}"
+  sqlite_fallback="${sqlite_fallback,,}"
+  if [[ "$is_sqlite" == "1" && "$sqlite_fallback" =~ ^(1|true|yes|on)$ ]]; then
     echo "[backend-entrypoint] Alembic migration failed on SQLite; reset DB and fallback to create_all"
     python - <<'PY'
 from pathlib import Path

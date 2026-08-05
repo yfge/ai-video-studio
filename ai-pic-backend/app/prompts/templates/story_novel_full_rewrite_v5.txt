@@ -1,0 +1,2 @@
+根据冻结场景计划和失败摘要重新写整章：{{ input_json }}
+输入不含旧正文全文。保留 allowed_events、obligations、动机、因果桥、视角和长度合同，针对 readability_failures 重新组织语言与场景衔接。只输出纯正文，不输出标题、JSON、自评或说明。

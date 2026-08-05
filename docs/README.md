@@ -36,6 +36,9 @@ This directory holds design notes, API references, and testing guides. Keep this
 - `docs/exec-plans/active/story-novel-frozen-snapshot-v4.md` — immutable
   provider-call snapshots, current-arc planning, deterministic chapter
   contracts, dynamic character/world scope graphs, and v4 real acceptance.
+- `docs/exec-plans/active/story-novel-generic-consistency-v5.md` — topic-neutral
+  schemas, fact/event graphs, continuous chapter prose, evidence-bound state
+  patches, readability repair/rewrite, and V5 acceptance.
 - `docs/exec-plans/active/narrative-world-character-agents.md` — optional
   character-agent scene rehearsal with isolated perspective packets, central
   world resolution, unified narration, A/B decision gate, Resume evidence, and
@@ -60,6 +63,8 @@ This directory holds design notes, API references, and testing guides. Keep this
 - `docs/standards/STD-EVIDENCE-001.md` — agent changes include durable validation evidence.
 - `docs/standards/STD-SCRIPT-001.md` — production scripts satisfy beat-level quality gates.
 - `docs/standards/STD-TIMELINE-001.md` — Timeline-first provider chains preserve media lineage.
+- `docs/standards/STD-NARRATIVE-001.md` — generic consistency core dependency
+  and topic-neutrality boundary.
 
 Keep durable engineering rules in repository docs like the files above. Do not treat chat transcripts or temporary notes as authoritative process documentation.
 
@@ -88,6 +93,8 @@ Keep durable engineering rules in repository docs like the files above. Do not t
   offscreen events, audience disclosure, subtext, and operator UI design.
 - `docs/design/story-novel-episode-script.md` — approved novel revisions as the
   narrative SSOT feeding Episode/Script while Timeline remains production SSOT.
+- `docs/design/story-novel-generic-consistency-v5.md` — Story-scoped dynamic
+  consistency schemas, generic causal graphs, and continuous-prose quality gates.
 - `docs/design/production-canvas.md` — executable short-drama production canvas,
   typed dependency graph, candidate review, and Timeline integration design.
 - `docs/design/duration-orchestrator-agent.md` — Duration Orchestrator Agent 设计（端到端时长闭环验证）

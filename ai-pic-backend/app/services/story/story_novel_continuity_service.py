@@ -23,7 +23,7 @@ from .story_novel_continuity_review import (
 )
 from .story_novel_domain import active_chapters
 from .story_novel_generation_context import revision_local_candidates
-from .story_novel_plan_versions import is_state_gated_plan
+from .story_novel_plan_versions import is_state_gated_plan, is_v5_plan
 from .story_novel_state_service import (
     apply_state_delta,
     initial_story_state,
@@ -180,6 +180,10 @@ async def run_layered_continuity(
     ensure_task_not_cancelled(service.db, task)
     chapters = active_chapters(revision)
     ledger_rows = (revision.continuity_ledger or {}).get("chapters") or {}
+    if is_v5_plan(revision.generation_plan):
+        from .story_novel_v5_quality import save_v5_report
+
+        return save_v5_report(service, revision, chapters, ledger_rows)
     _require_review_ready(revision, chapters, ledger_rows)
     revision.continuity_status = "checking"
     service.db.commit()

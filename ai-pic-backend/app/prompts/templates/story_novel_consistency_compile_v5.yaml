@@ -1,0 +1,5 @@
+description: Compile a dynamic Story Novel v5 consistency schema
+category: story
+version: "1.0"
+variables:
+  contract_json: {required: true, type: string}

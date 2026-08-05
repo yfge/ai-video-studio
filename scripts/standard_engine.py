@@ -108,6 +108,17 @@ STANDARDS: dict[str, Standard] = {
             "evidence before treating a provider-chain sample as trial-ready."
         ),
     ),
+    "STD-NARRATIVE-001": Standard(
+        id="STD-NARRATIVE-001",
+        title="Generic narrative consistency stays topic neutral",
+        owner_doc="docs/standards/STD-NARRATIVE-001.md",
+        enforcement="scripts/check_repo_contracts.py narrative_core_boundaries",
+        evidence="forbidden imports and legacy state vocabulary",
+        suggested_direction=(
+            "Move persistence, provider, Story Novel orchestration, and legacy "
+            "state adapters outside app/services/narrative_consistency."
+        ),
+    ),
 }
 
 CATEGORY_TO_STANDARD_ID = {
@@ -115,6 +126,7 @@ CATEGORY_TO_STANDARD_ID = {
     "route_handlers": "STD-ARCH-002",
     "direct_queries": "STD-DATA-001",
     "legacy_references": "STD-ARCH-003",
+    "narrative_core_boundaries": "STD-NARRATIVE-001",
     "docs_drift": "STD-DOCS-001",
 }
 

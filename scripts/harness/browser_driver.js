@@ -233,6 +233,13 @@ async function openWithEngine(engine, config) {
       (requiredText) => document.body?.innerText?.includes(requiredText) || false,
       config.requiredText,
     );
+    if (bodyIncludesRequiredText) {
+      const requiredText = page.getByText(config.requiredText, { exact: false }).first();
+      if ((await requiredText.count()) > 0) {
+        await requiredText.scrollIntoViewIfNeeded();
+        await delay(150);
+      }
+    }
     await page.screenshot({ path: config.screenshotPath, fullPage: true });
 
     return {

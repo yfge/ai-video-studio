@@ -16,6 +16,7 @@ from .story_novel_length_contract import resolve_profile as _resolve_profile
 from .story_novel_length_contract import validate_model_capacity
 from .story_novel_length_outline import confirmed_outline as _confirmed_outline
 from .story_novel_plan_hash import generation_plan_hash
+from .story_novel_plan_versions import V4_SCHEMA
 
 
 def build_length_plan(
@@ -25,7 +26,8 @@ def build_length_plan(
     version: int = 4,
 ) -> dict:
     outline, chapters, positions = _confirmed_outline(story)
-    if request.model_policy is not None:
+    selected_schema = model_policy.generation_plan_schema(request)
+    if selected_schema == V4_SCHEMA:
         _require_v4_seed_contract(story, outline)
     profile = _resolve_profile(request.length_profile_id, request.custom_length_profile)
     overrides = _normalize_overrides(request.chapter_length_overrides, positions)
@@ -36,7 +38,7 @@ def build_length_plan(
     )
     outline_hash = _content_hash(outline)
     plan = {
-        "schema": model_policy.generation_plan_schema(request),
+        "schema": selected_schema,
         "version": version,
         "status": "ready",
         "phase": "spec_ready",

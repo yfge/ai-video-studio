@@ -1,0 +1,3 @@
+基于冻结输入规划当前章节的场景卡，不写正文，不自报状态：{{ input_json }}
+每个 allowed_event 必须且只能被一个或多个连续场景自然完成；场景之间写出可执行的因果桥。不得引用 future_events，不得新增 Schema 外实体、谓词、视角或事件。叙事义务单独落实。
+只输出 JSON：{"scenes":[{"id":"SC01","purpose":"叙事任务","event_ids":[],"participant_ids":[],"target_chars":800}],"motivations":[{"entity_id":"E1","motivation":"当前动机"}],"causal_bridge":"承接关系","emotional_continuity":"情绪延续","summary":"本章摘要","hook":"章末牵引"}
