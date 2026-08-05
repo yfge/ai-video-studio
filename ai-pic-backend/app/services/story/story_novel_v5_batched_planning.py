@@ -26,6 +26,10 @@ from .story_novel_v5_batched_contracts import (
     parse_causal_batch,
     parse_foundation,
 )
+from .story_novel_v5_output_contracts import (
+    causal_batch_output_schema,
+    foundation_output_schema,
+)
 from .story_novel_v5_plan import freeze_v5_foundation, freeze_v5_plan
 from .story_novel_v5_prompts import (
     causal_batch_prompt,
@@ -109,6 +113,7 @@ async def _ensure_foundation(service, revision, task, generate_text, current):
         foundation_prompt(contract),
         stage="consistency_schema.foundation",
         max_tokens=20_000,
+        json_schema=foundation_output_schema(),
     )
     attempts.append(attempt(text))
     foundation, diagnostics = parse_foundation(current, revision, text)
@@ -183,6 +188,7 @@ async def _compile_batch(
             causal_batch_prompt(contract),
             stage=f"consistency_schema.causal.{start}-{end}",
             max_tokens=batch_tokens(rows),
+            json_schema=causal_batch_output_schema(),
         )
         attempts.append(attempt(text))
         merged, diagnostics = parse_causal_batch(text, partial, schema, initial, rows)

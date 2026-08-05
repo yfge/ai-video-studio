@@ -2,4 +2,6 @@
 冻结输入：{{ contract_json }}
 上一版本：{{ previous_json }}
 确定性诊断：{{ diagnostics_json }}
-仍须遵守 compile 阶段的操作符白名单、引用闭合、causal/observational 边界和逐章事件覆盖。只输出与 compile 阶段完全相同结构的 JSON。
+输出 JSON Schema：{{ output_contract_json }}
+仍须遵守 compile 阶段的操作符白名单、引用闭合、causal/observational 边界和逐章事件覆盖。必须逐项满足 JSON Schema 的 required、enum 与 type，不得自行发明同义字段或旧字段。只输出与 compile 阶段完全相同结构的 JSON。
+所有 condition/effect 都使用扁平规则对象：op、predicate_id、subject、value、scope、perspective_id 直接在对象顶层；op 是每条规则必填字段，禁止嵌套 fact/condition/effect。角色引用写成 {"role":"已声明角色名"}；all/any 使用 args，not 使用 arg，event_before 使用 event_id。

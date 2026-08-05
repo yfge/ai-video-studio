@@ -42,9 +42,10 @@ async def generate_story_novel_text(
     call_scene: str | None = None,
     prompt_template: dict | None = None,
     require_managed_invocation: bool = False,
+    json_schema: dict | None = None,
 ) -> str:
     if ai_service.ai_manager:
-        resp = await ai_service.ai_manager.generate_text(
+        request_kwargs = dict(
             prompt=prompt,
             system_prompt=system_prompt,
             model=model,
@@ -60,6 +61,12 @@ async def generate_story_novel_text(
                 else None
             ),
         )
+        if json_schema is not None:
+            request_kwargs["json_schema"] = {
+                "name": "story_novel_structured_stage",
+                "schema": json_schema,
+            }
+        resp = await ai_service.ai_manager.generate_text(**request_kwargs)
         if resp and resp.success:
             invocation_id = (getattr(resp, "metadata", None) or {}).get(
                 "llm_invocation_id"

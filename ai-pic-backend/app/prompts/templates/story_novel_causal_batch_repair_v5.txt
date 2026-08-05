@@ -3,8 +3,11 @@
 冻结批次输入：{{ contract_json }}
 上次输出：{{ previous_json }}
 确定性诊断：{{ diagnostics_json }}
+输出 JSON Schema：{{ output_contract_json }}
 
 只修复诊断指出的章节覆盖、ID、依赖、前置条件、效果、角色或义务绑定问题。不得改变 Schema、实体、批次范围和章节合同，不得引用未来事件，不得输出解释、hash、快照或诊断。
 
-只输出 JSON：
+所有 preconditions/effects 都使用扁平规则对象：op、predicate_id、subject、value、scope、perspective_id 直接在对象顶层；op 是每条规则必填字段，禁止嵌套 fact/condition/effect。角色引用写成 {"role":"已声明角色名"}。all/any 使用 args，not 使用 arg，event_before 使用 event_id。
+
+必须逐项满足上述 JSON Schema 的 required、enum 与 type；不得自行发明同义字段或旧字段。只输出 JSON：
 {"causal_event_graph":{"schema":"story_novel_causal_event_graph.v1","events":[],"obligations":[]}}

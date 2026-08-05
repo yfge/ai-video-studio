@@ -1,7 +1,8 @@
 description: Repair a failed Story Novel v5 consistency compile
 category: story
-version: "1.0"
+version: "1.3"
 variables:
-  contract_json: {required: true, type: string}
-  previous_json: {required: true, type: string}
-  diagnostics_json: {required: true, type: string}
+  contract_json: { required: true, type: string }
+  previous_json: { required: true, type: string }
+  diagnostics_json: { required: true, type: string }
+  output_contract_json: { required: true, type: string }

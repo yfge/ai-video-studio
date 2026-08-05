@@ -1,10 +1,11 @@
 """Repair calls and metrics for bounded V5 consistency batches."""
 
 from .story_novel_v5_batched_contracts import parse_causal_batch, parse_foundation
-from .story_novel_v5_prompts import (
-    causal_batch_repair_prompt,
-    foundation_repair_prompt,
+from .story_novel_v5_output_contracts import (
+    causal_batch_output_schema,
+    foundation_output_schema,
 )
+from .story_novel_v5_prompts import causal_batch_repair_prompt, foundation_repair_prompt
 
 
 async def repair_foundation(
@@ -16,6 +17,7 @@ async def repair_foundation(
         stage="consistency_schema.foundation_repair",
         max_tokens=20_000,
         temperature=0.1,
+        json_schema=foundation_output_schema(),
     )
     attempts.append(attempt(text))
     foundation, refreshed = parse_foundation(base, revision, text)
@@ -42,6 +44,7 @@ async def repair_batch(
         stage=f"consistency_schema.causal.{start}-{end}.repair",
         max_tokens=batch_tokens(rows),
         temperature=0.1,
+        json_schema=causal_batch_output_schema(),
     )
     attempts.append(attempt(text))
     merged, refreshed = parse_causal_batch(text, partial, schema, initial, rows)

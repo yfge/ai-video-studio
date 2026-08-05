@@ -5,6 +5,11 @@ from app.prompts.template_audit import build_prompt_template_audit
 from .story_novel_context_utils import value_hash
 from .story_novel_domain import json_prompt_payload
 from .story_novel_prompt_renderer import render_novel_prompt
+from .story_novel_v5_output_contracts import (
+    causal_batch_output_schema,
+    foundation_output_schema,
+    full_compile_output_schema,
+)
 
 V5_TEMPLATES = (
     "story_novel_system_v5",
@@ -39,7 +44,11 @@ def system_prompt():
 
 
 def compile_prompt(contract: dict):
-    return _render("story_novel_consistency_compile_v5", contract=contract)
+    return _render(
+        "story_novel_consistency_compile_v5",
+        contract=contract,
+        output_contract=full_compile_output_schema(),
+    )
 
 
 def compile_repair_prompt(contract: dict, previous: dict, diagnostics: list[dict]):
@@ -48,11 +57,16 @@ def compile_repair_prompt(contract: dict, previous: dict, diagnostics: list[dict
         contract=contract,
         previous=previous,
         diagnostics=diagnostics,
+        output_contract=full_compile_output_schema(),
     )
 
 
 def foundation_prompt(contract: dict):
-    return _render("story_novel_consistency_foundation_v5", contract=contract)
+    return _render(
+        "story_novel_consistency_foundation_v5",
+        contract=contract,
+        output_contract=foundation_output_schema(),
+    )
 
 
 def foundation_repair_prompt(contract: dict, previous: dict, diagnostics: list[dict]):
@@ -61,11 +75,16 @@ def foundation_repair_prompt(contract: dict, previous: dict, diagnostics: list[d
         contract=contract,
         previous=previous,
         diagnostics=diagnostics,
+        output_contract=foundation_output_schema(),
     )
 
 
 def causal_batch_prompt(contract: dict):
-    return _render("story_novel_causal_batch_v5", contract=contract)
+    return _render(
+        "story_novel_causal_batch_v5",
+        contract=contract,
+        output_contract=causal_batch_output_schema(),
+    )
 
 
 def causal_batch_repair_prompt(contract: dict, previous: dict, diagnostics: list[dict]):
@@ -74,6 +93,7 @@ def causal_batch_repair_prompt(contract: dict, previous: dict, diagnostics: list
         contract=contract,
         previous=previous,
         diagnostics=diagnostics,
+        output_contract=causal_batch_output_schema(),
     )
 
 

@@ -41,6 +41,37 @@ def test_provider_result_is_discarded_when_task_was_cancelled_mid_call():
     assert len(calls) == 1
 
 
+def test_provider_guard_forwards_structured_output_schema():
+    class Database:
+        @staticmethod
+        def refresh(_task):
+            return None
+
+    class Task:
+        status = "pending"
+
+    schema = {"type": "object", "required": ["consistency_schema"]}
+    calls = []
+
+    async def provider(revision, prompt, *, max_tokens, json_schema):
+        calls.append((revision, prompt, max_tokens, json_schema))
+        return "{}"
+
+    async def run():
+        return await generate_text_unless_cancelled(
+            Database(),
+            Task(),
+            provider,
+            object(),
+            "prompt",
+            max_tokens=9500,
+            json_schema=schema,
+        )
+
+    assert anyio.run(run) == "{}"
+    assert calls[0][2:] == (9500, schema)
+
+
 def test_provider_guard_reads_cancel_from_separate_committed_transaction(db_session):
     _user, _story, _service, _revision, task, *_ = _setup(db_session)
     task.status = TaskStatus.PROCESSING

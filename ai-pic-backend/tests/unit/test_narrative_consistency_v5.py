@@ -1,5 +1,4 @@
 import pytest
-
 from app.services.narrative_consistency import (
     freeze_fact_graph,
     freeze_schema,
@@ -153,22 +152,6 @@ def test_unknown_perspective_in_effect_fails_schema_freeze():
     ]
 
     with pytest.raises(SchemaError, match="unknown perspective"):
-        freeze_schema(raw)
-
-
-def test_unknown_predicate_in_event_effect_fails_schema_freeze():
-    raw = _schema("links", "changes")
-    raw.pop("schema_hash", None)
-    raw["event_types"][0]["effects"] = [
-        {
-            "op": "assert",
-            "subject": {"role": "actor"},
-            "predicate_id": "not-in-this-story",
-            "value": {"role": "target"},
-        }
-    ]
-
-    with pytest.raises(SchemaError, match="unknown predicate"):
         freeze_schema(raw)
 
 

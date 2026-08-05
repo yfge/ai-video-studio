@@ -58,6 +58,7 @@ async def generate_task_text(
     temperature: float | None = None,
     stage: str | None = None,
     model_override: str | None = None,
+    json_schema: dict | None = None,
 ) -> str:
     selected_model = model_override or model_for_stage(revision, stage)
     provider, model = _split_model(selected_model)
@@ -86,7 +87,7 @@ async def generate_task_text(
         )
     attempts = 2 if template_required else 1
     for attempt in range(attempts):
-        request = generate_story_novel_text(
+        request_kwargs = dict(
             prompt=prompt,
             system_prompt=system_prompt,
             model=model,
@@ -101,6 +102,9 @@ async def generate_task_text(
             prompt_template=template,
             require_managed_invocation=template_required,
         )
+        if json_schema is not None:
+            request_kwargs["json_schema"] = json_schema
+        request = generate_story_novel_text(**request_kwargs)
         try:
             if not planning_stage:
                 result = await request

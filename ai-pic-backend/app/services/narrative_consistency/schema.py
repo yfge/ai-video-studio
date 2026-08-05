@@ -160,6 +160,8 @@ def _validate_constraint(kind, expression, predicates, perspectives) -> None:
 
 def _predicate(rule, predicates):
     predicate_id = str(rule.get("predicate_id") or "")
+    if not predicate_id:
+        raise SchemaError("rule requires top-level predicate_id")
     predicate = predicates.get(predicate_id)
     if not predicate:
         raise SchemaError(f"unknown predicate: {predicate_id}")

@@ -6,14 +6,18 @@ import hashlib
 
 from app.repositories.llm_invocation_repository import LLMInvocationRepository
 
-from .story_novel_invocation_evidence import invocation_prompt_template
-from .story_novel_finish_reason import is_recoverable_length_finish_reason
 from .story_novel_context_utils import value_hash
+from .story_novel_finish_reason import is_recoverable_length_finish_reason
+from .story_novel_invocation_evidence import invocation_prompt_template
 
 _TEMPLATES_BY_STAGE = {
     "consistency_schema": {
         "story_novel_consistency_compile_v5",
         "story_novel_consistency_repair_v5",
+        "story_novel_consistency_foundation_v5",
+        "story_novel_consistency_foundation_repair_v5",
+        "story_novel_causal_batch_v5",
+        "story_novel_causal_batch_repair_v5",
     },
     "scene_planning": {"story_novel_scene_plan_v5", "story_novel_json_repair_v5"},
     "prose": {"story_novel_prose_v5", "story_novel_prose_continuation_v5"},
@@ -35,7 +39,7 @@ def v5_invocation_issues(db, revision, entries: dict) -> list[dict]:
     issues = []
     repo = LLMInvocationRepository(db)
     compile_attempts = list(plan.get("schema_compile_attempts") or [])
-    if not 1 <= len(compile_attempts) <= 2:
+    if not _valid_compile_attempt_count(plan, compile_attempts):
         issues.append({"position": 0, "issues": ["schema compile attempts"]})
     elif not _valid_attempts(
         repo,
@@ -52,6 +56,15 @@ def v5_invocation_issues(db, revision, entries: dict) -> list[dict]:
         if entry_issues:
             issues.append({"position": position, "issues": entry_issues})
     return issues
+
+
+def _valid_compile_attempt_count(plan, attempts):
+    if plan.get("schema_compile_mode") != "batched":
+        return 1 <= len(attempts) <= 2
+    chapter_count = int(plan.get("chapter_count") or 0)
+    batch_count = (chapter_count + 15) // 16
+    stages = 1 + batch_count
+    return stages <= len(attempts) <= stages * 2
 
 
 def _entry_issues(repo, revision, entry, plan):

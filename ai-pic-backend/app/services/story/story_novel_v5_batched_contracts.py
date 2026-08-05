@@ -74,6 +74,12 @@ def foundation_contract(revision, plan):
 
 def causal_contract(plan, rows, schema, before, partial, *, is_final):
     prior_ids = [item["id"] for item in partial.get("events") or []]
+    planning_schema = copy.deepcopy(schema)
+    planning_schema["predicates"] = [
+        item
+        for item in planning_schema.get("predicates") or []
+        if item.get("persistence") == "causal"
+    ]
     snapshot = {
         key: copy.deepcopy(before.get(key))
         for key in ("schema", "entities", "facts", "snapshot_hash")
@@ -82,7 +88,7 @@ def causal_contract(plan, rows, schema, before, partial, *, is_final):
         -32:
     ]
     return {
-        "consistency_schema": schema,
+        "consistency_schema": planning_schema,
         "snapshot_before_batch": snapshot,
         "prior_event_ids_tail": prior_ids[-32:],
         "chapter_contracts": rows,

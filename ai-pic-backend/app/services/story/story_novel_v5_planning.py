@@ -8,12 +8,9 @@ from fastapi import HTTPException
 from .story_novel_plan_hash import generation_plan_hash
 from .story_novel_v5_batched_contracts import BATCHED_COMPILE_THRESHOLD
 from .story_novel_v5_batched_planning import ensure_batched_v5_plan
+from .story_novel_v5_output_contracts import full_compile_output_schema
 from .story_novel_v5_plan import freeze_v5_plan, valid_v5_plan
-from .story_novel_v5_prompts import (
-    compile_prompt,
-    compile_repair_prompt,
-    prompt_policy,
-)
+from .story_novel_v5_prompts import compile_prompt, compile_repair_prompt, prompt_policy
 
 
 async def ensure_v5_generation_plan(service, revision, task, generate_text):
@@ -58,6 +55,7 @@ async def _ensure_single_plan(service, revision, task, generate_text, current):
             compile_prompt(contract),
             stage="consistency_schema.compile",
             max_tokens=20_000,
+            json_schema=full_compile_output_schema(),
         )
         attempts = [_attempt(first)]
         previous = extract_json_block(str(first)) or {}
@@ -80,6 +78,7 @@ async def _ensure_single_plan(service, revision, task, generate_text, current):
         stage="consistency_schema.repair",
         max_tokens=20_000,
         temperature=0.1,
+        json_schema=full_compile_output_schema(),
     )
     attempts.append(_attempt(repair))
     payload, diagnostics = _parse_and_freeze(current, revision, repair, attempts)

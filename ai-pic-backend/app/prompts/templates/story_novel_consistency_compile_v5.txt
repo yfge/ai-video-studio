@@ -1,5 +1,7 @@
 从冻结输入编译本 Story 专属的一致性模型，不写正文：{{ contract_json }}
 
+输出 JSON Schema：{{ output_contract_json }}
+
 要求：
 1. 只抽象正文后续因果真正依赖的动态实体类型、谓词、事件、约束和视角；描写、气氛、服饰、短暂情绪使用 observational 谓词，不能进入事件前置条件或效果。
 2. 条件 op 只允许 all/any/not/exists/equals/contains/event_before；效果 op 只允许 assert/retract/replace/reveal/conceal。
@@ -8,5 +10,7 @@
 5. initial_fact_graph 只放 causal facts。若未来事件依赖一个观察，必须把对应谓词提升为 causal，否则本次编译应失败。
 6. 不输出 canon_view、hash、状态或诊断，这些由程序确定性生成。
 
-只输出 JSON：
+所有 condition/effect 都使用扁平规则对象：op、predicate_id、subject、value、scope、perspective_id 直接在对象顶层；op 是每条规则必填字段，禁止嵌套 fact/condition/effect。角色引用写成 {"role":"已声明角色名"}。例如：{"op":"exists","predicate_id":"p","subject":{"role":"actor"}}；{"op":"assert","predicate_id":"p","subject":{"role":"actor"},"value":true,"scope":"objective"}。all/any 使用 args，not 使用 arg，event_before 使用 event_id。
+
+必须输出满足上述 JSON Schema 的实例；字段名、数组、枚举和嵌套层级不得使用同义替代。只输出 JSON：
 {"consistency_schema":{"schema":"story_novel_consistency_schema.v1","version":1,"entity_types":[],"predicates":[],"event_types":[],"constraints":[],"perspectives":[],"source_manifest":{}},"initial_fact_graph":{"schema":"story_novel_fact_graph.v1","entities":[],"facts":[],"evidence":[],"occurred_event_ids":[]},"causal_event_graph":{"schema":"story_novel_causal_event_graph.v1","events":[],"obligations":[]}}
