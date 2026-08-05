@@ -47,7 +47,10 @@ export function buildStoryboardClipManagementItems(
       clipStoryboards.get(clipId),
     );
     const keyframes = clipKeyframeStatus(clip, selectedStoryboard);
-    const resolvedVideo = resolvedVideoForClipId(resolvedVideos ?? null, clipId);
+    const resolvedVideo = resolvedVideoForClipId(
+      resolvedVideos ?? null,
+      clipId,
+    );
     const fallbackVideoReady = hasClipVideo(clip, selectedStoryboard);
     const videoReady = resolvedVideo
       ? resolvedVideo.status === "ready" && Boolean(resolvedVideo.url)
@@ -55,8 +58,8 @@ export function buildStoryboardClipManagementItems(
     const videoStatusLabel = resolvedVideo
       ? resolvedVideoStatusLabel(resolvedVideo.status)
       : videoReady
-        ? "视频已生成"
-        : "视频待生成";
+      ? "视频已生成"
+      : "视频待生成";
 
     return {
       clipId,

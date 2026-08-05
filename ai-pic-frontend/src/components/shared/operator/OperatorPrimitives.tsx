@@ -17,7 +17,8 @@ export const operatorButtonClass = (
     variant === "secondary" &&
       "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50",
     variant === "danger" && "bg-red-600 text-white hover:bg-red-700",
-    variant === "ghost" && "text-gray-600 hover:bg-gray-100 hover:text-gray-950",
+    variant === "ghost" &&
+      "text-gray-600 hover:bg-gray-100 hover:text-gray-950",
     className,
   );
 
@@ -78,7 +79,9 @@ export function OperatorSectionHeader({
       )}
     >
       <div className="min-w-0">
-        <h2 className="truncate text-sm font-semibold text-gray-950">{title}</h2>
+        <h2 className="truncate text-sm font-semibold text-gray-950">
+          {title}
+        </h2>
         {subtitle ? (
           <p className="mt-0.5 truncate text-xs text-gray-500">{subtitle}</p>
         ) : null}

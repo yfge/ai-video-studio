@@ -46,9 +46,7 @@ async def generate_scene_grid_sheet(
         "generation_profile": request.generation_profile,
         "style": request.style,
         "aspect_ratio": request.aspect_ratio,
-        "character_refs": [
-            ref.model_dump() for ref in (request.character_refs or [])
-        ],
+        "character_refs": [ref.model_dump() for ref in (request.character_refs or [])],
         "environment_refs": request.environment_refs or [],
     }
     task = Task(

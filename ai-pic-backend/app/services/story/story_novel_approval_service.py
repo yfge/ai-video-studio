@@ -9,18 +9,21 @@ from app.services.narrative_memory.source_hash import novel_chapter_source_hash
 from fastapi import HTTPException
 
 from .story_novel_candidate_refresh import retire_revision_candidates
-from .story_novel_canon_service import (
-    CANON_GATE_VERSION,
-    content_hash,
-    normalize_canon,
-    validate_generation_plan,
-)
 from .story_novel_chapter_gate import chapter_length_range
 from .story_novel_chapter_service import non_whitespace_chars, source_candidates
-from .story_novel_continuity_service import require_valid_state_chain
 from .story_novel_domain import active_chapters
-from .story_novel_length_service import generation_plan_hash
-from .story_novel_state_service import REQUIRED_HARD_METRICS
+from .story_novel_frozen_plan_gate import require_current_frozen_plan
+from .story_novel_plan_versions import (
+    is_state_gated_plan,
+    is_v3_plan,
+    is_v4_plan,
+    is_v5_plan,
+)
+from .story_novel_v2_approval import require_v2_quality
+from .story_novel_v3_approval import require_v3_quality
+from .story_novel_v4_approval import require_v4_quality
+from .story_novel_v5_projection import project_v5_revision
+from .story_novel_v5_quality import require_v5_quality
 
 
 def approve_revision(service, revision):
@@ -31,10 +34,21 @@ def approve_revision(service, revision):
     eligible_candidate_ids = _require_extraction(
         service, revision, chapters, ledger_rows
     )
-    if plan.get("schema") == "story_novel_generation_plan.v2":
-        _require_current_frozen_plan(revision, plan)
-        _require_v2_quality(revision, chapters, ledger_rows)
+    if is_v5_plan(plan):
+        require_current_frozen_plan(revision, plan)
+        require_v5_quality(service.db, revision, chapters, ledger_rows)
+    elif is_state_gated_plan(plan):
+        require_current_frozen_plan(revision, plan)
+        require_v2_quality(revision, chapters, ledger_rows)
+    if is_v4_plan(plan):
+        require_v4_quality(service.db, revision, chapters, ledger_rows)
+    elif is_v3_plan(plan):
+        require_v3_quality(service.db, revision, chapters, ledger_rows)
     _require_current_report(revision, chapters)
+    if is_v5_plan(plan):
+        eligible_candidate_ids = project_v5_revision(
+            service, revision, chapters, ledger_rows
+        )
     _promote_revision(service, revision, chapters, eligible_candidate_ids)
     return revision
 
@@ -84,9 +98,9 @@ def _require_extraction(service, revision, chapters, ledger_rows) -> set[str] | 
             status_code=409,
             detail=f"章节事实或记忆提取不完整: {invalid_extraction}",
         )
-    if (revision.generation_plan or {}).get(
-        "schema"
-    ) != "story_novel_generation_plan.v2":
+    if not is_state_gated_plan(revision.generation_plan) or is_v5_plan(
+        revision.generation_plan
+    ):
         return None
     eligible_ids: set[str] = set()
     invalid_candidates = []
@@ -123,6 +137,22 @@ def _require_current_report(revision, chapters) -> None:
     expected_coverage = {row.business_id: row.content_hash for row in chapters}
     if coverage != expected_coverage:
         raise HTTPException(status_code=409, detail="连续性报告未覆盖全部当前章节")
+    if (
+        is_v3_plan(revision.generation_plan)
+        or is_v4_plan(revision.generation_plan)
+        or is_v5_plan(revision.generation_plan)
+    ):
+        source_coverage = {
+            item.get("business_id"): item.get("source_hash")
+            for item in (revision.continuity_report or {}).get("coverage") or []
+        }
+        expected_sources = {
+            row.business_id: novel_chapter_source_hash(row) for row in chapters
+        }
+        if source_coverage != expected_sources:
+            raise HTTPException(
+                status_code=409, detail="连续性报告未覆盖全部当前章节 source hash"
+            )
 
 
 def _promote_revision(service, revision, chapters, eligible_candidate_ids) -> None:
@@ -148,95 +178,10 @@ def _promote_revision(service, revision, chapters, eligible_candidate_ids) -> No
             row.business_id: novel_chapter_source_hash(row) for row in chapters
         },
         user_id=service.user.id,
-        require_verified_evidence=(revision.generation_plan or {}).get("schema")
-        == "story_novel_generation_plan.v2",
+        require_verified_evidence=is_state_gated_plan(revision.generation_plan),
         eligible_candidate_ids=eligible_candidate_ids,
         commit=False,
     )
     if retired and not promoted:
         candidates.refresh_ledger(story, commit=False)
     service.db.commit()
-
-
-def _require_current_frozen_plan(revision, plan: dict) -> None:
-    snapshot = revision.story_snapshot or {}
-    outline = (snapshot.get("story_seed") or {}).get("structured_outline") or {}
-    if plan.get("status") != "ready":
-        raise HTTPException(status_code=409, detail="生成计划尚未就绪")
-    if int(plan.get("story_seed_version") or 0) != int(
-        snapshot.get("story_seed_version") or 0
-    ):
-        raise HTTPException(status_code=409, detail="冻结 StorySeed 版本不匹配")
-    if plan.get("outline_hash") != content_hash(outline):
-        raise HTTPException(status_code=409, detail="冻结大纲 hash 已变化")
-    try:
-        canon = normalize_canon(
-            plan.get("canon") or {},
-            required_gate_version=CANON_GATE_VERSION,
-        )
-        validate_generation_plan(canon, plan.get("chapters") or [])
-    except (TypeError, ValueError) as exc:
-        raise HTTPException(
-            status_code=409, detail=f"Canon/章节合同门禁无效: {exc}"
-        ) from exc
-    if (
-        int(plan.get("canon_gate_version") or 0) != CANON_GATE_VERSION
-        or plan.get("canon_hash") != canon["canon_hash"]
-        or plan.get("plan_hash") != generation_plan_hash(plan)
-    ):
-        raise HTTPException(status_code=409, detail="Canon 或生成计划 hash 不匹配")
-    positions = [int(item.get("position") or 0) for item in plan.get("chapters") or []]
-    if positions != list(range(1, len(positions) + 1)):
-        raise HTTPException(status_code=409, detail="冻结章节计划不连续")
-    report = revision.continuity_report or {}
-    if (
-        report.get("status") == "stale"
-        or report.get("plan_version") != plan.get("version")
-        or report.get("plan_hash") != plan.get("plan_hash")
-    ):
-        raise HTTPException(status_code=409, detail="连续性报告未绑定当前生成计划")
-
-
-def _require_v2_quality(revision, chapters, ledger_rows) -> None:
-    canon_hash = (revision.generation_plan or {}).get("canon_hash")
-    invalid_state = [
-        row.position
-        for row in chapters
-        if (
-            (ledger_rows.get(str(row.position)) or {}).get("status") != "ready"
-            or (ledger_rows.get(str(row.position)) or {}).get("canon_hash")
-            != canon_hash
-            or (
-                (ledger_rows.get(str(row.position)) or {}).get("state_validation") or {}
-            ).get("status")
-            != "passed"
-        )
-    ]
-    if invalid_state:
-        raise HTTPException(
-            status_code=409, detail=f"章节状态门禁不完整: {invalid_state}"
-        )
-    require_valid_state_chain(revision, chapters, ledger_rows)
-    report = dict(revision.continuity_report or {})
-    if (
-        report.get("schema") != "story_novel_continuity_review.v3"
-        or report.get("canon_hash") != canon_hash
-    ):
-        raise HTTPException(status_code=409, detail="连续性报告未使用当前 Canon")
-    expected_hash = report.pop("report_hash", None)
-    if not expected_hash or expected_hash != content_hash(report):
-        raise HTTPException(status_code=409, detail="连续性报告 hash 不匹配")
-    hard_metrics = report.get("hard_metrics") or {}
-    missing_metrics = REQUIRED_HARD_METRICS - set(hard_metrics)
-    if missing_metrics:
-        raise HTTPException(
-            status_code=409,
-            detail=f"确定性质量门禁不完整: {sorted(missing_metrics)}",
-        )
-    failed = {
-        key: value
-        for key, value in hard_metrics.items()
-        if key != "chapter_repair_rate" and value
-    }
-    if failed:
-        raise HTTPException(status_code=409, detail=f"确定性质量门禁未通过: {failed}")

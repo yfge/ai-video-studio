@@ -8,12 +8,15 @@ from app.schemas.story_novel_export import (
 )
 from fastapi import HTTPException
 
+from . import story_novel_model_policy as model_policy
 from .story_novel_chapter_gate import non_whitespace_chars
 from .story_novel_length_contract import content_hash as _content_hash
 from .story_novel_length_contract import normalize_overrides as _normalize_overrides
 from .story_novel_length_contract import resolve_profile as _resolve_profile
 from .story_novel_length_contract import validate_model_capacity
 from .story_novel_length_outline import confirmed_outline as _confirmed_outline
+from .story_novel_plan_hash import generation_plan_hash
+from .story_novel_plan_versions import V4_SCHEMA
 
 
 def build_length_plan(
@@ -23,19 +26,26 @@ def build_length_plan(
     version: int = 4,
 ) -> dict:
     outline, chapters, positions = _confirmed_outline(story)
+    selected_schema = model_policy.generation_plan_schema(request)
+    if selected_schema == V4_SCHEMA:
+        _require_v4_seed_contract(story, outline)
     profile = _resolve_profile(request.length_profile_id, request.custom_length_profile)
     overrides = _normalize_overrides(request.chapter_length_overrides, positions)
     planned = _apply_ranges(chapters, profile, overrides)
-    validate_model_capacity(request.model, max(row["max_chars"] for row in planned))
+    resolved_policy = model_policy.resolve_creation_model_policy(story, request)
+    validate_model_capacity(
+        resolved_policy["prose_model"], max(row["max_chars"] for row in planned)
+    )
     outline_hash = _content_hash(outline)
     plan = {
-        "schema": "story_novel_generation_plan.v2",
+        "schema": selected_schema,
         "version": version,
         "status": "ready",
         "phase": "spec_ready",
         "story_seed_version": int(story.story_seed_version or 1),
         "outline_hash": outline_hash,
-        "model": request.model,
+        "model": resolved_policy["prose_model"],
+        "model_policy": resolved_policy,
         "length_profile": profile,
         "chapter_length_overrides": {
             str(position): value.model_dump() for position, value in overrides.items()
@@ -59,6 +69,38 @@ def build_length_plan(
     return plan
 
 
+def _require_v4_seed_contract(story, outline: dict) -> None:
+    required = (
+        "progression_arcs",
+        "core_character_routes",
+        "scope_taxonomy",
+        "initial_scope_nodes",
+    )
+    valid_versions = (
+        int(outline.get("planning_structure_version") or 0) == 1
+        and int(outline.get("roadmap_version") or 0) == 1
+    )
+    if not valid_versions or any(not outline.get(key) for key in required):
+        raise HTTPException(
+            status_code=409,
+            detail="v4 小说版本需要完整的分卷 Roadmap、核心人物路线与初始世界范围",
+        )
+    protagonists = {
+        str(item.get("virtual_ip_business_id") or "")
+        for item in (story.story_seed or {}).get("protagonists") or []
+    }
+    routed = {
+        str(item.get("character_ref") or "")
+        for item in outline.get("core_character_routes") or []
+    }
+    missing = sorted(item for item in protagonists - routed if item)
+    if not protagonists or missing:
+        raise HTTPException(
+            status_code=409,
+            detail=f"v4 核心人物路线未覆盖 StorySeed 主角: {missing}",
+        )
+
+
 def apply_length_spec(revision, request) -> dict:
     current = dict(revision.generation_plan or {})
     expected = int(request.expected_plan_version)
@@ -66,13 +108,10 @@ def apply_length_spec(revision, request) -> dict:
     profile = _resolve_profile(request.length_profile_id, request.custom_length_profile)
     overrides = _normalize_overrides(request.chapter_length_overrides, positions)
     frozen_rows = _apply_ranges(frozen_rows, profile, overrides)
-    model = request.model if "model" in request.model_fields_set else revision.model
-    model_changed = model != revision.model
-    if model_changed and any(row.content_text for row in revision.chapters or []):
-        raise HTTPException(
-            status_code=409,
-            detail="已有章节后不得修改正文模型，请创建新小说版本",
-        )
+    resolved_policy, model_changed = model_policy.resolve_updated_model_policy(
+        revision, current, request
+    )
+    model = resolved_policy["prose_model"]
     validate_model_capacity(model, max(row["max_chars"] for row in frozen_rows))
     revision.model = model
     serialized_overrides = {
@@ -88,6 +127,7 @@ def apply_length_spec(revision, request) -> dict:
         **current,
         "version": expected + 1,
         "model": model,
+        "model_policy": resolved_policy,
         "length_profile": profile,
         "chapter_length_overrides": serialized_overrides,
         "planned_min_chars": sum(row["min_chars"] for row in frozen_rows),
@@ -186,49 +226,6 @@ def _mark_report_stale(revision, plan_version: int) -> None:
         revision.continuity_report = report
 
 
-def generation_plan_hash(plan: dict) -> str:
-    chapter_keys = (
-        "position",
-        "title",
-        "goal",
-        "key_events",
-        "character_focus",
-        "open_threads",
-        "end_state",
-        "min_chars",
-        "target_chars",
-        "max_chars",
-        "length_source",
-        "preconditions",
-        "required_event_ids",
-        "state_transitions",
-        "knowledge_grants",
-        "location_transitions",
-        "milestones_consumed",
-        "forbidden_event_ids",
-        "payoffs_due",
-        "canon_refs",
-        "timeline_event_bindings",
-    )
-    contract = {
-        "schema": plan.get("schema"),
-        "version": plan.get("version"),
-        "story_seed_version": plan.get("story_seed_version"),
-        "outline_hash": plan.get("outline_hash"),
-        "canon_hash": plan.get("canon_hash"),
-        "canon_gate_version": plan.get("canon_gate_version"),
-        "thread_payoffs_hash": plan.get("thread_payoffs_hash"),
-        "thread_payoffs_outline_hash": plan.get("thread_payoffs_outline_hash"),
-        "length_profile": plan.get("length_profile"),
-        "chapter_length_overrides": plan.get("chapter_length_overrides"),
-        "chapters": [
-            {key: row.get(key) for key in chapter_keys}
-            for row in plan.get("chapters") or []
-        ],
-    }
-    return _content_hash(contract)
-
-
 def _mirror_ledger_fields(plan_row: dict, entry: dict) -> None:
     for key in (
         "context_hash",
@@ -240,5 +237,4 @@ def _mirror_ledger_fields(plan_row: dict, entry: dict) -> None:
     ):
         if key in entry:
             plan_row[key] = entry[key]
-    if "event_ids" in entry:
-        plan_row["fact_ids"] = entry["event_ids"]
+    plan_row.update({"fact_ids": entry["event_ids"]} if "event_ids" in entry else {})

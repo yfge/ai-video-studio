@@ -1,6 +1,6 @@
 ---
 id: 2026-01-30T12-14-52Z-unify-storyboard-audio-prompts
-date: 2026-01-30T12:14:52Z
+date: "2026-01-30T12:14:52Z"
 participants: [human, codex]
 models: [gpt-5]
 tags: [backend, prompts, storyboard, video]
@@ -70,4 +70,3 @@ summary: "Unify audio_timeline->storyboard prompt handling: keep dialogue in UI 
 ## Linked Commits
 
 - (pending) 将在本次提交完成后补全。
-

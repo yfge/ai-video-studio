@@ -12,6 +12,8 @@ from app.services.narrative_memory.invalidation_service import (
 from app.services.narrative_memory.source_hash import novel_chapter_source_hash
 from fastapi import HTTPException
 
+from .story_novel_plan_versions import is_state_gated_plan
+
 
 def ensure_timestamp(actual: datetime | None, expected: datetime) -> None:
     def utc(value: datetime) -> datetime:
@@ -21,13 +23,14 @@ def ensure_timestamp(actual: datetime | None, expected: datetime) -> None:
         raise HTTPException(status_code=409, detail="内容已被其他窗口更新")
 
 
-def chapter_memory_context(db, revision, position: int):
+def chapter_memory_context(db, revision, position: int, *, persist_snapshots=True):
     return NarrativeGenerationContextService(
         NarrativeMemoryRepository(db)
     ).chapter_context(
         revision.story,
         revision_business_id=revision.business_id,
         position=position,
+        persist_snapshots=persist_snapshots,
     )
 
 
@@ -84,6 +87,7 @@ def mark_revision_ledger_stale(
     *,
     from_position: int,
     edited_chapter=None,
+    archive_generation_calls: bool = False,
 ) -> None:
     ledger = dict(revision.continuity_ledger or {})
     chapters = dict(ledger.get("chapters") or {})
@@ -91,6 +95,10 @@ def mark_revision_ledger_stale(
         if int(key) < from_position:
             continue
         entry = dict(raw)
+        if archive_generation_calls and int(key) == from_position:
+            from .story_novel_v4_call_snapshot import archive_regenerated_chapter_calls
+
+            archive_regenerated_chapter_calls(entry, from_position)
         entry["status"] = "stale"
         entry["extraction_status"] = "stale"
         if edited_chapter is not None and int(key) == edited_chapter.position:
@@ -98,9 +106,7 @@ def mark_revision_ledger_stale(
             entry["source_hash"] = novel_chapter_source_hash(edited_chapter)
             entry["event_ids"] = []
             entry["memory_ids"] = []
-            if (revision.generation_plan or {}).get("schema") != (
-                "story_novel_generation_plan.v2"
-            ):
+            if not is_state_gated_plan(revision.generation_plan):
                 entry["status"] = "body_ready"
             else:
                 entry["state_delta"] = None

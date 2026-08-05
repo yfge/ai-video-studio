@@ -22,7 +22,9 @@ import {
 export function useWorkspaceScriptStructure(script: Script | null) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [structuredScenes, setStructuredScenes] = useState<SceneNode[]>([]);
-  const [normalizedScenes, setNormalizedScenes] = useState<NormalizedScene[]>([]);
+  const [normalizedScenes, setNormalizedScenes] = useState<NormalizedScene[]>(
+    [],
+  );
   const [sceneBeatsMap, setSceneBeatsMap] = useState<
     Record<number, SceneBeat[]>
   >({});

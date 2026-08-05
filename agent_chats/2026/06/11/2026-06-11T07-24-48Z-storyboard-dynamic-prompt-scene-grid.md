@@ -1,3 +1,14 @@
+---
+id: 2026-06-11T07-24-48Z-storyboard-dynamic-prompt-scene-grid
+date: "2026-06-11T07:24:48Z"
+participants: [user, codex]
+models: [gpt-5.6-sol]
+tags: [backend, storyboard, prompt, scene-grid]
+related_paths:
+  - ai-pic-backend/app/services/storyboard/dynamic_prompt/generator.py
+summary: Connect dynamic storyboard prompts to scene-grid generation.
+---
+
 # 分镜提示词动态化 + 场景宫格分镜模式
 
 ## User Prompt
@@ -14,6 +25,7 @@
 ## Changes
 
 阶段一（逐帧动态提示词，默认关闭，`STORYBOARD_DYNAMIC_PROMPT_ENABLED` 灰度）：
+
 - `app/core/config.py`：新增 `STORYBOARD_DYNAMIC_PROMPT_ENABLED/_MAX_FRAMES_PER_CALL/_MODEL`
 - `app/prompts/templates/storyboard_dynamic_image_prompt.txt/.yaml` + `PromptTemplate.STORYBOARD_DYNAMIC_IMAGE_PROMPT` 注册
 - `app/schemas/storyboard_dynamic_prompt.py`：LLM 输出 Pydantic schema
@@ -21,6 +33,7 @@
 - 接线：`image_task_processor.py` 帧循环前批量构建 bundles；`image_task_frame_generation.py` compile 后 apply（角色锚图匹配仍用原 base_prompt，顺序不变）
 
 阶段二（场景宫格模式）：
+
 - 模板 `storyboard_scene_grid_prompt.txt/.yaml`（分节式：整体定位/版式/风格/场景设定/主角设定/逐格内容/画面要求）、`storyboard_scene_grid_video_prompt.txt/.yaml`（Seedance 时间轴分节提示词）+ 枚举注册
 - `app/schemas/storyboard_scene_grid.py`：请求/LLM 输出 schema
 - 新包 `app/services/storyboard/scene_grid/`：`layout.py`（4/6/9/12/16 格）、`prompt_builder.py`（LLM + 静态 fallback）、`refs.py`（用户显式人物/环境参考图优先，否则按 ImageRefContext 场景绑定自动带入）、`processor.py`（宫格图生成+落库 scene_grids）、`video_processor.py`（Seedance 成片，时长 clamp 4-15s）、`shared.py`
@@ -30,6 +43,7 @@
 - 前端：`storyboard-scene-grid.endpoints.ts`（API client）、`WorkspaceStoryboardSceneGridPanel.tsx` + `WorkspaceStoryboardSceneGridParts.tsx` + `useWorkspaceSceneGridGeneration.ts`（场景/宫格数选择、人物参考勾选、环境参考 URL、任务轮询、宫格图与成片展示），挂载到 `WorkspaceStoryboardTabContent.tsx`（默认折叠）
 
 测试：
+
 - `tests/unit/services/storyboard/test_dynamic_prompt_context.py` / `test_dynamic_prompt_service.py` / `dynamic_prompt_fixtures.py`
 - `tests/unit/test_storyboard_image_task_dynamic_prompt.py`（任务级集成：bundle 覆写 + 落库）
 - `tests/unit/services/storyboard/test_scene_grid.py`、`tests/unit/test_scene_grid_task_processor.py`

@@ -68,7 +68,7 @@ def premature_plan_violations(revision, position: int, content_text: str) -> lis
             for value in [entity.get("name"), *(entity.get("aliases") or [])]
             if value and len(str(value)) >= 2
         ]
-        first = _first_plan_position(plan, names)
+        first = _first_plan_position(plan, str(entity.get("id") or ""), names)
         matched = next((name for name in names if name in body), None)
         if first and first > position and matched:
             kind_label = {"character": "角色", "object": "物件"}[entity["kind"]]
@@ -104,12 +104,15 @@ def premature_plan_violations(revision, position: int, content_text: str) -> lis
     return violations
 
 
-def _first_plan_position(chapters: list[dict], needles: list[str]) -> int | None:
+def _first_plan_position(
+    chapters: list[dict], entity_id: str, needles: list[str]
+) -> int | None:
     return next(
         (
             int(chapter["position"])
             for chapter in chapters
-            if any(needle in str(chapter) for needle in needles)
+            if (entity_id and entity_id in str(chapter))
+            or any(needle in str(chapter) for needle in needles)
         ),
         None,
     )

@@ -27,6 +27,22 @@ This directory holds design notes, API references, and testing guides. Keep this
 - `docs/exec-plans/active/canon-gated-longform-quality-loop.md` — compiled
   Canon, actual-body typed state gates, earliest-safe Canon repair/resume,
   deterministic continuity metrics, and GPT-5.6 long-form acceptance.
+- `docs/exec-plans/active/story-novel-planning-quality-v3.md` — chapter-planning
+  briefs, prose blocks, proof-only audit, deterministic Narrative materialization,
+  three-stage model policy, commercial 2K–3K chapters, bounded multi-arc planning
+  for roughly two-million-character serials, progressive Revision-local world
+  expansion, soft growth/reader-appeal review, cancel/Resume proof, and a new
+  48-chapter GPT-5.6 acceptance sample.
+- `docs/exec-plans/active/story-novel-frozen-snapshot-v4.md` — immutable
+  provider-call snapshots, current-arc planning, deterministic chapter
+  contracts, dynamic character/world scope graphs, and v4 real acceptance.
+- `docs/exec-plans/active/story-novel-generic-consistency-v5.md` — topic-neutral
+  schemas, fact/event graphs, continuous chapter prose, evidence-bound state
+  patches, readability repair/rewrite, and V5 acceptance.
+- `docs/exec-plans/active/narrative-world-character-agents.md` — optional
+  character-agent scene rehearsal with isolated perspective packets, central
+  world resolution, unified narration, A/B decision gate, Resume evidence, and
+  fresh 48-chapter acceptance.
 - `docs/exec-plans/completed/outline-driven-longform-novel.md` — dynamic
   StorySeed planning, 3K–5K chapter checkpoints, bounded memory context,
   extraction-only resume, and real-model acceptance.
@@ -47,6 +63,8 @@ This directory holds design notes, API references, and testing guides. Keep this
 - `docs/standards/STD-EVIDENCE-001.md` — agent changes include durable validation evidence.
 - `docs/standards/STD-SCRIPT-001.md` — production scripts satisfy beat-level quality gates.
 - `docs/standards/STD-TIMELINE-001.md` — Timeline-first provider chains preserve media lineage.
+- `docs/standards/STD-NARRATIVE-001.md` — generic consistency core dependency
+  and topic-neutrality boundary.
 
 Keep durable engineering rules in repository docs like the files above. Do not treat chat transcripts or temporary notes as authoritative process documentation.
 
@@ -66,11 +84,17 @@ Keep durable engineering rules in repository docs like the files above. Do not t
 
 ## Design Documents
 
+- `docs/design/narrative-world-character-agents.md` — proposed constrained
+  character-agent scene rehearsal: authoritative narrative world state,
+  per-character perspective packets, central resolution, unified narration,
+  and v3-compatible proof/memory materialization.
 - `docs/design/narrative-memory-and-dramatic-state.md` — story-scoped Canon,
   anchored character memory and growth, manual shared-memory promotion,
   offscreen events, audience disclosure, subtext, and operator UI design.
 - `docs/design/story-novel-episode-script.md` — approved novel revisions as the
   narrative SSOT feeding Episode/Script while Timeline remains production SSOT.
+- `docs/design/story-novel-generic-consistency-v5.md` — Story-scoped dynamic
+  consistency schemas, generic causal graphs, and continuous-prose quality gates.
 - `docs/design/production-canvas.md` — executable short-drama production canvas,
   typed dependency graph, candidate review, and Timeline integration design.
 - `docs/design/duration-orchestrator-agent.md` — Duration Orchestrator Agent 设计（端到端时长闭环验证）

@@ -2,6 +2,7 @@ import json
 
 import pytest
 from app.schemas.story_seed import StorySeedStructuredOutline
+from app.services.story.story_novel_prompt_renderer import prompt_template_evidence
 from app.services.story.story_seed_thread_contract import validate_seed_thread_contract
 from app.services.story.story_seed_thread_repair import (
     _assigned_positions,
@@ -75,6 +76,9 @@ def test_overflow_marks_only_minimal_surplus_rows():
 
     assert conflicts == ["thread-3", "thread-4"]
     prompt = seed_thread_repair_prompt(outline, conflicts, "第 2 章超过上限")
+    assert prompt_template_evidence(prompt)["template"] == (
+        "story_novel_seed_thread_repair_v3"
+    )
     assert '"authoritative_conflict_thread_ids":["thread-3","thread-4"]' in prompt
     assert prompt.count('"assigned_payoff_position":3') == 2
     assert '"target_chapter"' in prompt

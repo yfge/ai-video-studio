@@ -32,9 +32,11 @@ def test_layered_review_hard_metric_blocks_model_warning_only_report(
         lambda *_args, **_kwargs: ([], []),
     )
     max_tokens = []
+    stages = []
 
     async def generate(_revision, prompt, **kwargs):
         max_tokens.append(kwargs["max_tokens"])
+        stages.append(kwargs["stage"])
         if "quality_scores" not in prompt:
             return json.dumps(
                 {
@@ -72,6 +74,7 @@ def test_layered_review_hard_metric_blocks_model_warning_only_report(
         generate,
     )
     assert max_tokens == [5000, 16_000]
+    assert stages == ["continuity.window.1", "continuity.global"]
     assert report["schema"] == "story_novel_continuity_review.v3"
     assert report["hard_metrics"]["duplicate_milestone_count"] == 1
     assert report["overall_score"] == 82.0
@@ -115,7 +118,7 @@ def test_review_batches_overlap_six_chapter_boundaries_with_hash_coverage():
     calls = []
 
     async def generate(_revision, _prompt, **kwargs):
-        calls.append(kwargs["max_tokens"])
+        calls.append((kwargs["max_tokens"], kwargs["stage"]))
         return '{"summary":"批次通过","issues":[]}'
 
     revision = SimpleNamespace(
@@ -144,6 +147,6 @@ def test_review_batches_overlap_six_chapter_boundaries_with_hash_coverage():
         {},
     )
     refs = [ref for batch in compiled["review_batches"] for ref in batch["chapters"]]
-    assert calls == [5000] * 8
+    assert calls == [(5000, f"continuity.window.{index}") for index in range(1, 9)]
     assert {ref["business_id"] for ref in refs} == {row.business_id for row in chapters}
     assert [ref["position"] for ref in refs].count(6) == 2

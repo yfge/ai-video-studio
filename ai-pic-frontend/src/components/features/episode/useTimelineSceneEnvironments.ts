@@ -30,29 +30,32 @@ export function useTimelineSceneEnvironments({
     };
   }, []);
 
-  const saveEnvironment = useCallback(async (selectedScene: NormalizedScene | null) => {
-    if (!selectedScene) return;
-    setEnvironmentSaving(true);
-    try {
-      const res = await storyStructureAPI.updateScene(selectedScene.id, {
-        environment_id: selectedEnvironmentId,
-      });
-      if (res.success) {
-        setSceneEnvOverrides((prev) => ({
-          ...prev,
-          [selectedScene.id]: selectedEnvironmentId,
-        }));
-        showAlert({ message: "场景环境已保存", variant: "success" });
-      } else {
-        showAlert({
-          message: res.error || "保存场景环境失败",
-          variant: "error",
+  const saveEnvironment = useCallback(
+    async (selectedScene: NormalizedScene | null) => {
+      if (!selectedScene) return;
+      setEnvironmentSaving(true);
+      try {
+        const res = await storyStructureAPI.updateScene(selectedScene.id, {
+          environment_id: selectedEnvironmentId,
         });
+        if (res.success) {
+          setSceneEnvOverrides((prev) => ({
+            ...prev,
+            [selectedScene.id]: selectedEnvironmentId,
+          }));
+          showAlert({ message: "场景环境已保存", variant: "success" });
+        } else {
+          showAlert({
+            message: res.error || "保存场景环境失败",
+            variant: "error",
+          });
+        }
+      } finally {
+        setEnvironmentSaving(false);
       }
-    } finally {
-      setEnvironmentSaving(false);
-    }
-  }, [selectedEnvironmentId, showAlert]);
+    },
+    [selectedEnvironmentId, showAlert],
+  );
 
   return {
     environments,

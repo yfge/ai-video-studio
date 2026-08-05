@@ -35,7 +35,9 @@ def _get_story(story_id: int, db: Session, user: User) -> Story:
     if not story:
         raise HTTPException(status_code=404, detail="Story not found")
     if story.user_id and story.user_id != user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to access this story")
+        raise HTTPException(
+            status_code=403, detail="Not authorized to access this story"
+        )
     return story
 
 
@@ -77,7 +79,9 @@ async def check_story_readiness(
     return checker.check(story)
 
 
-@router.post("/business/{story_business_id}/readiness-check", response_model=ReadinessResult)
+@router.post(
+    "/business/{story_business_id}/readiness-check", response_model=ReadinessResult
+)
 async def check_story_readiness_by_business_id(
     story_business_id: str,
     current_user: User = Depends(get_current_active_user),

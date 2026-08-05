@@ -27,12 +27,18 @@ async def generate_text_unless_cancelled(
     *,
     max_tokens: int | None,
     temperature: float | None = None,
+    stage: str | None = None,
+    model_override: str | None = None,
 ) -> str:
     """Check cancellation on both sides of every potentially long provider call."""
     ensure_task_not_cancelled(db, task)
     options = {"max_tokens": max_tokens}
     if temperature is not None:
         options["temperature"] = temperature
+    if stage is not None:
+        options["stage"] = stage
+    if model_override is not None:
+        options["model_override"] = model_override
     result = await generate_text(
         revision,
         prompt,

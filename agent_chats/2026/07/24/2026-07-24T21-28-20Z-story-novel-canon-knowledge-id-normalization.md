@@ -1,3 +1,14 @@
+---
+id: 2026-07-24T21-28-20Z-story-novel-canon-knowledge-id-normalization
+date: "2026-07-24T21:28:20Z"
+participants: [user, codex]
+models: [gpt-5.6-sol]
+tags: [backend, story-novel, canon, knowledge]
+related_paths:
+  - ai-pic-backend/app/services/story/story_novel_canon_service.py
+summary: Normalize Canon knowledge identifiers without weakening validation.
+---
+
 ## User Prompt
 
 继续完成真实系统 API + MySQL 的 48 章长篇生成；规划门禁失败时停止付费，
@@ -22,7 +33,7 @@
 
 - Task 6637 fail closed，0 章；invocation #1366/#1367 均 `finish_reason=stop`。
 - 精确错误：`里程碑结果未落地: mile-clock-drift-revealed
-  char-wangming.knowledge contains '钟声频率偏移原因为地轴微动'`。
+char-wangming.knowledge contains '钟声频率偏移原因为地轴微动'`。
 - #1367 模型实际给同一角色、同一 `ev-ch19-4` 的 fact ID：
   `知识-钟声频率偏移原因为地轴微动`。
 - Task 6638 再次 fail closed，0 章；#1369 改用通用

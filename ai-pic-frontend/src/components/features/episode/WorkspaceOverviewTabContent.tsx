@@ -41,13 +41,20 @@ export function WorkspaceOverviewTabContent({
         <div className="space-y-4 p-4">
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <Metric label="集数" value={`第 ${episode.episode_number} 集`} />
-            <Metric label="时长" value={`${episode.duration_minutes || "—"} 分钟`} />
+            <Metric
+              label="时长"
+              value={`${episode.duration_minutes || "—"} 分钟`}
+            />
             <Metric label="场景数" value={`${sceneCount || "—"} 个`} />
             <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
               <div className="text-xs text-gray-500">状态</div>
               <div className="mt-2">
-                <StatusPill tone={episode.status === "published" ? "green" : "amber"}>
-                  {episode.status === "published" ? "已发布" : episode.status || "草稿"}
+                <StatusPill
+                  tone={episode.status === "published" ? "green" : "amber"}
+                >
+                  {episode.status === "published"
+                    ? "已发布"
+                    : episode.status || "草稿"}
                 </StatusPill>
               </div>
             </div>
@@ -61,12 +68,17 @@ export function WorkspaceOverviewTabContent({
       </OperatorPanel>
 
       <OperatorPanel>
-        <OperatorSectionHeader title="剧情要点" subtitle="plot points / conflicts" />
+        <OperatorSectionHeader
+          title="剧情要点"
+          subtitle="plot points / conflicts"
+        />
         <div className="grid gap-4 p-4 lg:grid-cols-2">
           <ListBlock
             title="剧情要点"
             items={plotPoints.map((point) =>
-              point.timing ? `${point.timing}: ${point.description || ""}` : point.description || "",
+              point.timing
+                ? `${point.timing}: ${point.description || ""}`
+                : point.description || "",
             )}
             empty="暂无剧情要点"
           />
@@ -84,11 +96,19 @@ export function WorkspaceOverviewTabContent({
 
       {Object.keys(characterArcs).length || episode.tags?.length ? (
         <OperatorPanel>
-          <OperatorSectionHeader title="角色与标签" subtitle="角色弧线、标签和元数据" />
+          <OperatorSectionHeader
+            title="角色与标签"
+            subtitle="角色弧线、标签和元数据"
+          />
           <div className="space-y-4 p-4">
             {Object.entries(characterArcs).map(([character, arc]) => (
-              <div key={character} className="rounded-md border border-gray-200 bg-gray-50 p-3">
-                <div className="text-sm font-medium text-gray-950">{character}</div>
+              <div
+                key={character}
+                className="rounded-md border border-gray-200 bg-gray-50 p-3"
+              >
+                <div className="text-sm font-medium text-gray-950">
+                  {character}
+                </div>
                 <div className="mt-1 text-xs text-gray-600">
                   {typeof arc === "string" ? arc : JSON.stringify(arc)}
                 </div>
@@ -110,7 +130,9 @@ export function WorkspaceOverviewTabContent({
   );
 }
 
-function normalizeList<T extends { description?: string }>(value: unknown): T[] {
+function normalizeList<T extends { description?: string }>(
+  value: unknown,
+): T[] {
   if (!Array.isArray(value)) return [];
   return value.map((item) => {
     if (item && typeof item === "object") return item as T;
@@ -143,7 +165,10 @@ function ListBlock({
       <div className="mt-2 space-y-2">
         {items.length ? (
           items.map((item, index) => (
-            <div key={index} className="rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
+            <div
+              key={index}
+              className="rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700"
+            >
               {item || "-"}
             </div>
           ))

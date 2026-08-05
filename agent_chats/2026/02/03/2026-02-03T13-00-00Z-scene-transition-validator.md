@@ -1,6 +1,6 @@
 ---
 id: 2026-02-03T13-00-00Z-scene-transition-validator
-date: 2026-02-03T13:00:00Z
+date: "2026-02-03T13:00:00Z"
 participants: [human, claude]
 models: [claude-opus-4-5]
 tags: [backend, validator, agent-fix, scene-transition]
@@ -31,6 +31,7 @@ summary: "创建场景转场物理可行性校验器，检查地理/时间/角�
 ### 新增文件
 
 1. **`app/services/validators/scene_transition_validator.py`** (约 350 行)
+
    - `TransitionSeverity`: 问题严重度枚举（ERROR/WARNING/INFO）
    - `TransitionIssueType`: 问题类型枚举
      - `GEOGRAPHIC_IMPOSSIBILITY`: 地理不可能
@@ -56,6 +57,7 @@ summary: "创建场景转场物理可行性校验器，检查地理/时间/角�
 ### 修改文件
 
 1. **`app/services/validators/__init__.py`**
+
    - 导出 `SceneTransitionValidator`, `TransitionIssue`, `SceneInfo` 等
 
 2. **`app/services/script_agent.py`**

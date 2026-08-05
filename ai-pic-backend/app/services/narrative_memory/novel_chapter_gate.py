@@ -9,11 +9,16 @@ from app.services.story.story_novel_domain import sha256_text
 from app.services.story.story_novel_generation_context import build_chapter_context
 from app.services.story.story_novel_length_service import generation_plan_hash
 from app.services.story.story_novel_plan_checkpoint import validated_canon_checkpoint
+from app.services.story.story_novel_plan_versions import is_v3_plan
 from app.services.story.story_novel_plot_contract import validated_plot_delta
 from app.services.story.story_novel_prose_canon_gate import (
     revision_prose_canon_violations,
 )
-from app.services.story.story_novel_state_service import replay_checkpoint_state
+from app.services.story.story_novel_sentence_spans import resolve_sentence_refs
+from app.services.story.story_novel_state_service import (
+    replay_checkpoint_state,
+    state_before_position,
+)
 from app.services.story.story_novel_state_validator import validate_state_delta
 from fastapi import HTTPException
 
@@ -22,6 +27,10 @@ _GATE_ERROR = "小说章节未通过当前 Canon/状态门禁，不能提取叙�
 
 def require_gated_novel_chapter(db, chapter) -> None:
     plan = dict(chapter.novel_export.generation_plan or {})
+    if is_v3_plan(plan):
+        if not _valid_v3_checkpoint(chapter, plan):
+            raise ConflictError(_GATE_ERROR)
+        return
     if plan.get("schema") != "story_novel_generation_plan.v2":
         return
     if not _valid_checkpoint(db, chapter, plan):
@@ -86,4 +95,39 @@ def _valid_checkpoint(db, chapter, plan: dict) -> bool:
             )
         )
     except (HTTPException, KeyError, StopIteration, TypeError, ValueError):
+        return False
+
+
+def _valid_v3_checkpoint(chapter, plan: dict) -> bool:
+    revision = chapter.novel_export
+    entry = ((revision.continuity_ledger or {}).get("chapters") or {}).get(
+        str(chapter.position)
+    ) or {}
+    try:
+        state_before = state_before_position(revision, chapter.position)
+        replayed = replay_checkpoint_state(state_before, entry)
+        for proof in entry.get("proof_spans") or []:
+            resolve_sentence_refs(
+                chapter.content_text,
+                proof["sentence_ids"],
+                expected_source_hash=proof["source_hash"],
+            )
+        required = {
+            item["contract_id"]
+            for item in (entry.get("expected_delta") or {}).get("proof_contracts") or []
+        }
+        supplied = {item["contract_id"] for item in entry.get("proof_spans") or []}
+        audit = entry.get("future_audit") or {}
+        return bool(
+            plan.get("status") == "ready"
+            and entry.get("status") in {"memory_ready", "ready"}
+            and chapter.content_hash == sha256_text(chapter.content_text)
+            and entry.get("body_hash") == chapter.content_hash
+            and entry.get("source_hash") == novel_chapter_source_hash(chapter)
+            and (entry.get("state_validation") or {}).get("status") == "passed"
+            and replayed == entry.get("state_after")
+            and not required.difference(supplied)
+            and not any(audit.get(key) for key in audit)
+        )
+    except (KeyError, TypeError, ValueError):
         return False

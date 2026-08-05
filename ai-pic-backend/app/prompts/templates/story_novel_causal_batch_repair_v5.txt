@@ -1,0 +1,10 @@
+修复当前超长 Story 因果批次。
+
+冻结批次输入：{{ contract_json }}
+上次输出：{{ previous_json }}
+确定性诊断：{{ diagnostics_json }}
+
+只修复诊断指出的章节覆盖、ID、依赖、前置条件、效果、角色或义务绑定问题。不得改变 Schema、实体、批次范围和章节合同，不得引用未来事件，不得输出解释、hash、快照或诊断。
+
+只输出 JSON：
+{"causal_event_graph":{"schema":"story_novel_causal_event_graph.v1","events":[],"obligations":[]}}

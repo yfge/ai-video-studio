@@ -75,6 +75,18 @@
   `docs/design/story-novel-episode-script.md` 与
   `docs/design/narrative-memory-and-dramatic-state.md`，执行计划见
   `docs/exec-plans/active/canon-gated-longform-quality-loop.md`。
+- P0（进行中）：新长篇 Revision 升级为章前规划质量 v3。世界事件和人物记忆只供
+  `chapter_brief` 规划，正文只读当前 brief/可见 Canon，服务端 expected delta 与
+  sentence proof 审计决定状态和 Narrative 落账；三阶段模型策略、局部 block 返修、
+  evidence-only Resume 与 v3-only 下游门禁已进入自动验证。章前 brief 现可把既有
+  资源、义务、耗时、因果和关系约束提炼为来源绑定的 continuity watchpoints；正文
+  无需复述，只有实际矛盾才由审计阻断。执行计划见
+  `docs/exec-plans/active/story-novel-planning-quality-v3.md`。
+- P0（进行中）：新建 V5 题材无关一致性内核。每个 Story 自动冻结动态 Schema、
+  初始事实图和因果图；正文改为整章连续生成，再做证据绑定的 claim 校验、最小句段
+  返修和一次整章重写。V2-V4 保持原样，不新增数据库。设计与验收见
+  `docs/design/story-novel-generic-consistency-v5.md` 和
+  `docs/exec-plans/active/story-novel-generic-consistency-v5.md`。
 - P0：无限画布已有交互、保存恢复、动态节点、类型化端口与边、按图输入解析、
   Run Node、Run Downstream、stale descendants、故事板/视频候选评审和显式
   `timeline.place` 回填。当前缺口是 clip-storyboard v2 的当前环境
@@ -145,6 +157,102 @@ Owner：当前小说生成链路实现流。状态：进行中。
 provider invocation succeeded 不等于确定性规划或小说验收通过。验收仍以 active exec
 plan 和 `artifacts/runs/story-novel-canon-quality-real-<timestamp>/` 为准；不得用
 旧 66/100 样本、阶段性 provider 调用或人工接受理由代替。
+
+## P0: Chapter-planning Novel Quality v3
+
+:link: `docs/exec-plans/active/story-novel-planning-quality-v3.md`
+
+Owner：小说生成质量链路。状态：v3 代码与 focused tests 已落地，完整仓库和真实
+48 章验收未完成。
+
+- [x] StorySeed 结构化任务支持显式章节数与规划模型；冻结结构仍是唯一章数来源。
+- [x] 超过 32 章的 StorySeed 使用“分卷成长规划 + 每批最多 32 章细化”的有界链路；
+      例如 800×约 2500 字符形成约 200 万字目标，不增加总字数字段或应用级章数上限。
+- [x] 全书成长拆为认知、能力、资源、活动/时间尺度四条可选软曲线；只进入分卷规划
+      与最终吸引力审读，不作为逐章升级 KPI，允许蓄势、失败和有代价的回撤。
+- [x] Revision 冻结 planning/prose/audit 三阶段模型策略并兼容旧 `model`。
+- [x] Event/Memory 只进入章前规划；正文 prompt 不含原始候选、未来目录、evidence
+      规则或 expected/state delta；正文仅额外读取经过滤的当前章事件、当前可见
+      人物介绍、动机、状态和关系，不读未来人物或关系进展。
+- [x] V3 system、结构化大纲及修复、Canon、伏笔调度、批次/完整合同、brief、正文、
+      审计/返修与连续性检查全部接入统一 PromptManager；新 plan 冻结 policy v9，
+      invocation/ledger 保存 user rendered hash 和 system fingerprint；截断调用同样
+      落账，模板变更不会在 Resume 时静默污染旧证据链。
+- [x] 章节 brief、正文 blocks、服务端 expected delta、stable sentence spans、proof
+      audit、future guard 与确定性 Narrative 落账已接入 v3/v4 checkpoint。
+- [x] 正文/ledger 原子 checkpoint、局部 block 返修、candidate-only 与 evidence-only
+      Resume、完整 invocation/hash 审批门禁和 canonical-v3 下游门禁已覆盖 focused tests。
+- [x] Canon 主要实体可提前规划后依次登场；当前章确需新增的持久人物、地点、组织、
+      物件或概念以稳定 Revision-local ID 加入世界，绑定当前事件/初始状态/首次出现章，
+      门禁失败不落账且未来章节不得提前引用。
+- [x] 数百章上下文只保留当前引用及当前状态直接依赖；历史 Event/Memory 继续走预算
+      排序，避免所有已登场实体永久堆进 32K 硬上下文。
+- [x] 全局章节规划改为“模型叙事 effect + 服务端状态编译”：持久/场景地点分层、
+      全量结构错误向量、字段级 plan patch、复杂度自适应批次，以及 missing/unsupported
+      effect 双向语义审计；正文截断可保留完整 blocks 后只续缺失块。
+- [x] 每个 required event 冻结 action/time/actor/effort/timeline/knowledge 执行合同；
+      仅 Canon、状态、时间、知识和显式世界规则的直接矛盾硬阻断，写实程度、劳动略快、
+      戏剧化、节奏和文风仅作网文编辑建议。V3 不再要求逐字日期或独立 timeline/
+      milestone/thread proof；日期、未来实体、世界规则字符串只选择审计候选，当前状态与
+      相关未来状态边界仅进入 audit。商业网文默认长度为 2000–3000，章前 brief
+      使用 4–6 个大 beat；六章窗口输出冲突、爽点、关系、重复和钩子的非阻断读者信号。
+      所有 `story_novel_*` 运行模板及动态拼装模块均通过题材中性扫描；Story Novel +
+      StorySeed 单测 867 passed、1 skipped。
+- [x] 前端支持三个模型选择器、任务冻结、六阶段进度以及逐章 calls/tokens/latency/
+      failed blocks。
+- [x] 商业网文/超长大纲前端 focused 10 passed，lint 0 errors；全量前端基线为
+      485 passed / 9 个无关 ProductionCanvas failures；webpack 生产构建通过。
+- [ ] 跑完最终 Story Novel unit、backend quick/full、frontend lint/test/build、repo
+      docs/contracts、pre-commit 与生产镜像。
+- [ ] 使用 Docker dev Compose、真实 API/MySQL 与付费模型创建新 v3 Revision；48 章
+      中至少两章 ready 后正式 cancel，再 Resume 到 48/48 并证明旧正文/hash 不变。
+- [ ] 用 GPT-5.6 完成八批六章审读和一次全书综合；达到 75/100、结构/人物/世界观
+      各至少 7/10 且无 blocking 后，才审批、提升 canonical 并核验下游/旧版本隔离。
+
+## P0: Frozen-snapshot Long-form Quality v4
+
+:link: `docs/exec-plans/active/story-novel-frozen-snapshot-v4.md`
+
+Owner：小说生成链路。状态：实现中；v3 真实失败作为输入/验证快照漂移证据保留，
+不得以证据优先级补丁代替架构修复。
+
+- [ ] 新 Revision 使用 `story_novel_generation_plan.v4`、
+      `story_novel_continuity.v5` 和 provider 调用前持久化的 immutable
+      `planner_snapshot`；parser/repair/Resume 不得重新查询并重建上下文。
+- [ ] Series Bible/Roadmap 支持核心人物路线、分卷角色槽、动态实体提案、题材自定义
+      scope taxonomy、包含层级与跨节点连接；未来卷只保存软目标和不可撤销承诺。
+- [ ] Event/Memory 只进入章前规划；Chapter Intent 不输出业务 ID/from/to/evidence，
+      服务器编译唯一合同和 expected delta，正文仅接收当前可见人物/关系/事件/世界。
+- [ ] 完成 800 章结构压力、快照确定性、未来隔离、动态实体回滚、语义时间、局部返修、
+      Cancel/Resume hash 和 v2/v3 兼容回归。
+- [ ] 完成 backend/frontend/contracts/pre-commit/镜像/真实浏览器；再通过正式 UI/API、
+      MySQL 和付费模型完成新 48 章、Cancel/Resume、GPT-5.6 审读、Word 导出与审批。
+
+真实验收状态（2026-08-01）：Task `6948` 已 fail-closed；前 24 章 ready，第 25 章因
+长度门禁失败，未完成 48/48。对前 20 章的独立审读约为 58/100，并发现第 13 章在
+第 16–18 章权限建立前使用水权的跨章授权漏洞。当前 Revision 不得审批或提升
+Canonical；本轮提交仅保存实现与失败证据，后续应先修复跨章语义授权和返修可靠性，
+再决定是否启动新的付费验收。
+
+## P0: Generic Consistency And Readability V5
+
+:link: `docs/exec-plans/active/story-novel-generic-consistency-v5.md`
+
+Owner：小说生成链路。状态：实现已落地，灰度/付费验收未完成；默认版本保持 V4，
+V5 只在内部开关启用后用于新 Revision。
+
+- [x] 设计文档、active exec plan 和任务板边界已建立。
+- [x] 题材无关 Schema、事实图、事件图、Perspective、Evidence、Obligation 内核及
+      仓库依赖检查落地。
+- [x] V5 自动编译/冻结、全书模拟、整章正文、claim 抽取、可读性门禁、句段返修、
+      整章重写和 continuity v6 checkpoint 落地。
+- [x] V5 审批/下游门禁、Narrative 投影和只读一致性 UI 落地。
+- [x] 完成 V5 聚焦测试、文档/契约、前端 lint/build、本地非推送生产镜像和
+      Playwright 页面证据。
+- [ ] 清理或豁免仓库既有的 backend `story_parser`、whole-repo Ruff 与 Production
+      Canvas 测试失败后，补齐全仓绿灯。
+- [ ] 获得明确付费授权后完成多题材 6 章小样、V4/V5 盲测、provider-backed
+      返修/恢复浏览器路径与全新 48 章 GPT-5.6 验收；通过前不得切换默认版本。
 
 ## 已完成基线
 

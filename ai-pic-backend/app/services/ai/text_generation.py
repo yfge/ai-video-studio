@@ -7,10 +7,7 @@ from typing import Optional
 import httpx
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
-from app.services.llm_invocation import (
-    begin_llm_invocation,
-    finish_llm_invocation,
-)
+from app.services.llm_invocation import begin_llm_invocation, finish_llm_invocation
 
 
 class TextGenerationMixin:

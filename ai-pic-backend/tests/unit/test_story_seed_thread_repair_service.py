@@ -95,12 +95,12 @@ def _valid_repair():
             {
                 "thread_id": "thread-3",
                 "payoff_position": 3,
-                "evidence_key_event": "关于“thread-3”的最终证据确认：回答 thread-3",
+                "evidence_key_event": "回答 thread-3",
             },
             {
                 "thread_id": "thread-4",
                 "payoff_position": 3,
-                "evidence_key_event": "关于“thread-4”的最终证据确认：回答 thread-4",
+                "evidence_key_event": "回答 thread-4",
             },
         ]
     )
@@ -149,7 +149,7 @@ async def test_structure_uses_at_most_one_targeted_provider_repair(monkeypatch):
     assert len(calls) == 2
     assert story_marker not in calls[0][0][1]
     assert "只允许返回一次最小伏笔补丁" in calls[1][0][1]
-    assert "关于“thread-3”的最终证据确认：回答 thread-3" in calls[1][0][1]
+    assert '"authoritative_source_evidence":"回答 thread-3"' in calls[1][0][1]
     assert len(writes) == 1
     assert upgraded.structured_outline.thread_payoffs[-1].payoff_position == 3
 

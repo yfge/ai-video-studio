@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.services.validators.timeline_quality_validator import (
     EmotionCurveAnalysis,
     EmotionPoint,
@@ -93,9 +92,7 @@ class TestTimelineQualityResult:
 class TestTimelineQualityValidator:
     """Tests for TimelineQualityValidator."""
 
-    def test_validate_empty_beats(
-        self, validator: TimelineQualityValidator
-    ) -> None:
+    def test_validate_empty_beats(self, validator: TimelineQualityValidator) -> None:
         """Test validation with empty beats."""
         result = validator.validate([])
         assert result.passed is True
@@ -113,9 +110,7 @@ class TestTimelineQualityValidator:
         duration = validator._calculate_total_duration(beats)
         assert duration == 5000
 
-    def test_detect_language_chinese(
-        self, validator: TimelineQualityValidator
-    ) -> None:
+    def test_detect_language_chinese(self, validator: TimelineQualityValidator) -> None:
         """Test Chinese language detection."""
         beats = [
             {"text": "这是一段中文对白"},
@@ -124,9 +119,7 @@ class TestTimelineQualityValidator:
         lang = validator._detect_language(beats)
         assert lang == "zh"
 
-    def test_detect_language_english(
-        self, validator: TimelineQualityValidator
-    ) -> None:
+    def test_detect_language_english(self, validator: TimelineQualityValidator) -> None:
         """Test English language detection."""
         beats = [
             {"text": "This is English dialogue"},
@@ -146,9 +139,7 @@ class TestTimelineQualityValidator:
         lang = validator._detect_language(beats)
         assert lang == "ja"
 
-    def test_calculate_average_wps(
-        self, validator: TimelineQualityValidator
-    ) -> None:
+    def test_calculate_average_wps(self, validator: TimelineQualityValidator) -> None:
         """Test WPS calculation."""
         beats = [
             {
@@ -161,24 +152,18 @@ class TestTimelineQualityValidator:
         wps = validator._calculate_average_wps(beats, "zh")
         assert wps == 4.0  # 8 chars / 2 sec = 4 chars/sec
 
-    def test_check_rhythm_normal(
-        self, validator: TimelineQualityValidator
-    ) -> None:
+    def test_check_rhythm_normal(self, validator: TimelineQualityValidator) -> None:
         """Test rhythm check with normal speed."""
         issues = validator._check_rhythm(4.5, "zh")
         assert len(issues) == 0  # 4.5 is within normal range
 
-    def test_check_rhythm_too_slow(
-        self, validator: TimelineQualityValidator
-    ) -> None:
+    def test_check_rhythm_too_slow(self, validator: TimelineQualityValidator) -> None:
         """Test rhythm check with slow speed."""
         issues = validator._check_rhythm(2.0, "zh")
         assert len(issues) > 0
         assert issues[0].issue_type == TimelineQualityIssueType.RHYTHM_TOO_SLOW
 
-    def test_check_rhythm_too_fast(
-        self, validator: TimelineQualityValidator
-    ) -> None:
+    def test_check_rhythm_too_fast(self, validator: TimelineQualityValidator) -> None:
         """Test rhythm check with fast speed."""
         issues = validator._check_rhythm(8.0, "zh")
         assert len(issues) > 0
@@ -188,23 +173,17 @@ class TestTimelineQualityValidator:
         self, validator: TimelineQualityValidator
     ) -> None:
         """Test emotion intensity for high intensity content."""
-        intensity = validator._calculate_emotion_intensity(
-            "震惊！危机爆发了！", "愤怒"
-        )
+        intensity = validator._calculate_emotion_intensity("震惊！危机爆发了！", "愤怒")
         assert intensity > 0.3
 
     def test_calculate_emotion_intensity_low(
         self, validator: TimelineQualityValidator
     ) -> None:
         """Test emotion intensity for low intensity content."""
-        intensity = validator._calculate_emotion_intensity(
-            "平静的一天", "冷静"
-        )
+        intensity = validator._calculate_emotion_intensity("平静的一天", "冷静")
         assert intensity < 0.3
 
-    def test_analyze_emotion_curve(
-        self, validator: TimelineQualityValidator
-    ) -> None:
+    def test_analyze_emotion_curve(self, validator: TimelineQualityValidator) -> None:
         """Test emotion curve analysis."""
         beats = [
             {"start_ms": 0, "text": "平静的开始", "emotion": "平静"},
@@ -230,7 +209,8 @@ class TestTimelineQualityValidator:
         )
         issues = validator._check_emotion_curve(analysis)
         flat_issues = [
-            i for i in issues
+            i
+            for i in issues
             if i.issue_type == TimelineQualityIssueType.EMOTION_CURVE_FLAT
         ]
         assert len(flat_issues) > 0
@@ -240,20 +220,21 @@ class TestTimelineQualityValidator:
     ) -> None:
         """Test emotion curve check with choppy curve."""
         analysis = EmotionCurveAnalysis(
-            points=[EmotionPoint(time_ms=i * 100, emotion_value=0.5) for i in range(10)],
+            points=[
+                EmotionPoint(time_ms=i * 100, emotion_value=0.5) for i in range(10)
+            ],
             peaks=[1, 3, 5, 7, 9],  # Too many peaks
             variance=0.5,
         )
         issues = validator._check_emotion_curve(analysis)
         choppy_issues = [
-            i for i in issues
+            i
+            for i in issues
             if i.issue_type == TimelineQualityIssueType.EMOTION_CURVE_CHOPPY
         ]
         assert len(choppy_issues) > 0
 
-    def test_calculate_pause_ratio(
-        self, validator: TimelineQualityValidator
-    ) -> None:
+    def test_calculate_pause_ratio(self, validator: TimelineQualityValidator) -> None:
         """Test pause ratio calculation."""
         beats = [
             {"beat_type": "dialogue", "start_ms": 0, "end_ms": 1000},
@@ -268,12 +249,23 @@ class TestTimelineQualityValidator:
     ) -> None:
         """Test missing dramatic pause detection."""
         beats = [
-            {"beat_type": "dialogue", "text": "这是一个笑点哈哈", "start_ms": 0, "end_ms": 1000},
-            {"beat_type": "dialogue", "text": "继续说", "start_ms": 1000, "end_ms": 2000},
+            {
+                "beat_type": "dialogue",
+                "text": "这是一个笑点哈哈",
+                "start_ms": 0,
+                "end_ms": 1000,
+            },
+            {
+                "beat_type": "dialogue",
+                "text": "继续说",
+                "start_ms": 1000,
+                "end_ms": 2000,
+            },
         ]
         issues = validator._check_dramatic_pauses(beats)
         missing_issues = [
-            i for i in issues
+            i
+            for i in issues
             if i.issue_type == TimelineQualityIssueType.MISSING_DRAMATIC_PAUSE
         ]
         assert len(missing_issues) > 0
@@ -283,20 +275,29 @@ class TestTimelineQualityValidator:
     ) -> None:
         """Test when dramatic pause is present."""
         beats = [
-            {"beat_type": "dialogue", "text": "这是一个笑点哈哈", "start_ms": 0, "end_ms": 1000},
+            {
+                "beat_type": "dialogue",
+                "text": "这是一个笑点哈哈",
+                "start_ms": 0,
+                "end_ms": 1000,
+            },
             {"beat_type": "pause", "start_ms": 1000, "end_ms": 1800},  # 800ms pause
-            {"beat_type": "dialogue", "text": "继续说", "start_ms": 1800, "end_ms": 2800},
+            {
+                "beat_type": "dialogue",
+                "text": "继续说",
+                "start_ms": 1800,
+                "end_ms": 2800,
+            },
         ]
         issues = validator._check_dramatic_pauses(beats)
         missing_issues = [
-            i for i in issues
+            i
+            for i in issues
             if i.issue_type == TimelineQualityIssueType.MISSING_DRAMATIC_PAUSE
         ]
         assert len(missing_issues) == 0
 
-    def test_check_excessive_pause(
-        self, validator: TimelineQualityValidator
-    ) -> None:
+    def test_check_excessive_pause(self, validator: TimelineQualityValidator) -> None:
         """Test excessive pause detection."""
         beats = [
             {"beat_type": "dialogue", "text": "说话", "start_ms": 0, "end_ms": 1000},
@@ -305,14 +306,13 @@ class TestTimelineQualityValidator:
         ]
         issues = validator._check_dramatic_pauses(beats)
         excessive_issues = [
-            i for i in issues
+            i
+            for i in issues
             if i.issue_type == TimelineQualityIssueType.EXCESSIVE_PAUSE
         ]
         assert len(excessive_issues) > 0
 
-    def test_check_duration_drift(
-        self, validator: TimelineQualityValidator
-    ) -> None:
+    def test_check_duration_drift(self, validator: TimelineQualityValidator) -> None:
         """Test duration drift detection."""
         # 50% drift (150000 vs 100000)
         issues = validator._check_duration_drift(150000, 100000)

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import ast
 import re
 from pathlib import Path
 from typing import Any
@@ -35,6 +36,22 @@ SOURCE_ROOTS = (
     REPO_ROOT / "ai-pic-backend" / "scripts",
     REPO_ROOT / "ai-pic-frontend" / "src",
     REPO_ROOT / "scripts",
+)
+NARRATIVE_CORE_PREFIX = "ai-pic-backend/app/services/narrative_consistency/"
+FORBIDDEN_NARRATIVE_IMPORTS = (
+    "app.api",
+    "app.models",
+    "app.repositories",
+    "app.services.providers",
+    "app.services.story",
+    "fastapi",
+    "sqlalchemy",
+)
+FORBIDDEN_NARRATIVE_STATE_TERMS = (
+    "location_transitions",
+    "knowledge_grants",
+    "possessions",
+    "owner_id",
 )
 
 
@@ -196,6 +213,45 @@ def collect_legacy_references(paths: list[Path]) -> list[dict[str, Any]]:
     return sorted(violations, key=lambda item: item["path"])
 
 
+def collect_narrative_core_boundaries(paths: list[Path]) -> list[dict[str, Any]]:
+    violations: list[dict[str, Any]] = []
+    for path in paths:
+        rel = relative(path)
+        if not rel.startswith(NARRATIVE_CORE_PREFIX) or path.suffix != ".py":
+            continue
+        text = read_text(path)
+        imports = _python_imports(text)
+        forbidden_imports = sorted(
+            value for value in imports if value.startswith(FORBIDDEN_NARRATIVE_IMPORTS)
+        )
+        state_terms = sorted(
+            term for term in FORBIDDEN_NARRATIVE_STATE_TERMS if term in text
+        )
+        if forbidden_imports or state_terms:
+            violations.append(
+                {
+                    "path": rel,
+                    "forbidden_imports": forbidden_imports,
+                    "legacy_state_terms": state_terms,
+                }
+            )
+    return sorted(violations, key=lambda item: item["path"])
+
+
+def _python_imports(text: str) -> set[str]:
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return set()
+    result = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            result.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            result.add(node.module)
+    return result
+
+
 def summarize(report: dict[str, Any]) -> dict[str, Any]:
     violations = report["violations"]
     docs_errors = report["docs_drift"]["errors"]
@@ -204,6 +260,7 @@ def summarize(report: dict[str, Any]) -> dict[str, Any]:
         "route_handler_violations": len(violations["route_handlers"]),
         "direct_query_files": len(violations["direct_queries"]),
         "legacy_reference_files": len(violations["legacy_references"]),
+        "narrative_core_boundary_files": len(violations["narrative_core_boundaries"]),
         "docs_drift_errors": len(docs_errors),
         "checked_files": report["checked_files"],
     }

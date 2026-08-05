@@ -62,7 +62,8 @@ class StoryQuickFixService:
 
         # Identify fixable issues
         fixable_issues = [
-            c for c in initial_result.checks
+            c
+            for c in initial_result.checks
             if not c.passed and c.name in AUTO_FIXABLE_CHECKS
         ]
 
@@ -92,10 +93,12 @@ class StoryQuickFixService:
                     self._apply_fix(story, fix)
                 fixes_applied.append(fix)
             else:
-                fixes_skipped.append(FixSkipped(
-                    check_name=issue.name,
-                    reason="Could not generate fix",
-                ))
+                fixes_skipped.append(
+                    FixSkipped(
+                        check_name=issue.name,
+                        reason="Could not generate fix",
+                    )
+                )
 
         # Commit changes if not dry run
         if not dry_run and fixes_applied:
@@ -284,4 +287,6 @@ class StoryQuickFixService:
         """Apply a fix to the story model."""
         setattr(story, fix.field, fix.new_value)
         new_val_preview = str(fix.new_value)[:50] if fix.new_value else ""
-        logger.info(f"Applied fix for {fix.check_name}: {fix.field}={new_val_preview}...")
+        logger.info(
+            f"Applied fix for {fix.check_name}: {fix.field}={new_val_preview}..."
+        )

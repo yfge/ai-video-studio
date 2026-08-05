@@ -5,10 +5,8 @@ import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import React from "react";
 
 import { StoryNovelLengthPanel } from "../src/components/features/story-detail/StoryNovelLengthPanel";
-import type {
-  Story,
-  StoryNovelCreateRevisionPayload,
-} from "../src/utils/api/types";
+import type { StoryNovelCreateRevisionPayload } from "../src/utils/api/types";
+import { frontendResponse, story } from "./storyNovelLengthPanelFixtures";
 
 describe("StoryNovelLengthPanel acceptance", () => {
   afterEach(() => cleanup());
@@ -30,17 +28,17 @@ describe("StoryNovelLengthPanel acceptance", () => {
       );
 
       await waitFor(() =>
-        assertTotals(utils.container, "8,000", "6,000–10,000"),
+        assertTotals(utils.container, "5,000", "4,000–6,000"),
       );
-      assert.ok(utils.getByText("默认每章 3000–5000 字符，目标 4000"));
+      assert.ok(utils.getByText("默认每章 2000–3000 字符，目标 2500"));
       fireEvent.click(utils.getByText("逐章设置（0 章已覆盖）"));
 
       changeChapterRange(utils, 0, 3300, 4300, 5300);
-      assertTotals(utils.container, "8,300", "6,300–10,300");
+      assertTotals(utils.container, "6,800", "5,300–8,300");
       assert.ok(utils.getByText("逐章设置（1 章已覆盖）"));
 
       fireEvent.click(utils.getAllByRole("button", { name: "使用默认" })[0]);
-      assertTotals(utils.container, "8,000", "6,000–10,000");
+      assertTotals(utils.container, "5,000", "4,000–6,000");
       assert.ok(utils.getByText("逐章设置（0 章已覆盖）"));
 
       changeChapterRange(utils, 0, 3300, 4300, 5300);
@@ -48,11 +46,11 @@ describe("StoryNovelLengthPanel acceptance", () => {
         utils.getByRole("button", { name: "仅应用到未覆盖章节" }),
       );
       assert.ok(utils.getByText("逐章设置（2 章已覆盖）"));
-      assertTotals(utils.container, "8,300", "6,300–10,300");
+      assertTotals(utils.container, "6,800", "5,300–8,300");
 
       fireEvent.click(utils.getByRole("button", { name: "清除全部单章覆盖" }));
       assert.ok(utils.getByText("逐章设置（0 章已覆盖）"));
-      assertTotals(utils.container, "8,000", "6,000–10,000");
+      assertTotals(utils.container, "5,000", "4,000–6,000");
 
       fireEvent.change(utils.getByLabelText("长度预设"), {
         target: { value: "short_serial" },
@@ -62,11 +60,11 @@ describe("StoryNovelLengthPanel acceptance", () => {
 
       fireEvent.click(utils.getByRole("button", { name: "应用到全部章节" }));
       fireEvent.change(utils.getByLabelText("长度预设"), {
-        target: { value: "standard_serial" },
+        target: { value: "commercial_serial" },
       });
       assertTotals(utils.container, "4,400", "3,000–6,000");
       fireEvent.click(utils.getByRole("button", { name: "清除全部单章覆盖" }));
-      assertTotals(utils.container, "8,000", "6,000–10,000");
+      assertTotals(utils.container, "5,000", "4,000–6,000");
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -95,7 +93,7 @@ describe("StoryNovelLengthPanel acceptance", () => {
       await waitFor(() =>
         assert.equal(
           (utils.getByLabelText("长度预设") as HTMLSelectElement).value,
-          "standard_serial",
+          "commercial_serial",
         ),
       );
       fireEvent.change(utils.getByLabelText("长度预设"), {
@@ -144,6 +142,11 @@ describe("StoryNovelLengthPanel acceptance", () => {
           },
         },
         model: "codex:gpt-5.6",
+        model_policy: {
+          planning_model: "codex:gpt-5.6",
+          prose_model: "codex:gpt-5.6",
+          audit_model: null,
+        },
       });
     } finally {
       globalThis.fetch = originalFetch;
@@ -176,88 +179,3 @@ function assertTotals(container: HTMLElement, target: string, range: string) {
   assert.ok(text.includes(`预计目标：${target}字`), text);
   assert.ok(text.includes(`允许范围：${range}字`), text);
 }
-
-function profileResponse() {
-  return new Response(
-    JSON.stringify({
-      success: true,
-      data: {
-        items: [
-          {
-            profile_id: "standard_serial",
-            name: "标准连载",
-            min_chars: 3000,
-            target_chars: 4000,
-            max_chars: 5000,
-          },
-          {
-            profile_id: "short_serial",
-            name: "短章连载",
-            min_chars: 1500,
-            target_chars: 2200,
-            max_chars: 3000,
-          },
-        ],
-      },
-    }),
-    { headers: { "content-type": "application/json" } },
-  );
-}
-
-function frontendResponse(input: string | URL | Request) {
-  return String(input).includes("/ai/models/available")
-    ? new Response(
-        JSON.stringify({
-          success: true,
-          data: {
-            models: [
-              {
-                model_id: "codex:gpt-5.6",
-                id: "gpt-5.6",
-                name: "GPT-5.6",
-                provider: "codex",
-                type: "text_generation",
-                capabilities: ["text_generation"],
-              },
-            ],
-          },
-        }),
-        { headers: { "content-type": "application/json" } },
-      )
-    : profileResponse();
-}
-
-const story = {
-  id: 1,
-  business_id: "story-business-id",
-  story_seed_status: "confirmed",
-  story_seed: {
-    schema: "story_seed_v2",
-    structured_outline: {
-      status: "confirmed",
-      version: 7,
-      thread_schedule_version: 1,
-      thread_payoffs: [],
-      chapters: [
-        {
-          position: 1,
-          title: "第一章",
-          goal: "发现线索",
-          key_events: ["发现红尘"],
-          character_focus: ["褚蓝"],
-          open_threads: [],
-          end_state: "保存样本",
-        },
-        {
-          position: 2,
-          title: "第二章",
-          goal: "追查来源",
-          key_events: ["检查暗渠"],
-          character_focus: ["褚蓝"],
-          open_threads: [],
-          end_state: "锁定入口",
-        },
-      ],
-    },
-  },
-} as Story;

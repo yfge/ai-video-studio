@@ -1,8 +1,7 @@
-from typing import Any
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
-
 from app.services.script_agent import ScriptLangGraphAgent
 
 

@@ -4,7 +4,7 @@ services:
       context: ../ai-pic-backend
       dockerfile: ../docker/Dockerfile.backend.dev
     env_file:
-      - .env.lite
+      - ${HARNESS_ENV_FILE:-.env.lite}
     working_dir: /app/ai-pic-backend
     command: ["/bin/bash", "/app/backend-entrypoint.sh"]
     volumes:
@@ -19,7 +19,7 @@ services:
       context: ../ai-pic-frontend
       dockerfile: ../docker/Dockerfile.frontend.dev
     env_file:
-      - .env.lite
+      - ${HARNESS_ENV_FILE:-.env.lite}
     environment:
       NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-http://localhost:8089}"
       NEXT_PUBLIC_HARNESS_RUN_ID: "${NEXT_PUBLIC_HARNESS_RUN_ID:-local-harness}"

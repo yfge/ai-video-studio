@@ -1,0 +1,74 @@
+为且仅为当前一章编译 typed contract 与写作 brief。
+输入：{{ package_input_json }}
+
+严格边界：
+1. current_chapter_skeleton 是冻结 StorySeed 的当前章权威文本；标题、目标、key_events、
+   character_focus、open_threads、end_state 与长度合同不得改写、增删或重排。
+2. prior_world_events 与 prior_character_memories 只用于当前章因果、动机、知情边界和情绪延续；
+   不得把其中的计划外观察升级为硬事件或状态变化。
+3. 输入没有未来章节。禁止猜测、补写或预告未来标题、事件、日期、地点、角色行动、结论和 payoff。
+4. typed effects 只描述当前 key_events 明确造成的长期变化。普通走动、吃饭、工具使用、临时对话、
+   环境描写和符合当前 story_format 的节奏动作不是长期状态；不得为了“完整”擅自登记。
+5. required_event_ids、timeline_event_bindings、milestones_consumed、payoffs_due、canon_refs、
+   forbidden_event_ids 必须逐字复制 current_chapter_skeleton。
+6. state_transitions、location_transitions、knowledge_grants 必须以 state_before 为起点；
+   preconditions 只允许 typed 的 subject_id/field/operator/value；无法确定时输出 []，
+   禁止输出 predicate、description 等自由文本前置条件；
+   operator/value 只属于 preconditions，绝对不得用于 state_transitions。
+   state_transitions 每项只能使用 subject_id/field/from_value/to_value/reason；from_value
+   必须逐字等于 state_before 当前值，to_value 是完整目标 JSON 值。列表变化必须给出完整前后数组，
+   禁止 add/add_to_set/remove 等操作符，也禁止用 value 或 source_event_id 代替 to_value/reason。
+   location_transitions 每项只能使用 subject_id/from_location_id/to_location_id/means；
+   from_location_id 必须等于 state_before 当前地点，人物不得使用 null 起点。
+   knowledge_grants 每项只能使用 character_id/fact_id/source_event_id，source_event_id 必须属于
+   当前 required_event_ids；不得输出 fact_description、knowledge、fact_ids 等替代字段。
+   知识只登记会影响后续行动的长期事实。不得把在场旁听、常识或临时信息扩大成全员记忆。
+   knowledge_grants 必须使用 character_id，禁止用 subject_id、角色名或组织 ID 代替；
+   field=location 绝对不得写入 state_transitions，人物移动只写 location_transitions；
+   普通场景道具不得凭空获得 obj-* ID 或被登记为长期移动状态。
+   物件所有权变化只写物件的 owner_id；人物 possessions 由服务端随 owner_id 确定性维护，绝对不得写入 state_transitions。
+   current_visible_canon 中若实体在 state_before 具有明确的未创建/不存在 status，而当前 key_event 或
+   end_state 首次让它成为可持续使用的真实人物、地点、组织、物件或概念，必须在本章写入唯一的
+   status 创建转换，from_value 逐字取 state_before，to_value 只表达本章已经成立的有限状态；
+   不得延后到后续使用章，也不得提前复制未来里程碑终态。已存在实体只记录当前事件实际造成的升级。
+7. execution_contracts 必须与 required_event_ids 同序一一对应。action_phase 只允许
+   instant/start/progress/complete：瞬时动作写 instant，刚启动写 start，持续推进但未完成写 progress，
+   key_event 明确完成才写 complete；activity、reaction、observation 等都不是合法值。
+   time_scope 只允许 instant/same_day/multi_day/unspecified；具体日期只能通过 timeline_ids 绑定，
+   绝对不得把“正月十八”等日期字符串写进 time_scope。effort 只允许
+   none/light/moderate/heavy/unspecified，不得改写成自然语言。
+   由冻结 story_format 指定的节奏快慢不是硬冲突。
+8. 世界按章展开：current_visible_canon 中已有但本章才登场的主要实体必须复用现有 ID，不得重复创建。
+   若当前 key_event 确实需要一个此前不存在于当前修订版世界、且后续仍会保留身份或状态的人物、地点、
+   组织、物件或概念，必须写入 entity_introductions。每项只允许 ref/kind/name/aliases/attributes/
+   initial_state/source_event_id/persistence/reason；ref 是本次 JSON 内部引用，其他 actor_id、subject_id、
+   character_id、location ID 或关系值可引用它，服务端会换成稳定 ID。persistence 固定为 revision，
+   source_event_id 必须是当前事件。一次性路人、泛称群体、普通用品和仅用于环境描写的场景细节不得登记。
+   不得为制造升级感而强行扩张世界；只有当前大纲与因果确实需要时才引入。
+9. brief 只细化当前合同，并服从冻结 story_invariants 与 novel_delivery；当 novel_delivery.profile_id
+   为 commercial_serial 时形成“压力或欲望—选择—行动—可见收益/代价—钩子”，其他格式按其受众组织节奏。
+   避免流程报告、元叙事说明和冗长停滞。每个 beat 承担不同叙事任务，同一结论只完整
+   呈现一次。只有当前合同确实涉及观察、推理、专业能力或背景知识时，才通过角色的目标、选择、
+   行动及结果自然呈现；不得强套固定步骤。特殊背景、知识来源、机制或能力只能来自 StorySeed/Canon。
+   若当前合同授权关系弧推进，可形成职责互补、信任、分歧或情绪变化，
+   但不得自行新增关系或强制升级。章末钩子来自新风险、新选择或未兑现收益，
+   不得复述摘要。
+10. current_progression_arc 是多章范围的软方向，只用于理解当前章在阶段中的位置。growth 的认知、
+    能力、资源、活动/时间尺度字段可以为空；不得在本章逐项兑现、补数值或为了“达标”改写 key_events。
+    失败、蓄势和有代价的回撤均为合法阶段推进。
+11. continuity_watchpoints 只提炼会影响当前章写法的既有连续性约束，例如临时借用是否到期、
+    可用资源是否已分配、债务/承诺是否成立、行动所需时间、尚未满足的因果前置或既有关系边界。
+    每项必须从 prior_world_events/prior_character_memories 的 evidence_id，或 state_before.subjects 的
+    subject ID 绑定来源；不得引用 future 信息。没有相关约束时输出 []，最多 12 项。
+    watchpoint 只是“不得与既有事实矛盾”的护栏，不要求正文逐项提及，更不得把它当成本章新增事件、
+    状态变化或升级 KPI。kind 只允许 resource/obligation/time/causal/relationship。
+chapter_contract 必须包含当前章全部 typed 字段。chapter_brief 只需输出叙事字段；
+服务端会确定性编译 effect manifest、expected delta，并绑定 hash、execution_contracts、
+effect_contract_ids、允许实体及线程 ID。不要输出 effect_coverage、effect_refs、proof 或证据。
+beats 数量必须等于 expected_beat_count，beat_id 从 B01 连续编号，所有 target_chars 之和等于目标字符数；
+bound_event_ids 只能引用当前 required_event_ids，并完整覆盖。
+
+只输出 JSON：
+{"chapter_contract":{"position":1,"title":"标题","goal":"目标","key_events":["事件"],"character_focus":["角色"],"open_threads":[],"end_state":"章末状态","target_chars":2500,"preconditions":[],"required_event_ids":["event-1-1"],"timeline_event_bindings":{},"state_transitions":[],"knowledge_grants":[],"location_transitions":[],"milestones_consumed":[],"forbidden_event_ids":[],"payoffs_due":[],"canon_refs":[],"entity_introductions":[{"ref":"new-1","kind":"character","name":"新人物","aliases":[],"attributes":{"occupation":"当前身份"},"initial_state":{"location":"loc-current","knowledge":[],"relationships":{}},"source_event_id":"event-1-1","persistence":"revision","reason":"后续仍承担明确叙事职责"}],"execution_contracts":[{"event_id":"event-1-1","action_phase":"instant","time_scope":"unspecified","actor_ids":["new-1"],"effort":"light","timeline_ids":[],"knowledge_fact_ids":[]}]},"chapter_brief":{"beats":[{"beat_id":"B01","purpose":"叙事动作","target_chars":420,"bound_event_ids":["event-1-1"]}],"character_motivations":[{"character_id":"new-1","motivation":"当前动机"}],"emotional_continuity":"情绪延续","causal_bridge":"因果桥","summary":"本章摘要","cliffhanger":"章末钩子","continuity_watchpoints":[{"watchpoint_id":"W01","kind":"resource","constraint":"既有工具的临时借用已经到期，除非本章事件重新取得，否则不得继续使用","source_evidence_ids":["既有event ID"],"source_subject_ids":[]}]}}
+
+不得输出正文、证据、proof、state delta、未来目录或解释文字。

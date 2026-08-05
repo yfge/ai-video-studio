@@ -50,9 +50,7 @@ class StoryboardReActReasoner:
 
         def select_node(state: Dict[str, Any]) -> Dict[str, Any]:
             reasoning = state.get("reasoning", []) + ["scenes_selected"]
-            scope, error = compute_scene_scope(
-                script, selected_scenes=selected_scenes
-            )
+            scope, error = compute_scene_scope(script, selected_scenes=selected_scenes)
             if error:
                 return {
                     "error": error,
@@ -66,8 +64,7 @@ class StoryboardReActReasoner:
             if not scope:
                 return {
                     "error": "scene_scope_empty",
-                    "reasoning": state.get("reasoning", [])
-                    + ["scene_scope_empty"],
+                    "reasoning": state.get("reasoning", []) + ["scene_scope_empty"],
                 }
             plan_resp = await self.service.generate_storyboard_plan(
                 script=script,

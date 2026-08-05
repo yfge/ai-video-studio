@@ -8,7 +8,6 @@ from typing import Any, Dict, Optional
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import httpx
-
 from app.services.video.video_duration import resolve_duration_ceil
 
 
@@ -70,7 +69,9 @@ def resolve_duration(
         options = [5, 6, 8]
     else:
         options = [4, 6, 8]
-    return resolve_duration_ceil(target_seconds=dur, allowed_durations=options).provider_seconds
+    return resolve_duration_ceil(
+        target_seconds=dur, allowed_durations=options
+    ).provider_seconds
 
 
 def supports_reference_images(model_id: str) -> bool:

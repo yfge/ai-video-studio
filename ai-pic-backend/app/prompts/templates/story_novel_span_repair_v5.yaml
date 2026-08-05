@@ -1,0 +1,5 @@
+description: Replace one minimal v5 sentence span
+category: story
+version: "1.0"
+variables:
+  input_json: {required: true, type: string}

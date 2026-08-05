@@ -1,6 +1,6 @@
 ---
 id: 2026-02-05T02-35-00Z-p1-script-agent-integration
-date: 2026-02-05T02:35:00Z
+date: "2026-02-05T02:35:00Z"
 participants: [human, claude-sonnet-4.5]
 models: [claude-sonnet-4-5-20250929]
 tags: [backend, script-agent, episode-characters, integration]
@@ -25,10 +25,12 @@ summary: "Integrated Episode character validation into Script Agent"
 ### Modified: `ai-pic-backend/app/services/script_agent.py`
 
 **1. Updated `_validate_script_characters` method signature** (line 86):
+
 - Added optional parameters: `episode_id: Optional[int] = None` and `db: Optional["Session"] = None`
 - Method now accepts Episode context for character validation
 
 **2. Added Episode character fetching logic** (inside `_validate_script_characters`):
+
 ```python
 if episode_id and db:
     try:
@@ -59,13 +61,16 @@ if episode_id and db:
 ```
 
 **3. Updated `generate` method** (line 647):
+
 - Already had `db: Optional["Session"] = None` parameter added in previous work
 
 **4. Updated call site** (line 1336):
+
 - Changed from: `char_validation = self._validate_script_characters(content, story_characters)`
 - To: `char_validation = self._validate_script_characters(content, story_characters, episode.get("id"), db)`
 
 **Integration Logic:**
+
 - When both `episode_id` and `db` are provided, fetches EpisodeCharacter records for the episode
 - Builds character profiles for Episode temporary characters (delivery person, doctor, etc.)
 - Adds them to the alias map and validation profiles
@@ -75,35 +80,41 @@ if episode_id and db:
 ## Validation
 
 ✅ **Syntax Check:**
+
 ```bash
 python -m py_compile app/services/script_agent.py
 # Output: ✅ Syntax check passed
 ```
 
 ✅ **Unit Tests:**
+
 ```bash
 pytest tests/unit/test_episode_character_service.py -v
 # Result: 8 passed, all tests pass
 ```
 
 ✅ **Backward Compatibility:**
+
 - Optional parameters ensure existing calls without episode_id/db still work
 - No changes required to other call sites
 
 ## Architecture Notes
 
 **Integration Pattern:**
+
 - Script Agent now validates both Story-level characters and Episode-level temporary characters
 - Episode characters are fetched on-demand when episode_id is provided
 - Character profiles merged before validation, ensuring consistent character naming in scripts
 
 **Character Validation Flow:**
+
 1. Story characters added to profiles (always)
 2. Episode characters fetched and added to profiles (when episode_id provided)
 3. Script dialogues validated against combined character list
 4. Unknown character names reported as warnings
 
 **Why This Matters:**
+
 - Scripts can now reference temporary characters (快递员, 医生, etc.) without "unknown_names" warnings
 - Validation ensures character consistency across Story and Episode contexts
 - Enables proper voice binding for temporary characters in dialogue generation
@@ -111,16 +122,19 @@ pytest tests/unit/test_episode_character_service.py -v
 ## Next Steps
 
 ### P1.2: Script Character Policy Integration (~50 lines)
+
 - File: `app/services/script/script_character_policy.py`
 - Add `build_episode_alias_map()` function
 - Update `enforce_script_character_policy()` to use combined alias map
 
 ### P1.3: Context Pack Integration (~80 lines)
+
 - File: `app/services/context_pack/story_context_pack_builder.py`
 - Add `build_episode_context_pack()` function
 - Implement budget allocation (50% Story主角 + 50% Episode临时角色)
 
 ### P1.4: Integration Tests (~200 lines)
+
 - File: `tests/integration/api/test_episode_characters_api.py`
 - End-to-end API tests
 - Voice binding integration tests

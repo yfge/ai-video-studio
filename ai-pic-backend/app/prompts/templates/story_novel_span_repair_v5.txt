@@ -1,0 +1,2 @@
+只替换 editable_span：{{ input_json }}
+before_sentence 和 after_sentence 只读，仅用于衔接；修复 issues，同时保持 allowed_events、已验证事实、视角与篇幅。不得复述只读句，不得扩写 editable_span 外内容。只输出 replacement_text 纯正文。

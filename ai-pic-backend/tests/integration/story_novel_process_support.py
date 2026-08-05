@@ -17,6 +17,38 @@ def outline(status="confirmed", version=1):
     return {
         "status": status,
         "version": version,
+        "roadmap_version": 1,
+        "planning_structure_version": 1,
+        "requested_chapter_count": 2,
+        "planning_model": "deepseek:plan",
+        "core_character_routes": [
+            {
+                "character_ref": "vip-main",
+                "narrative_function": "主角",
+                "first_allowed_position": 1,
+                "planned_arc_id": "arc-001",
+                "start_direction": "尚未知情",
+                "terminal_direction": "公开真相",
+            }
+        ],
+        "scope_taxonomy": [{"type_id": "zone", "display_name": "活动范围"}],
+        "initial_scope_nodes": [
+            {
+                "scope_id": "scope-opening",
+                "scope_type": "zone",
+                "display_name": "开篇范围",
+            }
+        ],
+        "progression_arcs": [
+            {
+                "arc_id": "arc-001",
+                "title": "追查异常",
+                "start_position": 1,
+                "end_position": 2,
+                "narrative_goal": "从发现异常到公开真相",
+                "ending_state": "真相已经公开",
+            }
+        ],
         "thread_schedule_version": 1,
         "thread_payoffs": [],
         "chapters": [

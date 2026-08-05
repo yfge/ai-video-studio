@@ -69,7 +69,7 @@ def test_video_motion_prompt_expands_short_timeline_slot_for_provider() -> None:
     clip["duration_ms"] = 1240
     clip["source_refs"]["timeline_shot_plan"]["video_prompt"] = (
         "Plot: 截图投到主屏。 Duration: 1240ms. "
-        "Motion timeline: [{\"at_ms\": 0, \"action\": \"截图出现\"}]"
+        'Motion timeline: [{"at_ms": 0, "action": "截图出现"}]'
     )
 
     prompt, _metadata = build_timeline_clip_video_motion_prompt(clip)

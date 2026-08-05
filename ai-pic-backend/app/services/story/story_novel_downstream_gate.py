@@ -13,7 +13,11 @@ from fastapi import HTTPException
 from pydantic import ValidationError
 
 from .story_novel_domain import active_chapters, materialize_content, sha256_text
+from .story_novel_downstream_chapter import chapter_is_ready
 from .story_novel_length_service import generation_plan_hash
+from .story_novel_plan_versions import V3_SCHEMA, V4_SCHEMA, V5_SCHEMA
+from .story_novel_v3_plan import valid_v3_plan_fields
+from .story_novel_v5_plan import valid_v5_plan
 
 
 def _error(status_code: int, code: str, message: str) -> HTTPException:
@@ -68,15 +72,22 @@ def require_canonical_revision(revision, *, expected_story=None):
         )
 
     plan = dict(revision.generation_plan or {})
+    plan_valid = (
+        valid_v5_plan(plan, revision.story_snapshot or {})
+        if plan.get("schema") == V5_SCHEMA
+        else valid_v3_plan_fields(plan)
+    )
     if (
-        plan.get("status") != "ready"
+        plan.get("schema") not in {V3_SCHEMA, V4_SCHEMA, V5_SCHEMA}
+        or plan.get("status") != "ready"
         or int(plan.get("version") or 0) < 1
+        or not plan_valid
         or plan.get("plan_hash") != generation_plan_hash(plan)
     ):
         raise _error(
             409,
             "NOVEL_GENERATION_PLAN_STALE",
-            "小说生成计划未就绪，或 plan version/hash 已失效",
+            "剧集/剧本只接受已审批 canonical v3/v4/v5 小说，或 plan version/hash 已失效",
         )
     plan_positions = [
         int(row.get("position") or 0) for row in plan.get("chapters") or []
@@ -93,7 +104,11 @@ def require_canonical_revision(revision, *, expected_story=None):
     invalid = [
         chapter.position
         for chapter in chapters
-        if not _chapter_is_ready(chapter, ledger_rows.get(str(chapter.position)) or {})
+        if not chapter_is_ready(
+            chapter,
+            ledger_rows.get(str(chapter.position)) or {},
+            require_v5=plan.get("schema") == V5_SCHEMA,
+        )
     ]
     if invalid or ledger.get("state_status") in {"failed", "stale"}:
         raise _error(
@@ -231,14 +246,4 @@ def adaptation_plan_hash(plan: dict[str, Any]) -> str:
                 "episodes",
             )
         }
-    )
-
-
-def _chapter_is_ready(chapter, entry: dict[str, Any]) -> bool:
-    return (
-        chapter.review_status in {"ready", "target_changed"}
-        and entry.get("status") == "ready"
-        and entry.get("extraction_status") == "ready"
-        and entry.get("body_hash") == chapter.content_hash
-        and entry.get("source_hash") == novel_chapter_source_hash(chapter)
     )

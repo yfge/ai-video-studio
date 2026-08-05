@@ -12,6 +12,11 @@ from .story_novel_memory_context import (
 )
 
 
+def ensure_draft(revision) -> None:
+    if revision.lifecycle_status != "draft":
+        raise HTTPException(status_code=409, detail="已审批小说不可编辑，请克隆新草稿")
+
+
 def save_chapter(service, revision_id: str, chapter_id: str, request):
     revision = service.revision(revision_id)
     service._ensure_draft(revision)

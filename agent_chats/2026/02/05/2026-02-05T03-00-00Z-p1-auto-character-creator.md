@@ -1,6 +1,6 @@
 ---
 id: 2026-02-05T03-00-00Z-p1-auto-character-creator
-date: 2026-02-05T03:00:00Z
+date: "2026-02-05T03:00:00Z"
 participants: [human, claude-sonnet-4.5]
 models: [claude-sonnet-4-5-20250929]
 tags: [backend, script, episode-characters, auto-generation, workflow]
@@ -29,6 +29,7 @@ summary: "Created auto character creator service to orchestrate complete auto-ge
 ### Created: `ai-pic-backend/app/services/script/auto_character_creator.py` (~330 lines)
 
 **1. Main Orchestration Function:**
+
 ```python
 async def auto_create_episode_characters(
     *,
@@ -43,6 +44,7 @@ async def auto_create_episode_characters(
 ```
 
 **Workflow Steps:**
+
 1. **Extract**: Call `extract_temporary_characters()` (P1.5)
 2. **VirtualIP**: Get or create default VirtualIP
 3. **Context**: Extract scene context from script
@@ -54,6 +56,7 @@ async def auto_create_episode_characters(
 6. **Return**: List of created character info
 
 **2. Single Character Creator:**
+
 ```python
 async def _create_single_character(
     *,
@@ -67,6 +70,7 @@ async def _create_single_character(
 ```
 
 **Creates EpisodeCharacter with:**
+
 - `character_name`: From extracted info
 - `role_type`: "temporary"
 - `importance`: Inferred from dialogue count (1-5)
@@ -79,6 +83,7 @@ async def _create_single_character(
 - `extra_metadata`: Auto-creation metadata
 
 **3. Default VirtualIP Management:**
+
 ```python
 def _get_or_create_default_virtual_ip(
     *,
@@ -89,11 +94,13 @@ def _get_or_create_default_virtual_ip(
 ```
 
 **VirtualIP Selection Logic:**
+
 1. If `virtual_ip_id` provided → Use it
 2. Else search for existing "临时角色默认形象" for user
 3. Else create new default VirtualIP
 
 **Default VirtualIP Properties:**
+
 ```python
 name = "临时角色默认形象"
 description = "用于Episode临时角色的默认形象，可后续替换为专用形象"
@@ -106,6 +113,7 @@ voice_config = {
 ```
 
 **4. Importance Inference:**
+
 ```python
 def _infer_importance(dialogue_count: int) -> int:
     if dialogue_count >= 10:
@@ -117,6 +125,7 @@ def _infer_importance(dialogue_count: int) -> int:
 ```
 
 **5. Scene Context Extraction:**
+
 ```python
 def _extract_scene_context(script_content: Dict[str, Any]) -> Dict[str, Any]:
     return {
@@ -130,6 +139,7 @@ def _extract_scene_context(script_content: Dict[str, Any]) -> Dict[str, Any]:
 ### Scenario 1: Complete Auto-Creation Workflow
 
 **Input:**
+
 ```python
 # After script generation
 script_content = {
@@ -162,6 +172,7 @@ created = await auto_create_episode_characters(
 ```
 
 **Output:**
+
 ```python
 [
     {
@@ -193,6 +204,7 @@ created = await auto_create_episode_characters(
 ### Scenario 2: Using Specific VirtualIP
 
 **Input:**
+
 ```python
 # Use specific VirtualIP instead of default
 created = await auto_create_episode_characters(
@@ -210,6 +222,7 @@ created = await auto_create_episode_characters(
 ### Scenario 3: Multiple Characters with Varying Importance
 
 **Input:**
+
 ```python
 # Character A: 12 dialogue lines → importance=3
 # Character B: 7 dialogue lines → importance=2
@@ -221,12 +234,14 @@ created = await auto_create_episode_characters(
 ## Validation
 
 ✅ **Syntax Check:**
+
 ```bash
 python -m py_compile app/services/script/auto_character_creator.py
 # Output: ✅ Syntax check passed
 ```
 
 ✅ **Code Quality:**
+
 - Async workflow support
 - Comprehensive error handling
 - Database transaction management (flush + commit)
@@ -236,6 +251,7 @@ python -m py_compile app/services/script/auto_character_creator.py
 ## Architecture Notes
 
 **Complete Auto-Generation Pipeline:**
+
 ```
 Script Generation
     ↓
@@ -271,11 +287,13 @@ auto_create_episode_characters()
 ```
 
 **Database Transaction Strategy:**
+
 - `db.flush()` after each character → Gets ID without committing
 - Single `db.commit()` at end → All-or-nothing transaction
 - `db.rollback()` on error → Clean failure
 
 **Error Handling Strategy:**
+
 - Character extraction fails → Return empty list
 - VirtualIP creation fails → Return empty list
 - Single character creation fails → Log error, continue with others
@@ -310,6 +328,7 @@ if result.get("content"):
 ```
 
 **API Response Enhancement:**
+
 ```json
 {
   "content": {...},
@@ -328,12 +347,14 @@ if result.get("content"):
 ## User Experience
 
 **Before Auto-Creation:**
+
 - User generates script → Gets "unknown_names" warnings
 - Must manually create EpisodeCharacter for each unknown name
 - Must manually fill in personality, background, appearance
 - Time-consuming and error-prone
 
 **After Auto-Creation:**
+
 - User generates script → Characters auto-created
 - Receives list of created characters with IDs
 - Can review and customize later (needs_customization flag)
@@ -341,6 +362,7 @@ if result.get("content"):
 - Immediate script validation success (no more unknown_names)
 
 **Frontend Notification (Future):**
+
 ```
 ✅ Script generated successfully!
 
@@ -352,18 +374,21 @@ if result.get("content"):
 ## Next Steps
 
 ### Integration with Script Agent (Final Integration)
+
 - Modify `script_agent.py` generate() method
 - Call `auto_create_episode_characters()` after script generation
 - Add `auto_created_characters` to response
 - Update script generation API to include character info
 
 ### Frontend Integration (Future)
+
 - Display auto-created characters notification
 - Add "Customize Character" button with character ID
 - Show character list in Episode editing page
 - Allow VirtualIP replacement
 
 ### P1.4: Integration Tests (Deferred)
+
 - File: `tests/integration/api/test_episode_characters_api.py`
 - Test complete auto-creation workflow
 - Test with/without AI service

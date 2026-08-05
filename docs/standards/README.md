@@ -36,6 +36,8 @@ Every standard should answer:
   quality gates.
 - `docs/standards/STD-TIMELINE-001.md` - Timeline-first provider chains
   preserve media lineage.
+- `docs/standards/STD-NARRATIVE-001.md` - generic narrative consistency remains
+  isolated from topic state and application orchestration.
 
 ## Runtime Entry Points
 

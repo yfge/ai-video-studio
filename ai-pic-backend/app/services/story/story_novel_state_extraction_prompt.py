@@ -33,7 +33,7 @@ def build_state_extraction_prompt(
 ID 必须复用章节计划、当前状态或 future_event_catalog_for_audit_only 中的 ID；evidence 必须逐字复制正文中的连续短句，不得改写标点或引号。若必须跨越中间句，可用“……”分隔两个或更多按原顺序出现的逐字片段，每段至少 3 个字符且总计至少 16 个字符。
 审计顺序固定：先逐项比较 future_event_catalog_for_audit_only 中 events.description、key_events、goal、end_state、state_targets、milestones.label/outcomes 与正文，再提取当前章状态。
 未来事件在正文已经具体完成其 description 或 key_events 的核心动作或结果时，必须写入 premature_future_event_ids。
-若未来事件约定通过化验、调查、揭露、核验或见证才确认某个结论，当前章即使没有执行该未来动作，只要已经把该结论写成“确认、证明、只可能、断定、就是、无疑”等确定事实，也视为提前完成该未来事件。
+若未来事件要求特定过程完成后才能建立某个结论，当前章未执行该过程却已经把结论写成确定事实，也视为提前完成该未来事件。
 正文若把未来章节才揭露的身份、目的地、任务、选择、能力或结果写成角色已经确认的事实、确定安排或必然行动，即使语法使用“将要”“必须”“计划”，也属于提前越界并必须写入对应 ID。
 仅出现名字、未知疑问、担忧、泛化世界规则或不包含未来核心信息的准备动作不算。
 premature_future_event_ids 只能使用目录内 events.event_id；每个 ID 必须在 evidence 中提供正文逐字证据。

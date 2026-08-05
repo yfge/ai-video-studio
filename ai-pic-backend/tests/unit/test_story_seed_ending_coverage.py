@@ -119,13 +119,43 @@ async def test_structure_repair_runs_when_first_result_misses_ending(monkeypatch
             "end_state": "另一个结局",
         }
     )
+    arcs = {
+        "progression_plan": {
+            "roadmap_version": 1,
+            "core_character_routes": [
+                {
+                    "character_ref": "vip-1",
+                    "narrative_function": "主角",
+                    "first_allowed_position": 1,
+                    "planned_arc_id": "arc-001",
+                    "start_direction": "尚未掌握风钥",
+                    "terminal_direction": "公开拆分权限",
+                }
+            ],
+            "scope_taxonomy": [
+                {"type_id": "route-zone", "display_name": "路线活动范围"}
+            ],
+            "initial_scope_nodes": [
+                {
+                    "scope_id": "scope-six-cities",
+                    "scope_type": "route-zone",
+                    "display_name": "六城邮路",
+                }
+            ],
+            "planning_structure_version": 1,
+            "requested_chapter_count": 48,
+            "progression_arcs": [
+                _arc("arc-001", 1, 32),
+                _arc("arc-002", 33, 48),
+            ],
+        }
+    }
     outputs = iter(
         [
-            json.dumps({"structured_outline": bad}, ensure_ascii=False),
-            json.dumps(
-                {"structured_outline": seed["structured_outline"]},
-                ensure_ascii=False,
-            ),
+            json.dumps(arcs, ensure_ascii=False),
+            _batch(seed["structured_outline"]["chapters"][:32]),
+            _batch(bad["chapters"][32:]),
+            _batch(seed["structured_outline"]["chapters"][32:]),
         ]
     )
     calls = []
@@ -158,5 +188,31 @@ async def test_structure_repair_runs_when_first_result_misses_ending(monkeypatch
         expected_version=1,
     )
 
-    assert len(calls) == 2
+    assert len(calls) == 4
+    assert "final chapter does not cover ending_direction" in calls[-1][0][1]
     assert upgraded.schema_version == "story_seed_v2"
+    assert upgraded.structured_outline.planning_structure_version == 1
+
+
+def _arc(arc_id: str, start: int, end: int) -> dict:
+    return {
+        "arc_id": arc_id,
+        "title": f"第{start}至{end}章阶段",
+        "start_position": start,
+        "end_position": end,
+        "narrative_goal": "推进当前阶段冲突",
+        "ending_state": "阶段结果形成",
+        "growth": {
+            "cognition": None,
+            "capability": None,
+            "resources": None,
+            "activity_and_time_scale": None,
+        },
+        "major_entries": [],
+        "world_scope_changes": [],
+        "threads": [],
+    }
+
+
+def _batch(chapters: list[dict]) -> str:
+    return json.dumps({"chapters": chapters, "thread_payoffs": []}, ensure_ascii=False)

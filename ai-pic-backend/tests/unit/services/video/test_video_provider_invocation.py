@@ -8,9 +8,7 @@ from app.models.llm_invocation import LLMInvocation
 from app.services import ai_manager_video_invocation as video_invocation
 from app.services import llm_invocation
 from app.services.providers.base import AIModelType, AIResponse, AITaskType
-from app.services.video.video_task_provider_submission import (
-    submit_to_video_provider,
-)
+from app.services.video.video_task_provider_submission import submit_to_video_provider
 from app.services.video.video_task_submission_persistence import (
     persist_submitted_video_task,
 )
@@ -92,9 +90,7 @@ def test_video_task_persistence_links_invocation() -> None:
     assert repo.create.call_args.kwargs["llm_invocation_id"] == 42
 
 
-def test_missing_provider_task_id_finalizes_invocation(
-    test_db, monkeypatch
-) -> None:
+def test_missing_provider_task_id_finalizes_invocation(test_db, monkeypatch) -> None:
     monkeypatch.setattr(llm_invocation, "SessionLocal", test_db)
     handle = video_invocation.begin_attempt(
         invocation_type="text_to_video",

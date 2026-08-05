@@ -158,3 +158,55 @@ def test_canon_repair_lists_every_duplicate_only_milestone_for_deletion():
         "mile-24",
         "mile-25",
     ]
+
+
+def test_canon_repair_identifies_contains_on_a_scalar_target():
+    prior = {
+        "entities": [
+            {"id": "char-a", "kind": "character", "name": "A"},
+            {"id": "org-a", "kind": "organization", "name": "O"},
+        ],
+        "initial_state": {
+            "char-a": {"permissions": []},
+            "org-a": {"status": "not_founded"},
+        },
+        "milestones": [
+            {
+                "id": "mile-valid",
+                "planned_position": 2,
+                "outcomes": [
+                    {
+                        "subject_id": "char-a",
+                        "field": "permissions",
+                        "operator": "contains",
+                        "value": "can-sign",
+                    }
+                ],
+            },
+            {
+                "id": "mile-invalid",
+                "planned_position": 3,
+                "outcomes": [
+                    {
+                        "subject_id": "org-a",
+                        "field": "status",
+                        "operator": "contains",
+                        "value": "rules-adopted",
+                    }
+                ],
+            },
+        ],
+    }
+
+    repair = _canon_repair_prompt(
+        "原始提示",
+        json.dumps(prior, ensure_ascii=False),
+        "contains outcome 目标不是数组",
+    )
+    context = json.loads(
+        repair.split("repair_context：", 1)[1].split("\n上一次完整 Canon", 1)[0]
+    )
+
+    assert context["invalid_contains_milestone_ids"] == ["mile-invalid"]
+    assert [item["id"] for item in context["failing_milestones"]] == ["mile-invalid"]
+    assert "必须按 StorySeed 明示结果改成单一 eq 状态或删除" in repair

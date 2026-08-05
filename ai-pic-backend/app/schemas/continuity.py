@@ -34,7 +34,9 @@ class ContinuityInfoAcquisitionEvent(BaseModel):
 class RevealedInfoItem(BaseModel):
     """信息揭示记录，用于信息门控校验。"""
 
-    info_key: str = Field(..., description="信息唯一标识（如：character_identity_张三）")
+    info_key: str = Field(
+        ..., description="信息唯一标识（如：character_identity_张三）"
+    )
     info_content: str = Field(..., description="信息内容描述")
     revealed_to: List[str] = Field(
         default_factory=list,
@@ -46,9 +48,7 @@ class RevealedInfoItem(BaseModel):
         "fact",
         description="信息类型：identity/relationship/secret/event/location/motive",
     )
-    is_public: bool = Field(
-        False, description="是否为公开信息（所有角色+观众都知道）"
-    )
+    is_public: bool = Field(False, description="是否为公开信息（所有角色+观众都知道）")
 
 
 class ContinuityCharacterState(BaseModel):

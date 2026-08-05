@@ -138,21 +138,65 @@ class EpisodeQualityValidator:
 
     # Keywords indicating high tension/stakes (Chinese)
     TENSION_KEYWORDS = [
-        "危机", "危险", "生死", "紧急", "关键", "决战", "对决", "高潮",
-        "爆发", "冲突", "对抗", "威胁", "绝望", "挣扎", "逼迫", "陷阱",
-        "背叛", "真相", "揭露", "秘密", "震惊", "转折", "突变", "升级",
+        "危机",
+        "危险",
+        "生死",
+        "紧急",
+        "关键",
+        "决战",
+        "对决",
+        "高潮",
+        "爆发",
+        "冲突",
+        "对抗",
+        "威胁",
+        "绝望",
+        "挣扎",
+        "逼迫",
+        "陷阱",
+        "背叛",
+        "真相",
+        "揭露",
+        "秘密",
+        "震惊",
+        "转折",
+        "突变",
+        "升级",
     ]
 
     # Keywords indicating setup/foreshadowing
     SETUP_KEYWORDS = [
-        "暗示", "伏笔", "预示", "铺垫", "埋下", "隐藏", "暗藏",
-        "提及", "线索", "征兆", "预兆", "暗线", "悬念", "谜团",
+        "暗示",
+        "伏笔",
+        "预示",
+        "铺垫",
+        "埋下",
+        "隐藏",
+        "暗藏",
+        "提及",
+        "线索",
+        "征兆",
+        "预兆",
+        "暗线",
+        "悬念",
+        "谜团",
     ]
 
     # Keywords indicating payoff/resolution
     PAYOFF_KEYWORDS = [
-        "揭示", "揭露", "真相大白", "水落石出", "回收", "呼应",
-        "原来", "竟然", "恍然", "解开", "破解", "终于", "答案",
+        "揭示",
+        "揭露",
+        "真相大白",
+        "水落石出",
+        "回收",
+        "呼应",
+        "原来",
+        "竟然",
+        "恍然",
+        "解开",
+        "破解",
+        "终于",
+        "答案",
     ]
 
     # Subplot indicators
@@ -218,7 +262,8 @@ class EpisodeQualityValidator:
 
         # Determine overall pass/fail
         error_count = sum(
-            1 for issue in result.issues
+            1
+            for issue in result.issues
             if issue.severity == EpisodeQualitySeverity.ERROR
         )
         result.passed = error_count == 0
@@ -270,10 +315,12 @@ class EpisodeQualityValidator:
                         # Track relationship changes
                         relationships = char.get("relationships", {})
                         if relationships:
-                            arc.relationship_changes.append({
-                                "episode": ep_num,
-                                "relationships": relationships,
-                            })
+                            arc.relationship_changes.append(
+                                {
+                                    "episode": ep_num,
+                                    "relationships": relationships,
+                                }
+                            )
 
             # Also extract from continuity data if present
             continuity = episode.get("continuity", {})
@@ -442,7 +489,7 @@ class EpisodeQualityValidator:
 
         # Check for plateau (3+ consecutive similar scores)
         for i in range(len(tension_scores) - 2):
-            window = tension_scores[i:i + 3]
+            window = tension_scores[i : i + 3]
             if max(window) - min(window) < 0.1:
                 issues.append(
                     EpisodeQualityIssue(
@@ -485,7 +532,7 @@ class EpisodeQualityValidator:
             first_half_avg = sum(tension_scores[: len(tension_scores) // 2]) / (
                 len(tension_scores) // 2
             )
-            second_half_avg = sum(tension_scores[len(tension_scores) // 2:]) / (
+            second_half_avg = sum(tension_scores[len(tension_scores) // 2 :]) / (
                 len(tension_scores) - len(tension_scores) // 2
             )
             if second_half_avg < first_half_avg - 0.1:
@@ -596,7 +643,9 @@ class EpisodeQualityValidator:
                     severity=EpisodeQualitySeverity.WARNING,
                     message=f"有 {len(unresolved)} 条伏笔未回收，观众可能感到困惑",
                     details={
-                        "unresolved": [item.setup_description for item in unresolved[:5]]
+                        "unresolved": [
+                            item.setup_description for item in unresolved[:5]
+                        ]
                     },
                     suggestions=[
                         "在后续集中安排回收",

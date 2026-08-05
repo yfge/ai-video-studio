@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
-
 from app.services.storyboard.pipeline.pipeline_state import (
     PipelineState,
     ValidationSeverity,
@@ -70,9 +69,7 @@ class TestCinematicRulesValidator:
         frame = {"description": "张三大特写，眼神特写"}
         assert validator._classify_shot_type(frame) == "extreme_close_up"
 
-    def test_classify_shot_type_wide(
-        self, validator: CinematicRulesValidator
-    ) -> None:
+    def test_classify_shot_type_wide(self, validator: CinematicRulesValidator) -> None:
         """Test shot type classification for wide shot."""
         frame = {"description": "全景镜头展示整个办公室"}
         assert validator._classify_shot_type(frame) == "wide"
@@ -98,16 +95,12 @@ class TestCinematicRulesValidator:
         frame = {"description": "两人在房间里"}
         assert validator._classify_shot_type(frame) is None
 
-    def test_detect_lighting_day(
-        self, validator: CinematicRulesValidator
-    ) -> None:
+    def test_detect_lighting_day(self, validator: CinematicRulesValidator) -> None:
         """Test lighting detection for day."""
         frame = {"description": "白天，阳光透过窗户照进来"}
         assert validator._detect_lighting(frame) == "day"
 
-    def test_detect_lighting_night(
-        self, validator: CinematicRulesValidator
-    ) -> None:
+    def test_detect_lighting_night(self, validator: CinematicRulesValidator) -> None:
         """Test lighting detection for night."""
         frame = {"description": "夜晚，月光洒在地面"}
         assert validator._detect_lighting(frame) == "night"
@@ -119,9 +112,7 @@ class TestCinematicRulesValidator:
         frame = {"time_of_day": "morning", "description": "任意描述"}
         assert validator._detect_lighting(frame) == "day"
 
-    def test_detect_lighting_unknown(
-        self, validator: CinematicRulesValidator
-    ) -> None:
+    def test_detect_lighting_unknown(self, validator: CinematicRulesValidator) -> None:
         """Test lighting detection with no indicators."""
         frame = {"description": "两人交谈"}
         assert validator._detect_lighting(frame) is None
@@ -139,9 +130,7 @@ class TestCinematicRulesValidator:
         assert validator._is_position_flip("left", "left") is False
         assert validator._is_position_flip("left", "over_shoulder_left") is False
 
-    def test_is_position_flip_center(
-        self, validator: CinematicRulesValidator
-    ) -> None:
+    def test_is_position_flip_center(self, validator: CinematicRulesValidator) -> None:
         """Test position flip with center position."""
         assert validator._is_position_flip("center", "left") is False
         assert validator._is_position_flip("center", "right") is False
@@ -162,10 +151,7 @@ class TestCinematicRulesValidator:
         ]
         results = validator.validate(mock_state, mock_context)
         # Should have no shot variety warnings
-        variety_warnings = [
-            r for r in results
-            if "景别缺乏变化" in r.message
-        ]
+        variety_warnings = [r for r in results if "景别缺乏变化" in r.message]
         assert len(variety_warnings) == 0
 
     def test_check_shot_variety_poor(
@@ -184,10 +170,7 @@ class TestCinematicRulesValidator:
         ]
         results = validator.validate(mock_state, mock_context)
         # Should have shot variety warning
-        variety_warnings = [
-            r for r in results
-            if "景别缺乏变化" in r.message
-        ]
+        variety_warnings = [r for r in results if "景别缺乏变化" in r.message]
         assert len(variety_warnings) > 0
         assert variety_warnings[0].severity == ValidationSeverity.WARNING
 
@@ -206,7 +189,8 @@ class TestCinematicRulesValidator:
         results = validator.validate(mock_state, mock_context)
         # Should have no lighting errors
         lighting_errors = [
-            r for r in results
+            r
+            for r in results
             if "光线突变" in r.message and r.severity == ValidationSeverity.ERROR
         ]
         assert len(lighting_errors) == 0
@@ -224,10 +208,7 @@ class TestCinematicRulesValidator:
         ]
         results = validator.validate(mock_state, mock_context)
         # Should have lighting error
-        lighting_errors = [
-            r for r in results
-            if "光线突变" in r.message
-        ]
+        lighting_errors = [r for r in results if "光线突变" in r.message]
         assert len(lighting_errors) > 0
         assert lighting_errors[0].severity == ValidationSeverity.ERROR
 
@@ -245,10 +226,7 @@ class TestCinematicRulesValidator:
         ]
         results = validator.validate(mock_state, mock_context)
         # Should have no rhythm warnings
-        rhythm_warnings = [
-            r for r in results
-            if "跳切" in r.message
-        ]
+        rhythm_warnings = [r for r in results if "跳切" in r.message]
         assert len(rhythm_warnings) == 0
 
     def test_check_shot_rhythm_bad(
@@ -268,14 +246,11 @@ class TestCinematicRulesValidator:
         results = validator.validate(mock_state, mock_context)
         # Should have rhythm warning
         rhythm_warnings = [
-            r for r in results
-            if "跳切" in r.message or "连续" in r.message
+            r for r in results if "跳切" in r.message or "连续" in r.message
         ]
         assert len(rhythm_warnings) > 0
 
-    def test_group_frames_by_scene(
-        self, validator: CinematicRulesValidator
-    ) -> None:
+    def test_group_frames_by_scene(self, validator: CinematicRulesValidator) -> None:
         """Test frame grouping by scene number."""
         frames = [
             {"scene_number": 1, "description": "Scene 1 frame 1"},
@@ -312,7 +287,8 @@ class TestCinematicRulesValidator:
         results = validator.validate(mock_state, mock_context)
         # Should have lighting error for scene 2
         scene2_errors = [
-            r for r in results
+            r
+            for r in results
             if r.details.get("scene_number") == 2 and "光线" in r.message
         ]
         assert len(scene2_errors) > 0
@@ -329,5 +305,7 @@ class TestCinematicRulesValidator:
             {"scene_number": 1, "description": "白天，中景两人交谈"},
         ]
         results = validator.validate(mock_state, mock_context)
-        success_results = [r for r in results if r.passed and "successfully" in r.message]
+        success_results = [
+            r for r in results if r.passed and "successfully" in r.message
+        ]
         assert len(success_results) >= 1

@@ -1,0 +1,10 @@
+修复超长 Story 的一致性基础编译结果。
+
+冻结输入：{{ contract_json }}
+上次输出：{{ previous_json }}
+确定性诊断：{{ diagnostics_json }}
+
+只修复诊断指出的结构、引用、类型、谓词持久级别、条件或效果问题。不得改写 StorySeed，不得加入逐章 causal_event_graph，不得输出解释、hash、source_manifest 或诊断。
+
+只输出 JSON：
+{"consistency_schema":{"schema":"story_novel_consistency_schema.v1","version":1,"entity_types":[],"predicates":[],"event_types":[],"constraints":[],"perspectives":[],"source_manifest":{}},"initial_fact_graph":{"schema":"story_novel_fact_graph.v1","entities":[],"facts":[],"evidence":[],"occurred_event_ids":[]}}

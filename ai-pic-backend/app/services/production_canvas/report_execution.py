@@ -3,8 +3,6 @@ from __future__ import annotations
 import json
 from collections import Counter
 
-from sqlalchemy.orm import Session
-
 from app.models.user import User
 from app.repositories.video_generation_task_repository import (
     VideoGenerationTaskRepository,
@@ -21,6 +19,7 @@ from app.services.production_canvas.execution_common import (
     skill_definition,
 )
 from app.services.production_canvas.run_persistence import load_canvas_skill_run
+from sqlalchemy.orm import Session
 
 
 def _int_output(outputs: dict, key: str) -> int | None:
@@ -84,7 +83,11 @@ def _media_task_lineage(db: Session, user: User, task_ids: list[int]) -> dict:
         provider_tasks = []
         for item in video_repo.list_by_task_id(task.id):
             result = _dict_from_json(item.result)
-            metadata = item.generation_metadata if isinstance(item.generation_metadata, dict) else {}
+            metadata = (
+                item.generation_metadata
+                if isinstance(item.generation_metadata, dict)
+                else {}
+            )
             provider = (
                 _string_value(result.get("provider_used"))
                 or _string_value(metadata.get("provider"))
@@ -95,7 +98,9 @@ def _media_task_lineage(db: Session, user: User, task_ids: list[int]) -> dict:
                 or _string_value(metadata.get("model"))
                 or item.model
             )
-            usage = result.get("usage") if isinstance(result.get("usage"), dict) else None
+            usage = (
+                result.get("usage") if isinstance(result.get("usage"), dict) else None
+            )
             if usage is None and isinstance(metadata.get("usage"), dict):
                 usage = metadata.get("usage")
             if provider:
@@ -124,9 +129,11 @@ def _media_task_lineage(db: Session, user: User, task_ids: list[int]) -> dict:
                 "task_status": task.status.value,
                 "requested_model": requested_model,
                 "requested_provider": requested_provider,
-                "frame_indexes": params.get("frame_indexes")
-                if isinstance(params.get("frame_indexes"), list)
-                else None,
+                "frame_indexes": (
+                    params.get("frame_indexes")
+                    if isinstance(params.get("frame_indexes"), list)
+                    else None
+                ),
                 "result_file_path": task.result_file_path,
                 "error_message": task.error_message,
                 "provider_tasks": provider_tasks,

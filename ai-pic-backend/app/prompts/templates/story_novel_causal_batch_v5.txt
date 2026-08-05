@@ -1,0 +1,12 @@
+在已冻结 Schema 上编译当前章节批次的因果事件与叙事义务，不写正文：{{ contract_json }}
+
+要求：
+1. batch_range 内每章至少一个 causal event，events 与 obligations 的 chapter_position 都必须精确覆盖每一章，不得越界或遗漏。
+2. 只能使用 consistency_schema 已声明的事件类型、角色、谓词、视角，以及 snapshot_before_batch 已声明的实体；不得新增 Schema、实体或初始事实。
+3. dependency_event_ids 只能引用 prior_event_ids_tail，或当前批次内同章更早/前章事件；不得引用未来事件。
+4. 所有前置条件必须在 snapshot_before_batch 或本批更早事件效果后成立；效果必须保持值类型、基数、可变性、互斥和视角规则。
+5. 每章的 goal/key_events/end_state 要落实为事件；伏笔、回收、人物弧、场景任务和章末牵引只写入 obligations。每项 obligation 必须绑定本章 required_event_ids，事件也要反向绑定 obligation_ids。
+6. 事件和义务 ID 必须包含章节位置并在全书唯一。不输出 hash、快照、解释或诊断。
+
+只输出 JSON：
+{"causal_event_graph":{"schema":"story_novel_causal_event_graph.v1","events":[],"obligations":[]}}

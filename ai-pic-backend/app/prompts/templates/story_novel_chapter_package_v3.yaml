@@ -1,0 +1,7 @@
+description: Story Novel v3 just-in-time chapter contract and brief package
+category: story
+version: "2.2"
+variables:
+  package_input_json:
+    required: true
+    type: string

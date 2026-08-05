@@ -1,6 +1,6 @@
 ---
 id: 2026-02-05T03-20-00Z-p1-integration-tests
-date: 2026-02-05T03:20:00Z
+date: "2026-02-05T03:20:00Z"
 participants: [human, claude-sonnet-4.5]
 models: [claude-sonnet-4-5-20250929]
 tags: [backend, testing, episode-characters, integration, p1.4]
@@ -55,33 +55,39 @@ Total: 18 test cases
 ### 1. CRUD Operations (`TestEpisodeCharacterCRUD`)
 
 **test_create_episode_character:**
+
 - Creates Episode character via API
 - Verifies response includes id, business_id
 - Checks all fields saved correctly
 
 **test_list_episode_characters:**
+
 - Creates 3 characters with different importance
 - Tests pagination (page=1, page_size=10)
 - Verifies sorted by importance descending
 - Checks total count and has_more flag
 
 **test_get_episode_character:**
+
 - Creates character
 - Retrieves by ID
 - Verifies all fields returned
 
 **test_get_character_resources:**
+
 - Creates character with overrides
 - Calls /resources endpoint
 - Verifies voice_config_override applied
 - Verifies appearance_override merged
 
 **test_update_episode_character:**
+
 - Creates character with importance=1
 - Updates to importance=3
 - Verifies changes persisted
 
 **test_delete_episode_character:**
+
 - Creates character
 - Soft deletes with reason
 - Verifies is_deleted=True in database
@@ -90,6 +96,7 @@ Total: 18 test cases
 ### 2. Character Extraction (`TestCharacterExtraction`)
 
 **test_extract_from_dialogues:**
+
 - Provides script content with dialogues
 - Extracts characters using `extract_temporary_characters()`
 - Verifies character names, dialogue counts
@@ -97,6 +104,7 @@ Total: 18 test cases
 - Verifies appearance hints extracted
 
 **test_extract_appearance_hints:**
+
 - Tests regex pattern matching
 - Verifies extracts "穿着", "戴着", "背着" patterns
 - Tests with complex stage direction text
@@ -104,12 +112,14 @@ Total: 18 test cases
 ### 3. Background Generation (`TestBackgroundGeneration`)
 
 **test_generate_with_heuristics:**
+
 - Creates TemporaryCharacterInfo
 - Calls `generate_character_background()` with ai_service=None
 - Verifies heuristic fallback works
 - Checks personality, background, appearance_override generated
 
 **test_heuristic_templates:**
+
 - Tests all 6 pre-defined character types
 - Verifies specific templates used (not generic fallback)
 - Checks "快递员", "医生", "护士", "警察", "服务员", "司机"
@@ -117,6 +127,7 @@ Total: 18 test cases
 ### 4. Auto-Creation Workflow (`TestAutoCreation`)
 
 **test_auto_create_workflow:**
+
 - Provides complete script content
 - Calls `auto_create_episode_characters()`
 - Verifies characters created in database
@@ -124,12 +135,14 @@ Total: 18 test cases
 - Validates needs_customization flag
 
 **test_auto_create_with_default_virtualip:**
+
 - Ensures no default VirtualIP exists initially
 - Calls auto-creation
 - Verifies default VirtualIP auto-created
 - Checks VirtualIP name and voice_config
 
 **test_importance_inference:**
+
 - Tests `_infer_importance()` function
 - Verifies >= 10 dialogues → importance=3
 - Verifies >= 5 dialogues → importance=2
@@ -138,12 +151,14 @@ Total: 18 test cases
 ### 5. Voice Binding Integration (`TestVoiceBinding`)
 
 **test_get_episode_character_map:**
+
 - Creates Episode character with voice override
 - Calls `get_episode_character_map()`
 - Verifies normalized name in map
 - Checks voice binding works
 
 **test_get_combined_character_map:**
+
 - Creates Episode character
 - Calls `get_combined_character_map()` with Story + Episode
 - Verifies combined mapping includes both sources
@@ -151,16 +166,19 @@ Total: 18 test cases
 ### 6. Error Handling (`TestErrorHandling`)
 
 **test_auto_create_with_empty_unknown_names:**
+
 - Calls auto-creation with unknown_names=[]
 - Verifies returns empty list
 - No errors raised
 
 **test_auto_create_with_invalid_script:**
+
 - Calls auto-creation with script_content=None
 - Verifies graceful handling
 - Returns empty list, no exceptions
 
 **test_character_not_found:**
+
 - Requests non-existent character ID (99999)
 - Verifies 404 status code
 - Proper error response
@@ -195,6 +213,7 @@ def test_episode(db: Session, test_story: Story):
 ```
 
 **Benefits:**
+
 - Automatic cleanup after tests
 - Consistent test data
 - Easy to maintain
@@ -203,12 +222,14 @@ def test_episode(db: Session, test_story: Story):
 ## Validation
 
 ✅ **Syntax Check:**
+
 ```bash
 python -m py_compile tests/integration/api/test_episode_characters_api.py
 # Output: ✅ Syntax check passed
 ```
 
 ✅ **Test Structure:**
+
 - 18 test cases covering all major scenarios
 - Proper use of pytest fixtures
 - Async test support with `@pytest.mark.asyncio`
@@ -217,22 +238,26 @@ python -m py_compile tests/integration/api/test_episode_characters_api.py
 ## Running Tests
 
 ### Run All Integration Tests
+
 ```bash
 cd ai-pic-backend
 pytest tests/integration/api/test_episode_characters_api.py -v
 ```
 
 ### Run Specific Test Class
+
 ```bash
 pytest tests/integration/api/test_episode_characters_api.py::TestEpisodeCharacterCRUD -v
 ```
 
 ### Run Single Test
+
 ```bash
 pytest tests/integration/api/test_episode_characters_api.py::TestAutoCreation::test_auto_create_workflow -v
 ```
 
 ### Run with Coverage
+
 ```bash
 pytest tests/integration/api/test_episode_characters_api.py --cov=app.services.script --cov=app.api.v1.endpoints.episodes -v
 ```
@@ -240,18 +265,21 @@ pytest tests/integration/api/test_episode_characters_api.py --cov=app.services.s
 ## Test Categories
 
 ### Unit-Level Tests (in integration suite)
+
 - Character extraction logic
 - Background generation heuristics
 - Importance inference
 - Appearance hint extraction
 
 ### Integration Tests
+
 - API endpoints with database
 - CRUD operations end-to-end
 - Voice binding with Episode characters
 - Auto-creation workflow
 
 ### End-to-End Tests
+
 - Complete workflow: Script → Extract → Generate → Create
 - Default VirtualIP creation
 - Resource resolution with overrides
@@ -259,6 +287,7 @@ pytest tests/integration/api/test_episode_characters_api.py --cov=app.services.s
 ## Key Test Scenarios
 
 ### Scenario 1: Happy Path - Auto-Creation
+
 ```
 1. Script generated with unknown names
 2. Auto-creation triggered
@@ -270,6 +299,7 @@ pytest tests/integration/api/test_episode_characters_api.py --cov=app.services.s
 ```
 
 ### Scenario 2: Voice Override
+
 ```
 1. Create character with voice_config_override
 2. Call /resources endpoint
@@ -278,6 +308,7 @@ pytest tests/integration/api/test_episode_characters_api.py --cov=app.services.s
 ```
 
 ### Scenario 3: Error Recovery
+
 ```
 1. Invalid script content provided
 2. Auto-creation handles gracefully
@@ -288,12 +319,14 @@ pytest tests/integration/api/test_episode_characters_api.py --cov=app.services.s
 ## Architecture Notes
 
 **Test Isolation:**
+
 - Each test class is independent
 - Fixtures create fresh data per test
 - Database transactions rolled back after tests
 - No test pollution
 
 **Async Testing:**
+
 ```python
 @pytest.mark.asyncio
 async def test_auto_create_workflow(...):
@@ -302,6 +335,7 @@ async def test_auto_create_workflow(...):
 ```
 
 **Mock vs Real:**
+
 - Uses real database (integration tests)
 - Uses real service functions
 - AI service mocked (ai_service=None → heuristics)
@@ -310,16 +344,19 @@ async def test_auto_create_workflow(...):
 ## Known Limitations
 
 1. **Authentication:**
+
    - Tests use `auth_headers` fixture
    - May need proper JWT token generation
    - Or mock authentication in test mode
 
 2. **AI Service:**
+
    - Tests use heuristics (ai_service=None)
    - Real AI integration not tested
    - Could add separate tests with mock AI service
 
 3. **Async Fixtures:**
+
    - Some fixtures could be async
    - Would require pytest-asyncio plugin configuration
 
@@ -330,12 +367,15 @@ async def test_auto_create_workflow(...):
 ## Next Steps
 
 ### Immediate Testing
+
 1. **Run Tests:**
+
    ```bash
    pytest tests/integration/api/test_episode_characters_api.py -v
    ```
 
 2. **Fix Any Failures:**
+
    - Authentication issues
    - Database connection issues
    - Import errors
@@ -348,11 +388,13 @@ async def test_auto_create_workflow(...):
 ### Test Enhancements
 
 4. **Add AI Service Tests:**
+
    - Mock AI service responses
    - Test AI generation success
    - Test AI generation failure → heuristic fallback
 
 5. **Add Performance Tests:**
+
    - Test with large number of characters
    - Test concurrent auto-creation
    - Measure response times
@@ -366,6 +408,7 @@ async def test_auto_create_workflow(...):
 ### CI/CD Integration
 
 7. **GitHub Actions:**
+
    ```yaml
    - name: Run Integration Tests
      run: |
@@ -381,16 +424,19 @@ async def test_auto_create_workflow(...):
 ## Benefits of Integration Tests
 
 1. **Confidence:**
+
    - Tests complete workflows
    - Verifies integrations work
    - Catches integration bugs
 
 2. **Documentation:**
+
    - Tests serve as usage examples
    - Show how APIs should be called
    - Demonstrate expected behavior
 
 3. **Regression Prevention:**
+
    - Prevents breaking changes
    - Validates fixes don't break other features
    - Ensures backward compatibility
@@ -403,17 +449,20 @@ async def test_auto_create_workflow(...):
 ## Test Metrics (Expected)
 
 **Coverage:**
+
 - API endpoints: 100%
 - Service functions: 90%+
 - Error handling: 80%+
 - Edge cases: 70%+
 
 **Execution Time:**
+
 - Total suite: ~10-30 seconds
 - Individual test: ~0.5-2 seconds
 - Setup/teardown: ~0.1 second per test
 
 **Reliability:**
+
 - Should be deterministic
 - No flaky tests
 - Consistent results

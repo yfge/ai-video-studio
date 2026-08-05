@@ -12,9 +12,7 @@ from app.schemas.storyboard_scene_grid import (
     SceneGridPromptModel,
     SceneGridVideoPromptModel,
 )
-from app.services.storyboard.dynamic_prompt.context_builder import (
-    build_scene_context,
-)
+from app.services.storyboard.dynamic_prompt.context_builder import build_scene_context
 from app.services.storyboard.scene_grid.layout import SceneGridLayout
 from app.utils.json_utils import extract_json_block
 
@@ -167,11 +165,15 @@ async def _generate_json(
                 system_prompt=system_prompt,
             )
         except Exception as exc:
-            logger.warning("%s LLM call failed (attempt %s): %s", schema_name, attempt + 1, exc)
+            logger.warning(
+                "%s LLM call failed (attempt %s): %s", schema_name, attempt + 1, exc
+            )
             continue
         if not getattr(response, "success", False):
             continue
-        content = response.data if isinstance(response.data, str) else str(response.data)
+        content = (
+            response.data if isinstance(response.data, str) else str(response.data)
+        )
         normalized = extract_json_block(content)
         if not normalized:
             continue
@@ -192,7 +194,11 @@ def _fallback_sheet_prompt(
     cells = []
     lines = []
     for index in range(1, layout.panel_count + 1):
-        frame = frame_inputs[(index - 1) % max(1, len(frame_inputs))] if frame_inputs else {}
+        frame = (
+            frame_inputs[(index - 1) % max(1, len(frame_inputs))]
+            if frame_inputs
+            else {}
+        )
         description = str(frame.get("description") or f"镜头{index}")
         title = description[:6] or f"镜头{index}"
         cells.append({"panel_index": index, "title": title, "caption": title})

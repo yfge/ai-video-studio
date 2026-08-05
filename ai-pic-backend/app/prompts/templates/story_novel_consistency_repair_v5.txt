@@ -1,0 +1,5 @@
+修复下列一致性模型，只修诊断定位的结构或语义错误，不扩大 StorySeed，也不写正文。
+冻结输入：{{ contract_json }}
+上一版本：{{ previous_json }}
+确定性诊断：{{ diagnostics_json }}
+仍须遵守 compile 阶段的操作符白名单、引用闭合、causal/observational 边界和逐章事件覆盖。只输出与 compile 阶段完全相同结构的 JSON。

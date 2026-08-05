@@ -1,6 +1,6 @@
 ---
 id: 2026-02-03T08-00-00Z-character-consistency-validator
-date: 2026-02-03T08:00:00Z
+date: "2026-02-03T08:00:00Z"
 participants: [human, claude]
 models: [claude-opus-4-5]
 tags: [backend, validator, agent-fix, refactor]
@@ -28,10 +28,12 @@ summary: "创建跨 Agent 角色一致性校验器，支持名称规范化、属
 ### 新增文件
 
 1. **`app/services/validators/__init__.py`** (19 行)
+
    - 创建 validators 模块入口
    - 导出 `CharacterConsistencyValidator`, `CharacterProfile`, `CharacterValidationResult`
 
 2. **`app/services/validators/character_consistency_validator.py`** (296 行)
+
    - `CharacterProfile` 数据类：存储角色规范化属性
    - `CharacterValidationResult` 数据类：标准化校验结果
    - `CharacterConsistencyValidator` 类：

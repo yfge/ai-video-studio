@@ -1,12 +1,14 @@
 from types import SimpleNamespace
 
 import pytest
-
 from app.api.v1.endpoints.scripts import quality as quality_endpoint
 from app.models.task import TaskStatus
 from app.schemas.script_quality import ScriptLintOptions
-from app.services.script_quality import lint_script_content, lint_script_content_async
-from app.services.script_quality import task_entrypoints
+from app.services.script_quality import (
+    lint_script_content,
+    lint_script_content_async,
+    task_entrypoints,
+)
 
 
 class _CliffhangerManager:

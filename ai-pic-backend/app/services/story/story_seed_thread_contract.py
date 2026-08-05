@@ -5,39 +5,25 @@ from __future__ import annotations
 MAX_PAYOFFS_PER_CHAPTER = 3
 
 
-def payoff_evidence_prefix(thread_id: str) -> str:
-    return f"关于“{thread_id}”的最终证据确认："
-
-
 def payoff_evidence_sources(data: dict, thread_ids: list[str]) -> dict[str, str]:
+    key_events = {
+        event
+        for chapter in data.get("chapters") or []
+        for event in chapter.get("key_events") or []
+        if isinstance(event, str) and event.strip()
+    }
     return {
         row["thread_id"]: row["evidence_key_event"]
         for row in data.get("thread_payoffs") or []
         if row["thread_id"] in thread_ids
         and isinstance(row.get("evidence_key_event"), str)
         and row["evidence_key_event"].strip()
-        and row["evidence_key_event"].startswith(
-            payoff_evidence_prefix(row["thread_id"])
-        )
+        and row["evidence_key_event"] in key_events
     }
 
 
 def merge_payoff_evidence(outline):
-    data = outline.model_dump()
-    chapters = {
-        int(chapter["position"]): chapter for chapter in data.get("chapters") or []
-    }
-    for row in data.get("thread_payoffs") or []:
-        chapter = chapters.get(row.get("payoff_position"))
-        evidence = row.get("evidence_key_event")
-        prefix = payoff_evidence_prefix(row.get("thread_id"))
-        normalized = evidence if evidence.startswith(prefix) else f"{prefix}{evidence}"
-        row["evidence_key_event"] = normalized
-        if chapter is None:
-            continue
-        if normalized not in chapter["key_events"]:
-            chapter["key_events"].append(normalized)
-    return type(outline).model_validate(data)
+    return outline
 
 
 def validate_seed_thread_contract(
@@ -112,13 +98,6 @@ def validate_seed_thread_contract(
                 f"伏笔 {thread_id} 的回收证据必须全书唯一且只位于第 "
                 f"{payoff} 章，实际位于 {locations}"
             )
-        prefix = payoff_evidence_prefix(thread_id)
-        if (
-            not isinstance(evidence, str)
-            or not evidence.startswith(prefix)
-            or (len(evidence) <= len(prefix))
-        ):
-            errors.append(f"伏笔 {thread_id} 的回收事件必须使用显式问题标签并给出答案")
     missing = [thread_id for thread_id in opened if thread_id not in seen]
     if missing:
         errors.append(f"伏笔回收合同遗漏: {missing}")

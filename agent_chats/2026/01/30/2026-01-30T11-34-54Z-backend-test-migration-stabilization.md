@@ -1,6 +1,6 @@
 ---
 id: 2026-01-30T11-34-54Z-backend-test-migration-stabilization
-date: 2026-01-30T11:34:54Z
+date: "2026-01-30T11:34:54Z"
 participants: [human, codex]
 models: [gpt-5]
 tags: [backend, tests, migrations]
@@ -72,4 +72,3 @@ summary: "Stabilize backend tests and SQLite migration coverage; align test fixt
 ## Linked Commits
 
 - (pending) 将在本次提交完成后补全。
-

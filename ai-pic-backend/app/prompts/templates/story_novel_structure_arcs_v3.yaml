@@ -1,0 +1,13 @@
+description: Story Novel v3 bounded long-form progression arcs
+category: story
+version: "1.0"
+variables:
+  story_seed_json:
+    required: true
+    type: string
+  chapter_ranges_json:
+    required: true
+    type: string
+  requested_chapter_count:
+    required: true
+    type: int

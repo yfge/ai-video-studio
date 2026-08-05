@@ -18,9 +18,7 @@ def build_codex_models(default_model: str) -> List[ModelInfo]:
         ModelInfo(
             model_id=model_id,
             name=f"ChatGPT {model_id} (Codex)",
-            description=(
-                "ChatGPT subscription model via the Codex responses endpoint"
-            ),
+            description=("ChatGPT subscription model via the Codex responses endpoint"),
             model_type=AIModelType.TEXT_GENERATION,
             capabilities=["text_generation", "analysis", "code_generation"],
             metadata={"auth": "codex_cli", "endpoint": "codex_responses"},

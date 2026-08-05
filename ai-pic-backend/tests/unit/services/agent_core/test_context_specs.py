@@ -1,7 +1,6 @@
 """Tests for Concrete Context Specifications."""
 
 import pytest
-
 from app.services.agent_core.context_spec import FieldPriority
 from app.services.agent_core.context_specs import (
     EpisodeContext,
@@ -72,7 +71,9 @@ class TestEpisodeContext:
 
     def test_continuity_ledger_truncation(self):
         """Continuity ledger should be truncatable."""
-        ledger_field = next(f for f in EpisodeContext.FIELDS if f.name == "continuity_ledger")
+        ledger_field = next(
+            f for f in EpisodeContext.FIELDS if f.name == "continuity_ledger"
+        )
         assert ledger_field.max_tokens == 1000
 
     def test_pack_preserves_critical_fields(self):
@@ -110,7 +111,9 @@ class TestScriptContext:
         """Characters in scene should not be truncated."""
         from app.services.agent_core.context_spec import TruncationStrategy
 
-        char_field = next(f for f in ScriptContext.FIELDS if f.name == "characters_in_scene")
+        char_field = next(
+            f for f in ScriptContext.FIELDS if f.name == "characters_in_scene"
+        )
         assert char_field.truncation == TruncationStrategy.NONE
 
 
@@ -170,30 +173,56 @@ class TestFieldCoverage:
 
     @pytest.mark.parametrize(
         "context_class",
-        [StoryContext, EpisodeContext, ScriptContext, TimelineContext, StoryboardContext],
+        [
+            StoryContext,
+            EpisodeContext,
+            ScriptContext,
+            TimelineContext,
+            StoryboardContext,
+        ],
     )
     def test_all_fields_have_descriptions(self, context_class):
         """All fields should have descriptions."""
         for field in context_class.FIELDS:
-            assert field.description, f"{context_class.__name__}.{field.name} missing description"
+            assert (
+                field.description
+            ), f"{context_class.__name__}.{field.name} missing description"
 
     @pytest.mark.parametrize(
         "context_class",
-        [StoryContext, EpisodeContext, ScriptContext, TimelineContext, StoryboardContext],
+        [
+            StoryContext,
+            EpisodeContext,
+            ScriptContext,
+            TimelineContext,
+            StoryboardContext,
+        ],
     )
     def test_has_at_least_one_required_field(self, context_class):
         """Each context should have at least one required field."""
         required_fields = [f for f in context_class.FIELDS if f.required]
-        assert len(required_fields) > 0, f"{context_class.__name__} has no required fields"
+        assert (
+            len(required_fields) > 0
+        ), f"{context_class.__name__} has no required fields"
 
     @pytest.mark.parametrize(
         "context_class",
-        [StoryContext, EpisodeContext, ScriptContext, TimelineContext, StoryboardContext],
+        [
+            StoryContext,
+            EpisodeContext,
+            ScriptContext,
+            TimelineContext,
+            StoryboardContext,
+        ],
     )
     def test_has_critical_fields(self, context_class):
         """Each context should have at least one critical field."""
-        critical_fields = [f for f in context_class.FIELDS if f.priority == FieldPriority.CRITICAL]
-        assert len(critical_fields) > 0, f"{context_class.__name__} has no critical fields"
+        critical_fields = [
+            f for f in context_class.FIELDS if f.priority == FieldPriority.CRITICAL
+        ]
+        assert (
+            len(critical_fields) > 0
+        ), f"{context_class.__name__} has no critical fields"
 
 
 class TestTokenBudgetScenarios:

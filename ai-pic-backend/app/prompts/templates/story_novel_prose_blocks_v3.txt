@@ -1,0 +1,36 @@
+根据冻结 chapter_brief 写中文长篇小说正文。
+输入：{{ prose_input_json }}
+你只负责文学正文，不负责审计。不得输出摘要、证据、状态、plot_delta、解释或未来目录。
+current_chapter_context.events 是本章必须自然完成的对应事件；characters 是本章可用的人物简介、
+当前关系/状态与动机。先理解人物为何行动，再把事件写成场景，不得把这些字段逐条复述进正文。
+events[].execution.actor_ids 是对应事件获准实际参与的 Canon 人物；其他可见人物若未被该事件明示，
+只能作为已有状态被提及，不得自行赶来、协助或加入行动。scene_participants 是冻结大纲明示、
+但不建立 Canon 状态的当前章称谓；仅可在事件原文明示它时参与，不得为其新增姓名、身世、关系或物件。
+current_chapter_context.typed_execution_boundary 是穷尽的当前章硬合同，优先于 brief、summary、
+cliffhanger 或其他自由文本。只能写出其中列明的长期状态、地点、知识、里程碑和线索变化；空列表表示
+本章没有该类变化。unchanged_location_subject_ids 中的人物必须停留在当前地点，可以决定、准备或开始
+行程，但不得写成已经离开、到达或返回。action_phase=start 只能开始，progress 只能推进，complete 才能
+完成；instant 只发生当前瞬时事件，不得顺带写完后续结果。
+entity_introductions 是本章唯一允许首次建立并跨章延续的世界实体；必须在所绑定事件中自然完成首次
+呈现。除此之外不得给临时人物、地点、组织、物件或概念补出可跨章延续的姓名、关系、所有权或制度。
+blocks 数量和 block_id 必须与 chapter_brief.beats 一一对应；每块围绕对应 beat 展开，
+各块自然衔接，避免审计式确认句、合同复述和说明书语气。
+beat.target_chars 只是各块篇幅分配指引，不是逐块硬门禁；允许场景自然伸缩，但所有块合计必须
+落入 chapter_length.min_chars–max_chars，并尽量达到 target_chars。每块必须完成不同的行动、
+关系或情绪推进，不得重新入场、回顾上一块或重复同一结论。不得把字符预算当作 token 预算，
+也不得用短句、空行、重复对白或同义复述凑数。
+严格服从 writing_style 中的 genre、target_audience 与 story_format，并执行 chapter_brief 已确定的节奏；
+不得再次套用另一套固定起承转合。当前合同涉及的背景或专业信息，只能通过与当前冲突有关的行动、对话和结果
+自然呈现；不得套用某一领域的固定流程，不集中授课或写说明书。
+人物关系只按 brief 中已授权的职责互补、信任、分歧或情绪变化自然推进，不自行新增或强行升级。
+chapter_brief.continuity_watchpoints 是章前规划从既有事件、记忆或当前状态提炼的连续性护栏：
+不得写出与其相反的资源数量、借用期限、债务条款、承诺、因果前置、耗时或关系状态；但正文无需
+逐项复述这些护栏，也不得把它们当成必须完成的新事件或升级目标。
+不得为了显得更专业而扩写与当前情节无关的知识、流程或制度说明。
+总正文按去除全部空白后的字符数满足 chapter_length 的 min_chars–max_chars，
+目标接近 target_chars。只允许使用 visible_canon、entity_introductions 和 brief 明示的实体、知识与变化。
+不得自行补写可跨章延续的身世、居住年限、亲属关系、识字能力、所有权、权限、伤势、
+契约条款或世界制度；需要充实篇幅时，只扩写当前场景中的行动、冲突、对话、感官、即时判断
+和不改变长期状态的题材内场景细节。
+只输出 JSON：
+{"blocks":[{"block_id":"B01","content_text":"小说正文段落"}]}

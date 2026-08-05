@@ -1,6 +1,6 @@
 ---
 id: 2026-01-31T06-00-00Z-video-capabilities-registry
-date: 2026-01-31T06:00:00Z
+date: "2026-01-31T06:00:00Z"
 participants: [human, claude]
 models: [claude-opus-4-5-20251101]
 tags: [backend, video, capabilities, duration]
@@ -28,6 +28,7 @@ Complete video-duration-alignment Phase 1: Create video capabilities parsing lay
 ### New Files Created
 
 1. **`app/services/video/video_capabilities.py`** (300 lines) - Video capabilities registry:
+
    - `VideoCapability` dataclass for capability specifications
    - `CapabilityMatch` dataclass for resolution results with audit info
    - Provider-specific capabilities:
@@ -67,6 +68,7 @@ python -m pytest tests/unit/services/video/test_video_capabilities.py -v
 ```
 
 All 27 unit tests pass covering:
+
 - Provider/model capability lookup
 - Case-insensitive matching
 - Resolution-specific constraints

@@ -12,6 +12,7 @@ from app.services.story.story_novel_canon_service import (
     normalize_canon,
 )
 from app.services.story.story_novel_length_service import generation_plan_hash
+from app.services.story.story_novel_plan_patch_repair import plan_repair_request
 from app.services.story.story_novel_planning_phases import (
     _parse_plan,
     _plan_repair_prompt,
@@ -118,8 +119,11 @@ def test_invalid_ready_plan_preserves_old_runtime_before_provider(db_session):
     async def generate(*_args, **_kwargs):
         raise AssertionError("invalid ready plan with body must fail before provider")
 
-    with pytest.raises(HTTPException, match="已有正文未改写"):
+    with pytest.raises(HTTPException) as exc_info:
         anyio.run(ensure_generation_plan, service, revision, task, generate)
+
+    assert exc_info.value.status_code == 409
+    assert "已有正文未改写" in str(exc_info.value.detail)
 
     assert revision.generation_plan == current
     assert revision.continuity_ledger["state_status"] == "ready"
@@ -149,6 +153,22 @@ def test_plan_repair_keeps_the_complete_previous_output():
     assert "transition.from_value 写为 null" in repair
     assert "outcome.subject_id 添加 knowledge_grant" in repair
     assert "每个未回收 ID" in repair
+
+
+def test_patch_repair_forbids_unknown_character_arrival_alias():
+    repair, _ = plan_repair_request(
+        "prompt",
+        '{"chapters":[{"position":31}]}',
+        "第 31 章地点起点不连续",
+        [31],
+        canon={"entities": []},
+        frozen_spec={"chapters": []},
+        thread_payoffs=[],
+        prior_chapters=[],
+    )
+
+    assert "不得用 null 起点" in repair
+    assert "不得换一个字段继续表达" in repair
 
 
 def test_plan_parser_accepts_location_reason_as_means_alias():

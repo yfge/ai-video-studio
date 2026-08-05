@@ -63,12 +63,16 @@ def _delta(chapter):
     }
 
 
-def test_schema_and_plan_allow_same_chapter_object_creation_placement():
-    canon, chapter = _object_creation_case("尚未存在")
-
+@pytest.mark.parametrize("initial_status", ["尚未存在", "not_built"])
+def test_schema_and_plan_allow_same_chapter_object_creation_placement(initial_status):
+    canon, chapter = _object_creation_case(initial_status)
     parsed = StoryNovelGenerationPlan.model_validate({"chapters": [chapter]})
     assert parsed.chapters[0].location_transitions[0].from_location_id is None
     validate_generation_plan(canon, parsed.model_dump()["chapters"])
+    report, _ = validate_state_delta(
+        canon, chapter, initial_story_state(canon), _delta(chapter)
+    )
+    assert report["status"] == "passed"
 
 
 def test_schema_requires_explicit_nullable_origin():
@@ -79,17 +83,13 @@ def test_schema_requires_explicit_nullable_origin():
     }
     with pytest.raises(ValidationError):
         StoryNovelLocationTransition.model_validate(movement)
-    assert (
-        StoryNovelLocationTransition.model_validate(
-            {**movement, "from_location_id": None}
-        ).from_location_id
-        is None
-    )
+    movement["from_location_id"] = None
+    parsed = StoryNovelLocationTransition.model_validate(movement)
+    assert parsed.from_location_id is None
 
 
 def test_state_gate_allows_extracted_object_creation_placement():
     canon, chapter = _object_creation_case("尚未存在")
-
     report, state_after = validate_state_delta(
         canon,
         chapter,

@@ -57,7 +57,11 @@ def _collect_user_character_refs(
         vip_id = _to_int(item.get("virtual_ip_id"))
         name = item.get("name")
         if not url and vip_id is not None:
-            url = ref_ctx.char_image_map.get(vip_id) or _fallback_anchor(ref_ctx, vip_id) or ""
+            url = (
+                ref_ctx.char_image_map.get(vip_id)
+                or _fallback_anchor(ref_ctx, vip_id)
+                or ""
+            )
             vip = ref_ctx.vip_map.get(vip_id)
             name = name or (getattr(vip, "name", None) if vip else None)
         if url:

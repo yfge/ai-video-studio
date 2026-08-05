@@ -184,13 +184,15 @@ class VisualContinuityValidator(BaseValidator):
                     if name not in characters:
                         characters[name] = []
 
-                    characters[name].append({
-                        "frame_index": i,
-                        "frame_number": frame.get("frame_number", i + 1),
-                        "description": frame.get("description", ""),
-                        "visual_description": frame.get("visual_description", ""),
-                        "character_data": char,
-                    })
+                    characters[name].append(
+                        {
+                            "frame_index": i,
+                            "frame_number": frame.get("frame_number", i + 1),
+                            "description": frame.get("description", ""),
+                            "visual_description": frame.get("visual_description", ""),
+                            "character_data": char,
+                        }
+                    )
 
         return characters
 
@@ -209,9 +211,7 @@ class VisualContinuityValidator(BaseValidator):
             costumes: List[Tuple[int, Set[str]]] = []
             for app in appearances:
                 desc = (
-                    app.get("visual_description", "")
-                    + " "
-                    + app.get("description", "")
+                    app.get("visual_description", "") + " " + app.get("description", "")
                 )
                 costume_elements = self._extract_visual_elements(desc, "costume")
                 costumes.append((app["frame_number"], costume_elements))
@@ -230,8 +230,7 @@ class VisualContinuityValidator(BaseValidator):
                             "character": char_name,
                             "frames": inconsistencies,
                             "costumes": [
-                                {"frame": f, "elements": list(c)}
-                                for f, c in costumes
+                                {"frame": f, "elements": list(c)} for f, c in costumes
                             ],
                         },
                         suggestions=[
@@ -258,9 +257,7 @@ class VisualContinuityValidator(BaseValidator):
             hairstyles: List[Tuple[int, Set[str]]] = []
             for app in appearances:
                 desc = (
-                    app.get("visual_description", "")
-                    + " "
-                    + app.get("description", "")
+                    app.get("visual_description", "") + " " + app.get("description", "")
                 )
                 hair_elements = self._extract_visual_elements(desc, "hairstyle")
                 hairstyles.append((app["frame_number"], hair_elements))
@@ -302,9 +299,7 @@ class VisualContinuityValidator(BaseValidator):
             props: List[Tuple[int, Set[str]]] = []
             for app in appearances:
                 desc = (
-                    app.get("visual_description", "")
-                    + " "
-                    + app.get("description", "")
+                    app.get("visual_description", "") + " " + app.get("description", "")
                 )
                 prop_elements = self._extract_visual_elements(desc, "props")
                 props.append((app["frame_number"], prop_elements))
@@ -348,9 +343,7 @@ class VisualContinuityValidator(BaseValidator):
             positions: List[Tuple[int, str]] = []
             for app in appearances:
                 desc = (
-                    app.get("visual_description", "")
-                    + " "
-                    + app.get("description", "")
+                    app.get("visual_description", "") + " " + app.get("description", "")
                 )
                 position = self._extract_position(desc)
                 if position:
@@ -409,9 +402,7 @@ class VisualContinuityValidator(BaseValidator):
             poses: List[Tuple[int, Optional[str]]] = []
             for app in appearances:
                 desc = (
-                    app.get("visual_description", "")
-                    + " "
-                    + app.get("description", "")
+                    app.get("visual_description", "") + " " + app.get("description", "")
                 )
                 pose = self._extract_pose(desc)
                 if pose:
@@ -492,17 +483,11 @@ class VisualContinuityValidator(BaseValidator):
         # Generate suggestions for missing composition elements
         suggestions = []
         if not has_thirds:
-            suggestions.append(
-                "Consider using rule of thirds for subject placement"
-            )
+            suggestions.append("Consider using rule of thirds for subject placement")
         if not has_leading_lines:
-            suggestions.append(
-                "Add leading lines to guide viewer's eye"
-            )
+            suggestions.append("Add leading lines to guide viewer's eye")
         if not has_depth:
-            suggestions.append(
-                "Use depth of field to add visual interest"
-            )
+            suggestions.append("Use depth of field to add visual interest")
 
         if suggestions:
             results.append(
@@ -548,13 +533,17 @@ class VisualContinuityValidator(BaseValidator):
                     # Check if character is even visible
                     characters = frame.get("characters", [])
                     if characters:
-                        sync_issues.append({
-                            "frame_number": frame.get("frame_number", i + 1),
-                            "issue": "Character speaking but no mouth movement indicated",
-                            "dialogue_excerpt": dialogue[:50] + "..."
-                            if len(dialogue) > 50
-                            else dialogue,
-                        })
+                        sync_issues.append(
+                            {
+                                "frame_number": frame.get("frame_number", i + 1),
+                                "issue": "Character speaking but no mouth movement indicated",
+                                "dialogue_excerpt": (
+                                    dialogue[:50] + "..."
+                                    if len(dialogue) > 50
+                                    else dialogue
+                                ),
+                            }
+                        )
 
         if sync_issues:
             results.append(
@@ -574,21 +563,15 @@ class VisualContinuityValidator(BaseValidator):
 
         return results
 
-    def _extract_visual_elements(
-        self, description: str, element_type: str
-    ) -> Set[str]:
+    def _extract_visual_elements(self, description: str, element_type: str) -> Set[str]:
         """Extract visual elements of a specific type from description."""
         elements: Set[str] = set()
         desc_lower = description.lower()
 
         if element_type == "costume":
-            keywords = (
-                self.COSTUME_KEYWORDS["zh"] + self.COSTUME_KEYWORDS["en"]
-            )
+            keywords = self.COSTUME_KEYWORDS["zh"] + self.COSTUME_KEYWORDS["en"]
         elif element_type == "hairstyle":
-            keywords = (
-                self.HAIRSTYLE_KEYWORDS["zh"] + self.HAIRSTYLE_KEYWORDS["en"]
-            )
+            keywords = self.HAIRSTYLE_KEYWORDS["zh"] + self.HAIRSTYLE_KEYWORDS["en"]
         elif element_type == "props":
             keywords = self.PROP_KEYWORDS["zh"] + self.PROP_KEYWORDS["en"]
         else:
@@ -634,9 +617,7 @@ class VisualContinuityValidator(BaseValidator):
 
         return None
 
-    def _find_inconsistencies(
-        self, elements: List[Tuple[int, Set[str]]]
-    ) -> List[int]:
+    def _find_inconsistencies(self, elements: List[Tuple[int, Set[str]]]) -> List[int]:
         """Find frames with inconsistent elements."""
         if len(elements) < 2:
             return []
@@ -680,14 +661,41 @@ class VisualContinuityValidator(BaseValidator):
         # Extract core keywords (remove context)
         core_keywords = [
             # Costume
-            "裙子", "西装", "衬衫", "外套", "裤子", "制服", "T恤",
-            "dress", "suit", "shirt", "jacket", "pants", "uniform",
+            "裙子",
+            "西装",
+            "衬衫",
+            "外套",
+            "裤子",
+            "制服",
+            "T恤",
+            "dress",
+            "suit",
+            "shirt",
+            "jacket",
+            "pants",
+            "uniform",
             # Colors
-            "红色", "蓝色", "黑色", "白色", "绿色", "黄色",
-            "red", "blue", "black", "white", "green", "yellow",
+            "红色",
+            "蓝色",
+            "黑色",
+            "白色",
+            "绿色",
+            "黄色",
+            "red",
+            "blue",
+            "black",
+            "white",
+            "green",
+            "yellow",
             # Hairstyle
-            "长发", "短发", "卷发", "直发", "马尾",
-            "long hair", "short hair", "ponytail",
+            "长发",
+            "短发",
+            "卷发",
+            "直发",
+            "马尾",
+            "long hair",
+            "short hair",
+            "ponytail",
         ]
 
         elem1_lower = elem1.lower()

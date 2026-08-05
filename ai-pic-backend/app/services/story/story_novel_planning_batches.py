@@ -4,19 +4,38 @@ from __future__ import annotations
 
 import copy
 
-from .story_novel_domain import json_prompt_payload
 from .story_novel_plan_validator import _validate_chapter, _validation_context
 
 PLAN_CHAPTER_BATCH_SIZE = 8
+PLAN_BATCH_COMPLEXITY_BUDGET = 48
+PLAN_BATCH_MIN_SIZE = 3
 
 
-def chapter_batches(expected_positions: list[int]) -> list[list[int]]:
+def chapter_batches(
+    expected_positions: list[int],
+    frozen_spec: dict | None = None,
+    canon: dict | None = None,
+) -> list[list[int]]:
     if not expected_positions:
         return [[]]
-    return [
-        expected_positions[index : index + PLAN_CHAPTER_BATCH_SIZE]
-        for index in range(0, len(expected_positions), PLAN_CHAPTER_BATCH_SIZE)
-    ]
+    scores = _chapter_complexity(frozen_spec, canon)
+    batches, current, cost = [], [], 0
+    for position in expected_positions:
+        next_cost = scores.get(position, 5)
+        if current and (
+            len(current) >= PLAN_CHAPTER_BATCH_SIZE
+            or (
+                len(current) >= PLAN_BATCH_MIN_SIZE
+                and cost + next_cost > PLAN_BATCH_COMPLEXITY_BUDGET
+            )
+        ):
+            batches.append(current)
+            current, cost = [], 0
+        current.append(position)
+        cost += next_cost
+    if current:
+        batches.append(current)
+    return batches
 
 
 def batch_contract(contract: dict, positions: list[int]) -> dict:
@@ -26,11 +45,15 @@ def batch_contract(contract: dict, positions: list[int]) -> dict:
     seed = result.get("story_seed")
     outline = seed.get("structured_outline") if isinstance(seed, dict) else None
     if isinstance(outline, dict):
+        full_rows = list(outline.get("chapters") or [])
         outline["chapters"] = _position_rows(outline.get("chapters"), positions)
+    else:
+        full_rows = []
     result["chapter_batch"] = {
         "positions": positions,
         "first_position": positions[0],
         "last_position": positions[-1],
+        "next_boundary_anchor": _next_boundary_anchor(full_rows, positions[-1]),
     }
     return result
 
@@ -53,26 +76,6 @@ def batch_thread_payoffs(thread_payoffs: list[dict] | None, positions: list[int]
         for item in thread_payoffs
         if int(item.get("payoff_position") or 0) in allowed
     ]
-
-
-def planning_batch_prompt(
-    prompt: str,
-    positions: list[int],
-    canon: dict,
-    prior_chapters: list[dict],
-) -> str:
-    if not positions:
-        return prompt
-    prefix = validated_prefix_context(canon, prior_chapters)
-    return (
-        prompt
-        + "\n\n本次是有界章节合同批次，只输出严格 JSON object，chapters 必须且只能"
-        f"覆盖第 {positions[0]}–{positions[-1]} 章，精确 positions={positions}。"
-        "不得复读已验证前缀，不得输出本批次之后的章节。"
-        "\n以下 prefix_context 是此前批次经确定性验证后的唯一状态起点；"
-        "所有 from_value、preconditions、事件 ID、里程碑和伏笔必须从这里连续推进："
-        f"{json_prompt_payload(prefix)}"
-    )
 
 
 def validated_prefix_context(canon: dict, chapters: list[dict]) -> dict:
@@ -138,3 +141,41 @@ def _position_rows(rows, positions: list[int]) -> list[dict]:
         for item in rows or []
         if int(item.get("position") or 0) in allowed
     ]
+
+
+def _chapter_complexity(frozen_spec, canon) -> dict[int, int]:
+    rows = (frozen_spec or {}).get("chapters") or []
+    milestone_counts: dict[int, int] = {}
+    timeline_counts: dict[int, int] = {}
+    for item in (canon or {}).get("milestones") or []:
+        position = int(item.get("planned_position") or 0)
+        milestone_counts[position] = milestone_counts.get(position, 0) + 1
+    for item in (canon or {}).get("timeline") or []:
+        position = int(item.get("source_chapter_position") or 0)
+        timeline_counts[position] = timeline_counts.get(position, 0) + 1
+    return {
+        int(row["position"]): (
+            3
+            + len(row.get("key_events") or [])
+            + min(2, len(row.get("character_focus") or []))
+            + len(row.get("open_threads") or [])
+            + milestone_counts.get(int(row["position"]), 0)
+            + timeline_counts.get(int(row["position"]), 0)
+        )
+        for row in rows
+    }
+
+
+def _next_boundary_anchor(rows: list[dict], last_position: int) -> dict | None:
+    row = next(
+        (item for item in rows if int(item.get("position") or 0) > last_position),
+        None,
+    )
+    if not row:
+        return None
+    return {
+        "position": int(row["position"]),
+        "title": row.get("title"),
+        "goal": row.get("goal"),
+        "first_key_event": (row.get("key_events") or [None])[0],
+    }

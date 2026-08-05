@@ -29,13 +29,22 @@ export function ScriptTrafficTab({ script }: ScriptTrafficTabProps) {
   const extra = asRecord(script.extra_metadata) ?? {};
   const params = asRecord(script.generation_params) ?? {};
   const scoring = asRecord(extra.scoring) ?? {};
-  const marketRegion = getValue(extra, params, "market_region") as string | undefined;
-  const microGenre = getValue(extra, params, "micro_genre") as string | undefined;
-  const twistDensity = getValue(extra, params, "twist_density") as string | undefined;
-  const cliffhangerPlan = toStringList(getValue(extra, params, "cliffhanger_plan"));
+  const marketRegion = getValue(extra, params, "market_region") as
+    | string
+    | undefined;
+  const microGenre = getValue(extra, params, "micro_genre") as
+    | string
+    | undefined;
+  const twistDensity = getValue(extra, params, "twist_density") as
+    | string
+    | undefined;
+  const cliffhangerPlan = toStringList(
+    getValue(extra, params, "cliffhanger_plan"),
+  );
   const hookPlanRaw = getValue(extra, params, "hook_plan");
   const hookPlan = toHookPlan(hookPlanRaw);
-  const hookPlanText = typeof hookPlanRaw === "string" ? hookPlanRaw : undefined;
+  const hookPlanText =
+    typeof hookPlanRaw === "string" ? hookPlanRaw : undefined;
   const adSnippets = toAdSnippets(getValue(extra, params, "ad_snippets"));
   const scorecard =
     asRecord(getValue(extra, params, "scorecard")) ||
@@ -47,9 +56,15 @@ export function ScriptTrafficTab({ script }: ScriptTrafficTabProps) {
       scorecard?.score ??
       getValue(extra, params, "overall_score"),
   );
-  const dimensionScores = asRecord(scorecard?.dimension_scores ?? scorecard?.scores);
-  const strengths = toStringList(scorecard?.strengths ?? getValue(extra, params, "strengths"));
-  const risks = toStringList(scorecard?.risks ?? getValue(extra, params, "risk_notes"));
+  const dimensionScores = asRecord(
+    scorecard?.dimension_scores ?? scorecard?.scores,
+  );
+  const strengths = toStringList(
+    scorecard?.strengths ?? getValue(extra, params, "strengths"),
+  );
+  const risks = toStringList(
+    scorecard?.risks ?? getValue(extra, params, "risk_notes"),
+  );
   const rewriteGuidance = toStringList(
     scorecard?.rewrite_guidance ?? getValue(extra, params, "rewrite_guidance"),
   );
@@ -65,7 +80,9 @@ export function ScriptTrafficTab({ script }: ScriptTrafficTabProps) {
       market_region: marketRegion,
       micro_genre: microGenre,
     }));
-    const blob = new Blob([buildCsv(rows)], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([buildCsv(rows)], {
+      type: "text/csv;charset=utf-8;",
+    });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -77,11 +94,21 @@ export function ScriptTrafficTab({ script }: ScriptTrafficTabProps) {
   return (
     <div className="space-y-4">
       <OperatorPanel>
-        <OperatorSectionHeader title="投流评分" subtitle="市场、微类型和爽点评分" />
+        <OperatorSectionHeader
+          title="投流评分"
+          subtitle="市场、微类型和爽点评分"
+        />
         <div className="grid gap-3 p-4 md:grid-cols-3">
-          <Metric label="市场/微类型" value={marketRegion || "未指定"} sub={microGenre || "未指定"} />
+          <Metric
+            label="市场/微类型"
+            value={marketRegion || "未指定"}
+            sub={microGenre || "未指定"}
+          />
           <Metric label="反转密度" value={twistDensity || "—"} />
-          <Metric label="总体评分" value={overallScore != null ? overallScore.toFixed(2) : "—"} />
+          <Metric
+            label="总体评分"
+            value={overallScore != null ? overallScore.toFixed(2) : "—"}
+          />
         </div>
       </OperatorPanel>
 
@@ -91,9 +118,14 @@ export function ScriptTrafficTab({ script }: ScriptTrafficTabProps) {
           <div className="space-y-3 p-4">
             {dimensionScores ? (
               Object.entries(dimensionScores).map(([key, value]) => (
-                <div key={key} className="flex items-center justify-between text-sm">
+                <div
+                  key={key}
+                  className="flex items-center justify-between text-sm"
+                >
                   <span className="text-gray-600">{key}</span>
-                  <StatusPill tone="blue">{toNumber(value)?.toFixed(2) ?? String(value)}</StatusPill>
+                  <StatusPill tone="blue">
+                    {toNumber(value)?.toFixed(2) ?? String(value)}
+                  </StatusPill>
                 </div>
               ))
             ) : (
@@ -112,17 +144,24 @@ export function ScriptTrafficTab({ script }: ScriptTrafficTabProps) {
       </div>
 
       <OperatorPanel>
-        <OperatorSectionHeader title="Hook/节奏规划" subtitle="生成参数和额外元数据" />
+        <OperatorSectionHeader
+          title="Hook/节奏规划"
+          subtitle="生成参数和额外元数据"
+        />
         <div className="grid gap-3 p-4 md:grid-cols-3">
-          <Metric label="开场钩子" value={hookPlan?.opening_hook || hookPlanText || "—"} />
+          <Metric
+            label="开场钩子"
+            value={hookPlan?.opening_hook || hookPlanText || "—"}
+          />
           <Metric label="情绪升级" value={hookPlan?.escalation_plan || "—"} />
           <Metric label="释放节点" value={hookPlan?.payoff_plan || "—"} />
         </div>
         <div className="space-y-3 px-4 pb-4">
           <TextList
             title="关键反转"
-            items={(hookPlan?.key_reversals || []).map((beat) =>
-              `${beat.description}${beat.timing ? ` (${beat.timing})` : ""}`,
+            items={(hookPlan?.key_reversals || []).map(
+              (beat) =>
+                `${beat.description}${beat.timing ? ` (${beat.timing})` : ""}`,
             )}
           />
           <TextList title="悬念/卡点" items={cliffhangerPlan} />
@@ -145,7 +184,9 @@ export function ScriptTrafficTab({ script }: ScriptTrafficTabProps) {
           }
         />
         {adSnippets.length === 0 ? (
-          <div className="p-4"><OperatorState title="暂无投流素材数据" /></div>
+          <div className="p-4">
+            <OperatorState title="暂无投流素材数据" />
+          </div>
         ) : (
           <div className="overflow-x-auto p-4">
             <table className={operatorTableClass}>
@@ -160,10 +201,16 @@ export function ScriptTrafficTab({ script }: ScriptTrafficTabProps) {
               <tbody className="divide-y divide-gray-100">
                 {adSnippets.map((snippet, idx) => (
                   <tr key={idx} className={operatorTableRowClass}>
-                    <td className="px-3 py-2">{snippet.duration_seconds || "—"}s</td>
+                    <td className="px-3 py-2">
+                      {snippet.duration_seconds || "—"}s
+                    </td>
                     <td className="px-3 py-2">{snippet.hook}</td>
-                    <td className="px-3 py-2">{snippet.visual_summary || "—"}</td>
-                    <td className="px-3 py-2">{snippet.call_to_action || "—"}</td>
+                    <td className="px-3 py-2">
+                      {snippet.visual_summary || "—"}
+                    </td>
+                    <td className="px-3 py-2">
+                      {snippet.call_to_action || "—"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -175,7 +222,15 @@ export function ScriptTrafficTab({ script }: ScriptTrafficTabProps) {
   );
 }
 
-function Metric({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Metric({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+}) {
   return (
     <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
       <div className="text-xs text-gray-500">{label}</div>
@@ -185,7 +240,15 @@ function Metric({ label, value, sub }: { label: string; value: string; sub?: str
   );
 }
 
-function TextList({ title, items, empty }: { title: string; items: string[]; empty?: string }) {
+function TextList({
+  title,
+  items,
+  empty,
+}: {
+  title: string;
+  items: string[];
+  empty?: string;
+}) {
   if (!items.length && !empty) return null;
   return (
     <div>
@@ -193,7 +256,10 @@ function TextList({ title, items, empty }: { title: string; items: string[]; emp
       {items.length ? (
         <div className="space-y-1">
           {items.map((item, idx) => (
-            <div key={idx} className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700">
+            <div
+              key={idx}
+              className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700"
+            >
               {item}
             </div>
           ))}

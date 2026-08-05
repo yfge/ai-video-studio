@@ -32,7 +32,9 @@ def test_audio_timeline_repository_ignores_soft_deleted_rows(db_session):
         extra_metadata={"start_ms": 0, "end_ms": 1000},
     )
     stale_duplicate.soft_delete(reason="dialogue_audio_overwrite")
-    db_session.add_all([story, episode, script, scene, deleted_scene, active, stale_duplicate])
+    db_session.add_all(
+        [story, episode, script, scene, deleted_scene, active, stale_duplicate]
+    )
     db_session.commit()
 
     assert [item.id for item in list_script_scenes(db_session, script.id)] == [scene.id]

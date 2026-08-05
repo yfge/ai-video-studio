@@ -1,0 +1,19 @@
+{{ original_prompt }}
+
+上一次 Canon 无效或被截断，请只修复并完整重输一次。
+所有字符串保持一句话，数组只保留会约束后文的项目。
+禁止新增、拆分、改名或顺带重写未报错的 milestone；临时权限的取得与到期不得创建 milestone。
+knowledge contains outcome 只能授予 kind=character；组织、群体、地点或概念的认知与信任必须改成其自身 status 或删除，禁止保留 organization knowledge。
+repair_context.invalid_contains_milestone_ids 中每个 milestone 都把 contains 用在了标量字段；必须按 StorySeed 明示结果改成单一 eq 状态或删除该 outcome，禁止把标量初态改成数组来迁就 contains。
+逐项复核所有 future outcomes：eq 的初态值必须不相等，contains 的初态数组必须不包含该值。
+校验错误中的重复 outcome 必须只保留 planned_position 最早的一条，从所有更晚 milestone 删除完全相同的 subject_id/field/operator/value。
+repair_context.delete_milestone_ids 中每个 ID 都必须从 milestones 数组整条删除，禁止只清空 outcomes 后保留空 milestone。
+若报错 outcome 只是重复一个始终成立的 owner_id、location 或权限值，删除该冗余 outcome；若它确实表达变化，则按 StorySeed 明示事实修正事件前初态。
+去重后 outcomes 为空的 milestone 必须整条删除，禁止保留空数组。
+对 owner_id eq null 的状态提前错误：若更早 milestone 已明确把 null 改给持有人，保留完整状态链；否则销毁物件把初态改为明示来源所有者，普通归档物件删除冗余 owner_id outcome。
+任何状态提前错误若来自 entity.attributes，必须删除其中的未来字段，并在 initial_state 写事件发生前的真实值。
+若 repair_context 给出 preserve_initial_state_exactly，必须逐字段原样复制该干净初态，不得重新推演。
+null、[]、{} 必须是 JSON 字面量，不能加引号。
+校验错误：{{ error }}
+repair_context：{{ repair_context_json }}
+上一次完整 Canon：{{ previous_canon }}

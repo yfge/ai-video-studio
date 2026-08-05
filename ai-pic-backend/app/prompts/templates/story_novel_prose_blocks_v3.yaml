@@ -1,0 +1,7 @@
+description: Story Novel v3 prose blocks
+category: story
+version: "1.7"
+variables:
+  prose_input_json:
+    required: true
+    type: string

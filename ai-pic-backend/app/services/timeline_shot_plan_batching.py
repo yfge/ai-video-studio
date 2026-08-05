@@ -44,7 +44,9 @@ def spec_for_video_clip_ids(
     return scoped
 
 
-def plan_mismatch_errors(mismatch: dict[str, Any] | None) -> list[dict[str, Any]] | None:
+def plan_mismatch_errors(
+    mismatch: dict[str, Any] | None
+) -> list[dict[str, Any]] | None:
     if mismatch is None:
         return None
     return [mismatch]
@@ -59,7 +61,9 @@ def invalid_batch_detail(
     max_tokens: int,
 ) -> dict[str, Any]:
     attempt = last_attempt(result)
-    metadata = attempt.get("metadata") if isinstance(attempt.get("metadata"), dict) else {}
+    metadata = (
+        attempt.get("metadata") if isinstance(attempt.get("metadata"), dict) else {}
+    )
     errors = safe_validation_errors(result.get("validation_errors"))
     return {
         "message": _validation_message(errors),

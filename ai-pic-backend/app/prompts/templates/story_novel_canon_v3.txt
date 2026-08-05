@@ -1,0 +1,49 @@
+仅根据冻结的 StorySeed、人物与世界约束编译唯一 Canon。
+规划合同：{{ planning_contract_json }}
+所有 ID 使用简短稳定英文标识；同一人物、地点、物件、规则或里程碑只能有一个 ID。
+entities 只允许 character、location、object、organization、concept；规则和里程碑只写入各自专用数组。
+全书大纲已明确的主要人物、持久地点、组织、关键物件和跨章复用的世界概念应提前注册为唯一实体，
+即使到后续章节才首次登场；首次登场前它们不会进入正文上下文。只在单场出现、没有后续状态的
+路人、室内角落和普通用品不要注册。大纲未提供依据的未来实体仍不得发明。
+structured_outline.core_character_routes 中的后续核心人物必须以 character_ref 作为稳定实体 ID 注册，
+其 hidden_state 只表示第1章前真实状态，不得写入未来登场后的行动或结果。路线中的叙事功能、
+最早登场章、预定卷、关系目标和弧线方向由服务器按冻结 StorySeed 绑定，禁止另行改写。
+structured_outline.initial_scope_nodes 中会持续存在的范围必须以 scope_id 注册为 location；
+scope_type、parent_scope_id 与 depth 属于静态 attributes。initial_scope_edges 按 from_scope_id 挂到
+对应 location 的 attributes.connections，保留 edge_id、to_scope_id、connection_type、direction、cost、
+duration、available_from_position；连接不是新的 location 实体。
+entities.attributes 只允许年龄、职业、类型、性别、稳定人称和家庭角色等不会随剧情改变的静态元数据；location、owner_id、status、identity、knowledge、permissions、injuries、destroyed_at 等可变或未来字段一律写入 initial_state 的事件前值，禁止提前写入 attributes。
+人物档案中若明确使用“她/他”、女/男性身份或明确家庭角色，必须用稳定英文键 gender、pronouns、family_role 保存这些不变事实；来源未明示时必须省略，不得猜测。
+world_rules 只能逐字复制 StorySeed.world_constraints 中不含章号或未来剧情的独立静态约束；不得从 structured_outline、结局、未来事件、里程碑或角色弧推导世界规则。
+location 必须覆盖大纲中每个持久物理停靠点，以及“本章出发、后章才抵达”时人物真实所在的持久中途地点；跨章旅途不得临时发明未注册地点 ID。只有不参与 initial_state 或 milestone 持久状态的内部空间才可写 attributes.location_scope="scene" 并用 attributes.parent_location_id 指向持久地点；人物事件前所在的地点必须省略 scope 或写 persistent。scene 地点不得写入 initial_state.location 或 milestone location outcome。
+initial_state 按实体 ID 记录地点、身份、关系、知识、伤势、能力、权限、所有者或物理状态。
+人物之间第1章事件前已经成立的关系统一写入该人物的 relationships 对象，以另一人物 ID 为键、
+当前关系为值；只写 StorySeed 明示的关系，不得把未来感情进展提前写入 initial_state。
+initial_state.location 只能引用 kind=location 的实体；物件所有者必须写 owner_id，禁止把角色 ID 写入 location。
+initial_state 的时间截面固定为第1章任何事件发生前（position=0），绝不能写入任何 planned_position>=1 的里程碑结果。
+若后续章节才会改变任何所有者、状态、身份、知识、能力、伤势或权限，initial_state 必须保留该事件发生前的精确值；不得把未来结果提前写入。
+timeline、milestones 与 character_arcs 可以描述未来计划，但它们绝不是 initial_state 已发生的事实。
+timeline 的 story_time 只能使用 StorySeed 明示的日期、相对时间或行程时长；未给出具体时刻时禁止擅自补小时和分钟。
+每个 immutable timeline 必须用 source_chapter_position 与 source_key_event 指向冻结 structured_outline 中唯一一条逐字 key_event；source_key_event 与 label 必须完全相同并完整逐字复制该 key_event，禁止概括、改写或指向 goal/end_state。没有明确大纲事件来源的时间描述不得编入 immutable timeline。
+story_time 去除空白与标点后的完整字面值必须位于同一 source_key_event 内，表示该事件自身的发生时间；嵌在“宣布某未来日期”“截止某日”等宾语里的日期不是事件发生时间。日期、时刻、时段或相对时间任一部分未被该 key_event 明示时，必须删除该 timeline，禁止从 goal、end_state、setting_time 或其他章节借用。
+milestones 只收录大纲明示的、不可逆且只能发生一次的 typed 状态变化。
+不得为了逐章对齐而每章都创建 milestone；若事件只是确认、验证或保持此前已经成立的状态，必须删除该 milestone。
+临时权限的取得、到期或撤销只属于章节状态变化，不得创建 Canon milestone；尤其不得让“取得”和“到期”重复使用同一个 contains outcome。
+每个 planned_position>=1 且 repeatable=false 的 milestone 必须提供至少一个 typed outcomes；outcomes 只允许 eq 或 contains，并用稳定实体/事实 ID 表达该里程碑完成后必然成立的状态。
+contains 只允许用于 initial_state 中真实为 JSON 数组的字段，value 写单个待加入值；relationships 可例外使用“关系:实体ID”字符串。
+status、identity、owner_id、location 等标量字段必须使用 eq，绝对不得用 contains，也不得为迁就 contains 把标量改成数组。
+knowledge contains outcome 的 subject_id 只能是 kind=character；组织、群体、地点或概念的认知、信任与接纳必须写成其自身 status 或其他实际变化，绝不能写 organization knowledge。
+身份公开、身份揭露或合法身份变更必须用该角色的 identity eq 最终公开身份表达，不能只授予旁观者 knowledge。
+若 object 在事件后确实不再存在，终态 milestone 必须令 status 进入终态；仅当事件前存在非空 owner_id 时才同时写 owner_id eq null，原本无主时不得重复清空；事件后仍存在的 object 不得使用终止状态。
+终态 outcome 包含 owner_id eq null 时，initial_state 应写 StorySeed 明示的非空来源所有者；若第1章后另有更早 milestone 明确把 owner_id 从 null 改给持有人，则必须保留这条完整 null→持有人→null 状态链。
+若 object 发生状态变化后仍存在，status 必须表达实际存续状态，不得误写 consumed、spent 等终止状态。
+若物件最终进入可独立定位的物理存放点，可把该点注册为 persistent location 并让物件最终 location 指向它；若只是放入 container object，禁止把 object ID 写入 location，必须用 status eq "stored_in:{container-object-id}" 表达，并按实际变化更新 owner_id。
+每个 outcome 必须在此前为假，并在 milestone 所在章结束后新变为真；不同 milestone 不得声明完全相同的 typed outcome。
+若多个候选 milestone 得到完全相同的 outcome，只保留 planned_position 最早、真正使它首次成立的那一条；更晚的“仍然成立”不是 milestone。
+物件会跟随 owner_id 对应角色移动；若持有者按大纲在 milestone 之前已抵达目标地点，禁止把该地点写成 milestone 的 location outcome，应只保留届时才首次成立的 status、owner_id 或 knowledge outcome。
+归档或公开时若 owner_id 本来就是 null，不得把 owner_id eq null 重复写成 outcome；只记录真正改变的 location、status 或权限状态。
+initial_state 必须让所有未来 milestone outcomes 都不成立；例如未来才移交给 char-b 的 object owner_id 在 position=0 必须是来源角色或 null，未来才揭露的 fact-id 不得出现在知识数组。
+JSON 的空值必须写字面量 null，数组必须写真实 JSON 数组，禁止写成字符串 "null"、"[]" 或 JSON 字符串。
+只输出严格 JSON：
+{"timeline":[{"id":"time-1","label":"逐字 key_event","order":1,"story_time":"StorySeed逐字时间","immutable":true,"source_chapter_position":1,"source_key_event":"含同一 StorySeed 时间的逐字 key_event"}],"entities":[{"id":"char-a","kind":"character|location|object|organization|concept","name":"名称","aliases":[],"attributes":{}},{"id":"loc-room","kind":"location","name":"内部场景","aliases":[],"attributes":{"location_scope":"scene","parent_location_id":"loc-parent"}}],"world_rules":[{"id":"rule-1","statement":"不可违反的规则","exceptions":[]}],"gate_version":2,"milestones":[{"id":"mile-1","label":"只发生一次的节点","planned_position":3,"repeatable":false,"outcomes":[{"subject_id":"object-a","field":"owner_id","operator":"eq","value":"char-a"},{"subject_id":"char-a","field":"knowledge","operator":"contains","value":"fact-id"}]}],"character_arcs":[{"character_id":"char-a","start_state":"起点","checkpoints":[{"position":3,"state":"转折"}],"end_state":"终态"}],"initial_state":{"char-a":{"location":"location-id","knowledge":[],"permissions":[],"possessions":[]},"object-a":{"location":"location-id","owner_id":null,"status":"initial"}}}
+不得加入 StorySeed 没有依据的未来设定。

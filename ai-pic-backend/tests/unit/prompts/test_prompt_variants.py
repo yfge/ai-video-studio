@@ -1,7 +1,6 @@
 """Tests for prompt variant system."""
 
 import pytest
-
 from app.prompts.prompt_variants import (
     PromptVariants,
     ScriptFormat,
@@ -170,9 +169,7 @@ class TestGetTemplateForFormat:
 
     def test_unknown_base_template(self):
         """Test with unknown base template uses generic resolve."""
-        result = get_template_for_format(
-            "custom_template", story_format="short_drama"
-        )
+        result = get_template_for_format("custom_template", story_format="short_drama")
         assert result == "custom_template_short_drama"
 
 

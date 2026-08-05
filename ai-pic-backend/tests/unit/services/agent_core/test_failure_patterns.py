@@ -1,7 +1,6 @@
 """Tests for Failure Pattern Library."""
 
 import pytest
-
 from app.services.agent_core.failure_patterns import (
     COMMON_PATTERNS,
     FailurePattern,
@@ -136,16 +135,14 @@ class TestCommonPatterns:
     def test_json_syntax_patterns_exist(self):
         """JSON syntax patterns should exist."""
         json_patterns = [
-            p for p in COMMON_PATTERNS
-            if p.category == PatternCategory.JSON_SYNTAX
+            p for p in COMMON_PATTERNS if p.category == PatternCategory.JSON_SYNTAX
         ]
         assert len(json_patterns) >= 3  # unclosed brace, array, trailing comma
 
     def test_api_error_patterns_exist(self):
         """API error patterns should exist."""
         api_patterns = [
-            p for p in COMMON_PATTERNS
-            if p.category == PatternCategory.API_ERROR
+            p for p in COMMON_PATTERNS if p.category == PatternCategory.API_ERROR
         ]
         assert len(api_patterns) >= 2  # rate limit, context length
 
@@ -310,8 +307,7 @@ class TestPatternSeverity:
     def test_api_errors_severity(self):
         """API errors should generally be medium or high."""
         api_patterns = [
-            p for p in COMMON_PATTERNS
-            if p.category == PatternCategory.API_ERROR
+            p for p in COMMON_PATTERNS if p.category == PatternCategory.API_ERROR
         ]
         for pattern in api_patterns:
             assert pattern.severity in {"medium", "high"}

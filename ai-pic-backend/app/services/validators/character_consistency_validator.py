@@ -90,19 +90,48 @@ class CharacterValidationResult:
         }
 
     @classmethod
-    def success(cls, message: str, details: dict | None = None) -> CharacterValidationResult:
+    def success(
+        cls, message: str, details: dict | None = None
+    ) -> CharacterValidationResult:
         """Create a success result."""
-        return cls(passed=True, severity=ValidationSeverity.INFO, message=message, details=details or {})
+        return cls(
+            passed=True,
+            severity=ValidationSeverity.INFO,
+            message=message,
+            details=details or {},
+        )
 
     @classmethod
-    def warning(cls, message: str, details: dict | None = None, suggestions: list[str] | None = None) -> CharacterValidationResult:
+    def warning(
+        cls,
+        message: str,
+        details: dict | None = None,
+        suggestions: list[str] | None = None,
+    ) -> CharacterValidationResult:
         """Create a warning result."""
-        return cls(passed=True, severity=ValidationSeverity.WARNING, message=message, details=details or {}, suggestions=suggestions or [])
+        return cls(
+            passed=True,
+            severity=ValidationSeverity.WARNING,
+            message=message,
+            details=details or {},
+            suggestions=suggestions or [],
+        )
 
     @classmethod
-    def error(cls, message: str, details: dict | None = None, suggestions: list[str] | None = None) -> CharacterValidationResult:
+    def error(
+        cls,
+        message: str,
+        details: dict | None = None,
+        suggestions: list[str] | None = None,
+    ) -> CharacterValidationResult:
         """Create an error result (validation failed)."""
-        return cls(passed=False, severity=ValidationSeverity.ERROR, message=message, details=details or {}, suggestions=suggestions or [])
+        return cls(
+            passed=False,
+            severity=ValidationSeverity.ERROR,
+            message=message,
+            details=details or {},
+            suggestions=suggestions or [],
+        )
 
 
 class CharacterConsistencyValidator:
@@ -116,13 +145,24 @@ class CharacterConsistencyValidator:
     """
 
     # Common narrator/system names to skip
-    NARRATOR_NAMES = {"旁白", "Narrator", "narrator", "画外音", "Voice Over", "VO", "系统", "System"}
+    NARRATOR_NAMES = {
+        "旁白",
+        "Narrator",
+        "narrator",
+        "画外音",
+        "Voice Over",
+        "VO",
+        "系统",
+        "System",
+    }
 
     def __init__(self) -> None:
         self._profiles: dict[str, CharacterProfile] = {}
         self._alias_map: dict[str, str] = {}  # alias -> canonical name
 
-    def register_profiles(self, profiles: list[CharacterProfile | dict[str, Any]]) -> None:
+    def register_profiles(
+        self, profiles: list[CharacterProfile | dict[str, Any]]
+    ) -> None:
         """Register character profiles for validation."""
         for profile in profiles:
             if isinstance(profile, dict):
@@ -239,34 +279,42 @@ class CharacterConsistencyValidator:
         # Check gender
         if "gender" in attributes and profile.gender:
             if not self._attributes_compatible(profile.gender, attributes["gender"]):
-                contradictions.append({
-                    "attribute": "gender",
-                    "profile": profile.gender,
-                    "found": attributes["gender"],
-                })
+                contradictions.append(
+                    {
+                        "attribute": "gender",
+                        "profile": profile.gender,
+                        "found": attributes["gender"],
+                    }
+                )
 
         # Check age
         if "age" in attributes and profile.age:
             if not self._age_compatible(profile.age, attributes["age"]):
-                contradictions.append({
-                    "attribute": "age",
-                    "profile": profile.age,
-                    "found": attributes["age"],
-                })
+                contradictions.append(
+                    {
+                        "attribute": "age",
+                        "profile": profile.age,
+                        "found": attributes["age"],
+                    }
+                )
 
         # Check personality
         if "personality" in attributes and profile.personality:
             found_traits = attributes["personality"]
             if isinstance(found_traits, str):
                 found_traits = [found_traits]
-            conflicts = self._find_personality_conflicts(profile.personality, found_traits)
+            conflicts = self._find_personality_conflicts(
+                profile.personality, found_traits
+            )
             if conflicts:
-                contradictions.append({
-                    "attribute": "personality",
-                    "profile": profile.personality,
-                    "found": found_traits,
-                    "conflicts": conflicts,
-                })
+                contradictions.append(
+                    {
+                        "attribute": "personality",
+                        "profile": profile.personality,
+                        "found": found_traits,
+                        "conflicts": conflicts,
+                    }
+                )
 
         if contradictions:
             results.append(
@@ -365,7 +413,8 @@ class CharacterConsistencyValidator:
                     # For English, use regex-style word boundary check
                     # Check if keyword appears as a whole word
                     import re
-                    pattern = r'\b' + re.escape(kw) + r'\b'
+
+                    pattern = r"\b" + re.escape(kw) + r"\b"
                     if re.search(pattern, text):
                         return True
                 else:

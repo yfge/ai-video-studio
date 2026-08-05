@@ -4,8 +4,6 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy.orm import Session
-
 from app.models.script import Episode, Script, Story
 from app.models.story_structure import Scene
 from app.models.timeline import Timeline
@@ -19,15 +17,16 @@ from app.services.duration_controlled_dialogue_service import (
 from app.services.script.timeline_shot_plan_step import (
     generate_timeline_shot_plan_from_current_version,
 )
+from app.services.timeline_import_service import (
+    TimelineImportResult,
+    import_audio_timeline_to_timeline_spec,
+)
 from app.services.timeline_pipeline_state import (
     episode_has_audio_timeline,
     scene_has_dialogue_audio,
     scene_number_sort_key,
 )
-from app.services.timeline_import_service import (
-    TimelineImportResult,
-    import_audio_timeline_to_timeline_spec,
-)
+from sqlalchemy.orm import Session
 
 ProgressCallback = Callable[[str], None]
 

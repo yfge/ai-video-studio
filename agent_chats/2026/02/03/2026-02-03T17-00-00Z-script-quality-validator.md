@@ -1,6 +1,6 @@
 ---
 id: 2026-02-03T17-00-00Z-script-quality-validator
-date: 2026-02-03T17:00:00Z
+date: "2026-02-03T17:00:00Z"
 participants: [human, claude]
 models: [claude-opus-4-5]
 tags: [backend, validator, agent-fix, script, quality]
@@ -33,6 +33,7 @@ summary: "创建Script质量校验器，实现对白真实性/展示别讲述/�
 ### 新增文件
 
 1. **`app/services/validators/script_quality_validator.py`** (~430 行)
+
    - `ScriptQualityValidator`: 核心校验器
      - `_score_dialogue_authenticity()`: 对白真实性评分
        - 检测自然对话模式（语气词、停顿、问句）
@@ -59,6 +60,7 @@ summary: "创建Script质量校验器，实现对白真实性/展示别讲述/�
 ### 修改文件
 
 1. **`app/services/validators/__init__.py`**
+
    - 导出 ScriptQualityValidator 相关类
 
 2. **`app/services/script_agent.py`**

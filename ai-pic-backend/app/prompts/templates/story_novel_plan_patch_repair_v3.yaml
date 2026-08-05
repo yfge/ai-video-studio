@@ -1,0 +1,10 @@
+description: Story Novel v3 deterministic-plan patch repair
+category: story
+version: "1.0"
+variables:
+  expected_positions_json:
+    required: true
+    type: string
+  contract_json:
+    required: true
+    type: string

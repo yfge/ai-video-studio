@@ -83,6 +83,75 @@ def test_merge_accepts_quote_typography_and_restores_frozen_event_text():
     assert merged[0]["required_event_ids"] == ["event-1"]
 
 
+def test_merge_restores_omitted_frozen_event_and_compiles_stable_id():
+    generated = [_plan_row(10)]
+    generated[0]["key_events"] = ["肥堆对照显示幼苗烧根"]
+    generated[0]["required_event_ids"] = ["event-10-1"]
+    generated[0]["knowledge_grants"] = [
+        {
+            "character_id": "char-a",
+            "fact_id": "fact-event-10-1-1",
+            "source_event_id": "event-10-1",
+        }
+    ]
+    frozen = {"chapters": [_plan_row(10)]}
+    frozen["chapters"][0]["key_events"] = [
+        "肥堆对照显示幼苗烧根",
+        "确认堆肥必须完全腐熟才能安全使用",
+    ]
+
+    merged = merge_frozen_chapters(generated, frozen, _canon(), validate=False)
+
+    assert merged[0]["key_events"] == frozen["chapters"][0]["key_events"]
+    assert merged[0]["required_event_ids"] == ["event-10-1", "event-10-2"]
+    assert merged[0]["knowledge_grants"][0]["source_event_id"] == "event-10-1"
+
+
+def test_merge_splits_consecutive_frozen_events_joined_by_provider():
+    generated = [_plan_row(32)]
+    generated[0]["key_events"] = [
+        "十二户签署合作契约，合作社成立",
+        "沈禾获得公开用印权，水契木牌仍由沈禾代管",
+    ]
+    generated[0]["required_event_ids"] = ["event-32-1", "event-32-2"]
+    frozen = {"chapters": [_plan_row(32)]}
+    frozen["chapters"][0]["key_events"] = [
+        "十二户签署合作契约，合作社成立",
+        "沈禾获得公开用印权",
+        "水契木牌仍由沈禾代管",
+    ]
+
+    merged = merge_frozen_chapters(generated, frozen, _canon(), validate=False)
+
+    assert merged[0]["key_events"] == frozen["chapters"][0]["key_events"]
+    assert merged[0]["required_event_ids"] == [
+        "event-32-1",
+        "event-32-2",
+        "event-32-3",
+    ]
+
+
+@pytest.mark.parametrize(
+    "provider_event",
+    [
+        "水契木牌仍由沈禾代管，沈禾获得公开用印权",
+        "沈禾获得公开用印权，村民另选了新社长，水契木牌仍由沈禾代管",
+    ],
+)
+def test_merge_rejects_reordered_or_expanded_combined_events(provider_event):
+    generated = [_plan_row(32)]
+    generated[0]["key_events"] = [provider_event]
+    generated[0]["required_event_ids"] = ["event-32-2"]
+    frozen = {"chapters": [_plan_row(32)]}
+    frozen["chapters"][0]["key_events"] = [
+        "沈禾获得公开用印权",
+        "水契木牌仍由沈禾代管",
+    ]
+
+    with pytest.raises(ValueError, match="key_events 必须逐字、同序复制"):
+        merge_frozen_chapters(generated, frozen, _canon(), validate=False)
+
+
 def test_merge_rejects_machine_threads_with_different_payoff_chapters():
     generated = [_plan_row(1), _plan_row(2), _plan_row(3)]
     generated[0]["open_threads"] = ["thread-observer", "thread-audit-number"]

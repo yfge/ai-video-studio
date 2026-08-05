@@ -55,13 +55,9 @@ function timelineClipCharacterContextRecords(item: TimelineItem | null) {
     asRecord(sourceRefs?.bound_context) ||
     asRecord(source?.bound_context) ||
     asRecord(shotPlan?.bound_context);
-  return [
-    meta,
-    sourceRefs,
-    source,
-    shotPlan,
-    boundContext,
-  ].filter((record): record is Record<string, unknown> => Boolean(record));
+  return [meta, sourceRefs, source, shotPlan, boundContext].filter(
+    (record): record is Record<string, unknown> => Boolean(record),
+  );
 }
 
 function extractNumberValues(value: unknown): number[] {

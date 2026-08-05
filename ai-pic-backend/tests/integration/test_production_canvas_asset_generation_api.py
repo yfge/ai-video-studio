@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 
-from app.models.task import Task, TaskType
 from app.models.story_structure import Environment
+from app.models.task import Task, TaskType
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP
 

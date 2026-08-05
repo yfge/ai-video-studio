@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-
 from app.services.narrative_quality_gate import evaluate_script_quality_gate
 
 

@@ -30,6 +30,27 @@ def canonical_initial_subjects(canon: dict) -> dict:
     return subjects
 
 
+def owner_before_milestone(canon: dict, milestone: dict, subject_id: str):
+    """Project one object's owner through milestones before the target chapter."""
+    owner_id = canonical_initial_subjects(canon).get(subject_id, {}).get("owner_id")
+    target = int(milestone.get("planned_position") or 0)
+    for prior in sorted(
+        canon.get("milestones") or [],
+        key=lambda item: int(item.get("planned_position") or 0),
+    ):
+        position = int(prior.get("planned_position") or 0)
+        if not position or position >= target:
+            continue
+        for outcome in prior.get("outcomes") or []:
+            if (
+                outcome.get("subject_id") == subject_id
+                and outcome.get("field") == "owner_id"
+                and outcome.get("operator") == "eq"
+            ):
+                owner_id = outcome.get("value")
+    return owner_id
+
+
 def _overlay(base: dict, explicit: dict) -> dict:
     for key, value in explicit.items():
         if isinstance(value, dict) and isinstance(base.get(key), dict):

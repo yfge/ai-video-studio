@@ -13,11 +13,7 @@ from app.services.storyboard.scene_grid.prompt_builder import (
     build_video_prompt,
     clamp_total_duration,
 )
-from app.services.storyboard.scene_grid.shared import (
-    abs_url,
-    load_ref_context,
-    utc_now,
-)
+from app.services.storyboard.scene_grid.shared import abs_url, load_ref_context, utc_now
 
 
 async def generate_video(db, task_id: int, payload: Dict[str, Any]) -> None:

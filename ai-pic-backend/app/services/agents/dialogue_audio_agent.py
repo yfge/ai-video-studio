@@ -187,9 +187,7 @@ class DialogueAudioResult:
             "success": self.success,
             "render_plans": [p.to_dict() for p in self.render_plans],
             "issues": [i.to_dict() for i in self.issues],
-            "voice_registry": {
-                k: v.to_dict() for k, v in self.voice_registry.items()
-            },
+            "voice_registry": {k: v.to_dict() for k, v in self.voice_registry.items()},
             "total_estimated_duration_ms": self.total_estimated_duration_ms,
             "statistics": self.statistics,
         }
@@ -240,13 +238,21 @@ class DialogueAudioAgent:
 
     # Dialogue emotion mismatches (dialogue emotion vs TTS emotion should match)
     EMOTION_COMPATIBILITY: Dict[str, Set[EmotionCategory]] = {
-        "happy": {EmotionCategory.HAPPY, EmotionCategory.SURPRISED, EmotionCategory.FLUENT},
+        "happy": {
+            EmotionCategory.HAPPY,
+            EmotionCategory.SURPRISED,
+            EmotionCategory.FLUENT,
+        },
         "sad": {EmotionCategory.SAD, EmotionCategory.CALM, EmotionCategory.WHISPER},
         "angry": {EmotionCategory.ANGRY, EmotionCategory.DISGUSTED},
         "scared": {EmotionCategory.FEARFUL, EmotionCategory.WHISPER},
         "excited": {EmotionCategory.HAPPY, EmotionCategory.SURPRISED},
         "calm": {EmotionCategory.CALM, EmotionCategory.FLUENT, EmotionCategory.NEUTRAL},
-        "neutral": {EmotionCategory.CALM, EmotionCategory.NEUTRAL, EmotionCategory.FLUENT},
+        "neutral": {
+            EmotionCategory.CALM,
+            EmotionCategory.NEUTRAL,
+            EmotionCategory.FLUENT,
+        },
     }
 
     # Speech rate thresholds (characters per second)
@@ -316,9 +322,7 @@ class DialogueAudioAgent:
 
         return issues
 
-    def get_voice_profile(
-        self, character_name: str
-    ) -> Optional[CharacterVoiceProfile]:
+    def get_voice_profile(self, character_name: str) -> Optional[CharacterVoiceProfile]:
         """Get voice profile for a character."""
         normalized = self._normalize_name(character_name)
         return self._voice_registry.get(normalized)
@@ -730,8 +734,7 @@ class DialogueAudioAgent:
 
         # Determine success
         error_count = sum(
-            1 for i in result.issues
-            if i.severity == DialogueQualitySeverity.ERROR
+            1 for i in result.issues if i.severity == DialogueQualitySeverity.ERROR
         )
         result.success = error_count == 0
 
@@ -743,12 +746,13 @@ class DialogueAudioAgent:
             "issue_count": len(result.issues),
             "error_count": error_count,
             "warning_count": sum(
-                1 for i in result.issues
+                1
+                for i in result.issues
                 if i.severity == DialogueQualitySeverity.WARNING
             ),
-            "characters": list(set(
-                dlg.get("character", "unknown") for dlg in dialogues
-            )),
+            "characters": list(
+                set(dlg.get("character", "unknown") for dlg in dialogues)
+            ),
         }
 
         return result

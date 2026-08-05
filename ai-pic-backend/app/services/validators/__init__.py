@@ -13,6 +13,15 @@ from app.services.validators.character_consistency_validator import (
     CharacterProfile,
     CharacterValidationResult,
 )
+from app.services.validators.duration_quality_validator import (
+    DurationQualityIssue,
+    DurationQualityIssueType,
+    DurationQualityResult,
+    DurationQualitySeverity,
+    DurationQualityValidator,
+    RetryAnalysis,
+    WordDistributionAnalysis,
+)
 from app.services.validators.episode_quality_validator import (
     CharacterArc,
     EpisodeQualityIssue,
@@ -44,15 +53,6 @@ from app.services.validators.script_quality_validator import (
     ScriptQualitySeverity,
     ScriptQualityValidator,
 )
-from app.services.validators.timeline_quality_validator import (
-    EmotionCurveAnalysis,
-    EmotionPoint,
-    TimelineQualityIssue,
-    TimelineQualityIssueType,
-    TimelineQualityResult,
-    TimelineQualitySeverity,
-    TimelineQualityValidator,
-)
 from app.services.validators.story_quality_validator import (
     PacingAnalysis,
     StoryQualityIssue,
@@ -62,14 +62,14 @@ from app.services.validators.story_quality_validator import (
     StoryQualityValidator,
     ThreeActAnalysis,
 )
-from app.services.validators.duration_quality_validator import (
-    DurationQualityIssue,
-    DurationQualityIssueType,
-    DurationQualityResult,
-    DurationQualitySeverity,
-    DurationQualityValidator,
-    RetryAnalysis,
-    WordDistributionAnalysis,
+from app.services.validators.timeline_quality_validator import (
+    EmotionCurveAnalysis,
+    EmotionPoint,
+    TimelineQualityIssue,
+    TimelineQualityIssueType,
+    TimelineQualityResult,
+    TimelineQualitySeverity,
+    TimelineQualityValidator,
 )
 
 __all__ = [

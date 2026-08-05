@@ -27,13 +27,41 @@ class NovelLengthProfileResponse(NovelLengthRange):
     count_mode: Literal["non_whitespace_chars"] = "non_whitespace_chars"
 
 
+class NovelModelPolicy(BaseModel):
+    planning_model: Optional[str] = Field(None, min_length=1, max_length=128)
+    prose_model: Optional[str] = Field(None, min_length=1, max_length=128)
+    audit_model: Optional[str] = Field(None, min_length=1, max_length=128)
+
+    @model_validator(mode="after")
+    def normalize_model_ids(self):
+        for field in ("planning_model", "prose_model", "audit_model"):
+            value = getattr(self, field)
+            if value is not None:
+                value = value.strip()
+                if not value:
+                    raise ValueError(f"{field} must not be blank")
+                setattr(self, field, value)
+        return self
+
+
+def _validate_legacy_model_matches_policy(model, policy):
+    if model and policy and policy.prose_model and model.strip() != policy.prose_model:
+        raise ValueError("model must match model_policy.prose_model")
+
+
 class StoryNovelCreateRevisionRequest(BaseModel):
     style: Literal["prose"] = "prose"
     length_profile_id: str = "standard_serial"
     custom_length_profile: Optional[NovelLengthRange] = None
     chapter_length_overrides: dict[str, NovelLengthRange] = Field(default_factory=dict)
-    model: Optional[str] = None
+    model: Optional[str] = Field(None, min_length=1, max_length=128)
+    model_policy: Optional[NovelModelPolicy] = None
     temperature: Optional[float] = Field(0.7, ge=0.0, le=1.5)
+
+    @model_validator(mode="after")
+    def validate_model_policy(self):
+        _validate_legacy_model_matches_policy(self.model, self.model_policy)
+        return self
 
 
 class StoryNovelLengthSpecUpdateRequest(BaseModel):
@@ -42,6 +70,12 @@ class StoryNovelLengthSpecUpdateRequest(BaseModel):
     chapter_length_overrides: dict[str, NovelLengthRange] = Field(default_factory=dict)
     expected_plan_version: int = Field(..., strict=True, ge=1)
     model: Optional[str] = Field(None, min_length=1, max_length=128)
+    model_policy: Optional[NovelModelPolicy] = None
+
+    @model_validator(mode="after")
+    def validate_model_policy(self):
+        _validate_legacy_model_matches_policy(self.model, self.model_policy)
+        return self
 
 
 class StoryNovelGenerateRevisionRequest(BaseModel):
@@ -55,6 +89,19 @@ class StoryNovelGenerateRevisionRequest(BaseModel):
             if getattr(self, name) is not None
         ]
         return ["prose 已忽略旧字段: " + ", ".join(ignored)] if ignored else []
+
+
+class StoryNovelContinuityCheckRequest(BaseModel):
+    review_model: Optional[str] = Field(None, min_length=1, max_length=128)
+
+    @model_validator(mode="after")
+    def normalize_review_model(self):
+        if self.review_model is None:
+            return self
+        self.review_model = self.review_model.strip()
+        if ":" not in self.review_model or not all(self.review_model.split(":", 1)):
+            raise ValueError("review_model must use provider:model")
+        return self
 
 
 class StoryNovelExportSummary(BaseModel):

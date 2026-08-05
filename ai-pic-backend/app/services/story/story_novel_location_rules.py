@@ -9,6 +9,8 @@ ABSENT_OBJECT_STATUS_LITERALS = (
     "未创建",
     "absent",
     "not-created",
+    "not_built",
+    "not_constructed",
     "not-yet-created",
 )
 _ABSENT_OBJECT_STATUSES = set(ABSENT_OBJECT_STATUS_LITERALS)
@@ -97,6 +99,16 @@ def planned_movement_issue(
             current_location=current_location,
             current_status=current_status,
         ):
+            if (
+                kinds.get(movement.get("subject_id")) == "object"
+                and current_location is None
+                and _is_absent(current_status)
+            ):
+                return (
+                    "地点起点不连续；物件首次落点必须同章包含唯一 status 创建转换，"
+                    f"from_value={current_status!r}、to_value 为非缺席状态且 reason 非空: "
+                    f"{movement}"
+                )
             return f"地点起点不连续: {movement}"
     elif current_location != origin:
         return f"地点起点不连续: {movement}"

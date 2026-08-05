@@ -1,0 +1,5 @@
+{{ original_prompt }}
+
+上一次结果无效或被截断，只允许完整修复并重输一次。
+校验错误：{{ validation_error }}
+上一次输出：{{ previous_output }}

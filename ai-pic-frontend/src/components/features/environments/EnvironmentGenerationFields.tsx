@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import {
   GenerationProfileSelect,
   ImageGenAdvancedFields,
@@ -69,7 +75,11 @@ export function EnvironmentGenerationFields({
     if (supportsReferenceImages) return;
     if (generation.reference_images.length === 0) return;
     setGeneration((prev) => ({ ...prev, reference_images: [] }));
-  }, [generation.reference_images.length, setGeneration, supportsReferenceImages]);
+  }, [
+    generation.reference_images.length,
+    setGeneration,
+    supportsReferenceImages,
+  ]);
 
   useEffect(() => {
     if (!supportsReferenceImages) return;
@@ -80,7 +90,12 @@ export function EnvironmentGenerationFields({
       ...prev,
       reference_images: prev.reference_images.slice(-maxReferenceImages),
     }));
-  }, [generation.reference_images, maxReferenceImages, setGeneration, supportsReferenceImages]);
+  }, [
+    generation.reference_images,
+    maxReferenceImages,
+    setGeneration,
+    supportsReferenceImages,
+  ]);
 
   useEffect(() => {
     if (typeof maxCount !== "number" || maxCount <= 0) return;
@@ -89,7 +104,11 @@ export function EnvironmentGenerationFields({
   }, [generation.count, maxCount, setGeneration]);
 
   return (
-    <div className={`${withDivider ? "border-t border-gray-200 pt-4" : ""} space-y-4`}>
+    <div
+      className={`${
+        withDivider ? "border-t border-gray-200 pt-4" : ""
+      } space-y-4`}
+    >
       {showToggle && (
         <label className="flex items-center gap-2 text-xs font-medium text-gray-700">
           <input
@@ -113,7 +132,9 @@ export function EnvironmentGenerationFields({
               onChange={(e) => updateField("prompt", e.target.value)}
               rows={compact ? 2 : 3}
               className={operatorInputClass(
-                `h-auto w-full py-2 text-sm ${compact ? "min-h-16" : "min-h-20"}`,
+                `h-auto w-full py-2 text-sm ${
+                  compact ? "min-h-16" : "min-h-20"
+                }`,
               )}
               placeholder="不填则使用环境名称/描述生成"
             />

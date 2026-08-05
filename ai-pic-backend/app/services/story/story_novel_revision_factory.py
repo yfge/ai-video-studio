@@ -5,6 +5,7 @@ from app.schemas.story_novel_export import StoryNovelCreateRevisionRequest
 
 from .story_novel_domain import build_story_snapshot
 from .story_novel_length_service import build_length_plan
+from .story_novel_plan_versions import is_v3_plan, is_v4_plan, is_v5_plan
 
 
 def create_legacy_revision(service, story, request, task_id: int | None):
@@ -59,7 +60,7 @@ def create_platform_revision(
         target_words=plan["planned_target_chars"],
         chapter_count=plan["chapter_count"],
         total_words=0,
-        model=request.model,
+        model=plan["model_policy"]["prose_model"],
         temperature=request.temperature,
         content_text="",
         revision_number=service.repo.next_revision_number(story.id),
@@ -69,7 +70,19 @@ def create_platform_revision(
         story_snapshot=build_story_snapshot(story),
         generation_plan=plan,
         continuity_ledger={
-            "schema": "story_novel_continuity.v3",
+            "schema": (
+                "story_novel_continuity.v6"
+                if is_v5_plan(plan)
+                else (
+                    "story_novel_continuity.v5"
+                    if is_v4_plan(plan)
+                    else (
+                        "story_novel_continuity.v4"
+                        if is_v3_plan(plan)
+                        else "story_novel_continuity.v3"
+                    )
+                )
+            ),
             "state_status": "empty",
             "chapters": {},
         },

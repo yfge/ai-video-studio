@@ -6,8 +6,11 @@ from typing import Awaitable, Callable
 
 from app.utils.json_utils import extract_json_block
 
+from . import story_novel_planning_invocations as planning_invocations
 from .story_novel_canon_service import canonical_json
+from .story_novel_context_utils import value_hash
 from .story_novel_plan_quality import MAX_PAYOFFS_PER_CHAPTER
+from .story_novel_prompt_renderer import render_novel_prompt
 from .story_novel_task_guard import generate_text_unless_cancelled
 from .story_novel_thread_schedule_repair import (
     extracted_schedule_rows,
@@ -37,8 +40,10 @@ async def compile_thread_payoffs(
     text = await generate_text_unless_cancelled(
         db, task, generate_text, revision, prompt, max_tokens=max_tokens
     )
+    initial_text = text
     original_rows = extracted_schedule_rows(text)
     schedule, error = parse_thread_payoffs(text, contract)
+    repaired = schedule is None
     if schedule is None:
         conflicts = repair_conflict_ids(original_rows, contract)
         repair = thread_schedule_repair_prompt(
@@ -57,6 +62,20 @@ async def compile_thread_payoffs(
             schedule, error = None, str(exc)
     if schedule is None:
         raise ValueError(f"伏笔回收调度无效: {error}")
+    result_hash = value_hash(schedule)
+    if repaired:
+        planning_invocations.record(
+            revision,
+            "thread_schedule.initial",
+            initial_text,
+            result_hash=result_hash,
+        )
+    planning_invocations.record(
+        revision,
+        "thread_schedule.repair" if repaired else "thread_schedule",
+        text,
+        result_hash=result_hash,
+    )
     return schedule
 
 
@@ -83,19 +102,10 @@ def thread_schedule_contract(frozen_spec: dict | None) -> list[dict] | None:
 
 
 def thread_schedule_prompt(contract: list[dict]) -> str:
-    return (
-        "只依据冻结 structured_outline 的标题、目标、关键事件、线索和章末状态"
-        "调度全书伏笔回收，不写章节合同或正文。"
-        "\n每个 open_threads 值都是稳定 thread_id，必须且只能回收一次；"
-        "payoff_position 必须严格晚于打开章。"
-        "\n每条回收必须逐字复制目标章的一条 key_events 作为 evidence_key_event；"
-        "同一事件确实同时回答多条语义相关线索时，允许共享同一个 exact "
-        "evidence_key_event；无论是否共享，每章最多回收 "
-        f"{MAX_PAYOFFS_PER_CHAPTER} 条。"
-        "\n只输出严格 JSON："
-        '{"thread_payoffs":[{"thread_id":"原样 ID","payoff_position":2,'
-        '"evidence_key_event":"目标章 key_events 原文"}]}'
-        f"\n冻结输入：{canonical_json({'chapters': contract})}"
+    return render_novel_prompt(
+        "story_novel_thread_schedule_v3",
+        max_payoffs_per_chapter=MAX_PAYOFFS_PER_CHAPTER,
+        contract_json=canonical_json({"chapters": contract}),
     )
 
 

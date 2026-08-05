@@ -1,6 +1,6 @@
 ---
 id: 2026-02-05T02-40-00Z-p1-script-character-policy-integration
-date: 2026-02-05T02:40:00Z
+date: "2026-02-05T02:40:00Z"
 participants: [human, claude-sonnet-4.5]
 models: [claude-sonnet-4-5-20250929]
 tags: [backend, script-policy, episode-characters, integration]
@@ -26,6 +26,7 @@ summary: "Added Episode character support to script character policy enforcement
 ### Modified: `ai-pic-backend/app/services/script/script_character_policy.py`
 
 **1. Added imports** (lines 1-15):
+
 ```python
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Sequence
 
@@ -34,6 +35,7 @@ if TYPE_CHECKING:
 ```
 
 **2. Added `build_episode_alias_map()` function** (~30 lines):
+
 ```python
 def build_episode_alias_map(
     episode_id: int,
@@ -43,12 +45,14 @@ def build_episode_alias_map(
 ```
 
 Key features:
+
 - Fetches EpisodeCharacter records for the given episode_id
 - Builds canonical names from character_name or VirtualIP.name
 - Extracts aliases using the same logic as Story characters
 - Returns alias → canonical name mapping
 
 **3. Added `build_combined_alias_map()` function** (~20 lines):
+
 ```python
 def build_combined_alias_map(
     story: Story,
@@ -62,12 +66,14 @@ def build_combined_alias_map(
 ```
 
 Key features:
+
 - Starts with Story character alias map
 - Adds Episode character alias map if episode_id provided
 - Episode map updates/overrides Story map (Episode priority)
 - Backward compatible: works without episode_id
 
 **4. Updated `enforce_script_character_policy()` signature and implementation**:
+
 - Added parameters: `episode_id: Optional[int] = None, db: Optional["Session"] = None`
 - Changed from: `alias_to_canonical = build_story_alias_map(story)`
 - To: `alias_to_canonical = build_combined_alias_map(story, episode_id, db)`
@@ -76,12 +82,14 @@ Key features:
 ## Validation
 
 ✅ **Syntax Check:**
+
 ```bash
 python -m py_compile app/services/script/script_character_policy.py
 # Output: ✅ Syntax check passed
 ```
 
 ✅ **Backward Compatibility:**
+
 - All new parameters are optional
 - Existing calls without episode_id/db still work
 - Returns same behavior as before when Episode characters not provided
@@ -89,6 +97,7 @@ python -m py_compile app/services/script/script_character_policy.py
 ## Architecture Notes
 
 **Character Priority Resolution:**
+
 ```
 Story character "医生" (name: "李医生")
 Episode character "医生" (name: "急诊医生")
@@ -96,12 +105,14 @@ Episode character "医生" (name: "急诊医生")
 ```
 
 **Integration with Script Generation:**
+
 - `enforce_script_character_policy()` called during script processing
 - Now includes both Story-level and Episode-level characters
 - Prevents "unknown_names" warnings for temporary Episode characters
 - Ensures proper character name normalization across contexts
 
 **Alias Resolution Flow:**
+
 1. Build Story character aliases (canonical names + variants)
 2. Build Episode character aliases (if episode_id provided)
 3. Merge maps with Episode priority (`.update()`)
@@ -111,11 +122,13 @@ Episode character "医生" (name: "急诊医生")
 ## Why This Matters
 
 **Before this change:**
+
 - Only Story characters recognized in scripts
 - Episode temporary characters (快递员, 医生) flagged as "unknown_names"
 - Manual workarounds needed for temporary characters
 
 **After this change:**
+
 - Episode temporary characters fully integrated
 - Script validation works seamlessly for both character types
 - Episode context overrides Story context (more specific wins)
@@ -124,6 +137,7 @@ Episode character "医生" (name: "急诊医生")
 ## Next Steps
 
 ### P1.3: Context Pack Integration (~80 lines)
+
 - File: `app/services/context_pack/story_context_pack_builder.py`
 - Add `build_episode_context_pack()` function
 - Implement budget allocation:
@@ -132,6 +146,7 @@ Episode character "医生" (name: "急诊医生")
   - Remaining slots for Story supporting characters
 
 ### P1.4: Integration Tests (~200 lines)
+
 - File: `tests/integration/api/test_episode_characters_api.py`
 - End-to-end API tests
 - Voice binding integration tests

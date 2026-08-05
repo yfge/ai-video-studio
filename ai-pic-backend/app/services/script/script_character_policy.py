@@ -88,7 +88,9 @@ def build_episode_alias_map(
     Returns:
         Dictionary mapping normalized aliases to canonical character names
     """
-    from app.repositories.script_lookup_repository import fetch_episode_character_sources
+    from app.repositories.script_lookup_repository import (
+        fetch_episode_character_sources,
+    )
 
     canonical_names: list[str] = []
     extra_aliases: dict[str, list[str]] = {}

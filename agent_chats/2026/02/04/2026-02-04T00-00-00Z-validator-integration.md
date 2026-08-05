@@ -1,6 +1,6 @@
 ---
 id: 2026-02-04T00-00-00Z-validator-integration
-date: 2026-02-04T00:00:00Z
+date: "2026-02-04T00:00:00Z"
 participants: [human, claude]
 models: [claude-opus-4-5]
 tags: [backend, integration, testing, validators, e2e]
@@ -45,11 +45,13 @@ summary: "P0 E2E验证任务 (1.8, 2.7, 3.7, 4.7) - 创建集成测试验证所�
 由于前端响应超时，采用以下替代验证方法：
 
 1. **API 验证**:
+
    - 登录 API 正常工作
    - `/api/v1/scripts/{id}/quality-check` 端点运行验证器
    - `/api/v1/scripts/{id}/storyboard` 返回验证结果
 
 2. **代码集成验证**:
+
    - 确认 `CharacterConsistencyValidator` 集成于 `story_agent.py`, `episode_agent.py`, `script_agent.py`
    - 确认 `InfoGateValidator` 集成于 `script_agent.py`
    - 确认 `SceneTransitionValidator` 集成于 `script_agent.py`
@@ -68,6 +70,7 @@ python -m pytest tests/integration/test_validator_integration.py -v
 ```
 
 API 验证:
+
 ```bash
 # 登录成功
 curl -X POST http://localhost:8000/api/v1/auth/login -d "username=geyunfei&password=***"

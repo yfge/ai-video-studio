@@ -25,10 +25,34 @@ const fields: Array<{
   autoComplete: string;
   placeholder: string;
 }> = [
-  { name: "username", label: "用户名", type: "text", autoComplete: "username", placeholder: "请输入用户名" },
-  { name: "email", label: "邮箱地址", type: "email", autoComplete: "email", placeholder: "请输入邮箱地址" },
-  { name: "password", label: "密码", type: "password", autoComplete: "new-password", placeholder: "至少 6 位" },
-  { name: "confirmPassword", label: "确认密码", type: "password", autoComplete: "new-password", placeholder: "请再次输入密码" },
+  {
+    name: "username",
+    label: "用户名",
+    type: "text",
+    autoComplete: "username",
+    placeholder: "请输入用户名",
+  },
+  {
+    name: "email",
+    label: "邮箱地址",
+    type: "email",
+    autoComplete: "email",
+    placeholder: "请输入邮箱地址",
+  },
+  {
+    name: "password",
+    label: "密码",
+    type: "password",
+    autoComplete: "new-password",
+    placeholder: "至少 6 位",
+  },
+  {
+    name: "confirmPassword",
+    label: "确认密码",
+    type: "password",
+    autoComplete: "new-password",
+    placeholder: "请再次输入密码",
+  },
 ];
 
 export default function Register() {
@@ -40,7 +64,9 @@ export default function Register() {
     confirmPassword: "",
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<Partial<Record<keyof RegisterForm, string>>>({});
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof RegisterForm, string>>
+  >({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [serverSuccess, setServerSuccess] = useState<string | null>(null);
 
@@ -48,7 +74,8 @@ export default function Register() {
     const next: Partial<Record<keyof RegisterForm, string>> = {};
     if (!formData.username.trim()) next.username = "用户名不能为空";
     if (!formData.email.trim()) next.email = "邮箱不能为空";
-    else if (!/\S+@\S+\.\S+/.test(formData.email)) next.email = "邮箱格式不正确";
+    else if (!/\S+@\S+\.\S+/.test(formData.email))
+      next.email = "邮箱格式不正确";
     if (formData.password.length < 6) next.password = "密码至少6位";
     if (formData.password !== formData.confirmPassword) {
       next.confirmPassword = "两次密码不一致";
@@ -76,7 +103,9 @@ export default function Register() {
         setServerError(res.message || "注册失败，请稍后重试");
       }
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : "注册失败，请稍后重试");
+      setServerError(
+        err instanceof Error ? err.message : "注册失败，请稍后重试",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -98,9 +127,14 @@ export default function Register() {
     >
       <form className="space-y-4" onSubmit={handleSubmit}>
         {serverError ? <OperatorState title={serverError} tone="red" /> : null}
-        {serverSuccess ? <OperatorState title={serverSuccess} tone="green" /> : null}
+        {serverSuccess ? (
+          <OperatorState title={serverSuccess} tone="green" />
+        ) : null}
         {fields.map((field) => (
-          <label key={field.name} className="block text-xs font-medium text-gray-600">
+          <label
+            key={field.name}
+            className="block text-xs font-medium text-gray-600"
+          >
             {field.label}
             <input
               id={field.name}

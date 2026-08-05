@@ -7,11 +7,10 @@ import tempfile
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy.orm import Session
-
 from app.core.logging import get_logger
 from app.models.script import Episode, Script
 from app.services.media import upload_bytes
+from sqlalchemy.orm import Session
 
 from .video_concat import VideoClip, concat_video_clips
 
@@ -46,12 +45,14 @@ class EpisodeRenderService:
                 except ValueError:
                     duration = 3.0
 
-            clips.append(VideoClip(
-                url=video_url,
-                target_duration_seconds=duration,
-                frame_number=frame.get("frame_number", i + 1),
-                description=frame.get("description"),
-            ))
+            clips.append(
+                VideoClip(
+                    url=video_url,
+                    target_duration_seconds=duration,
+                    frame_number=frame.get("frame_number", i + 1),
+                    description=frame.get("description"),
+                )
+            )
 
         return clips
 
@@ -147,9 +148,7 @@ class EpisodeRenderService:
     ) -> Dict[str, Any]:
         """Render a single version of the episode."""
         try:
-            with tempfile.NamedTemporaryFile(
-                suffix=".mp4", delete=False
-            ) as tmp:
+            with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
                 output_path = tmp.name
 
             result = await concat_video_clips(
@@ -183,6 +182,7 @@ class EpisodeRenderService:
 
             # Cleanup temp file
             import os
+
             if os.path.exists(output_path):
                 os.unlink(output_path)
 

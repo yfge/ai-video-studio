@@ -25,7 +25,9 @@ def skip_if_no_oss():
 
 
 def pytest_collection_modifyitems(config, items):
-    run_external = str(getattr(settings, "RUN_EXTERNAL_TESTS", "") or "").strip().lower()
+    run_external = (
+        str(getattr(settings, "RUN_EXTERNAL_TESTS", "") or "").strip().lower()
+    )
     run_external_enabled = run_external in {"1", "true", "yes", "on"}
     skip_external = pytest.mark.skip(
         reason="external tests disabled (set RUN_EXTERNAL_TESTS=1 to enable)"

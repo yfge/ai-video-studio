@@ -1,6 +1,6 @@
 ---
 id: 2026-02-04T18-01-36Z-episode-character-management-system
-date: 2026-02-04T18:01:36Z
+date: "2026-02-04T18:01:36Z"
 participants: [human, claude-sonnet-4.5]
 models: [claude-sonnet-4-5-20250929]
 tags: [backend, api, database, model, service, episode, character, P0]
@@ -46,6 +46,7 @@ Implement the Episode temporary character management system according to the imp
 ### Data Layer (Model + Migration)
 
 **Created `app/models/episode_character.py`** (~90 lines)
+
 - Defined `EpisodeCharacter` model inheriting from `SoftDeleteBusinessMixin`
 - Foreign keys: episode_id (CASCADE), virtual_ip_id (RESTRICT)
 - Character metadata: character_name, role_type, importance
@@ -54,12 +55,15 @@ Implement the Episode temporary character management system according to the imp
 - Relationships: episode, virtual_ip
 
 **Updated `app/models/__init__.py`**
-- Added EpisodeCharacter import and __all__ export
+
+- Added EpisodeCharacter import and **all** export
 
 **Updated `app/models/script.py`**
+
 - Added episode_characters relationship to Episode model
 
 **Created Alembic migration `3a9af7b70877_add_episode_characters_table.py`**
+
 - Creates episode_characters table with all fields
 - Adds indexes: episode_id, virtual_ip_id, business_id (unique), is_deleted
 - Foreign key constraints: episodes (CASCADE), virtual_ips (RESTRICT)
@@ -68,6 +72,7 @@ Implement the Episode temporary character management system according to the imp
 ### Schema Layer
 
 **Created `app/schemas/episode_character.py`** (~90 lines)
+
 - `EpisodeCharacterBase`: Base schema with all optional fields
 - `EpisodeCharacterCreate`: Requires virtual_ip_id
 - `EpisodeCharacterUpdate`: All fields optional
@@ -80,11 +85,13 @@ Implement the Episode temporary character management system according to the imp
 **Created `app/services/episode_character_service.py`** (~120 lines)
 
 Core functions:
+
 - `resolve_character_resources(character, db)`: Resolves voice_config (override or VirtualIP default), images (sorted by is_default), appearance_prompt (merged), display_name
 - `get_character_display_name(character, db)`: Priority order - character_name > VirtualIP.name > "临时角色{id}"
 - `get_episode_characters(db, episode_id, page, page_size, include_deleted)`: Paginated list with sorting by importance and created_at
 
 **Updated `app/services/voice_binding_service.py`** (+80 lines)
+
 - Added EpisodeCharacter import
 - `get_episode_character_map(db, episode_id)`: Maps normalized character names to VirtualIP for Episode characters, applies voice_config_override
 - `get_combined_character_map(db, story_id, episode_id)`: Merges Story + Episode mappings with Episode priority
@@ -94,6 +101,7 @@ Core functions:
 **Created `app/api/v1/endpoints/episodes/characters.py`** (~280 lines)
 
 Endpoints:
+
 - `POST /{episode_id}/characters`: Create episode character (validates VirtualIP access)
 - `GET /{episode_id}/characters`: List characters (paginated, sorted by importance)
 - `GET /{episode_id}/characters/{character_id}`: Get character details
@@ -102,12 +110,14 @@ Endpoints:
 - `DELETE /{episode_id}/characters/{character_id}`: Soft delete
 
 All endpoints:
+
 - Verify episode access via get_episode_by_identifier
 - Support both integer ID and business_id lookup
 - Enforce non-admin users can only use their own VirtualIPs
 - Include proper error handling (404 for not found, 403 for permission denied)
 
 **Updated `app/api/v1/endpoints/episodes/__init__.py`**
+
 - Imported characters_router
 - Added characters_router to combined router
 
@@ -116,6 +126,7 @@ All endpoints:
 **Created `tests/unit/test_episode_character_service.py`** (~170 lines)
 
 Test classes:
+
 - `TestResolveCharacterResources`:
   - test_resolve_with_no_overrides
   - test_resolve_with_voice_override
@@ -132,12 +143,14 @@ All 8 tests pass ✓
 ## Validation
 
 ### Unit Tests
+
 ```bash
 pytest tests/unit/test_episode_character_service.py -v
 # Result: 8 passed, 33 warnings in 0.07s
 ```
 
 **Tested scenarios:**
+
 - Resource resolution with no overrides (uses VirtualIP defaults)
 - Voice config override replaces VirtualIP default
 - Appearance override merges with VirtualIP style_prompt
@@ -150,12 +163,14 @@ pytest tests/unit/test_episode_character_service.py -v
 Migration file created: `3a9af7b70877_add_episode_characters_table.py`
 
 **Note**: Migration was not executed during implementation because database is not running. User needs to run:
+
 ```bash
 cd ai-pic-backend
 alembic upgrade head
 ```
 
 **Migration validation checklist** (for user to verify after running migration):
+
 ```bash
 # Verify table structure
 mysql -e "DESCRIBE episode_characters;"
@@ -170,6 +185,7 @@ mysql -e "SELECT * FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_NAME='ep
 ### API Endpoint Validation
 
 **Manual testing steps** (requires running backend + database):
+
 ```bash
 # 1. Create episode character
 curl -X POST http://localhost:8000/api/v1/episodes/1/characters \
@@ -209,6 +225,7 @@ curl -X DELETE http://localhost:8000/api/v1/episodes/1/characters/1 \
 ### Code Review Checklist
 
 Size compliance:
+
 - [x] No Python file exceeds 300 lines
   - episode_character.py: ~90 lines
   - episode_character.py (schemas): ~90 lines
@@ -218,17 +235,20 @@ Size compliance:
   - Migration: ~80 lines
 
 Structure compliance:
+
 - [x] Single responsibility: Each file has one clear purpose
 - [x] No code duplication: Reused existing patterns (SoftDeleteBusinessMixin, get_episode_by_identifier)
 - [x] Proper layering: API → Service → Model
 - [x] No circular dependencies
 
 Testing compliance:
+
 - [x] Unit tests for service layer (8 tests, all passing)
 - [x] Mock-based tests for isolation
 - [x] Tests cover edge cases (missing VirtualIP, overrides, sorting)
 
 Documentation compliance:
+
 - [x] Docstrings added for all public functions
 - [x] Type hints throughout
 - [x] Implementation plan document preserved as reference
@@ -238,12 +258,14 @@ Documentation compliance:
 ### Immediate (User Action Required)
 
 1. **Run database migration**:
+
    ```bash
    cd ai-pic-backend
    alembic upgrade head
    ```
 
 2. **Verify migration**:
+
    ```bash
    mysql -e "DESCRIBE episode_characters;"
    mysql -e "SHOW INDEX FROM episode_characters;"
@@ -259,15 +281,18 @@ Documentation compliance:
 ### P1 Features (Next Implementation Phase)
 
 1. **Script Agent Integration** (~50 lines)
+
    - Update `_validate_script_characters()` to include Episode characters
    - File: `app/services/script_agent.py`
 
 2. **Script Character Policy Integration** (~50 lines)
+
    - Add `build_episode_alias_map()` function
    - Update `enforce_script_character_policy()`
    - File: `app/services/script/script_character_policy.py`
 
 3. **Context Pack Integration** (~80 lines)
+
    - Add `build_episode_context_pack()` function
    - Implement budget allocation (50% Story main, 50% Episode temp)
    - File: `app/services/context_pack/story_context_pack_builder.py`
@@ -281,18 +306,21 @@ Documentation compliance:
 ### P1.5 Features (Auto-Generation)
 
 1. **Temporary Character Extraction** (~150 lines)
+
    - Extract character names from script dialogues
    - Parse stage directions for appearance
    - Track scene appearances
    - File: `app/services/script/temporary_character_extractor.py`
 
 2. **AI Character Background Generator** (~120 lines)
+
    - Generate personality from dialogues
    - Generate background from context
    - Suggest appearance descriptions
    - File: `app/services/script/character_background_generator.py`
 
 3. **Auto Character Creator** (~200 lines)
+
    - Detect unknown_names in script generation
    - Auto-create EpisodeCharacter records
    - Assign default VirtualIP
@@ -320,6 +348,7 @@ Documentation compliance:
 2. **Override Mechanism**: voice_config_override and appearance_override allow Episode-specific customization without duplicating VirtualIP resources.
 
 3. **Priority Resolution**:
+
    - Voice: override > VirtualIP.voice_config
    - Appearance: merged (VirtualIP.style_prompt + appearance_override)
    - Display name: character_name > VirtualIP.name > fallback
@@ -332,7 +361,7 @@ Documentation compliance:
 
 1. **Voice Binding Service**: get_combined_character_map() provides unified character lookup for dialogue audio generation.
 
-2. **Script Agent** (P1): _validate_script_characters() will check both Story and Episode characters.
+2. **Script Agent** (P1): \_validate_script_characters() will check both Story and Episode characters.
 
 3. **Context Pack** (P1): Budget allocation will balance Story main characters with Episode temporary roles.
 
@@ -374,16 +403,17 @@ Related: Episode临时角色管理系统设计方案
 
 ## Risk Assessment
 
-| Risk | Mitigation |
-|------|------------|
-| Breaking existing flows | All integrations are optional (episode_id parameter defaults to None) |
-| VirtualIP deletion orphans characters | RESTRICT foreign key prevents deletion; soft delete recommended |
-| Performance impact | Indexes on episode_id, virtual_ip_id; joinedload for eager loading |
-| Name conflict confusion | API returns clear source indicators (Story vs Episode) |
+| Risk                                  | Mitigation                                                            |
+| ------------------------------------- | --------------------------------------------------------------------- |
+| Breaking existing flows               | All integrations are optional (episode_id parameter defaults to None) |
+| VirtualIP deletion orphans characters | RESTRICT foreign key prevents deletion; soft delete recommended       |
+| Performance impact                    | Indexes on episode_id, virtual_ip_id; joinedload for eager loading    |
+| Name conflict confusion               | API returns clear source indicators (Story vs Episode)                |
 
 ## Success Metrics
 
 P0 Implementation:
+
 - [x] Model and migration created
 - [x] All schemas defined
 - [x] Service layer functional
@@ -395,6 +425,7 @@ P0 Implementation:
 - [ ] Integration tests written (P1)
 
 Code Quality:
+
 - [x] All files under size limits
 - [x] Single responsibility maintained
 - [x] No code duplication

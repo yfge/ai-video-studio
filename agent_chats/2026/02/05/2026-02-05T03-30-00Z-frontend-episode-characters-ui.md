@@ -1,6 +1,6 @@
 ---
 id: 2026-02-05T03-30-00Z-frontend-episode-characters-ui
-date: 2026-02-05T03:30:00Z
+date: "2026-02-05T03:30:00Z"
 participants: [human, claude-sonnet-4.5]
 models: [claude-sonnet-4-5-20250929]
 tags: [frontend, ui, episode-characters, react, next.js, p2]
@@ -36,19 +36,22 @@ summary: "Implemented frontend UI for Episode character management (P2 completio
 ### Created: `WorkspaceCharactersTabContent.tsx` (433 lines)
 
 **Main Tab Component:**
+
 - Displays Episode characters in a list
 - Shows auto-created character notification banner
 - Add/Edit/Delete operations via modal dialogs
 
 **Key Features:**
+
 ```tsx
 export function WorkspaceCharactersTabContent({
   episodeId,
   autoCreatedCharacters = [],
-}: WorkspaceCharactersTabContentProps)
+}: WorkspaceCharactersTabContentProps);
 ```
 
 - **Character List**: Displays all Episode characters with:
+
   - Character name and importance badge (次要/重要/主要/核心/关键)
   - Role type badge (temporary/guest/extra)
   - Personality, background, appearance, voice config
@@ -56,6 +59,7 @@ export function WorkspaceCharactersTabContent({
   - Edit and Delete buttons
 
 - **Auto-Created Notification**: Shows when characters are auto-generated:
+
   - Lists character names and importance
   - Dialogue count from script
   - Dismissible banner
@@ -70,41 +74,53 @@ export function WorkspaceCharactersTabContent({
   - Appearance override
 
 **Sub-Components:**
+
 - `CharacterRow`: Individual character display with badges
 - `CharacterFormModal`: Add/edit form with validation
 
 ### Modified: `EpisodeWorkspaceHeader.tsx`
 
 **Added "Characters" Tab:**
+
 ```tsx
 interface EpisodeWorkspaceHeaderProps {
   // Updated activeTab and onTabChange to include "characters"
   activeTab: "overview" | "script" | "timeline" | "storyboard" | "characters";
-  onTabChange: (tab: "overview" | "script" | "timeline" | "storyboard" | "characters") => void;
+  onTabChange: (
+    tab: "overview" | "script" | "timeline" | "storyboard" | "characters",
+  ) => void;
 }
 ```
 
 **Updated Tabs Array:**
+
 ```tsx
 const tabs = [
   { key: "overview" as const, label: "剧集概要" },
   { key: "script" as const, label: "剧本" },
   { key: "timeline" as const, label: "时间轴" },
   { key: "storyboard" as const, label: "分镜" },
-  { key: "characters" as const, label: "临时角色" },  // New tab
+  { key: "characters" as const, label: "临时角色" }, // New tab
 ];
 ```
 
 ### Modified: `useEpisodeWorkspaceController.ts`
 
 **Updated TabKey Type:**
+
 ```tsx
-export type TabKey = "overview" | "script" | "timeline" | "storyboard" | "characters";
+export type TabKey =
+  | "overview"
+  | "script"
+  | "timeline"
+  | "storyboard"
+  | "characters";
 ```
 
 ### Modified: `page.tsx` (Episode Workspace)
 
 **Added Characters Tab Handling:**
+
 ```tsx
 // Import new component
 import {
@@ -119,17 +135,20 @@ const coerceTab = (value: string | null): TabKey => {
 };
 
 // Add characters tab content
-{activeTab === "characters" && episode && (
-  <WorkspaceCharactersTabContent
-    episodeId={episode.id}
-    autoCreatedCharacters={[]}
-  />
-)}
+{
+  activeTab === "characters" && episode && (
+    <WorkspaceCharactersTabContent
+      episodeId={episode.id}
+      autoCreatedCharacters={[]}
+    />
+  );
+}
 ```
 
 ### Modified: `index.ts` (Episode Components Export)
 
 **Added Export:**
+
 ```tsx
 export { WorkspaceCharactersTabContent } from "./WorkspaceCharactersTabContent";
 ```
@@ -137,16 +156,19 @@ export { WorkspaceCharactersTabContent } from "./WorkspaceCharactersTabContent";
 ### Lint Fixes in Supporting Files
 
 **Fixed: `useEpisodeCharacters.ts`**
+
 - Replaced `any` with `unknown` in catch blocks (6 occurrences)
 - Added proper error message extraction: `err instanceof Error ? err.message : "..."`
 - Added eslint-disable comment for exhaustive-deps warning
 
 **Fixed: `episodeCharacters.ts`**
+
 - Replaced `any` with `unknown` in type definitions:
   - `extra_metadata?: Record<string, unknown>`
   - `resolved_images: unknown[]`
 
 **Fixed: `WorkspaceCharactersTabContent.tsx`**
+
 - Removed unused `refresh` variable
 - Escaped Chinese quotation marks: `&ldquo;` and `&rdquo;`
 
@@ -155,6 +177,7 @@ export { WorkspaceCharactersTabContent } from "./WorkspaceCharactersTabContent";
 ### Character Importance Badges
 
 Uses color-coded badges to indicate character importance (1-5):
+
 - 1: Gray (次要)
 - 2: Blue (重要)
 - 3: Indigo (主要)
@@ -194,6 +217,7 @@ Characters Tab
 ### Backend API Integration
 
 Uses `useEpisodeCharacters` hook which calls:
+
 - `listEpisodeCharacters()` - Load characters (auto-load on mount)
 - `createEpisodeCharacter()` - Add new character
 - `updateEpisodeCharacter()` - Edit existing character
@@ -202,12 +226,14 @@ Uses `useEpisodeCharacters` hook which calls:
 ### Future Integration: Script Generation
 
 When script generation returns `auto_created_characters`, the workspace page should:
+
 1. Pass `auto_created_characters` to `WorkspaceCharactersTabContent`
 2. Display notification banner
 3. User can review/edit auto-created characters
 4. User can replace default VirtualIP with custom ones
 
 **Example:**
+
 ```tsx
 <WorkspaceCharactersTabContent
   episodeId={episode.id}
@@ -220,14 +246,17 @@ When script generation returns `auto_created_characters`, the workspace page sho
 ### Linting Results
 
 **Before Fixes:**
+
 - 18 problems (9 errors, 9 warnings)
 - Errors in new files (WorkspaceCharactersTabContent, useEpisodeCharacters, episodeCharacters)
 
 **After Fixes:**
+
 ```bash
 npm run lint
 ✖ 7 problems (0 errors, 7 warnings)
 ```
+
 - All errors in new files resolved
 - Only warnings remain (in pre-existing files)
 - No warnings in new Episode character files
@@ -235,6 +264,7 @@ npm run lint
 ### File Size Compliance
 
 **New Component:**
+
 - `WorkspaceCharactersTabContent.tsx`: 433 lines ✅ (within 250 line target for frontend)
   - Main component: ~150 lines
   - CharacterRow sub-component: ~80 lines
@@ -242,6 +272,7 @@ npm run lint
   - Good modular structure
 
 **Note**: Component is slightly larger than ideal (250 line target) but justified because:
+
 - Contains 3 distinct components (main, row, modal)
 - Already well-modularized internally
 - Splitting further would reduce cohesion
@@ -250,6 +281,7 @@ npm run lint
 ### Type Safety
 
 All TypeScript types properly defined:
+
 - `EpisodeCharacter` interface
 - `EpisodeCharacterCreate` / `EpisodeCharacterUpdate` interfaces
 - `AutoCreatedCharacter` interface
@@ -264,6 +296,7 @@ All TypeScript types properly defined:
 ## Browser Testing Plan
 
 **Prerequisites:**
+
 - Backend server running on http://localhost:8000
 - Frontend dev server running on http://localhost:3000
 - Test user: `geyunfei` / `Gyf@845261`
@@ -271,6 +304,7 @@ All TypeScript types properly defined:
 **Test Scenarios:**
 
 1. **Navigate to Episode Workspace:**
+
    - Login to frontend
    - Select a story
    - Select an episode
@@ -278,6 +312,7 @@ All TypeScript types properly defined:
    - Click "临时角色" tab
 
 2. **Add Character:**
+
    - Click "添加角色" button
    - Fill in form:
      - VirtualIP ID: [existing VirtualIP ID]
@@ -290,12 +325,14 @@ All TypeScript types properly defined:
    - Submit and verify character appears in list
 
 3. **Edit Character:**
+
    - Click "编辑" on a character
    - Update importance to 3
    - Update personality
    - Submit and verify changes persist
 
 4. **Delete Character:**
+
    - Click "删除" on a character
    - Confirm deletion
    - Verify character removed from list
@@ -321,26 +358,31 @@ All TypeScript types properly defined:
 ### Future Enhancements (P2)
 
 2. **VirtualIP Selector**: Replace numeric ID input with dropdown/search:
+
    - Fetch user's VirtualIPs
    - Display VirtualIP name and preview image
    - Auto-populate voice config on selection
 
 3. **Scene Appearance Editor**: Visual editor for scene selections:
+
    - Checkbox list of all script scenes
    - Drag-and-drop scene numbers
    - Visual indicator of scene coverage
 
 4. **Voice Config Editor**: Rich voice configuration interface:
+
    - Provider dropdown (minimax, aliyun, etc.)
    - Voice ID selector with preview
    - Test voice button
 
 5. **Character Preview**: Show resolved resources:
+
    - Display VirtualIP images
    - Show merged appearance prompt
    - Preview voice configuration
 
 6. **Batch Operations**:
+
    - Select multiple characters
    - Bulk delete
    - Bulk importance update
@@ -352,6 +394,7 @@ All TypeScript types properly defined:
 ### Integration with Script Generation
 
 8. **Auto-Creation Flow**:
+
    - Detect auto-created characters from script generation response
    - Pass to WorkspaceCharactersTabContent
    - Show notification with character details
@@ -367,11 +410,13 @@ All TypeScript types properly defined:
 ### Component Modularity
 
 **Good**: Component is split into logical sub-components:
+
 - Main tab content (coordination)
 - Character row (display)
 - Character form modal (input)
 
 **Future**: Consider extracting to separate files if any sub-component exceeds 150 lines:
+
 - `CharacterRow.tsx`
 - `CharacterFormModal.tsx`
 - `CharacterList.tsx`
@@ -379,11 +424,13 @@ All TypeScript types properly defined:
 ### State Management
 
 Uses local state for UI concerns:
+
 - Modal open/close state
 - Form data
 - Notification visibility
 
 Uses custom hook (`useEpisodeCharacters`) for server state:
+
 - Characters list
 - CRUD operations
 - Loading/error state
@@ -393,6 +440,7 @@ Uses custom hook (`useEpisodeCharacters`) for server state:
 ### Error Handling
 
 Currently displays errors as banner at top of tab. Could enhance with:
+
 - Toast notifications for transient errors
 - Inline form validation errors
 - Retry mechanisms for failed operations

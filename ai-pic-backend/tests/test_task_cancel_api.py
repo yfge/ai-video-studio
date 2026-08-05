@@ -60,9 +60,7 @@ def test_cancel_unknown_task_404(client, db_session):
     assert response.status_code == 404
 
 
-def test_worker_status_writer_does_not_resurrect_cancelled_task(
-    client, db_session
-):
+def test_worker_status_writer_does_not_resurrect_cancelled_task(client, db_session):
     user, _, _ = _bootstrap_episode(db_session)
     task = _add_task(db_session, user, status=TaskStatus.PROCESSING)
     client.post(f"/api/v1/tasks/{task.id}/cancel")

@@ -99,14 +99,16 @@ def _compose_fallback_text(
         details.append("舞台:" + " / ".join(stage))
     details.append("内容:" + _trim_local(base_text, 140))
 
-    description = (
-        "；".join(details)[:200] if details else _trim_local(base_text, 200)
-    )
+    description = "；".join(details)[:200] if details else _trim_local(base_text, 200)
     return description, description
 
 
 def generate_fallback_frames(
-    script, scenes_filtered, scene_order, frames_per_scene, max_frames,
+    script,
+    scenes_filtered,
+    scene_order,
+    frames_per_scene,
+    max_frames,
 ) -> List[Dict[str, Any]]:
     """Generate simple fallback storyboard frames from script structure."""
     shot_cycle = ["远景", "中景", "近景", "特写"]
@@ -119,7 +121,11 @@ def generate_fallback_frames(
             real_sn = scene_order[sidx - 1] if (sidx - 1) < len(scene_order) else sidx
             if max_frames and len(frames_fallback) >= max_frames:
                 break
-            desc = sc.get("description") if isinstance(sc, dict) else (str(sc) if sc else "")
+            desc = (
+                sc.get("description")
+                if isinstance(sc, dict)
+                else (str(sc) if sc else "")
+            )
             segments = [s for s in re.split(r"[。.!?！？]", desc or "") if s.strip()]
             for i in range(max(1, frames_per_scene)):
                 if max_frames and len(frames_fallback) >= max_frames:
@@ -130,17 +136,27 @@ def generate_fallback_frames(
                 movement = movement_cycle[v % len(movement_cycle)]
                 comp = composition_cycle[v % len(composition_cycle)]
                 description, ai_prompt = _compose_fallback_text(
-                    sc if isinstance(sc, dict) else None, real_sn,
-                    script_obj=script, base_text=text,
-                    shot=shot, movement=movement, composition=comp,
+                    sc if isinstance(sc, dict) else None,
+                    real_sn,
+                    script_obj=script,
+                    base_text=text,
+                    shot=shot,
+                    movement=movement,
+                    composition=comp,
                 )
-                frames_fallback.append({
-                    "frame_number": frame_no, "scene_number": real_sn,
-                    "shot_type": shot, "camera_movement": movement,
-                    "composition": comp, "description": description,
-                    "duration_seconds": max(2, min(12, 3 + (v % 3) - 1)),
-                    "ai_prompt": ai_prompt, "reference_images": [],
-                })
+                frames_fallback.append(
+                    {
+                        "frame_number": frame_no,
+                        "scene_number": real_sn,
+                        "shot_type": shot,
+                        "camera_movement": movement,
+                        "composition": comp,
+                        "description": description,
+                        "duration_seconds": max(2, min(12, 3 + (v % 3) - 1)),
+                        "ai_prompt": ai_prompt,
+                        "reference_images": [],
+                    }
+                )
                 frame_no += 1
     else:
         paragraphs = (script.content or "").split("\n\n")
@@ -155,15 +171,26 @@ def generate_fallback_frames(
             movement = movement_cycle[v % len(movement_cycle)]
             comp = composition_cycle[v % len(composition_cycle)]
             description, ai_prompt = _compose_fallback_text(
-                None, None, script_obj=script, base_text=text,
-                shot=shot, movement=movement, composition=comp,
+                None,
+                None,
+                script_obj=script,
+                base_text=text,
+                shot=shot,
+                movement=movement,
+                composition=comp,
             )
-            frames_fallback.append({
-                "frame_number": frame_no, "scene_number": None,
-                "shot_type": shot, "camera_movement": movement,
-                "composition": comp, "description": description,
-                "duration_seconds": max(2, min(12, 3 + (v % 3) - 1)),
-                "ai_prompt": ai_prompt, "reference_images": [],
-            })
+            frames_fallback.append(
+                {
+                    "frame_number": frame_no,
+                    "scene_number": None,
+                    "shot_type": shot,
+                    "camera_movement": movement,
+                    "composition": comp,
+                    "description": description,
+                    "duration_seconds": max(2, min(12, 3 + (v % 3) - 1)),
+                    "ai_prompt": ai_prompt,
+                    "reference_images": [],
+                }
+            )
             frame_no += 1
     return frames_fallback

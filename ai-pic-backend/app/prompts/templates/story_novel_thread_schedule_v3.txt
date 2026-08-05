@@ -1,0 +1,6 @@
+只依据冻结 structured_outline 的标题、目标、关键事件、线索和章末状态调度全书伏笔回收，不写章节合同或正文。
+每个 open_threads 值都是稳定 thread_id，必须且只能回收一次；payoff_position 必须严格晚于打开章。
+每条回收必须逐字复制目标章的一条 key_events 作为 evidence_key_event；同一事件确实同时回答多条语义相关线索时，允许共享同一个 exact evidence_key_event；无论是否共享，每章最多回收 {{ max_payoffs_per_chapter }} 条。
+只输出严格 JSON：
+{"thread_payoffs":[{"thread_id":"原样 ID","payoff_position":2,"evidence_key_event":"目标章 key_events 原文"}]}
+冻结输入：{{ contract_json }}

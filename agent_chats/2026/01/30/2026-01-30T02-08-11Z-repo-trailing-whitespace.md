@@ -1,6 +1,6 @@
 ---
 id: 2026-01-30T02-08-11Z-repo-trailing-whitespace
-date: 2026-01-30T02:08:11Z
+date: "2026-01-30T02:08:11Z"
 participants: [human, codex]
 models: [gpt-5]
 tags: [chore, repo, formatting]
@@ -35,4 +35,3 @@ summary: "Apply trailing whitespace cleanup across repository via pre-commit hoo
 ## Linked Commits
 
 - (pending) chore(repo): trim trailing whitespace
-

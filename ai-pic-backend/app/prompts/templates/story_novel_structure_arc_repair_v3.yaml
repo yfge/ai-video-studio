@@ -1,0 +1,13 @@
+description: Story Novel v3 bounded structure repair
+category: story
+version: "1.0"
+variables:
+  original_prompt:
+    required: true
+    type: string
+  validation_error:
+    required: true
+    type: string
+  previous_output:
+    required: true
+    type: string

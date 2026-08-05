@@ -140,7 +140,9 @@ def split_long_frames(
                 fr["total_splits"] = segments_created
         elif absorbed_tiny_segment:
             # Update audit note to reflect absorption
-            if audit_notes and audit_notes[-1].startswith(f"Split frame {original_frame_id}"):
+            if audit_notes and audit_notes[-1].startswith(
+                f"Split frame {original_frame_id}"
+            ):
                 audit_notes[-1] = (
                     f"Frame {original_frame_id} ({duration:.1f}s) kept as single frame "
                     f"(remainder too short to split)"

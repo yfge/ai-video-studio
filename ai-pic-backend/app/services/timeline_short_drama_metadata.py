@@ -108,9 +108,7 @@ def build_short_drama_quality(
 ) -> dict[str, Any]:
     first = beats[0] if beats else {}
     hook_score = (
-        1.0
-        if first.get("start_ms") == 0 and first.get("end_ms", 9999) <= 3000
-        else 0.6
+        1.0 if first.get("start_ms") == 0 and first.get("end_ms", 9999) <= 3000 else 0.6
     )
     conflict_beats = [beat for beat in beats if _has_conflict_text(beat)]
     duration_windows = max(1.0, duration_ms / 15_000)

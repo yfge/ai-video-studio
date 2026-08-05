@@ -11,6 +11,8 @@ from .story_novel_initial_state import (
     apply_subject_transition,
     canonical_initial_subjects,
 )
+from .story_novel_scope_graph import initial_scope_graph
+from .story_novel_world_expansion import apply_entity_introductions
 
 HARD_METRIC_CODES = {
     "canon_violation": "canon_violation_count",
@@ -26,12 +28,16 @@ REQUIRED_HARD_METRICS = frozenset(HARD_METRIC_CODES.values()) | {
 
 
 def initial_story_state(canon: dict) -> dict:
-    return {
+    result = {
         "subjects": canonical_initial_subjects(canon),
         "occurred_event_ids": [],
         "completed_milestone_ids": [],
         "threads": {},
     }
+    graph = initial_scope_graph(canon)
+    if graph:
+        result["scope_graph"] = graph
+    return result
 
 
 def state_hash(state: dict) -> str:
@@ -85,6 +91,7 @@ def state_before_position(revision, position: int) -> dict:
 
 def apply_state_delta(state_before: dict, delta: dict) -> dict:
     state = copy.deepcopy(state_before)
+    apply_entity_introductions(state, delta.get("entity_introductions") or [])
     subjects = state.setdefault("subjects", {})
     for transition in delta.get("state_transitions") or []:
         apply_subject_transition(

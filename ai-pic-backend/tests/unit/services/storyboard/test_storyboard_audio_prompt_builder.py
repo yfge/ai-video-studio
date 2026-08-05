@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.services.storyboard.storyboard_audio_prompt_builder import (
     build_visual_prompt_description,
 )

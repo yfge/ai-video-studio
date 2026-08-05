@@ -47,8 +47,10 @@ def test_planning_prompt_uses_the_runtime_absence_literals():
         '"not-yet-created"',
     ):
         assert value in prompt
-    assert "未发现”“未找到”“未签发”“未采集”都不表示对象不存在" in prompt
+    assert "其他任何字符串都不表示对象不存在" in prompt
     assert "Canon 中已经定义的空数组 [] 是精确旧值" in prompt
+    assert "第一次被 key_event 实际使用、记录、存放、操作" in prompt
+    assert "绝不能再次从“不存在”开始" in prompt
 
 
 def test_repair_exposes_exact_unlocated_object_and_empty_array_states():
@@ -91,7 +93,6 @@ def test_repair_exposes_exact_unlocated_object_and_empty_array_states():
     assert context["authoritative_initial_state"]["cen-ye"]["permissions"] == []
     assert context["object_location_contract"] == {
         "absence_status_literals": list(ABSENT_OBJECT_STATUS_LITERALS),
-        "non_absence_status_examples": ["未发现", "未找到", "未签发", "未采集"],
     }
     assert context["state_value_contract"] == {
         "undefined_field_from_value": None,
@@ -119,7 +120,7 @@ def test_repair_exposes_exact_unlocated_object_and_empty_array_states():
     assert '"permissions":[]' in repair
     assert '"owner_id":null' in repair
     assert "已经定义的空数组 [] 是精确旧值" in repair
-    assert "未发现”“未找到”“未签发”“未采集”均表示对象已存在或状态未定义" in repair
+    assert "其他任何字符串均不表示对象不存在" in repair
     assert "禁止猜测落点或接收者" in repair
     assert "禁止直接写 possessions state_transition" in repair
     assert "opened 不能改成已开启" in repair

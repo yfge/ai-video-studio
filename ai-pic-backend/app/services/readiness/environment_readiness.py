@@ -15,7 +15,11 @@ class EnvironmentReadinessAugmentor:
         self.repository = StoryEnvironmentReadinessRepository(db)
 
     def apply(
-        self, result: ReadinessResult, story: Story, *, episode_number: int | None = None
+        self,
+        result: ReadinessResult,
+        story: Story,
+        *,
+        episode_number: int | None = None,
     ) -> ReadinessResult:
         checks = [*result.checks, *self._build_checks(story)]
         ready, can_proceed = self._status(checks)
@@ -113,7 +117,9 @@ class EnvironmentReadinessAugmentor:
                 parts.append(f"{count} {label}")
 
         status = (
-            "Ready" if ready else ("Can proceed with caution" if can_proceed else "Not ready")
+            "Ready"
+            if ready
+            else ("Can proceed with caution" if can_proceed else "Not ready")
         )
         prefix = f"Episode #{episode_number} - " if episode_number else ""
         return f"{prefix}{status}: {', '.join(parts)}"

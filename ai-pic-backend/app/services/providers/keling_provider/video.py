@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 import httpx
-
 from app.services.video.video_duration import resolve_duration_ceil
 
 from ..base import AIModelType, AIResponse, AITaskType

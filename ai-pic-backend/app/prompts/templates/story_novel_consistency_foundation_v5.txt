@@ -1,0 +1,12 @@
+为超长 Story 编译一次性冻结的一致性基础，不写正文，也不展开逐章事件：{{ contract_json }}
+
+要求：
+1. 根据 StorySeed、分卷范围和人物路线，定义可覆盖全书的动态实体类型、实体、因果谓词、观察谓词、事件类型、约束与视角；不得使用任何平台预置题材字段。
+2. 后续事件可能绑定的角色、组织、范围、关键对象或抽象状态载体，都必须在 initial_fact_graph.entities 中先声明；不要把后续才成立的状态写成初始事实。
+3. causal 谓词才可进入 initial_fact_graph、事件前置条件或效果；描写、气氛、服饰和短暂情绪使用 observational。
+4. 条件 op 只允许 all/any/not/exists/equals/contains/event_before；效果 op 只允许 assert/retract/replace/reveal/conceal。未知引用一律避免输出。
+5. 事件类型应足够通用以覆盖 progression_ranges，但仍要表达本 Story 的核心因果变化；逐章的具体事件由后续批次编译。
+6. initial_fact_graph 只保存开篇时已经成立的 causal facts。evidence 可为空，不输出 hash、source_manifest 或诊断。
+
+只输出 JSON：
+{"consistency_schema":{"schema":"story_novel_consistency_schema.v1","version":1,"entity_types":[],"predicates":[],"event_types":[],"constraints":[],"perspectives":[],"source_manifest":{}},"initial_fact_graph":{"schema":"story_novel_fact_graph.v1","entities":[],"facts":[],"evidence":[],"occurred_event_ids":[]}}

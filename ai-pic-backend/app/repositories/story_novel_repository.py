@@ -64,6 +64,17 @@ class StoryNovelRepository:
             query = query.populate_existing().with_for_update()
         return query.first()
 
+    def revision_by_id(
+        self, revision_id: int, *, for_update: bool = False
+    ) -> StoryNovelExport | None:
+        query = self.db.query(StoryNovelExport).filter(
+            StoryNovelExport.id == revision_id,
+            StoryNovelExport.is_deleted.is_(False),
+        )
+        if for_update:
+            query = query.populate_existing().with_for_update()
+        return query.first()
+
     def list_revisions(self, story_id: int, user: User) -> list[StoryNovelExport]:
         query = (
             self.db.query(StoryNovelExport)

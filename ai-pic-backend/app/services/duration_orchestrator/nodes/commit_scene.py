@@ -59,9 +59,11 @@ def commit_scene_node(state: Dict[str, Any]) -> Dict[str, Any]:
             "actual_duration_seconds": actual_seconds,
             "target_duration_seconds": target_seconds,
             "deviation_seconds": deviation_seconds,
-            "deviation_ratio": round(deviation_seconds / target_seconds, 3)
-            if target_seconds > 0
-            else 0,
+            "deviation_ratio": (
+                round(deviation_seconds / target_seconds, 3)
+                if target_seconds > 0
+                else 0
+            ),
             "attempt_count": budget.attempt_count,
         },
     )

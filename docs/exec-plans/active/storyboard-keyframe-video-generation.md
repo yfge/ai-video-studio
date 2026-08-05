@@ -641,7 +641,9 @@ it("shows shared references as a visible clip production context", async () => {
       item: videoClipWithStoryboardPanel(),
       episodeCharacters: [episodeCharacter("快递员", 32)],
       storyboardCharacterImageOptions: {
-        32: [{ url: "https://cdn.example/courier-pose.png", label: "快递员 正面" }],
+        32: [
+          { url: "https://cdn.example/courier-pose.png", label: "快递员 正面" },
+        ],
       },
       storyboardEnvironmentImageOptions: [
         { url: "https://cdn.example/interior-env.png", label: "室内环境" },
@@ -652,7 +654,9 @@ it("shows shared references as a visible clip production context", async () => {
 
   await waitFor(() => assert.ok(utils.getByLabelText("片段共享参考上下文")));
   assert.equal(
-    utils.getByLabelText("片段共享参考上下文").closest("[data-clip-parameter-details]"),
+    utils
+      .getByLabelText("片段共享参考上下文")
+      .closest("[data-clip-parameter-details]"),
     null,
   );
   assert.ok(utils.getByText("会用于分镜、首尾帧和视频任务"));
@@ -695,7 +699,8 @@ it("disables start-end video reference when keyframes are missing", () => {
 
   assert.ok(utils.getByText("首尾帧待生成"));
   assert.equal(
-    (utils.getByRole("option", { name: /首尾帧/ }) as HTMLOptionElement).disabled,
+    (utils.getByRole("option", { name: /首尾帧/ }) as HTMLOptionElement)
+      .disabled,
     true,
   );
 });
@@ -740,9 +745,14 @@ In `TimelineClipProviderReworkModel.ts`, add:
 ```typescript
 export function timelineClipStartEndFrameStatus(item: TimelineItem | null) {
   const meta = timelineItemMeta(item);
-  const startReady = hasAssetLocator(meta.start_frame_asset_ref) || Boolean(getString(meta.start_frame_url));
-  const endReady = hasAssetLocator(meta.end_frame_asset_ref) || Boolean(getString(meta.end_frame_url));
-  if (startReady && endReady) return { startReady, endReady, label: "首尾帧已生成" };
+  const startReady =
+    hasAssetLocator(meta.start_frame_asset_ref) ||
+    Boolean(getString(meta.start_frame_url));
+  const endReady =
+    hasAssetLocator(meta.end_frame_asset_ref) ||
+    Boolean(getString(meta.end_frame_url));
+  if (startReady && endReady)
+    return { startReady, endReady, label: "首尾帧已生成" };
   if (startReady) return { startReady, endReady, label: "已有首帧" };
   if (endReady) return { startReady, endReady, label: "已有尾帧" };
   return { startReady, endReady, label: "首尾帧待生成" };
@@ -775,7 +785,7 @@ function hasAssetLocator(value: unknown) {
       getString(record?.url) ||
       getString(record?.image_url) ||
       getString(record?.file_path) ||
-      typeof record?.media_asset_id === "number"
+      typeof record?.media_asset_id === "number",
   );
 }
 ```
@@ -806,8 +816,12 @@ export function TimelineClipSharedReferenceContext({
   onManualReferenceImagesChange: (value: string) => void;
 }) {
   const labels = selectedCharacterVirtualIpIds.map((virtualIpId) => {
-    const character = episodeCharacters.find((item) => item.virtual_ip_id === virtualIpId);
-    return character ? episodeCharacterDisplayName(character) : `IP ${virtualIpId}`;
+    const character = episodeCharacters.find(
+      (item) => item.virtual_ip_id === virtualIpId,
+    );
+    return character
+      ? episodeCharacterDisplayName(character)
+      : `IP ${virtualIpId}`;
   });
   return (
     <section
@@ -815,7 +829,9 @@ export function TimelineClipSharedReferenceContext({
       className="mb-2 grid gap-2 rounded-md border border-slate-200 bg-white p-2 text-[11px] text-slate-700"
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold text-slate-900">片段共享参考上下文</span>
+        <span className="text-xs font-semibold text-slate-900">
+          片段共享参考上下文
+        </span>
         <span className="text-slate-500">会用于分镜、首尾帧和视频任务</span>
       </div>
       <div className="grid gap-1 min-[720px]:grid-cols-3">
@@ -828,7 +844,9 @@ export function TimelineClipSharedReferenceContext({
         <textarea
           aria-label="手动参考图 URL"
           value={manualReferenceImages}
-          onChange={(event) => onManualReferenceImagesChange(event.currentTarget.value)}
+          onChange={(event) =>
+            onManualReferenceImagesChange(event.currentTarget.value)
+          }
           rows={2}
           className="resize-none rounded-md border border-slate-200 px-2 py-1.5 text-xs outline-none focus:border-slate-400"
           placeholder="https://..."
@@ -854,10 +872,10 @@ const effectiveReferenceChoice =
   videoReferenceChoice === "clip_storyboard_panel" && !storyboardPanelIndex
     ? "start_end"
     : videoReferenceChoice === "start_end" && !keyframeStatus.startReady
-      ? hasManualOrSharedReferences
-        ? "manual_refs"
-        : "start_end"
-      : videoReferenceChoice;
+    ? hasManualOrSharedReferences
+      ? "manual_refs"
+      : "start_end"
+    : videoReferenceChoice;
 ```
 
 Pass `keyframeStatus` and `hasManualOrSharedReferences` into `TimelineClipProviderReworkCards`.
@@ -873,7 +891,11 @@ Keep `StoryboardReferenceImageSelectors` visible in the storyboard reference car
 In `TimelineClipKeyframeCard.tsx`, add props:
 
 ```typescript
-keyframeStatus: { startReady: boolean; endReady: boolean; label: string };
+keyframeStatus: {
+  startReady: boolean;
+  endReady: boolean;
+  label: string;
+}
 ```
 
 Render:

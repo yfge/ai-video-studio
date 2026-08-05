@@ -1,6 +1,6 @@
 ---
 id: 2026-02-03T23-00-00Z-ledger-compressor
-date: 2026-02-03T23:00:00Z
+date: "2026-02-03T23:00:00Z"
 participants: [human, claude]
 models: [claude-opus-4-5]
 tags: [backend, continuity, compression, priority-sorting]
@@ -30,6 +30,7 @@ summary: "P1.6.5 优化连续性账本压缩，用优先级排序替代 FIFO 截
 ### 新增文件
 
 1. **`app/services/continuity/ledger_compressor.py`** (~230 行)
+
    - `CompressionConfig`: 压缩配置（max_facts=25, max_timeline=30, etc.）
    - `score_fact()`: 基于关键词/角色/长度评分
    - `score_timeline_item()`: 基于集数新近度/揭示数量/结局状态评分
@@ -38,6 +39,7 @@ summary: "P1.6.5 优化连续性账本压缩，用优先级排序替代 FIFO 截
    - `compress_ledger_by_priority()`: 主压缩函数
 
 2. **`tests/unit/services/continuity/__init__.py`**
+
    - 测试模块初始化
 
 3. **`tests/unit/services/continuity/test_ledger_compressor.py`** (~300 行)
@@ -47,6 +49,7 @@ summary: "P1.6.5 优化连续性账本压缩，用优先级排序替代 FIFO 截
 ### 修改文件
 
 1. **`app/services/continuity/episode_continuity.py`**
+
    - 导入 `compress_ledger_by_priority`
    - 将 `compact_continuity_ledger_for_prompt()` 改为调用新的优先级压缩函数
 
@@ -56,6 +59,7 @@ summary: "P1.6.5 优化连续性账本压缩，用优先级排序替代 FIFO 截
 ### 关键实现细节
 
 - **重要性关键词映射**:
+
   ```python
   IMPORTANCE_KEYWORDS_ZH = {
       "high": ["关键", "重要", "核心", "致命", "真相", "秘密", "身份", "死亡"],
@@ -64,6 +68,7 @@ summary: "P1.6.5 优化连续性账本压缩，用优先级排序替代 FIFO 截
   ```
 
 - **评分维度**:
+
   - Facts: 关键词(+3/+1.5)、角色提及(+0.5/char)、长度(+0.5/+0.5)
   - Timeline: 新近度(up to +5)、揭示数(+1/each)、结局状态(+2)
   - Threads: 关键词评分、角色提及、问号(+1)

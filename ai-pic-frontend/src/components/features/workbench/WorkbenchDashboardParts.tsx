@@ -15,8 +15,8 @@ export function MetricCard({
     tone === "green"
       ? "text-green-700"
       : tone === "red"
-        ? "text-red-700"
-        : "text-blue-700";
+      ? "text-red-700"
+      : "text-blue-700";
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4">
       <div className="text-xs text-gray-500">{label}</div>
@@ -50,7 +50,9 @@ export function AuditItem({
     <div className="rounded-md border border-gray-200 bg-white p-3">
       <div className="text-gray-500">{label}</div>
       <div
-        className={tone === "green" ? "mt-1 text-green-700" : "mt-1 text-amber-700"}
+        className={
+          tone === "green" ? "mt-1 text-green-700" : "mt-1 text-amber-700"
+        }
       >
         {value}
       </div>

@@ -58,7 +58,9 @@ export function EpisodeGeneratePanelFields({
             ["medium", "中"],
             ["fast", "快"],
           ]}
-          onChange={(value) => setGenForm((prev) => ({ ...prev, pacing: value }))}
+          onChange={(value) =>
+            setGenForm((prev) => ({ ...prev, pacing: value }))
+          }
         />
         <MultiModelSelector
           label="模型"

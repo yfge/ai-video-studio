@@ -41,6 +41,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--environment-id", default=os.getenv("HARNESS_ENVIRONMENT_ID", "1")
     )
+    parser.add_argument("--story-id", default=os.getenv("HARNESS_STORY_ID", "1"))
     parser.add_argument("--episode-id", default=os.getenv("HARNESS_EPISODE_ID", "124"))
     parser.add_argument("--script-id", default=os.getenv("HARNESS_SCRIPT_ID", "1"))
     parser.add_argument(
@@ -66,6 +67,7 @@ def scenario_url(args: argparse.Namespace) -> str:
     path = scenario.path.format(
         virtual_ip_id=args.virtual_ip_id,
         environment_id=args.environment_id,
+        story_id=args.story_id,
         episode_id=args.episode_id,
         script_id=args.script_id,
     )

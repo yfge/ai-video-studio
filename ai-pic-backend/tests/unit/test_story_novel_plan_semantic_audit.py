@@ -1,4 +1,5 @@
 import json
+from types import SimpleNamespace
 
 import anyio
 import pytest
@@ -73,13 +74,31 @@ def _six_grants():
     ]
 
 
-def _audit(grants=None):
+def _audit(grants=None, *, existing_grants=None, issues=None):
     grants = list(grants or [])
+    existing_grants = list(existing_grants or [])
+    issues = dict(issues or {})
     return {
         "events": [
             {
                 "position": 1,
                 "event_id": event_id,
+                "execution_contract": {
+                    "event_id": event_id,
+                    "action_phase": "instant",
+                    "time_scope": "instant",
+                    "actor_ids": ["char-wangming"],
+                    "effort": "none",
+                    "timeline_ids": [],
+                    "knowledge_fact_ids": list(
+                        dict.fromkeys(
+                            item["fact_id"]
+                            for item in existing_grants
+                            if item["source_event_id"] == event_id
+                        )
+                    ),
+                },
+                "feasibility_issues": list(issues.get(event_id) or []),
                 "missing_effects": {
                     "knowledge_grants": [
                         item for item in grants if item["source_event_id"] == event_id
@@ -162,6 +181,7 @@ def test_semantic_audit_prompt_binds_location_ids_and_rejects_subdivisions():
     assert '"key_event":"老拐指出钟声受中央钟塔控制并怀疑人为干预"' in prompt
     assert '"event_id":"evt-1"' not in prompt
     assert "未逐字写出所传达的具体新事实时" in prompt
+    assert "状态、地点和里程碑 effect 是章节级净变化" in prompt
 
 
 @pytest.mark.parametrize("field", ("from_location_id", "to_location_id"))
@@ -188,7 +208,7 @@ def test_semantic_audit_rejects_invented_location_id(field):
 
 
 def test_semantic_audit_rechecks_patched_plan_before_accepting():
-    responses = iter((_audit(_six_grants()), _audit()))
+    responses = iter((_audit(_six_grants()), _audit(existing_grants=_six_grants())))
     max_tokens = []
     prompts = []
 
@@ -199,7 +219,7 @@ def test_semantic_audit_rechecks_patched_plan_before_accepting():
 
     async def run():
         return await audit_and_patch_plan_batch(
-            object(),
+            SimpleNamespace(generation_plan={}),
             contract={"story_seed": {"schema": "story_seed_v2"}},
             canon=_canon(),
             prior_chapters=[],
@@ -213,6 +233,11 @@ def test_semantic_audit_rechecks_patched_plan_before_accepting():
     assert len(patched[0]["knowledge_grants"]) == 6
     assert patched[0]["semantic_audit"]["status"] == "passed"
     assert patched[0]["semantic_audit"]["patched_effect_count"] == 6
+    assert patched[0]["semantic_audit"]["execution_contract_version"] == 1
+    assert [item["event_id"] for item in patched[0]["execution_contracts"]] == [
+        "evt-ch8-1",
+        "evt-ch8-2",
+    ]
     assert max_tokens == [16000, 16000]
     assert '"verification_mode":true' in prompts[1]
     assert '"verification_targets":[{"event_id":"evt-ch8-1"' in prompts[1]
@@ -225,7 +250,12 @@ def test_semantic_audit_fails_if_second_pass_still_reports_missing_effects():
         "fact_id": "fact-evt-ch8-1-9",
         "source_event_id": "evt-ch8-1",
     }
-    responses = iter((_audit(_six_grants()), _audit([*_six_grants(), extra])))
+    responses = iter(
+        (
+            _audit(_six_grants()),
+            _audit([*_six_grants(), extra], existing_grants=_six_grants()),
+        )
+    )
 
     async def generate(_revision, _prompt, **_kwargs):
         return json.dumps(next(responses), ensure_ascii=False)

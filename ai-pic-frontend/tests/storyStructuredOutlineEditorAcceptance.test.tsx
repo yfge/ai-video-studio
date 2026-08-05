@@ -83,6 +83,38 @@ describe("StoryStructuredOutlineEditor acceptance", () => {
       ["R-17来源", ""],
     );
   });
+
+  it("renders one bounded progression arc instead of hundreds of chapter cards", () => {
+    const chapters = Array.from({ length: 64 }, (_, index) => ({
+      ...chapter(index + 1),
+      title: `第${index + 1}章标题`,
+    }));
+    const initial: StorySeedStructuredOutline = {
+      ...outline(chapters),
+      planning_structure_version: 1,
+      progression_arcs: [
+        progressionArc("arc-001", 1, 32),
+        progressionArc("arc-002", 33, 64),
+      ],
+    };
+    const utils = render(
+      <OutlineHarness initial={initial} onValue={() => undefined} />,
+      { container: dom.window.document.body },
+    );
+
+    assert.equal(utils.getAllByLabelText("标题").length, 32);
+    assert.equal(
+      (utils.getAllByLabelText("标题")[0] as HTMLTextAreaElement).value,
+      "第1章标题",
+    );
+    fireEvent.change(utils.getByLabelText("当前分卷"), {
+      target: { value: "arc-002" },
+    });
+    assert.equal(
+      (utils.getAllByLabelText("标题")[0] as HTMLTextAreaElement).value,
+      "第33章标题",
+    );
+  });
 });
 
 function OutlineHarness({
@@ -118,5 +150,20 @@ function chapter(position: number): StorySeedStructuredChapter {
     character_focus: ["褚蓝"],
     open_threads: [],
     end_state: "进入下一阶段",
+  };
+}
+
+function progressionArc(arc_id: string, start: number, end: number) {
+  return {
+    arc_id,
+    title: `${start}-${end}章阶段`,
+    start_position: start,
+    end_position: end,
+    narrative_goal: "推进阶段冲突",
+    ending_state: "形成新选择",
+    growth: {},
+    major_entries: [],
+    world_scope_changes: [],
+    threads: [],
   };
 }

@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from app.services.narrative_memory.candidate_verification import (
     verified_novel_candidate,
 )
+from app.services.story.story_novel_sentence_spans import resolve_sentence_refs
 
 
 def test_prompt_boundary_revalidates_claim_quote_and_ledger_id():
@@ -106,4 +107,52 @@ def test_prompt_boundary_revalidates_typed_memory_grant():
     memory.candidate_evidence["typed_fact_id"] = "future-fact"
     assert not verified_novel_candidate(
         memory, chapter, entry, require_ledger_membership=True
+    )
+
+
+def test_v3_sentence_spans_revalidate_exact_short_fragments_without_legacy_rewrite():
+    body = "“我签。”沈禾按下手印。里正收起契纸。"
+    proof = resolve_sentence_refs(body, ["S0001", "S0002"])
+    chapter = SimpleNamespace(
+        business_id="chapter-v3",
+        position=1,
+        title="第一章",
+        content_text=body,
+        content_hash="body-hash",
+    )
+    event = SimpleNamespace(
+        business_id="candidate-v3",
+        summary=proof["quote"],
+        source_artifact_business_id=chapter.business_id,
+        source_hash=None,
+        candidate_evidence={
+            "source_quote": proof["quote"],
+            "source_quote_verified": True,
+            "claim_verified": True,
+            "claim_mode": "extractive",
+            "verification_version": 4,
+            "participant_binding_verified": True,
+            "typed_event_ids": ["event-current"],
+            "sentence_ids": proof["sentence_ids"],
+            "spans": proof["spans"],
+            "sentence_index_hash": proof["sentence_index_hash"],
+        },
+    )
+    from app.services.narrative_memory.source_hash import novel_chapter_source_hash
+
+    event.source_hash = novel_chapter_source_hash(chapter)
+    entry = {
+        "event_ids": [event.business_id],
+        "state_delta": {
+            "occurred_event_ids": ["event-current"],
+            "evidence": {"event-current": proof["quote"]},
+        },
+    }
+
+    assert verified_novel_candidate(
+        event, chapter, entry, require_ledger_membership=True
+    )
+    event.candidate_evidence["spans"][0]["start"] += 1
+    assert not verified_novel_candidate(
+        event, chapter, entry, require_ledger_membership=True
     )

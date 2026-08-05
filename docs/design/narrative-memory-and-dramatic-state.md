@@ -664,6 +664,82 @@ typed state 检查。任一层发现未来结果提前出现、已消费里程�
 且正文 hash 未变化时，不使事件或记忆候选失效；修改章节内容计划或正文时，仍按来源
 version/hash 从最早受影响章节传播 stale。
 
+`story_novel_generation_plan.v3` 将 Narrative Memory 的职责进一步收紧为
+“章前规划证据”和“章后确定性落账”两端：
+
+- 只有当前 Revision 中、更早位置、`ready` 且 source hash 仍有效的 Narrative
+  Events、Character Memories 与成长意图进入 `chapter_brief.v1` 规划输入。
+  进入 32K 预算前按当前角色、章节词项、来源章新近度与知情边界做确定性排序；
+  排序分数和原因随 planning evidence 保存，正文仍不可见这些原始记录。
+- 正文模型不读取原始 Event/Memory、候选文本、未来目录、evidence 规则或 state
+  delta；它只读取 hash-valid brief、当前可见 Canon 投影、文风和长度合同。该投影
+  会带入当前章事件、当前可见人物介绍、动机、状态和关系；未来人物与未来关系进展
+  必须过滤。
+- system prompt、结构化大纲及修复、Canon、伏笔调度、批次章节合同、完整/定点
+  plan repair、brief、正文、proof audit、有界返修和连续性审读都通过统一
+  PromptManager 的 V3 专用版本化模板渲染。新 plan 冻结
+  `story_novel_prompt_policy.v10` 的模板名/version/source hash，每次调用还把 user
+  rendered hash 与 system template fingerprint 写入 invocation 和 ledger；包括
+  `finish_reason=length` 的拒绝调用。模板变更不能在 Resume 时静默套用到旧
+  brief/body/candidate 证据链，已存 v1-v9 policy 只按 legacy snapshot 读取。
+- 章前规划可把已验证 Event/Memory 或 `state_before.subjects` 中与当前章有关的资源、
+  借用期限、债务/承诺、耗时、因果前置和关系边界提炼为带来源 ID 的
+  `continuity_watchpoints`。正文只读约束摘要，不读取原始 Event/Memory；审计只在
+  正文明显矛盾时报告 unexpected claim。watchpoint 不要求正文复述，也不是逐章
+  成长 KPI、required event 或状态变化。
+- 服务端从章节合同和 `state_before` 编译唯一 `expected_delta`。审计模型只返回
+  contract ID 对稳定正文 sentence ID 的绑定，以及当前正文的 unexpected/future/
+  world-rule hits，不能自报或改写状态。
+- 正文 proof 只覆盖 required event、关键状态/权限、地点变化和知识来源。milestone
+  与 thread open/payoff 由已证明的 required event 确定性派生，不再强迫正文另写一句
+  重复结果；timeline 只做时序合理性审计，不要求逐字日期或独立 proof。
+- 日期、未来实体和自然语言世界规则的字符串命中只负责选择审计候选，不直接判正文
+  失败。审计模型额外读取本章相关主体的当前状态与紧凑 future state boundaries，只有
+  语义上提前成立的权限、所有权、地点、知识、伏笔结论或真实规则矛盾才会 fail closed。
+- 全局章节合同同样不再信任模型自报的状态起点：服务端按 Canon 顺序重放并编译
+  `from_value`、地点起点和前置条件；语义审计必须同时列出 missing 与 unsupported
+  effects，并为每个 required event 冻结 action phase、time scope、actor、effort、
+  timeline 和 knowledge 绑定。只有编译后的 effects 才能成为后续 `expected_delta`。
+- 事件执行审计只把与冻结事件、时间线、终态、知识效果或显式世界规则直接矛盾的
+  问题标为 blocking。一般写实程度、劳动略快、戏剧化巧合、节奏和文风属于网文
+  编辑建议，不阻断状态落账；模型未获得规模信息时不得自行发明尺寸再据此判失败。
+- World Event 候选由 required event 与已验证正文 span 确定性创建；Character
+  Memory 候选由 knowledge grant、brief 中的人物动机/情绪延续、角色弧 checkpoint
+  和已验证 span 确定性创建。v3 不再额外调用 Narrative extraction 模型。
+- 候选与章节正文、sentence-index、proof span、Canon/state/context hash 同事务落账。
+  `memory_ready` 失败后的 Resume 只补候选；evidence-only `audit` checkpoint 只重审
+  同一正文；两条路径均不得调用正文模型。
+- 计划外且未被当前合同授权的硬事实不能改变状态或下一章合同。审计命中的
+  unexpected claim 保留为 gate evidence 并阻断状态应用；只有当前合同验证通过的
+  候选才获得“修订版内 Canon”资格。
+- 主要人物、地点、组织、物件和概念可以在全书 Canon 中提前规划，但按结构化大纲
+  的首次出现章逐步可见；尚未登场的 ID、名称、别名和终态不能进入当前规划或正文。
+- 当前章因果确实需要一个此前不存在、后续仍持续存在的实体时，章前 package 可提出
+  `entity_introductions`。服务端为其分配稳定的 Revision-local ID，绑定当前 required
+  event、初始状态和首次出现章；正文 proof/state gate 通过后才写入
+  `revision_local_entities`，失败章不会扩张世界。一次性路人、普通用品和环境细节不
+  进入长期世界状态。
+- 长篇只把认知、能力、资源、活动/时间尺度作为全书/分卷的可选软成长曲线，供章前
+  规划理解方向、供最终吸引力审读评价。它们不是逐章 KPI；失败、蓄势和付出代价的
+  回撤都合法。硬状态仍只登记大纲已经授权的能力、权限、资产、关系或世界范围变化。
+- 为支持数百章，硬上下文只保留当前章引用及其当前状态直接依赖；已通过章节的完整
+  Event/Memory、摘要和账本仍按相关性与预算排序，不能因为曾经登场就永久占据 32K
+  不可裁剪区。
+
+因此 v3 的信息流是单向的：
+
+```text
+earlier ready Event/Memory -> chapter brief planning
+chapter brief + current events + visible people/relations -> prose blocks
+prose sentence spans + server expected delta -> proof audit
+verified spans -> candidate Event/Memory -> next chapter planning
+```
+
+`future_guard_index` 只存在于 plan/audit 边界。正文永远看不到 future claim cards；
+审计只接收当前正文命中的 claim cards，以及与当前章主体相关的紧凑未来状态边界，
+不接收未来标题、goal 或 end_state，也不回显无关未来章节。正文 hash 变化会使全部
+sentence/proof/candidate evidence 自动 stale。
+
 ### 13.3 Adaptation plan and Episode
 
 改编计划读取审批小说、审批 Narrative Events、章节锚点和 Story 角色成长状态。
@@ -1090,7 +1166,30 @@ UI 必须区分：
 - 所有模型输出先做 schema、长度、business ID ownership 和 source hash 校验。
 - 审批、拒绝、合并、基线同步和 supersede 记录操作者、时间与理由。
 
-## 20. Compatibility
+## 20. Immutable novel-planning snapshots
+
+Generation-plan v4 treats Narrative Event and Character Memory as planning
+evidence, not prose instructions. A chapter-planning call selects eligible
+earlier candidates, projects them into opaque local evidence cards, records
+their business IDs/source hashes in `story_novel_planner_snapshot.v1`, and
+persists the complete snapshot before the provider request. The response is
+parsed only against that stored snapshot; live candidate rows are not queried
+again during parsing or format repair.
+
+The prose packet contains no raw Event/Memory candidate and no Story-scoped
+business ID. The proof audit binds current contract handles to stable body
+sentence spans. Only after the chapter passes do those spans deterministically
+materialize new Revision-local Event/Memory candidates. Body hash changes stale
+all derived spans and candidates.
+
+Persistent character, scope, organization, object, and concept proposals share
+the same candidate lifecycle. A proposal is provisional for one Revision and
+one chapter until its introduction is proved and the chapter commits. Failed
+chapters roll it back; one-scene transient entities never enter the long-term
+ledger. Whole-novel approval remains the only promotion boundary into Story
+Canon or shared character memory.
+
+## 21. Compatibility
 
 - 新 narrative-series Story 可启用 `story_scoped_memory_v1`。
 - 新 Story 目标格式为 `story_seed_v2`；`story_seed_v1` 和现有
@@ -1102,7 +1201,7 @@ UI 必须区分：
 - Dramatic State 缺失时不阻断旧 Script。
 - Timeline API、clip 顺序和媒体 lineage 不因本设计改变。
 
-## 21. Observability and audit
+## 22. Observability and audit
 
 每次生成 Task 的 agent run 记录：
 
@@ -1122,7 +1221,7 @@ delta、状态校验问题、硬约束引用/截断证据、逐章 repair 次数
 禁止只记录拼接后的大段 prompt 而丢失结构化来源。浏览器证据和测试 artifact 仍写入
 `artifacts/runs/<run_id>/`。
 
-## 22. Validation matrix
+## 23. Validation matrix
 
 ### 22.1 Backend
 
@@ -1182,7 +1281,7 @@ delta、状态校验问题、硬约束引用/截断证据、逐章 repair 次数
 7. 修改来源章节 hash，确认 Story memory、Episode snapshot 和相关 Script 显示 stale，
    Timeline 内容不被自动替换。
 
-## 23. Acceptance criteria
+## 24. Acceptance criteria
 
 设计实现完成时必须满足：
 
@@ -1198,7 +1297,7 @@ delta、状态校验问题、硬约束引用/截断证据、逐章 repair 次数
 - Story、Novel、Episode、Script 和 Virtual IP UI 都有清晰但不过载的入口与状态。
 - 不引入新的存储依赖，不自动产生付费模型调用，不改变 Timeline SSOT。
 
-## 24. Implemented delivery slices
+## 25. Implemented delivery slices
 
 以下五个切片已在 v1 落地；后续扩展仍遵守本设计的不变量和兼容边界。
 
@@ -1238,7 +1337,7 @@ delta、状态校验问题、硬约束引用/截断证据、逐章 repair 次数
 - Knowledge/reveal/subtext quality gates。
 - Full non-paid browser validation and artifacts。
 
-## 25. Deferred upgrade signals
+## 26. Deferred upgrade signals
 
 只有出现以下可测信号后才考虑向量或图检索：
 
@@ -1250,9 +1349,9 @@ delta、状态校验问题、硬约束引用/截断证据、逐章 repair 次数
 即使升级，Story scope、character access、anchor gating、source version 和人工公共记忆
 审批仍是检索前置条件，不能由相似度绕过。
 
-## 26. V1 implementation record
+## 27. V1 implementation record
 
-### 26.1 Backend
+### 27.1 Backend
 
 - Alembic 新增 Narrative Anchor、Narrative Event、Character Memory、不可变 Snapshot、
   Promotion 以及 Story/Episode 的快照证据和 stale 字段。
@@ -1267,7 +1366,7 @@ delta、状态校验问题、硬约束引用/截断证据、逐章 repair 次数
 - offscreen event、audience disclosure 和 Dramatic State 分开存储；Script gate 阻止
   `must_not_reveal` 或 `subtext_only` 内容被直接说破。
 
-### 26.2 API and UI
+### 27.2 API and UI
 
 - 已落地第 16 节列出的 Story memory、Virtual IP public memory/promotion 和 Script
   Dramatic State API。
@@ -1277,7 +1376,7 @@ delta、状态校验问题、硬约束引用/截断证据、逐章 repair 次数
 - Novel 章节、Episode 展开区、Script Inspector 和 Virtual IP 页面均显示本阶段需要的
   记忆、stale、显隐或公共资产状态；Timeline 入口不会因 stale 被隐藏。
 
-### 26.3 Validation evidence
+### 27.3 Validation evidence
 
 - Story A/B 时间锚点、确定性 snapshot、来源失效、人工公共提升、canon branch 隔离、
   offscreen disclosure 和潜台词 gate 均有后端单元测试；最终后端集合为

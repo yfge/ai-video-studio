@@ -4,7 +4,6 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
-
 from app.services.narrative_quality_gate import (
     NarrativeQualityGateError,
     enforce_script_quality_gate_with_repair,
@@ -34,10 +33,20 @@ def _script_content(text: str | None = None) -> dict[str, Any]:
         "content": text or _passing_script_text(),
         "scenes": [{"scene_number": 1, "description": "林雪在客厅逼问陈默。"}],
         "dialogues": [
-            {"scene_number": 1, "character": "林雪", "content": "别动！账本上为什么有你的名字？"},
-            {"scene_number": 1, "character": "陈默", "content": "不是我，嗯...有人改过它。"},
+            {
+                "scene_number": 1,
+                "character": "林雪",
+                "content": "别动！账本上为什么有你的名字？",
+            },
+            {
+                "scene_number": 1,
+                "character": "陈默",
+                "content": "不是我，嗯...有人改过它。",
+            },
         ],
-        "stage_directions": [{"scene_number": 1, "content": "林雪抓住账本，警报声逼近。"}],
+        "stage_directions": [
+            {"scene_number": 1, "content": "林雪抓住账本，警报声逼近。"}
+        ],
         "metadata": {},
     }
 

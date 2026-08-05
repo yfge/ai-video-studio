@@ -89,7 +89,9 @@ def _story_model_with_ap_registry() -> Story:
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_script_gate_refreshes_stale_unknown_speaker_flag_without_creation() -> None:
+async def test_script_gate_refreshes_stale_unknown_speaker_flag_without_creation() -> (
+    None
+):
     content = {
         "content": _passing_script_text(),
         "scenes": [{"scene_number": 1, "description": "AP查看短信。"}],
@@ -147,12 +149,14 @@ async def test_script_gate_repair_uses_generation_provider_for_auto_model() -> N
     assert manager.calls == 1
     assert manager.call_kwargs[0]["prefer_provider"] == "deepseek"
     assert manager.call_kwargs[0]["model"] == "deepseek-v4-flash"
-    assert "Return the repaired script payload itself" not in manager.call_kwargs[0][
-        "prompt"
-    ]
-    assert "Every structured_script_contract.scenes item" not in manager.call_kwargs[0][
-        "prompt"
-    ]
+    assert (
+        "Return the repaired script payload itself"
+        not in manager.call_kwargs[0]["prompt"]
+    )
+    assert (
+        "Every structured_script_contract.scenes item"
+        not in manager.call_kwargs[0]["prompt"]
+    )
 
 
 @pytest.mark.unit

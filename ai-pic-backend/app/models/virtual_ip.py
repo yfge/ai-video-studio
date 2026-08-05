@@ -58,7 +58,9 @@ class VirtualIP(SoftDeleteBusinessMixin, Base):
         "VirtualIPImage", back_populates="virtual_ip", cascade="all, delete-orphan"
     )
     environment_links = relationship(
-        "VirtualIPEnvironment", back_populates="virtual_ip", cascade="all, delete-orphan"
+        "VirtualIPEnvironment",
+        back_populates="virtual_ip",
+        cascade="all, delete-orphan",
     )
 
 
@@ -122,9 +124,7 @@ class VirtualIPEnvironment(SoftDeleteBusinessMixin, Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     virtual_ip_id = Column(Integer, ForeignKey("virtual_ips.id"), nullable=False)
     virtual_ip_business_id = Column(String(32), index=True, nullable=True)
-    environment_id = Column(
-        BIGINT_PK, ForeignKey("environments.id"), nullable=False
-    )
+    environment_id = Column(BIGINT_PK, ForeignKey("environments.id"), nullable=False)
     environment_business_id = Column(String(32), index=True, nullable=True)
     usage_type = Column(String(32), nullable=False, default="scene_pool")
     usage_note = Column(Text, nullable=True)

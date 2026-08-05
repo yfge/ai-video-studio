@@ -24,9 +24,7 @@ def cancel_task(
         "data": {
             "task_id": task.id,
             "status": (
-                task.status.value
-                if hasattr(task.status, "value")
-                else str(task.status)
+                task.status.value if hasattr(task.status, "value") else str(task.status)
             ),
         },
     }

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Awaitable, Callable
 
-from fastapi import HTTPException
-
+from . import story_novel_plan_repair as plan_repair
+from . import story_novel_planning_invocations as planning_invocations
 from .story_novel_ai_prompts import canon_prompt, planning_prompt
 from .story_novel_canon_milestone_filter import CANON_MODEL_FILTER_VERSION
 from .story_novel_canon_repair import canon_repair_prompt as _canon_repair_prompt
@@ -14,7 +14,7 @@ from .story_novel_canon_service import (
 )
 from .story_novel_length_service import generation_plan_hash
 from .story_novel_plan_parser import parse_plan
-from .story_novel_plan_repair import plan_repair_prompt as _plan_repair_prompt
+from .story_novel_plan_patch_repair import repair_plan_once
 from .story_novel_plan_semantic_audit import (
     PLAN_SEMANTIC_AUDIT_VERSION,
     audit_and_patch_plan_batch,
@@ -26,15 +26,17 @@ from .story_novel_planning_batches import (
     batch_thread_payoffs,
     chapter_batches,
     checkpoint_plan_batch,
-    planning_batch_prompt,
     reusable_plan_draft,
+    validated_prefix_context,
 )
+from .story_novel_planning_failure import fail_plan
 from .story_novel_task_guard import ensure_task_not_cancelled
 from .story_novel_thread_schedule import compile_thread_payoffs
 from .story_novel_thread_schedule_checkpoint import (
     checkpoint_thread_payoffs,
     reusable_thread_payoffs,
 )
+from .story_novel_v3_plan import plan_schema, v3_plan_fields
 
 
 async def compile_canon(
@@ -59,6 +61,9 @@ async def compile_canon(
         canon, error, timeline_filter = parse_model_canon(text, contract)
     if not canon:
         fail_plan(service, revision, "canon", error)
+    planning_invocations.record(
+        revision, "canon", text, result_hash=canon["canon_hash"]
+    )
     return canon, timeline_filter
 
 
@@ -111,7 +116,7 @@ async def plan_chapters(
     chapters = reusable_plan_draft(
         dict(revision.generation_plan or {}), canon, expected_positions
     )
-    for positions in chapter_batches(expected_positions):
+    for positions in chapter_batches(expected_positions, frozen_spec, canon):
         if positions and positions[-1] <= len(chapters):
             continue
         batch_spec = batch_frozen_spec(frozen_spec, positions)
@@ -120,8 +125,9 @@ async def plan_chapters(
             planning_contract=batch_contract(contract, positions),
             canon=canon,
             thread_payoffs=batch_payoffs,
+            batch_positions=positions,
+            prefix_context=validated_prefix_context(canon, chapters),
         )
-        prompt = planning_batch_prompt(prompt, positions, canon, chapters)
         max_tokens = max(16000, len(positions or expected_positions or []) * 1400)
         text = await generate_text(revision, prompt, max_tokens=max_tokens)
         ensure_task_not_cancelled(service.db, task)
@@ -134,17 +140,25 @@ async def plan_chapters(
             prior_chapters=chapters,
             require_complete=not positions or positions[-1] == expected_positions[-1],
         )
+        initial_text = None
         if not parsed:
-            repair = _plan_repair_prompt(
-                prompt,
-                text,
-                error,
-                positions or expected_positions,
-                canon=canon,
-                frozen_spec=batch_spec,
-                thread_payoffs=batch_payoffs,
-            )
-            text = await generate_text(revision, repair, max_tokens=max_tokens)
+            initial_text = text
+            try:
+                text = await repair_plan_once(
+                    revision,
+                    generate_text,
+                    prompt,
+                    text,
+                    error,
+                    positions or expected_positions,
+                    canon=canon,
+                    frozen_spec=batch_spec,
+                    thread_payoffs=batch_payoffs,
+                    prior_chapters=chapters,
+                    max_tokens=max_tokens,
+                )
+            except ValueError as exc:
+                fail_plan(service, revision, "chapters", error or str(exc))
             ensure_task_not_cancelled(service.db, task)
             parsed, error = parse_plan(
                 text,
@@ -159,6 +173,7 @@ async def plan_chapters(
         if not parsed:
             fail_plan(service, revision, "chapters", error)
         rows = parsed["chapters"]
+        batch_positions = positions or [int(row["position"]) for row in rows]
         if requires_plan_semantic_audit(contract):
             try:
                 rows = await audit_and_patch_plan_batch(
@@ -175,15 +190,22 @@ async def plan_chapters(
             except ValueError as exc:
                 fail_plan(service, revision, "chapters", str(exc))
             ensure_task_not_cancelled(service.db, task)
+        planning_invocations.record_plan_batch_sources(
+            revision, initial_text, text, batch_positions, rows
+        )
         chapters.extend(rows)
         checkpoint_plan_batch(service, revision, task, canon, chapters)
     return chapters
 
 
 def complete_plan(service, revision, task, frozen_spec, canon, chapters) -> dict:
+    schema = plan_schema(revision, frozen_spec)
+    source_manifest = dict(
+        ((revision.generation_plan or {}).get("planning_invocations") or {})
+    )
     plan = {
         **(frozen_spec or {}),
-        "schema": "story_novel_generation_plan.v2",
+        "schema": schema,
         "version": int((revision.generation_plan or {}).get("version") or 1),
         "status": "ready",
         "phase": "ready",
@@ -203,6 +225,10 @@ def complete_plan(service, revision, task, frozen_spec, canon, chapters) -> dict
         "target_chars": sum(int(item["target_chars"]) for item in chapters),
         "chapters": chapters,
     }
+    plan.update(v3_plan_fields(schema, canon, chapters))
+    planning_invocations.finalize(
+        plan, canon, chapters, source_manifest=source_manifest
+    )
     plan["plan_hash"] = generation_plan_hash(plan)
     plan.pop("chapter_plan_draft", None)
     plan.pop("chapter_plan_draft_canon_hash", None)
@@ -215,23 +241,10 @@ def complete_plan(service, revision, task, frozen_spec, canon, chapters) -> dict
     return plan
 
 
-def fail_plan(service, revision, phase: str, error: str | None) -> None:
-    revision.generation_plan = {
-        **dict(revision.generation_plan or {}),
-        "status": "failed",
-        "phase": phase,
-        "error": error or "invalid generation plan",
-    }
-    service.db.commit()
-    detail = "Canon 编译无效" if phase == "canon" else "章节规划无效"
-    raise HTTPException(status_code=500, detail=f"{detail}，正文尚未生成")
-
-
-def _parse_canon(
-    text: str, planning_contract: dict | None = None
-) -> tuple[dict | None, str | None]:
+def _parse_canon(text: str, planning_contract: dict | None = None):
     return parse_model_canon(text, planning_contract)[:2]
 
 
 _parse_canon_with_diagnostics = parse_model_canon
+_plan_repair_prompt = plan_repair.plan_repair_prompt
 _parse_plan = parse_plan

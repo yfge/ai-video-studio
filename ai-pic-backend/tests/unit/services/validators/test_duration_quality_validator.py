@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.services.validators.duration_quality_validator import (
     DurationQualityIssue,
     DurationQualityIssueType,
@@ -155,9 +154,7 @@ class TestDurationQualityValidator:
         self, validator: DurationQualityValidator
     ) -> None:
         """Test unknown provider fallback."""
-        wps, provider, issues = validator.get_calibrated_wps(
-            provider="unknown_tts"
-        )
+        wps, provider, issues = validator.get_calibrated_wps(provider="unknown_tts")
         assert provider == "default"
         assert len(issues) == 1
         assert issues[0].issue_type == DurationQualityIssueType.WPS_PROVIDER_MISMATCH
@@ -252,7 +249,9 @@ class TestDurationQualityValidator:
     ) -> None:
         """Test front-heavy distribution detection."""
         scenes = [
-            {"dialogues": [{"content": "这是很长很长很长的第一场对白内容！"}]},  # 16 chars
+            {
+                "dialogues": [{"content": "这是很长很长很长的第一场对白内容！"}]
+            },  # 16 chars
             {"dialogues": [{"content": "第二场也很长很长很长的对白！"}]},  # 14 chars
             {"dialogues": [{"content": "短"}]},  # 1 char
             {"dialogues": [{"content": "短短"}]},  # 2 chars
@@ -269,7 +268,9 @@ class TestDurationQualityValidator:
         scenes = [
             {"dialogues": [{"content": "短"}]},  # 1 char
             {"dialogues": [{"content": "短短"}]},  # 2 chars
-            {"dialogues": [{"content": "这是很长很长很长的第三场对白内容！"}]},  # 16 chars
+            {
+                "dialogues": [{"content": "这是很长很长很长的第三场对白内容！"}]
+            },  # 16 chars
             {"dialogues": [{"content": "第四场也很长很长很长的对白！"}]},  # 14 chars
         ]
         analysis = validator.analyze_word_distribution(scenes, "zh")
@@ -306,7 +307,8 @@ class TestDurationQualityValidator:
         analysis, issues = validator.check_word_distribution(scenes, "zh")
 
         front_heavy_issues = [
-            i for i in issues
+            i
+            for i in issues
             if i.issue_type == DurationQualityIssueType.SCENE_DISTRIBUTION_FRONT_HEAVY
         ]
         assert len(front_heavy_issues) > 0
@@ -408,14 +410,13 @@ class TestDurationQualityValidator:
         analyses, issues = validator.check_retry_convergence(scene_budgets)
 
         pathological_issues = [
-            i for i in issues
+            i
+            for i in issues
             if i.issue_type == DurationQualityIssueType.SCENE_PATHOLOGICAL
         ]
         assert len(pathological_issues) > 0
 
-    def test_check_high_retry_rate(
-        self, validator: DurationQualityValidator
-    ) -> None:
+    def test_check_high_retry_rate(self, validator: DurationQualityValidator) -> None:
         """Test high retry rate detection."""
         # All scenes have high retry counts
         scene_budgets = [
@@ -426,7 +427,8 @@ class TestDurationQualityValidator:
         analyses, issues = validator.check_retry_convergence(scene_budgets)
 
         high_retry_issues = [
-            i for i in issues
+            i
+            for i in issues
             if i.issue_type == DurationQualityIssueType.EPISODE_HIGH_RETRY_RATE
         ]
         assert len(high_retry_issues) > 0
@@ -475,7 +477,8 @@ class TestDurationQualityValidator:
 
         assert metrics["balanced"] is False
         imbalance_issues = [
-            i for i in issues
+            i
+            for i in issues
             if i.issue_type == DurationQualityIssueType.EPISODE_DURATION_IMBALANCE
         ]
         assert len(imbalance_issues) > 0
@@ -497,7 +500,8 @@ class TestDurationQualityValidator:
         metrics, issues = validator.analyze_episode_balance(episodes)
 
         outlier_issues = [
-            i for i in issues
+            i
+            for i in issues
             if i.issue_type == DurationQualityIssueType.EPISODE_DURATION_OUTLIER
         ]
         assert len(outlier_issues) > 0
@@ -507,17 +511,13 @@ class TestDurationQualityValidator:
     # Full Validation Tests
     # ============================================
 
-    def test_validate_empty(
-        self, validator: DurationQualityValidator
-    ) -> None:
+    def test_validate_empty(self, validator: DurationQualityValidator) -> None:
         """Test validation with empty data."""
         result = validator.validate([])
         assert result.passed is True
         assert result.calibrated_wps is not None
 
-    def test_validate_full(
-        self, validator: DurationQualityValidator
-    ) -> None:
+    def test_validate_full(self, validator: DurationQualityValidator) -> None:
         """Test full validation."""
         scenes = [
             {"dialogues": [{"content": "场景一对白"}]},
@@ -547,9 +547,7 @@ class TestDurationQualityValidator:
         assert result.word_distribution is not None
         assert result.episode_balance is not None
 
-    def test_validate_with_issues(
-        self, validator: DurationQualityValidator
-    ) -> None:
+    def test_validate_with_issues(self, validator: DurationQualityValidator) -> None:
         """Test validation detects issues."""
         # Front-heavy distribution
         scenes = [
@@ -575,9 +573,7 @@ class TestDurationQualityValidator:
         assert result.passed is False  # Should have ERROR level issues
         assert len(result.issues) > 0
 
-    def test_validate_to_dict(
-        self, validator: DurationQualityValidator
-    ) -> None:
+    def test_validate_to_dict(self, validator: DurationQualityValidator) -> None:
         """Test result serialization."""
         scenes = [{"dialogues": [{"content": "测试"}]}]
         result = validator.validate(scenes=scenes)

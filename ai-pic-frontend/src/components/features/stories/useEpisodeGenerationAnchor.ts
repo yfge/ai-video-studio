@@ -3,7 +3,9 @@
 import { useCallback, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
-export function useEpisodeGenerationAnchor(setGenOpen: (open: boolean) => void) {
+export function useEpisodeGenerationAnchor(
+  setGenOpen: (open: boolean) => void,
+) {
   const searchParams = useSearchParams();
 
   const openEpisodeGeneration = useCallback(() => {

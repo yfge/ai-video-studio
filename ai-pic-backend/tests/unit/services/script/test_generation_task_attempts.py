@@ -1,5 +1,4 @@
 import pytest
-
 from app.services.script.generation_attempt_contract import attempt_temperature
 
 

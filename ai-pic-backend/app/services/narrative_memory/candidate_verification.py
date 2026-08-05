@@ -10,6 +10,7 @@ from app.services.narrative_memory.extraction_candidates import (
 from app.services.narrative_memory.knowledge_evidence import knowledge_evidence_key
 from app.services.narrative_memory.source_evidence import source_contains_evidence
 from app.services.narrative_memory.source_hash import novel_chapter_source_hash
+from app.services.story.story_novel_sentence_spans import resolve_sentence_refs
 
 
 def verified_novel_candidate(
@@ -33,9 +34,7 @@ def verified_novel_candidate(
         or int(evidence.get("verification_version") or 0) < CLAIM_VERIFICATION_VERSION
         or not isinstance(quote, str)
         or len(re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]+", "", quote)) < 3
-        or not source_contains_evidence(
-            f"{chapter.title}\n{chapter.content_text}", quote
-        )
+        or not _source_evidence_matches(chapter, evidence, quote)
         or (
             require_ledger_membership
             and entity.business_id not in entry.get(ledger_key, [])
@@ -107,6 +106,38 @@ def _grant_key(item: dict) -> tuple[str | None, str | None, str | None]:
         item.get("character_id"),
         item.get("fact_id"),
         item.get("source_event_id"),
+    )
+
+
+def _source_evidence_matches(chapter, evidence: dict, quote: str) -> bool:
+    structured_keys = {"sentence_ids", "spans", "sentence_index_hash"}
+    if not structured_keys.intersection(evidence):
+        return source_contains_evidence(
+            f"{chapter.title}\n{chapter.content_text}", quote
+        )
+    if not structured_keys.issubset(evidence):
+        return False
+    spans = evidence.get("spans")
+    if not isinstance(spans, list) or not spans:
+        return False
+    source_hash = spans[0].get("source_hash")
+    if not isinstance(source_hash, str) or any(
+        item.get("source_hash") != source_hash for item in spans
+    ):
+        return False
+    try:
+        resolved = resolve_sentence_refs(
+            chapter.content_text,
+            evidence.get("sentence_ids"),
+            expected_source_hash=source_hash,
+        )
+    except (TypeError, ValueError):
+        return False
+    return bool(
+        resolved["sentence_index_hash"] == evidence.get("sentence_index_hash")
+        and resolved["sentence_ids"] == evidence.get("sentence_ids")
+        and resolved["spans"] == spans
+        and resolved["quote"] == quote
     )
 
 

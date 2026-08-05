@@ -1,9 +1,4 @@
-"""ChatGPT Codex responses provider.
-
-This provider mirrors the local Codex CLI calling shape: it reuses
-`~/.codex/auth.json` and calls the ChatGPT Codex responses endpoint with a
-streaming Responses API payload.
-"""
+"""ChatGPT Codex responses provider using the local CLI authentication."""
 
 from __future__ import annotations
 
@@ -108,6 +103,7 @@ class CodexProvider(BaseProvider):
             except _CodexUnauthorized:
                 self._recover_after_unauthorized()
                 text, usage = await self._post(client, payload)
+            finish_reason = str(usage.pop("_finish_reason", "") or "")
 
             return AIResponse(
                 success=True,
@@ -117,7 +113,11 @@ class CodexProvider(BaseProvider):
                 task_type=AITaskType.STORY_GENERATION,
                 model_type=AIModelType.TEXT_GENERATION,
                 usage=usage,
-                metadata={"stream": True, "endpoint": "codex_responses"},
+                metadata={
+                    "stream": True,
+                    "endpoint": "codex_responses",
+                    "finish_reason": finish_reason,
+                },
             )
         except Exception as exc:  # noqa: BLE001
             logger.error("Codex generate_text error: %s", exc, exc_info=True)

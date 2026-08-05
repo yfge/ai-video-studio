@@ -36,4 +36,3 @@ def pick_first_url(value: Any) -> Optional[str]:
             if isinstance(item, str) and item.strip():
                 return item.strip()
     return None
-

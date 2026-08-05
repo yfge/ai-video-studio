@@ -1,4 +1,5 @@
 import json
+from types import SimpleNamespace
 
 import anyio
 from app.services.story.story_novel_plan_semantic_audit import (
@@ -58,6 +59,16 @@ def _audit(position, event_id, movements=None):
             {
                 "position": position,
                 "event_id": event_id,
+                "execution_contract": {
+                    "event_id": event_id,
+                    "action_phase": "instant",
+                    "time_scope": "instant",
+                    "actor_ids": ["char-a"],
+                    "effort": "light",
+                    "timeline_ids": [],
+                    "knowledge_fact_ids": [],
+                },
+                "feasibility_issues": [],
                 "missing_effects": {
                     "knowledge_grants": [],
                     "state_transitions": [],
@@ -79,7 +90,7 @@ def test_semantic_audit_drops_movement_when_subject_already_at_target():
 
     async def run():
         return await audit_and_patch_plan_batch(
-            object(),
+            SimpleNamespace(generation_plan={}),
             contract={"story_seed": {"schema": "story_seed_v2"}},
             canon=_canon(),
             prior_chapters=[_chapter(1, "ev-1", [_movement()])],
@@ -101,7 +112,7 @@ def test_semantic_audit_keeps_executable_missing_movement():
 
     async def run():
         return await audit_and_patch_plan_batch(
-            object(),
+            SimpleNamespace(generation_plan={}),
             contract={"story_seed": {"schema": "story_seed_v2"}},
             canon=_canon(),
             prior_chapters=[],
@@ -136,7 +147,7 @@ def test_semantic_reaudit_drops_exact_existing_milestone():
 
     async def run():
         return await audit_and_patch_plan_batch(
-            object(),
+            SimpleNamespace(generation_plan={}),
             contract={"story_seed": {"schema": "story_seed_v2"}},
             canon=canon,
             prior_chapters=[],

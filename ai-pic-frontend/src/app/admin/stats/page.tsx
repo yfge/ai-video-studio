@@ -15,11 +15,34 @@ import type { UserStatsResponse } from "@/utils/api/types";
 
 const statItems = (stats: UserStatsResponse) => [
   { label: "总用户数", value: stats.total_users, href: "/admin/users" },
-  { label: "活跃用户", value: stats.active_users, href: "/admin/users?status=approved" },
-  { label: "待审批", value: stats.pending_approval, href: "/admin/users?status=pending", tone: "amber" as const },
-  { label: "暂停用户", value: stats.suspended_users, href: "/admin/users?status=suspended", tone: "red" as const },
-  { label: "管理员", value: stats.admin_users, href: "/admin/users?role=admin", tone: "blue" as const },
-  { label: "最近注册", value: stats.recent_registrations, tone: "green" as const },
+  {
+    label: "活跃用户",
+    value: stats.active_users,
+    href: "/admin/users?status=approved",
+  },
+  {
+    label: "待审批",
+    value: stats.pending_approval,
+    href: "/admin/users?status=pending",
+    tone: "amber" as const,
+  },
+  {
+    label: "暂停用户",
+    value: stats.suspended_users,
+    href: "/admin/users?status=suspended",
+    tone: "red" as const,
+  },
+  {
+    label: "管理员",
+    value: stats.admin_users,
+    href: "/admin/users?role=admin",
+    tone: "blue" as const,
+  },
+  {
+    label: "最近注册",
+    value: stats.recent_registrations,
+    tone: "green" as const,
+  },
 ];
 
 export default function AdminStatsPage() {
@@ -63,16 +86,28 @@ export default function AdminStatsPage() {
               </button>
             }
           />
-          {loading ? <div className="p-4"><OperatorState title="加载统计数据..." /></div> : null}
-          {error ? <div className="p-4"><OperatorState title={error} tone="red" /></div> : null}
+          {loading ? (
+            <div className="p-4">
+              <OperatorState title="加载统计数据..." />
+            </div>
+          ) : null}
+          {error ? (
+            <div className="p-4">
+              <OperatorState title={error} tone="red" />
+            </div>
+          ) : null}
           {stats ? (
             <div className="grid gap-3 p-4 md:grid-cols-3">
               {statItems(stats).map((item) => {
                 const card = (
                   <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-xs text-gray-500">{item.label}</span>
-                      <StatusPill tone={item.tone || "gray"}>{item.value}</StatusPill>
+                      <span className="text-xs text-gray-500">
+                        {item.label}
+                      </span>
+                      <StatusPill tone={item.tone || "gray"}>
+                        {item.value}
+                      </StatusPill>
                     </div>
                     <div className="mt-3 text-2xl font-semibold text-gray-950">
                       {item.value.toLocaleString()}
@@ -80,7 +115,11 @@ export default function AdminStatsPage() {
                   </div>
                 );
                 return item.href ? (
-                  <Link key={item.label} href={item.href} className="block hover:opacity-90">
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    className="block hover:opacity-90"
+                  >
                     {card}
                   </Link>
                 ) : (
@@ -92,11 +131,26 @@ export default function AdminStatsPage() {
         </OperatorPanel>
         {stats ? (
           <OperatorPanel>
-            <OperatorSectionHeader title="快速操作" subtitle="从统计跳转到用户处理面" />
+            <OperatorSectionHeader
+              title="快速操作"
+              subtitle="从统计跳转到用户处理面"
+            />
             <div className="grid gap-3 p-4 md:grid-cols-3">
-              <QuickLink href="/admin/users?status=pending" label="处理待审批" detail={`${stats.pending_approval} 个待处理`} />
-              <QuickLink href="/admin/users" label="管理用户" detail="查看全部账号" />
-              <QuickLink href="/admin/users?role=admin" label="管理员权限" detail={`${stats.admin_users} 个管理员账号`} />
+              <QuickLink
+                href="/admin/users?status=pending"
+                label="处理待审批"
+                detail={`${stats.pending_approval} 个待处理`}
+              />
+              <QuickLink
+                href="/admin/users"
+                label="管理用户"
+                detail="查看全部账号"
+              />
+              <QuickLink
+                href="/admin/users?role=admin"
+                label="管理员权限"
+                detail={`${stats.admin_users} 个管理员账号`}
+              />
             </div>
           </OperatorPanel>
         ) : null}

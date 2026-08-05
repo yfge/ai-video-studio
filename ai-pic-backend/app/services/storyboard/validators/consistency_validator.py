@@ -54,9 +54,7 @@ class ConsistencyValidator:
 
         return results
 
-    def _check_scene_count(
-        self, context: "PipelineContext"
-    ) -> list[ValidationResult]:
+    def _check_scene_count(self, context: "PipelineContext") -> list[ValidationResult]:
         """Check that scene counts match between JSON and structure."""
         results: list[ValidationResult] = []
 
@@ -267,9 +265,7 @@ class ConsistencyValidator:
 
         return results
 
-    def _check_sync_status(
-        self, context: "PipelineContext"
-    ) -> list[ValidationResult]:
+    def _check_sync_status(self, context: "PipelineContext") -> list[ValidationResult]:
         """Report overall sync status from context."""
         results: list[ValidationResult] = []
 

@@ -42,9 +42,7 @@ class StoryReadinessChecker:
         checks.extend(self._check_optional_content(story))
 
         # Calculate readiness status
-        has_critical = any(
-            not c.passed and c.severity == "CRITICAL" for c in checks
-        )
+        has_critical = any(not c.passed and c.severity == "CRITICAL" for c in checks)
         has_errors = any(not c.passed and c.severity == "ERROR" for c in checks)
 
         can_proceed = not has_critical
@@ -119,7 +117,9 @@ class StoryReadinessChecker:
                     else "No characters linked to story"
                 ),
                 suggestion=(
-                    None if has_characters else "Add at least one character to the story"
+                    None
+                    if has_characters
+                    else "Add at least one character to the story"
                 ),
             )
         )
@@ -265,9 +265,7 @@ class StoryReadinessChecker:
                 passed=has_hook_plan,
                 severity="INFO",
                 message=(
-                    "Hook plan defined"
-                    if has_hook_plan
-                    else "No hook plan defined"
+                    "Hook plan defined" if has_hook_plan else "No hook plan defined"
                 ),
                 suggestion=(
                     None
@@ -431,5 +429,9 @@ class StoryReadinessChecker:
         if warnings:
             parts.append(f"{warnings} warning(s)")
 
-        status = "Ready" if ready else ("Can proceed with caution" if can_proceed else "Not ready")
+        status = (
+            "Ready"
+            if ready
+            else ("Can proceed with caution" if can_proceed else "Not ready")
+        )
         return f"{status}: {', '.join(parts)}"

@@ -17,6 +17,7 @@ from scripts.contract_audit_core import (
     AUDIT_ROOT,
     collect_direct_queries,
     collect_legacy_references,
+    collect_narrative_core_boundaries,
     collect_oversized_files,
     collect_route_handlers,
     relative,
@@ -41,12 +42,15 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
     )
 
 
-def build_report(mode: str, paths: list[Path], *, fail_on_violations: bool) -> dict[str, Any]:
+def build_report(
+    mode: str, paths: list[Path], *, fail_on_violations: bool
+) -> dict[str, Any]:
     raw_violations = {
         "oversized_files": collect_oversized_files(paths, mode=mode),
         "route_handlers": collect_route_handlers(paths, mode=mode),
         "direct_queries": collect_direct_queries(paths, mode=mode),
         "legacy_references": collect_legacy_references(paths),
+        "narrative_core_boundaries": collect_narrative_core_boundaries(paths),
     }
     docs_standard = standard_for_category("docs_drift")
     report = {
@@ -86,6 +90,7 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"- Route handlers over 50 lines: `{summary['route_handler_violations']}`",
         f"- Direct SQLAlchemy query files: `{summary['direct_query_files']}`",
         f"- Legacy reference files: `{summary['legacy_reference_files']}`",
+        f"- Narrative core boundary files: `{summary['narrative_core_boundary_files']}`",
         f"- Docs drift errors: `{summary['docs_drift_errors']}`",
         "",
     ]
@@ -103,6 +108,11 @@ def render_markdown(report: dict[str, Any]) -> str:
         ("Route Handler Violations", violations["route_handlers"], "handler_lines"),
         ("Direct Query Files", violations["direct_queries"], "query_hits"),
         ("Legacy References", violations["legacy_references"], None),
+        (
+            "Narrative Core Boundaries",
+            violations["narrative_core_boundaries"],
+            None,
+        ),
     ):
         if not items:
             continue
@@ -116,7 +126,9 @@ def render_markdown(report: dict[str, Any]) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def persist_reports(report: dict[str, Any], report_json: Path | None, report_md: Path | None) -> None:
+def persist_reports(
+    report: dict[str, Any], report_json: Path | None, report_md: Path | None
+) -> None:
     if report["mode"] == "audit":
         report_json = report_json or AUDIT_ROOT / "contracts-report.json"
         report_md = report_md or AUDIT_ROOT / "contracts-summary.md"
@@ -138,6 +150,7 @@ def should_fail(report: dict[str, Any]) -> bool:
             "route_handler_violations",
             "direct_query_files",
             "legacy_reference_files",
+            "narrative_core_boundary_files",
             "docs_drift_errors",
         )
     )
@@ -152,6 +165,7 @@ def print_failures(report: dict[str, Any]) -> None:
         ("route_handlers", "route handler", "handler_lines"),
         ("direct_queries", "direct query", "query_hits"),
         ("legacy_references", "legacy reference", None),
+        ("narrative_core_boundaries", "narrative core boundary", None),
     ):
         for item in report["violations"][key]:
             detail = f" ({metric_key}={item[metric_key]})" if metric_key else ""

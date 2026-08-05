@@ -19,7 +19,10 @@ export default function TestAuth() {
       });
       if (response.ok) {
         const data = await response.json();
-        setResult((prev) => `${prev}\n受保护接口成功，返回 ${data.data?.length || 0} 条`);
+        setResult(
+          (prev) =>
+            `${prev}\n受保护接口成功，返回 ${data.data?.length || 0} 条`,
+        );
       } else {
         setResult((prev) => `${prev}\n受保护接口失败: ${response.status}`);
       }
@@ -57,10 +60,16 @@ export default function TestAuth() {
     setResult("测试 API 客户端...");
     try {
       const { authAPI } = await import("@/utils/api/endpoints");
-      const response = await authAPI.login({ email: "admin", password: "Ai7dio" });
+      const response = await authAPI.login({
+        email: "admin",
+        password: "Ai7dio",
+      });
       if (response.success && response.data) {
         setResult(
-          `API 客户端登录成功。Token: ${response.data.access_token.substring(0, 50)}...`,
+          `API 客户端登录成功。Token: ${response.data.access_token.substring(
+            0,
+            50,
+          )}...`,
         );
       } else {
         setResult(`API 客户端登录失败: ${response.error}`);
@@ -81,7 +90,10 @@ export default function TestAuth() {
       switchText="登录页"
     >
       <OperatorPanel>
-        <OperatorSectionHeader title="诊断操作" subtitle="fetch 与 API client" />
+        <OperatorSectionHeader
+          title="诊断操作"
+          subtitle="fetch 与 API client"
+        />
         <div className="space-y-3 p-4">
           <button
             type="button"
@@ -100,7 +112,9 @@ export default function TestAuth() {
             {loading ? "测试中..." : "测试 API 客户端登录"}
           </button>
           <div className="min-h-32 rounded-md border border-gray-200 bg-gray-50 p-3">
-            <h3 className="mb-2 text-xs font-semibold text-gray-500">测试结果</h3>
+            <h3 className="mb-2 text-xs font-semibold text-gray-500">
+              测试结果
+            </h3>
             <pre className="whitespace-pre-wrap text-xs text-gray-700">
               {result || "点击按钮开始测试..."}
             </pre>

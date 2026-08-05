@@ -35,9 +35,7 @@ class EpisodeReadinessChecker:
         checks.extend(self._check_previous_episodes(story, episode))
 
         # Recalculate readiness status
-        has_critical = any(
-            not c.passed and c.severity == "CRITICAL" for c in checks
-        )
+        has_critical = any(not c.passed and c.severity == "CRITICAL" for c in checks)
         has_errors = any(not c.passed and c.severity == "ERROR" for c in checks)
 
         can_proceed = not has_critical
@@ -70,7 +68,9 @@ class EpisodeReadinessChecker:
                     if exists
                     else "Episode not found or deleted"
                 ),
-                suggestion=None if exists else "Ensure episode exists and is not deleted",
+                suggestion=(
+                    None if exists else "Ensure episode exists and is not deleted"
+                ),
             )
         )
 

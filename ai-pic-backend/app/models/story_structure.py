@@ -231,4 +231,6 @@ class Environment(SoftDeleteBusinessMixin, Base):
     )
 
     # relations
-    virtual_ip_links = relationship("VirtualIPEnvironment", back_populates="environment")
+    virtual_ip_links = relationship(
+        "VirtualIPEnvironment", back_populates="environment"
+    )

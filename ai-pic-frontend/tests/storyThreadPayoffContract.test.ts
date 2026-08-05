@@ -36,7 +36,7 @@ const outline = (
       position: 2,
       title: "回收",
       goal: "打开密室",
-      key_events: ["关于“thread-key”的最终证据确认：钥匙打开密室"],
+      key_events: ["钥匙打开密室，失踪者留下的账本随之曝光"],
       character_focus: [],
       open_threads: [],
       end_state: "秘密公开",
@@ -46,7 +46,7 @@ const outline = (
     {
       thread_id: "thread-key",
       payoff_position: 2,
-      evidence_key_event: "关于“thread-key”的最终证据确认：钥匙打开密室",
+      evidence_key_event: "钥匙打开密室，失踪者留下的账本随之曝光",
     },
   ],
   ...patch,
@@ -124,7 +124,7 @@ describe("StorySeed v1 thread payoff contract", () => {
     );
   });
 
-  it("requires exact target evidence and at most three payoffs per chapter", () => {
+  it("accepts neutral exact target evidence and limits three payoffs per chapter", () => {
     assert.match(
       validateStructuredOutline(
         outline({
@@ -139,20 +139,20 @@ describe("StorySeed v1 thread payoff contract", () => {
       ) ?? "",
       /必须逐字属于/,
     );
-    const unlabelled = outline();
-    unlabelled.chapters[1].key_events = ["钥匙打开密室"];
-    unlabelled.thread_payoffs![0].evidence_key_event = "钥匙打开密室";
-    assert.match(validateStructuredOutline(unlabelled) ?? "", /显式问题标签/);
+    const neutral = outline();
+    neutral.chapters[1].key_events = ["钥匙打开密室"];
+    neutral.thread_payoffs![0].evidence_key_event = "钥匙打开密室";
+    assert.equal(validateStructuredOutline(neutral), null);
     const crowded = outline();
     crowded.chapters[0].open_threads = ["t1", "t2", "t3", "t4"];
     crowded.chapters[1].key_events = crowded.chapters[0].open_threads.map(
-      (threadId) => `关于“${threadId}”的最终证据确认：密室证词公开`,
+      (threadId) => `${threadId} 对应的密室证词公开`,
     );
     crowded.thread_payoffs = crowded.chapters[0].open_threads.map(
       (thread_id) => ({
         thread_id,
         payoff_position: 2,
-        evidence_key_event: `关于“${thread_id}”的最终证据确认：密室证词公开`,
+        evidence_key_event: `${thread_id} 对应的密室证词公开`,
       }),
     );
     assert.match(validateStructuredOutline(crowded) ?? "", /最多回收 3 条/);

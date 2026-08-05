@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.schemas.continuity import RevealedInfoItem
 from app.services.validators.info_gate_validator import (
     InfoGateContext,
@@ -192,7 +191,10 @@ class TestInfoGateValidator:
             context=context,
         )
         assert len(violations) > 0
-        assert violations[0].violation_type == InfoGateViolationType.REFERENCES_FUTURE_EVENT
+        assert (
+            violations[0].violation_type
+            == InfoGateViolationType.REFERENCES_FUTURE_EVENT
+        )
 
     def test_validate_dialogue_future_event(
         self, validator: InfoGateValidator, sample_revealed_info: list[RevealedInfoItem]
@@ -225,9 +227,7 @@ class TestInfoGateValidator:
             context=context,
         )
         # Should not trigger violation for public info
-        assert all(
-            v.referenced_info != "公司名为天海集团" for v in violations
-        )
+        assert all(v.referenced_info != "公司名为天海集团" for v in violations)
 
     def test_validate_script_content(
         self, validator: InfoGateValidator, sample_revealed_info: list[RevealedInfoItem]
@@ -280,9 +280,7 @@ class TestInfoGateValidator:
         # Should handle alternative keys without error
         assert isinstance(violations, list)
 
-    def test_generate_fix_suggestions(
-        self, validator: InfoGateValidator
-    ) -> None:
+    def test_generate_fix_suggestions(self, validator: InfoGateValidator) -> None:
         """Test fix suggestion generation."""
         violations = [
             InfoGateViolation(

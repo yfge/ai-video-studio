@@ -89,6 +89,7 @@ Keep the selected clip dock, but make the production path read as one clip
 workflow:
 
 1. Shared Reference Context
+
    - Surface selected role IPs, selected IP images, selected environment images,
      and manual reference URLs as a visible shared section.
    - Make it clear these references are included in storyboard, keyframe, and
@@ -97,6 +98,7 @@ workflow:
      environment image.
 
 2. Storyboard Step
+
    - Label as clip storyboard, not whole-story storyboard.
    - Keep style and panel count in compact details.
    - Show sheet preview and ready state when available.
@@ -105,6 +107,7 @@ workflow:
      `character_reference_images`, and `environment_reference_images`.
 
 3. Start/End Keyframe Step
+
    - Show whether start frame and end frame are ready for the current clip.
    - Explain through state text that start/end frames are the recommended
      control input for provider video generation.

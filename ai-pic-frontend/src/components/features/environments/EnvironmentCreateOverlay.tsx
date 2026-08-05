@@ -31,7 +31,8 @@ export function EnvironmentCreateOverlay({
   onCreated,
 }: EnvironmentCreateOverlayProps) {
   const { showAlert } = useAlertModal();
-  const [formState, setFormState] = useState<EnvironmentFormState>(EMPTY_ENV_FORM);
+  const [formState, setFormState] =
+    useState<EnvironmentFormState>(EMPTY_ENV_FORM);
   const [generation, setGeneration] =
     useState<GenerationFormState>(EMPTY_GENERATION);
   const [creating, setCreating] = useState(false);

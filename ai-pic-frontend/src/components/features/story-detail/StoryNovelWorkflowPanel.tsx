@@ -19,6 +19,8 @@ import {
 } from "./StoryNovelGenerationStatus";
 import { StoryNovelLengthPanel } from "./StoryNovelLengthPanel";
 import { StoryNovelQualityPanel } from "./StoryNovelQualityPanel";
+import { StoryNovelReviewControls } from "./StoryNovelReviewControls";
+import { StoryNovelV5ConsistencyPanel } from "./StoryNovelV5ConsistencyPanel";
 
 export function StoryNovelWorkflowPanel({
   story,
@@ -91,6 +93,10 @@ export function StoryNovelWorkflowPanel({
               disabled={
                 workflow.busy ||
                 workflow.activeTask ||
+                (current.generation_plan?.schema ===
+                  "story_novel_generation_plan.v5" &&
+                  current.generation_plan?.schema_compile_status ===
+                    "failed") ||
                 !["ready", "failed", "planning"].includes(
                   current.generation_plan?.status || "",
                 )
@@ -98,7 +104,11 @@ export function StoryNovelWorkflowPanel({
               onClick={() => void workflow.startGeneration()}
               className={operatorButtonClass("primary")}
             >
-              {current.generation_plan?.status === "failed"
+              {current.generation_plan?.schema ===
+                "story_novel_generation_plan.v5" &&
+              current.generation_plan?.schema_compile_status === "failed"
+                ? "Schema 编译失败（需新建 Revision）"
+                : current.generation_plan?.status === "failed"
                 ? "重试规划并生成正文"
                 : current.generation_plan?.status === "planning"
                 ? "继续规划并生成正文"
@@ -161,16 +171,12 @@ export function StoryNovelWorkflowPanel({
         </div>
         {current?.lifecycle_status === "draft" ? (
           <div className="flex flex-wrap gap-2 border-t border-gray-100 px-5 py-4">
-            <button
-              type="button"
+            <StoryNovelReviewControls
               disabled={
                 workflow.busy || workflow.activeTask || !current.chapters.length
               }
-              onClick={() => void workflow.continuity()}
-              className={operatorButtonClass("secondary")}
-            >
-              运行连续性检查
-            </button>
+              onRun={(model) => void workflow.continuity(model)}
+            />
             <button
               type="button"
               disabled={
@@ -205,6 +211,7 @@ export function StoryNovelWorkflowPanel({
           </p>
         ) : null}
       </OperatorPanel>
+      <StoryNovelV5ConsistencyPanel revision={current} />
       {current?.lifecycle_status === "draft" &&
       current.generation_plan?.canon ? (
         <StoryNovelCanonPanel

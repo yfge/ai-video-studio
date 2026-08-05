@@ -1,0 +1,7 @@
+description: Story Novel v4 frozen-snapshot chapter intent
+category: story
+version: "1.0"
+variables:
+  planner_input_json:
+    required: true
+    type: string

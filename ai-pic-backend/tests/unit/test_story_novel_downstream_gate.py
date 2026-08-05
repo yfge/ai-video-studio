@@ -17,9 +17,10 @@ from app.services.story.story_novel_downstream_gate import (
 )
 from app.services.story.story_novel_length_service import generation_plan_hash
 from fastapi import HTTPException
+from tests.unit.story_novel_v3_test_support import mark_v3_downstream_ready
 
 
-def _approved_revision(db_session, suffix: str = "a"):
+def _approved_revision(db_session, suffix: str = "a", *, v3: bool = True):
     user = User(
         username=f"downstream-{suffix}",
         email=f"downstream-{suffix}@example.com",
@@ -115,6 +116,8 @@ def _approved_revision(db_session, suffix: str = "a"):
             for chapter in chapters
         ],
     }
+    if v3:
+        mark_v3_downstream_ready(revision)
     db_session.commit()
     return user, story, revision, chapters
 
@@ -243,3 +246,10 @@ def test_draft_revision_never_enters_downstream(db_session):
     with pytest.raises(HTTPException) as error:
         require_canonical_revision(revision)
     assert _code(error) == "NOVEL_REVISION_NOT_APPROVED"
+
+
+def test_approved_v2_revision_never_enters_downstream(db_session):
+    _user, _story, revision, _chapters = _approved_revision(db_session, v3=False)
+    with pytest.raises(HTTPException) as error:
+        require_canonical_revision(revision)
+    assert _code(error) == "NOVEL_GENERATION_PLAN_STALE"

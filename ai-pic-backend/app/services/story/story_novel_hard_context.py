@@ -7,12 +7,24 @@ from typing import Any
 
 from .story_novel_canon_service import content_hash
 from .story_novel_constraint_visibility import visible_content_constraints
+from .story_novel_state_visibility import (
+    milestone_effect_refs,
+    state_entity_refs,
+    visible_state_fields,
+    visible_subject,
+)
 from .story_novel_timeline_contract import (
     prompt_visible_chapter_contract,
     visible_timeline_refs,
 )
+from .story_novel_world_expansion import (
+    canon_with_plan_expansion,
+    state_with_pending_expansion,
+)
 
-SAFE_ENTITY_ATTRIBUTES = {"age", "occupation", "type"}
+SAFE_ENTITY_ATTRIBUTES = set(
+    "age occupation type gender pronouns family_role scope_type parent_scope_id depth".split()
+)
 
 
 def build_hard_constraints(
@@ -25,12 +37,33 @@ def build_hard_constraints(
     state_before: dict,
 ) -> dict:
     position = int(chapter_plan["position"])
-    visible_plan = prompt_visible_chapter_contract(canon, chapter_plan)
-    refs = visible_timeline_refs(canon, _visible_refs(canon, chapter_history), position)
-    relevant = _relevant_canon(canon, visible_plan, chapter_history, refs)
-    visible_state = _visible_state(state_before, canon, chapter_history, refs)
+    effective_canon = canon_with_plan_expansion(canon, [chapter_plan], state_before)
+    prompt_state = state_with_pending_expansion(
+        state_before, chapter_plan.get("entity_introductions") or []
+    )
+    visible_plan = prompt_visible_chapter_contract(effective_canon, chapter_plan)
+    current_refs = _visible_refs(effective_canon, [chapter_plan])
+    revealed_refs = {
+        ref for chapter in chapter_history for ref in _chapter_refs(chapter) if ref
+    }
+    refs = visible_timeline_refs(
+        effective_canon,
+        milestone_effect_refs(
+            effective_canon,
+            state_entity_refs(
+                effective_canon,
+                current_refs,
+                prompt_state,
+                revealed_refs=revealed_refs | current_refs,
+            ),
+            prompt_state,
+        ),
+        position,
+    )
+    relevant = _relevant_canon(effective_canon, visible_plan, [chapter_plan], refs)
+    visible_state = _visible_state(prompt_state, effective_canon, [chapter_plan], refs)
     return {
-        "story_invariants": _story_invariants(snapshot, canon, refs),
+        "story_invariants": _story_invariants(snapshot, effective_canon, refs),
         "chapter_contract": visible_plan,
         "compiled_canon": relevant,
         "approved_story_canon": approved_story_canon,
@@ -92,9 +125,25 @@ def hard_constraints_hash(value: dict[str, Any]) -> str:
 def _visible_refs(canon: dict, chapters: list[dict]) -> set[str]:
     refs = {ref for chapter in chapters for ref in _chapter_refs(chapter) if ref}
     surface = json.dumps(chapters, ensure_ascii=False, default=str)
+    focus = {
+        str(value).strip()
+        for chapter in chapters
+        for value in chapter.get("character_focus") or []
+        if str(value).strip()
+    }
     for item in canon.get("entities") or []:
         names = [item.get("name"), *(item.get("aliases") or [])]
-        if any(str(name) in surface for name in names if name):
+        if any(
+            name
+            and (
+                str(name) in surface
+                or (
+                    item.get("kind") == "character"
+                    and any(value in str(name) or str(name) in value for value in focus)
+                )
+            )
+            for name in names
+        ):
             refs.add(str(item["id"]))
     return refs
 
@@ -102,15 +151,15 @@ def _visible_refs(canon: dict, chapters: list[dict]) -> set[str]:
 def _visible_state(
     state_before: dict, canon: dict, chapters: list[dict], refs: set[str]
 ) -> dict:
-    allowed = _visible_state_fields(chapters, refs)
+    allowed = visible_state_fields(canon, chapters, refs)
     return {
-        **state_before,
+        **{
+            key: value
+            for key, value in state_before.items()
+            if key not in {"subjects", "revision_local_entities"}
+        },
         "subjects": {
-            subject_id: {
-                key: value
-                for key, value in value.items()
-                if key in allowed.get(subject_id, set())
-            }
+            subject_id: visible_subject(value, allowed.get(subject_id, set()), refs)
             for subject_id, value in (state_before.get("subjects") or {}).items()
             if subject_id in refs
         },
@@ -119,6 +168,11 @@ def _visible_state(
 
 def _chapter_refs(chapter: dict) -> set[str]:
     refs = set(chapter.get("canon_refs") or [])
+    refs.update(
+        item.get("id")
+        for item in chapter.get("entity_introductions") or []
+        if item.get("id")
+    )
     for field in ("preconditions", "state_transitions", "location_transitions"):
         refs.update(
             item.get("subject_id")
@@ -147,9 +201,7 @@ def _visible_entities(items, refs: set[str], chapters: list[dict]) -> list[dict]
         if item.get("id") not in refs:
             continue
         projected = {"id": item["id"], "kind": item["kind"]}
-        if item.get("name") and (
-            item.get("kind") == "location" or str(item["name"]) in surface
-        ):
+        if item.get("name"):
             projected["name"] = item["name"]
         aliases = [
             alias for alias in item.get("aliases") or [] if str(alias) in surface
@@ -168,38 +220,12 @@ def _visible_entities(items, refs: set[str], chapters: list[dict]) -> list[dict]
 
 
 def _explicit_initial_state(canon: dict, chapters: list[dict], refs: set[str]) -> dict:
-    allowed = _visible_state_fields(chapters, refs)
+    allowed = visible_state_fields(canon, chapters, refs)
     return {
-        subject_id: {
-            key: field_value
-            for key, field_value in value.items()
-            if key in allowed.get(subject_id, set())
-        }
+        subject_id: visible_subject(value, allowed.get(subject_id, set()), refs)
         for subject_id, value in (canon.get("initial_state") or {}).items()
         if subject_id in refs
     }
-
-
-def _visible_state_fields(
-    chapters: list[dict], visible_refs: set[str]
-) -> dict[str, set[str]]:
-    fields: dict[str, set[str]] = {}
-    for subject_id in visible_refs:
-        fields.setdefault(subject_id, set()).add("location")
-    for chapter in chapters:
-        for item in chapter.get("preconditions") or []:
-            fields.setdefault(item["subject_id"], set()).add(
-                str(item["field"]).split(".", 1)[0]
-            )
-        for item in chapter.get("state_transitions") or []:
-            fields.setdefault(item["subject_id"], set()).add(
-                str(item["field"]).split(".", 1)[0]
-            )
-        for item in chapter.get("location_transitions") or []:
-            fields.setdefault(item["subject_id"], set()).add("location")
-        for item in chapter.get("knowledge_grants") or []:
-            fields.setdefault(item["character_id"], set()).add("knowledge")
-    return fields
 
 
 def _visible_character_arcs(items, refs: set[str], position: int) -> list[dict]:

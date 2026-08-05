@@ -123,9 +123,13 @@ export function cloneStoryNovelRevision(
 
 export function checkStoryNovelContinuity(
   revisionId: string,
+  reviewModel?: string,
 ): Promise<ApiResponse<NovelTaskResponse>> {
   return httpClient(revisionPath(revisionId, "/continuity-check-async"), {
     method: "POST",
+    ...(reviewModel
+      ? { body: JSON.stringify({ review_model: reviewModel }) }
+      : {}),
   });
 }
 

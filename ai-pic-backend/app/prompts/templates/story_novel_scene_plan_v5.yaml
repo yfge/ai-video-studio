@@ -1,0 +1,5 @@
+description: Plan v5 scenes without emitting prose
+category: story
+version: "1.0"
+variables:
+  input_json: {required: true, type: string}

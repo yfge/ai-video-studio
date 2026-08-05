@@ -47,7 +47,10 @@ export function useEnvironmentDetailState(envKey: string) {
       if (envRes.success && envRes.data) {
         setEnv(envRes.data);
       } else {
-        showAlert({ message: envRes.error || "加载环境失败", variant: "error" });
+        showAlert({
+          message: envRes.error || "加载环境失败",
+          variant: "error",
+        });
       }
       setImages(imgRes.success && imgRes.data ? imgRes.data.images || [] : []);
     } catch (error) {
@@ -80,7 +83,10 @@ export function useEnvironmentDetailState(envKey: string) {
         variant: "warning",
         confirmText: "删除",
         onConfirm: async () => {
-          const res = await storyStructureAPI.deleteEnvironmentImage(envKey, url);
+          const res = await storyStructureAPI.deleteEnvironmentImage(
+            envKey,
+            url,
+          );
           if (res.success && res.data) {
             setImages(res.data.images ?? []);
             showAlert({ message: "删除成功", variant: "success" });

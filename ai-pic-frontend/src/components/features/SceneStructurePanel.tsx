@@ -40,7 +40,12 @@ type StructureApi = {
   getNormalizedSceneShots: (sceneId: number) => Promise<ApiResult<ShotNode[]>>;
   createScene: (
     scriptId: number,
-    payload: { script_id: number; scene_number: string; slug_line: string; status?: string },
+    payload: {
+      script_id: number;
+      scene_number: string;
+      slug_line: string;
+      status?: string;
+    },
   ) => Promise<ApiResult<unknown>>;
   createSceneBeat: (
     sceneId: number,
@@ -48,10 +53,21 @@ type StructureApi = {
   ) => Promise<ApiResult<unknown>>;
   createSceneShot: (
     sceneId: number,
-    payload: { scene_id: number; shot_number: string; scene_beat_id?: number; shot_type?: string },
+    payload: {
+      scene_id: number;
+      shot_number: string;
+      scene_beat_id?: number;
+      shot_type?: string;
+    },
   ) => Promise<ApiResult<unknown>>;
-  updateSceneBeat: (beatId: number, payload: Partial<{ order_index: number }>) => Promise<ApiResult<unknown>>;
-  updateSceneShot: (shotId: number, payload: Partial<{ shot_number: string }>) => Promise<ApiResult<unknown>>;
+  updateSceneBeat: (
+    beatId: number,
+    payload: Partial<{ order_index: number }>,
+  ) => Promise<ApiResult<unknown>>;
+  updateSceneShot: (
+    shotId: number,
+    payload: Partial<{ shot_number: string }>,
+  ) => Promise<ApiResult<unknown>>;
   deleteSceneBeat: (beatId: number) => Promise<ApiResult<unknown>>;
   deleteSceneShot: (shotId: number) => Promise<ApiResult<unknown>>;
 };
@@ -75,7 +91,8 @@ export function SceneStructurePanel({
   apiOverride?: StructureApi;
 }) {
   const { showAlert } = useAlertModal();
-  const client: StructureApi = (apiOverride ?? storyStructureAPI) as StructureApi;
+  const client: StructureApi = (apiOverride ??
+    storyStructureAPI) as StructureApi;
   const [scenes, setScenes] = useState<SceneNode[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -119,7 +136,10 @@ export function SceneStructurePanel({
 
   const addScene = async () => {
     if (!canEdit) {
-      showAlert({ message: "当前为只读模式，需管理员权限", variant: "warning" });
+      showAlert({
+        message: "当前为只读模式，需管理员权限",
+        variant: "warning",
+      });
       return;
     }
     const sceneNo = String(scenes.length + 1);
@@ -191,32 +211,56 @@ export function SceneStructurePanel({
       <div className="space-y-3 p-4">
         {error ? <OperatorState title={error} tone="red" /> : null}
         {loading ? <OperatorState title="加载结构中..." /> : null}
-        {!loading && scenes.length === 0 ? <OperatorState title="暂无结构化场景。" /> : null}
+        {!loading && scenes.length === 0 ? (
+          <OperatorState title="暂无结构化场景。" />
+        ) : null}
         {scenes.map((scene) => (
-          <div key={scene.id} className="rounded-md border border-gray-200 bg-gray-50 p-3">
+          <div
+            key={scene.id}
+            className="rounded-md border border-gray-200 bg-gray-50 p-3"
+          >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-sm font-medium text-gray-950">
                   场景 {scene.scene_number} · {scene.slug_line || "未命名"}
                 </div>
                 <div className="mt-1 text-xs text-gray-500">
-                  {scene.location || "未设地点"} · {scene.time_of_day || "未设时间"}
+                  {scene.location || "未设地点"} ·{" "}
+                  {scene.time_of_day || "未设时间"}
                 </div>
               </div>
               {canEdit ? (
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => void addBeat(scene)} className={operatorButtonClass("secondary")}>
+                  <button
+                    type="button"
+                    onClick={() => void addBeat(scene)}
+                    className={operatorButtonClass("secondary")}
+                  >
                     + 节拍
                   </button>
-                  <button type="button" onClick={() => void addShot(scene)} className={operatorButtonClass("secondary")}>
+                  <button
+                    type="button"
+                    onClick={() => void addShot(scene)}
+                    className={operatorButtonClass("secondary")}
+                  >
                     + 镜头
                   </button>
                 </div>
               ) : null}
             </div>
             <div className="mt-3 grid gap-2 md:grid-cols-2">
-              <NodeList title={`节拍 (${scene.beats.length})`} items={scene.beats.map((beat) => `#${beat.order_index} ${beat.beat_summary || ""}`)} />
-              <NodeList title={`镜头 (${scene.shots.length})`} items={scene.shots.map((shot) => `${shot.shot_number} ${shot.shot_type || ""}`)} />
+              <NodeList
+                title={`节拍 (${scene.beats.length})`}
+                items={scene.beats.map(
+                  (beat) => `#${beat.order_index} ${beat.beat_summary || ""}`,
+                )}
+              />
+              <NodeList
+                title={`镜头 (${scene.shots.length})`}
+                items={scene.shots.map(
+                  (shot) => `${shot.shot_number} ${shot.shot_type || ""}`,
+                )}
+              />
             </div>
           </div>
         ))}
@@ -232,7 +276,10 @@ function NodeList({ title, items }: { title: string; items: string[] }) {
       <div className="space-y-1">
         {items.length ? (
           items.map((item, index) => (
-            <div key={index} className="rounded border border-gray-100 bg-gray-50 px-2 py-1 text-xs text-gray-700">
+            <div
+              key={index}
+              className="rounded border border-gray-100 bg-gray-50 px-2 py-1 text-xs text-gray-700"
+            >
               {item || "-"}
             </div>
           ))

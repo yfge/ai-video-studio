@@ -1,6 +1,6 @@
 ---
 id: 2026-01-31T10-45-00Z-frame-duration-splitter-frontend
-date: 2026-01-31T10:45:00Z
+date: "2026-01-31T10:45:00Z"
 participants: [human, claude]
 models: [claude-opus-4-5-20251101]
 tags: [frontend, storyboard, video-duration-alignment]
@@ -28,6 +28,7 @@ summary: "Added frontend UI for split/merged frame badges and duration adjustmen
 ### 1. `src/utils/api/types/video.types.ts`
 
 Added new fields to `StoryboardFrame` type:
+
 ```typescript
 // Split frame linkage (from frame_duration_splitter)
 parent_frame_id?: string;
@@ -39,6 +40,7 @@ merged_beat_ids?: string[];
 ```
 
 Added new type `DurationAdjustmentAudit`:
+
 ```typescript
 export type DurationAdjustmentAudit = {
   frame_count?: number;
@@ -49,6 +51,7 @@ export type DurationAdjustmentAudit = {
 ```
 
 Added `duration_adjustment` field to `StoryboardMeta`:
+
 ```typescript
 duration_adjustment?: DurationAdjustmentAudit;
 ```
@@ -56,13 +59,16 @@ duration_adjustment?: DurationAdjustmentAudit;
 ### 2. `src/app/episodes/[id]/storyboard/page.tsx`
 
 **Frame card header badges:**
+
 - Blue badge for split frames: "第 X/Y 段" with tooltip showing parent_frame_id and beat_range
 - Amber badge for merged frames: "合并自 N 个 beat" with tooltip showing merged beat IDs
 
 **Beat range display:**
+
 - For split frames, shows "原始 beat 范围: XXXms" with truncated parent_frame_id
 
 **Duration adjustment audit:**
+
 - In storyboard meta section, shows "时长调整: 拆分 X 次、合并 Y 次"
 - Tooltip shows audit_notes from the backend
 

@@ -1,0 +1,19 @@
+description: Story Novel v3 bounded chapters for one progression arc
+category: story
+version: "1.0"
+variables:
+  story_seed_json:
+    required: true
+    type: string
+  current_arc_json:
+    required: true
+    type: string
+  positions_json:
+    required: true
+    type: string
+  thread_directives_json:
+    required: true
+    type: string
+  ending_requirement:
+    required: true
+    type: string

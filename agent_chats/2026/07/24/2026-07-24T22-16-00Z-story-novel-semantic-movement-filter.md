@@ -1,3 +1,14 @@
+---
+id: 2026-07-24T22-16-00Z-story-novel-semantic-movement-filter
+date: "2026-07-24T22:16:00Z"
+participants: [user, codex]
+models: [gpt-5.6-sol]
+tags: [backend, story-novel, movement, semantics]
+related_paths:
+  - ai-pic-backend/app/services/story/story_novel_location_rules.py
+summary: Filter semantic movement claims while preserving hard location gates.
+---
+
 ## User Prompt
 
 继续通过真实系统 API + MySQL 完成 48 章长篇；任何质量门禁失败时停止付费，
@@ -22,7 +33,7 @@
 - Invocation 1381 重复建议第 22 章 `loc-survey-ship -> loc-sunkbell`，
   但角色已在第 21 章抵达 `loc-sunkbell`。
 - `pytest tests/unit/test_story_novel_plan_semantic_audit.py
-  tests/unit/test_story_novel_plan_semantic_audit_movements.py -q --no-cov`：
+tests/unit/test_story_novel_plan_semantic_audit_movements.py -q --no-cov`：
   12 passed。
 - `pytest tests/unit/test_story_novel_*.py -q --no-cov`：
   408 passed，1 skipped。

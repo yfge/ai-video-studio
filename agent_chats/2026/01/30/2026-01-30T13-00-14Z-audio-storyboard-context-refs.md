@@ -1,6 +1,6 @@
 ---
 id: 2026-01-30T13-00-14Z-audio-storyboard-context-refs
-date: 2026-01-30T13:00:14Z
+date: "2026-01-30T13:00:14Z"
 participants: [human, codex]
 models: [gpt-5]
 tags: [backend, storyboard, prompts, video]
@@ -78,4 +78,3 @@ summary: "Inject Story character visual card briefs + auto reference_images into
 ## Linked Commits
 
 - (pending)
-

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -49,6 +50,9 @@ async def generate_text_with_fallback(
     finish_invocation: Callable[..., None],
 ) -> AIResponse:
     """Generate text with provider fallback and default model resolution."""
+    invocation_input_references = provider_kwargs.pop(
+        "invocation_input_references", None
+    )
     available_providers = get_available_providers(
         model_type=AIModelType.TEXT_GENERATION
     )
@@ -130,7 +134,12 @@ async def generate_text_with_fallback(
                 "json_schema": json_schema,
                 "provider_kwargs": provider_kwargs,
             },
+            input_references=invocation_input_references,
         )
+        if invocation_input_references and invocation is None:
+            raise RuntimeError(
+                "required LLM invocation audit could not be persisted before provider call"
+            )
 
         try:
             response = await provider.generate_text(
@@ -145,6 +154,16 @@ async def generate_text_with_fallback(
                     provider_kwargs=provider_kwargs,
                 )
             )
+            invocation_id = (
+                invocation.get("row_id")
+                if isinstance(invocation, dict)
+                else getattr(invocation, "row_id", None)
+            )
+            if invocation_id is not None:
+                response.metadata = {
+                    **dict(response.metadata or {}),
+                    "llm_invocation_id": int(invocation_id),
+                }
             log_response(
                 task="generate_text",
                 provider=provider_name,
@@ -157,6 +176,9 @@ async def generate_text_with_fallback(
                 last_provider = provider_name
             if response.success or not enable_fallback:
                 return response
+        except asyncio.CancelledError:
+            finish_invocation(invocation, error="provider call cancelled")
+            raise
         except Exception as exc:
             finish_invocation(invocation, error=str(exc))
             last_error = str(exc)

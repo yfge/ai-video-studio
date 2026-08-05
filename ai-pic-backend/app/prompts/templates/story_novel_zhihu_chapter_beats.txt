@@ -37,5 +37,5 @@
 - 必须自然承接 previous_tail（若为空则从本章开场起笔）
 - 若 previous_cliffhanger 非空，第一条 beat 必须直接回应/承接该卡点（要么续写现场，要么立刻交代“卡点之后发生了什么”）。
 - beats 最后一条要能导向 cliffhanger_hint（不需要直接写卡点台词，但要铺垫到位）
-- 如 beats 中首次出现新的角色姓名（此前未在 previous_tail / running_summary / ledger.characters 中出现），必须在该 beat 中写明“姓名的获取方式”（自报、他人介绍、工牌/名牌、手机备注等）。
+- 如 beats 中首次出现新的角色姓名（此前未在 previous_tail / running_summary / ledger.characters 中出现），必须在该 beat 中写明由正文支持的介绍、可见标识或可靠信息来源建立姓名。
 - 仅输出 JSON；JSON 字符串中禁止出现真实换行符；需要换行请写成 \\n

@@ -1,6 +1,6 @@
 ---
 id: 2026-01-31T10-15-00Z-frame-duration-splitter-phase2
-date: 2026-01-31T10:15:00Z
+date: "2026-01-31T10:15:00Z"
 participants: [human, claude]
 models: [claude-opus-4-5-20251101]
 tags: [backend, storyboard, video-duration-alignment, refactor]
@@ -68,11 +68,13 @@ python -m pytest tests/unit/services/storyboard/ -v -q
 The frame_duration_splitter module provides:
 
 1. **`split_long_frames()`**: Splits frames exceeding `max_duration_seconds` (default 8.0s) into segments at beat boundaries
+
    - Creates linkage metadata: `parent_frame_id`, `split_index`, `total_splits`, `beat_range`
    - Adds "（续）" marker to continuation segments
    - Absorbs very short final segments (< 50% of min_duration) into previous segment
 
 2. **`merge_short_frames()`**: Merges consecutive short frames of mergeable types (pause, action)
+
    - Respects scene boundaries (different scenes are not merged)
    - Respects timeline continuity (gaps in timeline prevent merging)
    - Dialogue beats are not merged by default
@@ -116,6 +118,7 @@ python -c "from app.services.storyboard.frame_duration_splitter import split_lon
 ### Bug Fix Applied
 
 Fixed issue where frames with absorbed tiny segments still had split metadata:
+
 - `1f70349` fix(backend): correct frame split metadata when remainder absorbed
 
 ## Linked Commits

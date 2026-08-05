@@ -9,6 +9,7 @@ from app.schemas.story_novel_export import NovelLengthRange
 from fastapi import HTTPException
 
 _PRESETS = (
+    ("commercial_serial", "商业网文短章", 2000, 2500, 3000),
     ("short_serial", "短章连载", 1500, 2200, 3000),
     ("standard_serial", "标准网文", 3000, 4000, 5000),
     ("long_chapter", "长章模式", 4500, 6000, 8000),

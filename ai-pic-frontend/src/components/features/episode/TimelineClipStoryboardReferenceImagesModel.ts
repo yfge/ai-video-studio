@@ -69,7 +69,10 @@ export function buildVirtualIPImageOptions(
         label: suffix ? `${name} ${suffix}` : `${name} ${index + 1}`,
       };
     }),
-    ...buildSingleReferenceOption(record?.default_avatar_url, `${name} 默认头像`),
+    ...buildSingleReferenceOption(
+      record?.default_avatar_url,
+      `${name} 默认头像`,
+    ),
     ...styleReferenceImages.flatMap((url, index) =>
       buildSingleReferenceOption(url, `${name} 风格参考 ${index + 1}`),
     ),

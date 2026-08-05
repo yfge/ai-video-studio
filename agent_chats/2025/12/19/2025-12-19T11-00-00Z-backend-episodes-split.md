@@ -1,6 +1,6 @@
 ---
 id: 2025-12-19T11-00-00Z-backend-episodes-split
-date: 2025-12-19T11:00:00Z
+date: "2025-12-19T11:00:00Z"
 participants: [human, claude]
 models: [claude-opus-4-5-20251101]
 tags: [backend, refactor, python, phase3]
@@ -88,7 +88,7 @@ episodes/
    - `_process_fallback_result` - Handle non-callback results
    - `_coerce_episode_payload` - Normalize episode data
 
-6. ****init**.py** (~60 lines)
+6. \***\*init**.py\*\* (~60 lines)
    - Aggregates all sub-routers into single `router`
    - Re-exports helpers and `process_episode_generation_task`
 

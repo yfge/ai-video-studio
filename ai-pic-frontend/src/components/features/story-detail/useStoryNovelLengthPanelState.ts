@@ -51,19 +51,41 @@ function useNovelLengthProfiles() {
 }
 
 function useNovelLengthSelection(
+  story: Story,
   revision: StoryNovelRevision | null,
   profiles: NovelLengthProfile[],
 ) {
   const [profileId, setProfileId] = useState("");
   const [custom, setCustom] = useState(DEFAULT_CUSTOM_LENGTH);
   const [overrides, setOverrides] = useState<NovelChapterLengthOverrides>({});
-  const [model, setModel] = useState("");
+  const [planningModel, setPlanningModel] = useState("");
+  const [proseModel, setProseModel] = useState("");
+  const [auditModel, setAuditModel] = useState("");
+  const policyPlanningModel =
+    revision?.generation_plan?.model_policy?.planning_model || "";
+  const policyProseModel =
+    revision?.generation_plan?.model_policy?.prose_model || "";
+  const policyAuditModel =
+    revision?.generation_plan?.model_policy?.audit_model || "";
+  const seedPlanningModel =
+    story.story_seed?.schema === "story_seed_v2"
+      ? story.story_seed.structured_outline.planning_model || ""
+      : "";
   useEffect(() => {
     setProfileId((value) => value || profiles[0]?.profile_id || "");
   }, [profiles]);
   useEffect(() => {
-    setModel(revision?.model || "");
-  }, [revision?.business_id, revision?.model]);
+    setPlanningModel(policyPlanningModel || seedPlanningModel);
+    setProseModel(policyProseModel || revision?.model || "");
+    setAuditModel(policyAuditModel);
+  }, [
+    policyAuditModel,
+    policyPlanningModel,
+    policyProseModel,
+    revision?.business_id,
+    revision?.model,
+    seedPlanningModel,
+  ]);
   useEffect(() => {
     const profile = revision?.generation_plan?.length_profile;
     if (!profile) return;
@@ -86,8 +108,12 @@ function useNovelLengthSelection(
     setCustom,
     overrides,
     setOverrides,
-    model,
-    setModel,
+    planningModel,
+    setPlanningModel,
+    proseModel,
+    setProseModel,
+    auditModel,
+    setAuditModel,
   };
 }
 
@@ -96,7 +122,7 @@ export function useStoryNovelLengthPanelState(
   revision: StoryNovelRevision | null,
 ) {
   const { profiles, profileError } = useNovelLengthProfiles();
-  const selection = useNovelLengthSelection(revision, profiles);
+  const selection = useNovelLengthSelection(story, revision, profiles);
   const chapters = useMemo(
     () =>
       story.story_seed?.schema === "story_seed_v2"

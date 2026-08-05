@@ -3,6 +3,7 @@ import type {
   StorySeedStructuredOutline,
   StorySeedThreadPayoff,
 } from "@/utils/api/types";
+import { progressionCovers } from "./storyProgressionArcs";
 
 const pendingChapter = (position: number): StorySeedStructuredChapter => ({
   position,
@@ -81,7 +82,17 @@ export function replaceOutlineChapters(
     const payoff_position = mapPayoff(payoff);
     return payoff_position ? [{ ...payoff, payoff_position }] : [];
   });
-  return { ...outline, status: "draft" as const, chapters, thread_payoffs };
+  const keepProgression = progressionCovers(outline, chapters);
+  return {
+    ...outline,
+    status: "draft" as const,
+    chapters,
+    thread_payoffs,
+    planning_structure_version: keepProgression
+      ? outline.planning_structure_version
+      : 0,
+    progression_arcs: keepProgression ? outline.progression_arcs : [],
+  };
 }
 
 export function splitOutlineChapter(
@@ -115,8 +126,6 @@ export function splitOutlineChapter(
 }
 
 const unique = (items: string[]) => Array.from(new Set(items.filter(Boolean)));
-const payoffEvidencePrefix = (threadId: string) =>
-  `关于“${threadId}”的最终证据确认：`;
 
 export function mergeOutlineChapterWithNext(
   chapters: StorySeedStructuredChapter[],
@@ -154,6 +163,20 @@ export function validateStructuredOutline(outline: StorySeedStructuredOutline) {
       return `第 ${index + 1} 章至少需要一个关键事件`;
     }
     if (!chapter.end_state.trim()) return `第 ${index + 1} 章缺少章末状态`;
+  }
+  if (outline.planning_structure_version === 1) {
+    const positions = (outline.progression_arcs ?? []).flatMap((arc) =>
+      Array.from(
+        { length: arc.end_position - arc.start_position + 1 },
+        (_, index) => arc.start_position + index,
+      ),
+    );
+    if (
+      positions.length !== outline.chapters.length ||
+      positions.some((position, index) => position !== index + 1)
+    ) {
+      return "分卷阶段必须连续覆盖全部章节";
+    }
   }
   if (outline.thread_schedule_version !== 1) {
     if ((outline.thread_payoffs ?? []).length) {
@@ -200,13 +223,6 @@ function validateThreadPayoffs(outline: StorySeedStructuredOutline) {
     }
     if (!target.key_events.includes(payoff.evidence_key_event)) {
       return `伏笔 ${payoff.thread_id} 的回收证据必须逐字属于第 ${target.position} 章关键事件`;
-    }
-    const prefix = payoffEvidencePrefix(payoff.thread_id);
-    if (
-      !payoff.evidence_key_event.startsWith(prefix) ||
-      payoff.evidence_key_event.length <= prefix.length
-    ) {
-      return `伏笔 ${payoff.thread_id} 的回收事件必须使用显式问题标签并给出答案`;
     }
     const count = (counts.get(target.position) ?? 0) + 1;
     if (count > 3) return `第 ${target.position} 章最多回收 3 条伏笔`;

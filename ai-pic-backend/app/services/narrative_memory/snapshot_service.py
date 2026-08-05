@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+from types import SimpleNamespace
 from typing import Any
 
 from app.core.exceptions import NotFoundError
@@ -21,6 +22,38 @@ class SnapshotService:
         as_of_anchor_business_id: str,
         commit: bool = True,
     ):
+        payload = self._snapshot_data(
+            story,
+            character_business_id=character_business_id,
+            as_of_anchor_business_id=as_of_anchor_business_id,
+        )
+        snapshot = self.repo.create_snapshot(story_id=story.id, **payload)
+        if commit:
+            self.repo.commit()
+            self.repo.refresh(snapshot)
+        return snapshot
+
+    def preview(
+        self,
+        story: Story,
+        *,
+        character_business_id: str,
+        as_of_anchor_business_id: str,
+    ):
+        payload = self._snapshot_data(
+            story,
+            character_business_id=character_business_id,
+            as_of_anchor_business_id=as_of_anchor_business_id,
+        )
+        return SimpleNamespace(business_id=None, **payload)
+
+    def _snapshot_data(
+        self,
+        story: Story,
+        *,
+        character_business_id: str,
+        as_of_anchor_business_id: str,
+    ) -> dict[str, Any]:
         character = self.repo.get_story_character(story.id, character_business_id)
         if not character or not character.virtual_ip:
             raise NotFoundError("故事角色", character_business_id)
@@ -50,16 +83,7 @@ class SnapshotService:
             "included_memory_ids": [item["business_id"] for item in included],
             "growth_state": growth,
         }
-        snapshot_hash = self.stable_hash(payload)
-        snapshot = self.repo.create_snapshot(
-            story_id=story.id,
-            snapshot_hash=snapshot_hash,
-            **payload,
-        )
-        if commit:
-            self.repo.commit()
-            self.repo.refresh(snapshot)
-        return snapshot
+        return {**payload, "snapshot_hash": self.stable_hash(payload)}
 
     @staticmethod
     def stable_hash(payload: dict[str, Any]) -> str:

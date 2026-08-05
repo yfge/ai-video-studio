@@ -21,7 +21,12 @@ class NarrativeGenerationContextService:
         return self._build_context(story, anchor)
 
     def chapter_context(
-        self, story: Story, *, revision_business_id: str, position: int
+        self,
+        story: Story,
+        *,
+        revision_business_id: str,
+        position: int,
+        persist_snapshots: bool = True,
     ) -> dict[str, Any] | None:
         if story.memory_mode != "story_scoped_memory_v1":
             return None
@@ -35,7 +40,7 @@ class NarrativeGenerationContextService:
             source_version=1,
             source_hash=self._hash(source),
         )
-        return self._build_context(story, anchor)
+        return self._build_context(story, anchor, persist_snapshots=persist_snapshots)
 
     def freeze_episode(
         self,
@@ -75,16 +80,24 @@ class NarrativeGenerationContextService:
             self.repo.commit()
         return context
 
-    def _build_context(self, story: Story, anchor) -> dict[str, Any]:
+    def _build_context(
+        self, story: Story, anchor, *, persist_snapshots: bool = True
+    ) -> dict[str, Any]:
         snapshots = []
         for character in self.repo.list_story_characters(story.id):
             if not character.virtual_ip:
                 continue
-            snapshot = SnapshotService(self.repo).rebuild(
+            snapshot_service = SnapshotService(self.repo)
+            method = (
+                snapshot_service.rebuild
+                if persist_snapshots
+                else snapshot_service.preview
+            )
+            snapshot = method(
                 story,
                 character_business_id=character.business_id,
                 as_of_anchor_business_id=anchor.business_id,
-                commit=False,
+                **({"commit": False} if persist_snapshots else {}),
             )
             snapshots.append(self._snapshot_payload(story, snapshot))
         events = self._events_before(story, anchor.narrative_sequence)

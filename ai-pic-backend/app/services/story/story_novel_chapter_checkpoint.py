@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from fastapi import HTTPException
-
 from app.services.narrative_memory.source_hash import novel_chapter_source_hash
+from fastapi import HTTPException
 
 from .story_novel_chapter_gate import chapter_length_range
 from .story_novel_memory_context import (

@@ -12,13 +12,16 @@ from app.utils.json_utils import extract_json_block
 from pydantic import ValidationError
 
 from .story_novel_canon_milestone_filter import filter_model_milestone_outcomes
+from .story_novel_canon_model_state import normalize_model_initial_state
 from .story_novel_constraint_visibility import is_future_policy_constraint
 from .story_novel_initial_state import canonical_initial_subjects
+from .story_novel_location_hierarchy import location_hierarchy_issues
 from .story_novel_milestone_state import validate_milestone_outcome_contract
 from .story_novel_plan_quality import plan_quality_diagnostics
 from .story_novel_plan_validator import (
     validate_generation_plan as _validate_generation_plan,
 )
+from .story_novel_v4_canon_contract import bind_seed_roadmap
 
 CANON_GATE_VERSION = 2
 CANON_SECTIONS = (
@@ -94,6 +97,7 @@ def parse_model_canon(
             raise ValueError("Canon JSON 必须是 object")
         payload.setdefault("gate_version", CANON_GATE_VERSION)
         if planning_contract is not None:
+            payload = bind_seed_roadmap(payload, planning_contract)
             payload["world_rules"] = _sourced_world_rules(planning_contract)
             payload, timeline_diagnostics = filter_model_timeline_sources(
                 payload, planning_contract
@@ -101,7 +105,12 @@ def parse_model_canon(
             payload, milestone_diagnostics = filter_model_milestone_outcomes(
                 payload, planning_contract
             )
-            diagnostics = [*timeline_diagnostics, *milestone_diagnostics]
+            payload, state_diagnostics = normalize_model_initial_state(payload)
+            diagnostics = [
+                *timeline_diagnostics,
+                *milestone_diagnostics,
+                *state_diagnostics,
+            ]
         return (
             normalize_canon(payload, required_gate_version=CANON_GATE_VERSION),
             None,
@@ -153,6 +162,7 @@ def _validate_canon(canon: dict, *, required_gate_version: int) -> None:
     if gate_version < required_gate_version:
         raise ValueError(f"Canon gate_version 必须至少为 {required_gate_version}")
     errors: list[str] = []
+    errors.extend(location_hierarchy_issues(canon))
     ids: set[str] = set()
     for section in CANON_SECTIONS[:-1]:
         for item in canon.get(section) or []:

@@ -1,6 +1,17 @@
+---
+id: 2026-06-04T01-11-53Z-minimax-tts-emotion
+date: "2026-06-04T01:11:53Z"
+participants: [user, codex]
+models: [gpt-5.6-sol]
+tags: [backend, minimax, tts, emotion]
+related_paths:
+  - ai-pic-backend/app/services/providers/minimax_provider/tts.py
+summary: Verify and cover the MiniMax TTS emotion payload path.
+---
+
 ## User Prompt
 
-检查miniMax 的 API  在语音合成的时候接入人物情绪  https://platform.minimaxi.com/docs/mcp
+检查miniMax 的 API 在语音合成的时候接入人物情绪 https://platform.minimaxi.com/docs/mcp
 
 ## Goals
 

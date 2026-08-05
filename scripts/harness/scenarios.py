@@ -132,6 +132,13 @@ BROWSER_SCENARIOS: dict[str, BrowserScenario] = {
         required_text="故事列表",
         notes="Open the story master-detail production view and capture list/detail readiness.",
     ),
+    "story_novel_v5_consistency_smoke": BrowserScenario(
+        name="story_novel_v5_consistency_smoke",
+        path="/stories/{story_id}",
+        requires_auth=True,
+        required_text="一致性模型",
+        notes="Open a Story with a V5 Revision and capture its read-only schema and chapter-quality panel.",
+    ),
     "episode_timeline_smoke": BrowserScenario(
         name="episode_timeline_smoke",
         path="/episodes/{episode_id}/workspace?tab=timeline",

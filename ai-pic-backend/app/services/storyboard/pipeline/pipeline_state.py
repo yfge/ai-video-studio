@@ -15,6 +15,8 @@ from enum import Enum
 def _utcnow() -> datetime:
     """Return current UTC time with timezone info."""
     return datetime.now(timezone.utc)
+
+
 from typing import Any
 
 

@@ -3,7 +3,11 @@ import re
 
 import anyio
 import pytest
-from app.services.story.story_novel_planning_batches import reusable_plan_draft
+from app.services.story.story_novel_planning_batches import (
+    batch_contract,
+    chapter_batches,
+    reusable_plan_draft,
+)
 from app.services.story.story_novel_planning_service import ensure_generation_plan
 from fastapi import HTTPException
 from tests.unit.test_story_novel_longform import _canon, _plan_row, _setup
@@ -48,6 +52,16 @@ def _audit_response(positions):
             {
                 "position": position,
                 "event_id": f"event-{position}",
+                "execution_contract": {
+                    "event_id": f"event-{position}",
+                    "action_phase": "instant",
+                    "time_scope": "unspecified",
+                    "actor_ids": [],
+                    "effort": "unspecified",
+                    "timeline_ids": ["time-1"] if position == 1 else [],
+                    "knowledge_fact_ids": [],
+                },
+                "feasibility_issues": [],
                 "missing_effects": {
                     "knowledge_grants": [],
                     "state_transitions": [],
@@ -84,9 +98,10 @@ def test_48_chapter_contract_is_generated_in_bounded_batches(db_session):
     assert len(calls) == 13
     assert {max_tokens for _, max_tokens in calls} == {16000}
     assert all(len(_batch_positions(prompt)) <= 8 for prompt, _ in calls[1:])
-    assert '"position":9' not in calls[1][0]
-    assert '"position":9' not in calls[2][0]
-    assert plan["plan_semantic_audit_version"] == 1
+    assert '"next_boundary_anchor":{"position":9' in calls[1][0]
+    assert '"position":10' not in calls[1][0]
+    assert '"position":10' not in calls[2][0]
+    assert plan["plan_semantic_audit_version"] == 3
     assert "chapter_plan_draft" not in plan
 
 
@@ -148,3 +163,45 @@ def test_reusable_plan_draft_is_detached_from_checkpoint():
     reusable.append(_plan_row(2))
 
     assert [row["position"] for row in current["chapter_plan_draft"]] == [1]
+
+
+def test_complex_chapters_use_smaller_adaptive_batches():
+    rows = [_plan_row(position) for position in range(1, 13)]
+    for row in rows:
+        row["key_events"] = [f"事件-{row['position']}-{index}" for index in range(6)]
+        row["character_focus"] = ["甲", "乙", "丙"]
+        row["open_threads"] = [f"线索-{row['position']}-{index}" for index in range(2)]
+
+    batches = chapter_batches(
+        list(range(1, 13)), {"chapters": rows}, {"milestones": [], "timeline": []}
+    )
+
+    assert batches == [
+        list(range(1, 4)),
+        list(range(4, 7)),
+        list(range(7, 10)),
+        list(range(10, 13)),
+    ]
+
+
+def test_batch_contract_includes_only_the_next_boundary_anchor():
+    contract = {
+        "story_seed": {
+            "structured_outline": {
+                "chapters": [_plan_row(position) for position in range(1, 10)]
+            }
+        }
+    }
+
+    bounded = batch_contract(contract, list(range(1, 9)))
+
+    assert bounded["chapter_batch"]["next_boundary_anchor"] == {
+        "position": 9,
+        "title": "第9章",
+        "goal": "推进核心冲突",
+        "first_key_event": "发现线索",
+    }
+    assert [
+        item["position"]
+        for item in bounded["story_seed"]["structured_outline"]["chapters"]
+    ] == list(range(1, 9))

@@ -3,7 +3,6 @@ import stat
 from pathlib import Path
 
 import pytest
-
 from app.services.providers.base import ProviderConfig
 from app.services.providers.codex_payload import build_codex_payload, parse_codex_sse
 from app.services.providers.codex_provider import CodexProvider, _CodexUnauthorized
@@ -68,7 +67,66 @@ def test_codex_sse_parser_collects_text_and_usage():
     text, usage = parse_codex_sse(raw)
 
     assert text == "Hello world"
-    assert usage == {"input_tokens": 1}
+    assert usage == {"input_tokens": 1, "_finish_reason": "stop"}
+
+
+def test_codex_sse_parser_uses_completed_item_when_deltas_are_missing():
+    raw = (
+        "event: response.output_item.done\n"
+        "data: "
+        '{"type":"response.output_item.done","item":{"type":"message",'
+        '"content":[{"type":"output_text","text":"final JSON"}]}}\n\n'
+        "event: response.completed\n"
+        "data: "
+        '{"type":"response.completed","response":{"output":null,'
+        '"usage":{"input_tokens":2,"output_tokens":3}}}\n\n'
+    )
+
+    text, usage = parse_codex_sse(raw)
+
+    assert text == "final JSON"
+    assert usage == {
+        "input_tokens": 2,
+        "output_tokens": 3,
+        "_finish_reason": "stop",
+    }
+
+
+def test_codex_sse_parser_does_not_duplicate_delta_and_done_text():
+    raw = (
+        'data: {"type":"response.output_text.delta","delta":"final JSON"}\n\n'
+        'data: {"type":"response.output_text.done","text":"final JSON"}\n\n'
+    )
+
+    text, _usage = parse_codex_sse(raw)
+
+    assert text == "final JSON"
+
+
+def test_codex_sse_parser_surfaces_failed_response():
+    raw = (
+        'data: {"type":"response.failed","response":{"status":"failed",'
+        '"error":{"code":"server_error","message":"Please retry later"}}}\n\n'
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="Codex response failed: code=server_error message=Please retry later",
+    ):
+        parse_codex_sse(raw)
+
+
+def test_codex_sse_parser_surfaces_incomplete_reason():
+    raw = (
+        'data: {"type":"response.incomplete","response":{"status":"incomplete",'
+        '"incomplete_details":{"reason":"max_output_tokens"}}}\n\n'
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="Codex response incomplete: code=max_output_tokens",
+    ):
+        parse_codex_sse(raw)
 
 
 def test_codex_headers_use_cli_auth(tmp_path: Path):
@@ -108,7 +166,7 @@ async def test_codex_generate_text_reloads_rotated_token_after_401(
         if calls["count"] == 1:
             _write_auth(auth_path, token="sk-new")
             raise _CodexUnauthorized("401")
-        return "recovered", {"output_tokens": 1}
+        return "recovered", {"output_tokens": 1, "_finish_reason": "stop"}
 
     monkeypatch.setattr(provider, "get_client", fake_get_client)
     monkeypatch.setattr(provider, "_post", fake_post)
@@ -123,5 +181,6 @@ async def test_codex_generate_text_reloads_rotated_token_after_401(
     assert result.success is True
     assert result.data == "recovered"
     assert result.usage == {"output_tokens": 1}
+    assert result.metadata["finish_reason"] == "stop"
     assert provider._token == "sk-new"
     assert calls["count"] == 2

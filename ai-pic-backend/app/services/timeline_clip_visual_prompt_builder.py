@@ -93,7 +93,9 @@ def _prompt_context(clip: Mapping[str, Any], override: str | None) -> dict[str, 
 
 def _keyframe_prompt(context: Mapping[str, Any], role: str) -> str:
     points = context.get("motion_timeline") or []
-    point = points[0] if role == "start_frame" and points else points[-1] if points else {}
+    point = (
+        points[0] if role == "start_frame" and points else points[-1] if points else {}
+    )
     label = "Opening keyframe" if role == "start_frame" else "Ending keyframe"
     state = "start state" if role == "start_frame" else "final state"
     lines = [

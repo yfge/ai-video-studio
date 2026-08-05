@@ -1,6 +1,6 @@
 ---
 id: 2026-02-03T23-30-00Z-character-tests
-date: 2026-02-03T23:30:00Z
+date: "2026-02-03T23:30:00Z"
 participants: [human, claude]
 models: [claude-opus-4-5]
 tags: [backend, validator, testing, character-consistency]
@@ -27,6 +27,7 @@ summary: "P0 1.7 补充角色一致性校验单元测试（正例+违例），�
 ### 修改文件
 
 1. **`app/services/validators/character_consistency_validator.py`**
+
    - 修复 `_attributes_compatible()` 中的性别检测bug
    - 问题："female" 包含 "male" 子串，导致误判
    - 解决方案：使用 regex word boundary (`\b`) 进行精确匹配
@@ -89,6 +90,7 @@ python -m pytest tests/unit/services/validators/test_character_consistency_valid
 ```
 
 测试覆盖：
+
 - 原有测试：28个
 - 新增测试：23个（违例9 + 边界8 + 正例6）
 - 总计：51个
